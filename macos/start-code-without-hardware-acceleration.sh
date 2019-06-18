@@ -1,32 +1,45 @@
 #!/bin/bash
 
+MAKE_PERMANENT=0
+
+if [ "$1" = "--permanently" ]; then
+
+    MAKE_PERMANENT=1
+    shift
+
+fi
+
 "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" --disable-gpu "$@" || exit
 
-PLIST="/Applications/Visual Studio Code.app/Contents/Info.plist"
+if [ "$MAKE_PERMANENT" -eq "1" ]; then
 
-[ -w "$PLIST" ] || exit
+    PLIST="/Applications/Visual Studio Code.app/Contents/Info.plist"
 
-SCRIPT_PATH="${BASH_SOURCE[0]}"
-[ -L "$SCRIPT_PATH" ] && SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
-SCRIPT_NAME="$(basename "$SCRIPT_PATH")"
-EXECUTABLE="/Applications/Visual Studio Code.app/Contents/MacOS/$SCRIPT_NAME"
+    [ -w "$PLIST" ] || exit
 
-if [ ! -L "$EXECUTABLE" ]; then
+    SCRIPT_PATH="${BASH_SOURCE[0]}"
+    [ -L "$SCRIPT_PATH" ] && SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+    SCRIPT_NAME="$(basename "$SCRIPT_PATH")"
+    EXECUTABLE="/Applications/Visual Studio Code.app/Contents/MacOS/$SCRIPT_NAME"
 
-    SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
+    if [ ! -L "$EXECUTABLE" ]; then
 
-    # just in case it exists but isn't a symbolic link
-    rm -f "$EXECUTABLE"
+        SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
-    ln -s "$SCRIPT_DIR/$SCRIPT_NAME" "$EXECUTABLE" && {
+        # just in case it exists but isn't a symbolic link
+        rm -f "$EXECUTABLE"
 
-        if [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")" != "$SCRIPT_NAME" ]; then
+        ln -s "$SCRIPT_DIR/$SCRIPT_NAME" "$EXECUTABLE" && {
 
-            /usr/libexec/PlistBuddy -c 'Set :CFBundleExecutable "'"$SCRIPT_NAME"'"' "$PLIST"
+            if [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")" != "$SCRIPT_NAME" ]; then
 
-        fi
+                /usr/libexec/PlistBuddy -c 'Set :CFBundleExecutable "'"$SCRIPT_NAME"'"' "$PLIST"
 
-    }
+            fi
+
+        }
+
+    fi
 
 fi
 
