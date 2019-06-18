@@ -68,15 +68,9 @@ function console_message {
 # Usage: get_confirmation "Do this?" && { do_it; }
 function get_confirmation {
 
-    local RESULT
-
     read -p "$BOLD$1$RESET [y/n] " YN
 
     [[ "$YN" =~ ^[Yy]$ ]]
-
-    RESULT=$?
-    [ "$RESULT" -eq "0" ] && echo
-    return $RESULT
 
 }
 

@@ -8,7 +8,7 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 assert_is_macos
 
-argument_or_default PACKAGE_LIST_FILE "$SCRIPT_DIR/homebrew-packages"
+argument_or_default PACKAGE_LIST_FILE "$SCRIPT_DIR/homebrew-formulae"
 
 if [ ! -f "$PACKAGE_LIST_FILE" ]; then
 
@@ -17,9 +17,10 @@ if [ ! -f "$PACKAGE_LIST_FILE" ]; then
 
 fi
 
-REMOVE_LIST="$(comm -23 <(brew list -1 | sort) <(cat "$PACKAGE_LIST_FILE" | xargs -I {} bash -c "echo {}; brew deps --installed {}" | sort | uniq))" || exit 1
+REMOVE_LIST="$(comm -23 <(brew list -1 | sort) <((cat "$PACKAGE_LIST_FILE"; brew deps --installed --union $(echo $(cat "$PACKAGE_LIST_FILE"))) | sort | uniq))" || exit 1
 
-REMOVE_COUNT=$(echo -n "$REMOVE_LIST" | wc -l | sed -e 's/ //g')
+REMOVE_COUNT=0
+[ -n "$REMOVE_LIST" ] && REMOVE_COUNT=$(echo "$REMOVE_LIST" | wc -l | sed -e 's/ //g')
 
 if [ "$REMOVE_COUNT" -ne "0" ]; then
 
