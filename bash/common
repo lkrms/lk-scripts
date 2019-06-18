@@ -1,0 +1,154 @@
+SCRIPT_ARGS=("$@")
+
+function assert_is_macos {
+
+    if [ "$IS_MACOS" -ne "1" ]; then
+
+        echo "Error: $(basename "$0") is not supported on this platform"
+        exit 1
+
+    fi
+
+}
+
+# Usage: argument_or_default VAR_TO_SET "default value if there's not exactly one command line argument"
+function argument_or_default {
+
+    if [ "${#SCRIPT_ARGS[@]}" -eq "1" ]; then
+
+        eval $1="${SCRIPT_ARGS[0]}"
+
+    else
+
+        eval $1="$2"
+
+    fi
+
+}
+
+# Usage: echoc "My coloured message" $BOLD $BLUE
+function echoc {
+
+    echocn "$@"
+    echo
+
+}
+
+# as above, but no newline afterwards
+function echocn {
+
+    local MESSAGE="$1" c
+
+    shift
+
+    for c in "$@"; do
+
+        echo -ne "$c"
+
+    done
+
+    echo -ne "${MESSAGE}${RESET}"
+
+}
+
+# Usage: console_message "Main message to display in bold" "Secondary message with colour too" $BLUE
+function console_message {
+
+    local MESSAGE1="$1" MESSAGE2="$2"
+
+    shift
+    shift
+    echocn "==> " "$@"
+    echocn "$MESSAGE1" $BOLD
+    [ -n "$MESSAGE2" ] && echocn " $MESSAGE2" $BOLD "$@"
+    echo
+
+}
+
+# Usage: get_confirmation "Do this?" && { do_it; }
+function get_confirmation {
+
+    local RESULT
+
+    read -p "$BOLD$1$RESET [y/n] " YN
+
+    [[ "$YN" =~ ^[Yy]$ ]]
+
+    RESULT=$?
+    [ "$RESULT" -eq "0" ] && echo
+    return $RESULT
+
+}
+
+# foreground colours
+BLACK="$(tput setaf 0)"
+RED="$(tput setaf 1)"
+GREEN="$(tput setaf 2)"
+YELLOW="$(tput setaf 3)"
+BLUE="$(tput setaf 4)"
+MAGENTA="$(tput setaf 5)"
+CYAN="$(tput setaf 6)"
+WHITE="$(tput setaf 7)"
+NO_COLOUR="$(tput setaf 9)"
+
+# background colours
+BLACK_BG="$(tput setab 0)"
+RED_BG="$(tput setab 1)"
+GREEN_BG="$(tput setab 2)"
+YELLOW_BG="$(tput setab 3)"
+BLUE_BG="$(tput setab 4)"
+MAGENTA_BG="$(tput setab 5)"
+CYAN_BG="$(tput setab 6)"
+WHITE_BG="$(tput setab 7)"
+NO_COLOUR_BG="$(tput setab 9)"
+
+# other "formatting"
+BOLD="$(tput bold)"
+UNDERLINE="$(tput smul)"
+NO_UNDERLINE="$(tput rmul)"
+STANDOUT="$(tput smso)"
+NO_STANDOUT="$(tput rmso)"
+RESET="$(tput sgr0)"
+
+IS_MACOS=0
+IS_LINUX=0
+IS_PURE_LINUX=0
+IS_WSL=0
+PLATFORM=
+
+case "$(uname -s)" in
+
+    Darwin)
+
+        IS_MACOS=1;
+        PLATFORM=mac;
+
+    ;;
+
+    Linux)
+
+        IS_LINUX=1;
+
+        if [ -e /proc/version ] && grep -q Microsoft /proc/version; then
+
+            IS_WSL=1
+            PLATFORM=wsl
+
+        else
+
+            IS_PURE_LINUX=1
+            PLATFORM=linux
+
+        fi
+
+    ;;
+
+    *)
+
+        echo "Error: unknown platform"
+        exit 1
+
+    ;;
+
+esac
+
