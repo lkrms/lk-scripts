@@ -1,7 +1,7 @@
 #!/bin/bash
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
-[ -h "$SCRIPT_PATH" ] && SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+[ -L "$SCRIPT_PATH" ] && SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 . "$SCRIPT_DIR/../bash/common" || exit 1
