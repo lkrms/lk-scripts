@@ -1,0 +1,180 @@
+function virtualbox_exists {
+
+    VBoxManage showvminfo "$1" >/dev/null 2>&1
+
+}
+
+function assert_virtualbox_exists {
+
+    if ! virtualbox_exists "$1"; then
+
+        echo "Error: '$1' is not a registered virtual machine"
+        exit 1
+
+    fi
+
+}
+
+# creates VM_* variables for the given VM (name or UUID)
+function virtualbox_load_info {
+
+    local IFS=$'\n' LINE VALUE VALUE_NAME
+
+    assert_virtualbox_exists "$1"
+
+    for LINE in $(VBoxManage showvminfo "$1" --machinereadable); do
+
+        VALUE_NAME="${LINE%%=*}"
+        VALUE="${LINE#*=}"
+
+        VALUE_NAME="${VALUE_NAME//-/_}"                                     # replace hyphens
+        VALUE_NAME="${VALUE_NAME//\"/}"                                     # remove quotes
+        VALUE_NAME="$(echo "$VALUE_NAME" | tr "[:lower:]" "[:upper:]")"     # UPPERCASE
+
+        eval "VM_${VALUE_NAME}=${VALUE}"
+
+    done
+
+}
+
+# VM_NAME="HighSierra"
+# VM_GROUPS="/"
+# VM_OSTYPE="macOS 10.13 High Sierra (64-bit)"
+# VM_UUID="96127ed0-9299-11e9-bc42-526af7764f64"
+# VM_CFGFILE="/Users/admin/VirtualBox VMs/HighSierra/HighSierra.vbox"
+# VM_SNAPFLDR="/Users/admin/VirtualBox VMs/HighSierra/Snapshots"
+# VM_LOGFLDR="/Users/admin/VirtualBox VMs/HighSierra/Logs"
+# VM_HARDWAREUUID="96127ed0-9299-11e9-bc42-526af7764f64"
+# VM_MEMORY=4096
+# VM_PAGEFUSION="off"
+# VM_VRAM=128
+# VM_CPUEXECUTIONCAP=100
+# VM_HPET="on"
+# VM_CPU_PROFILE="host"
+# VM_CHIPSET="ich9"
+# VM_FIRMWARE="EFI"
+# VM_CPUS=2
+# VM_PAE="on"
+# VM_LONGMODE="on"
+# VM_TRIPLEFAULTRESET="off"
+# VM_APIC="on"
+# VM_X2APIC="off"
+# VM_NESTED_HW_VIRT="off"
+# VM_CPUID_PORTABILITY_LEVEL=0
+# VM_BOOTMENU="messageandmenu"
+# VM_BOOT1="dvd"
+# VM_BOOT2="disk"
+# VM_BOOT3="none"
+# VM_BOOT4="none"
+# VM_ACPI="on"
+# VM_IOAPIC="on"
+# VM_BIOSAPIC="apic"
+# VM_BIOSSYSTEMTIMEOFFSET=0
+# VM_RTCUSEUTC="on"
+# VM_HWVIRTEX="on"
+# VM_NESTEDPAGING="on"
+# VM_LARGEPAGES="on"
+# VM_VTXVPID="on"
+# VM_VTXUX="on"
+# VM_PARAVIRTPROVIDER="default"
+# VM_EFFPARAVIRTPROVIDER="minimal"
+# VM_VMSTATE="poweroff"
+# VM_VMSTATECHANGETIME="2019-06-19T13:26:42.838000000"
+# VM_MONITORCOUNT=1
+# VM_ACCELERATE3D="off"
+# VM_ACCELERATE2DVIDEO="off"
+# VM_TELEPORTERENABLED="off"
+# VM_TELEPORTERPORT=0
+# VM_TELEPORTERADDRESS=""
+# VM_TELEPORTERPASSWORD=""
+# VM_TRACING_ENABLED="off"
+# VM_TRACING_ALLOW_VM_ACCESS="off"
+# VM_TRACING_CONFIG=""
+# VM_AUTOSTART_ENABLED="off"
+# VM_AUTOSTART_DELAY=0
+# VM_DEFAULTFRONTEND=""
+# VM_STORAGECONTROLLERNAME0="SATA"
+# VM_STORAGECONTROLLERTYPE0="IntelAhci"
+# VM_STORAGECONTROLLERINSTANCE0="0"
+# VM_STORAGECONTROLLERMAXPORTCOUNT0="30"
+# VM_STORAGECONTROLLERPORTCOUNT0="2"
+# VM_STORAGECONTROLLERBOOTABLE0="on"
+# VM_SATA_0_0="/Users/admin/VirtualBox VMs/HighSierra/HighSierra.vdi"
+# VM_SATA_IMAGEUUID_0_0="bece96c4-9299-11e9-bc42-526af7764f64"
+# VM_SATA_1_0="/Users/admin/ISOs/High Sierra.iso"
+# VM_SATA_IMAGEUUID_1_0="c6f2d68a-9299-11e9-bc42-526af7764f64"
+# VM_SATA_TEMPEJECT="off"
+# VM_SATA_ISEJECTED="off"
+# VM_NATNET1="nat"
+# VM_MACADDRESS1="080027325776"
+# VM_CABLECONNECTED1="on"
+# VM_NIC1="nat"
+# VM_NICTYPE1="82545EM"
+# VM_NICSPEED1="0"
+# VM_MTU="0"
+# VM_SOCKSND="64"
+# VM_SOCKRCV="64"
+# VM_TCPWNDSND="64"
+# VM_TCPWNDRCV="64"
+# VM_NIC2="none"
+# VM_NIC3="none"
+# VM_NIC4="none"
+# VM_NIC5="none"
+# VM_NIC6="none"
+# VM_NIC7="none"
+# VM_NIC8="none"
+# VM_NIC9="none"
+# VM_NIC10="none"
+# VM_NIC11="none"
+# VM_NIC12="none"
+# VM_NIC13="none"
+# VM_NIC14="none"
+# VM_NIC15="none"
+# VM_NIC16="none"
+# VM_NIC17="none"
+# VM_NIC18="none"
+# VM_NIC19="none"
+# VM_NIC20="none"
+# VM_NIC21="none"
+# VM_NIC22="none"
+# VM_NIC23="none"
+# VM_NIC24="none"
+# VM_NIC25="none"
+# VM_NIC26="none"
+# VM_NIC27="none"
+# VM_NIC28="none"
+# VM_NIC29="none"
+# VM_NIC30="none"
+# VM_NIC31="none"
+# VM_NIC32="none"
+# VM_NIC33="none"
+# VM_NIC34="none"
+# VM_NIC35="none"
+# VM_NIC36="none"
+# VM_HIDPOINTING="usbtablet"
+# VM_HIDKEYBOARD="usbkbd"
+# VM_UART1="off"
+# VM_UART2="off"
+# VM_UART3="off"
+# VM_UART4="off"
+# VM_LPT1="off"
+# VM_LPT2="off"
+# VM_AUDIO="coreaudio"
+# VM_AUDIO_IN="off"
+# VM_AUDIO_OUT="on"
+# VM_CLIPBOARD="disabled"
+# VM_DRAGANDDROP="disabled"
+# VM_VRDE="off"
+# VM_USB="on"
+# VM_EHCI="on"
+# VM_XHCI="off"
+# VM_VIDEOCAP="on"
+# VM_VIDEOCAPAUDIO="off"
+# VM_CAPTURESCREENS="0"
+# VM_CAPTUREFILENAME="/Users/admin/VirtualBox VMs/HighSierra/HighSierra.webm"
+# VM_CAPTURERES="1024x768"
+# VM_CAPTUREVIDEORATE=512
+# VM_CAPTUREVIDEOFPS=25
+# VM_CAPTUREOPTS="vc_enabled=true,ac_enabled=false,ac_profile=med"
+# VM_GUESTMEMORYBALLOON=0
+
