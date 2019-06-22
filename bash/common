@@ -1,6 +1,6 @@
 SCRIPT_ARGS=("$@")
 
-function assert_is_macos {
+function assert_is_macos() {
 
     if [ "$IS_MACOS" -ne "1" ]; then
 
@@ -11,8 +11,62 @@ function assert_is_macos {
 
 }
 
+function assert_is_linux() {
+
+    if [ "$IS_LINUX" -ne "1" ]; then
+
+        echo "Error: $(basename "$0") is not supported on this platform"
+        exit 1
+
+    fi
+
+}
+
+function assert_is_ubuntu() {
+
+    if [ "$IS_UBUNTU" -ne "1" ]; then
+
+        echo "Error: $(basename "$0") is not supported on this platform"
+        exit 1
+
+    fi
+
+}
+
+function assert_is_ubuntu_lts() {
+
+    assert_is_ubuntu
+
+    case "$DISTRIB_CODENAME" in
+
+    xenial | bionic)
+
+        :
+        ;;
+
+    *)
+
+        echo "Error: $(basename "$0") is only supported on LTS releases of Ubuntu"
+        exit 1
+        ;;
+
+    esac
+
+}
+
+function assert_not_root() {
+
+    if [ "$EUID" -eq "0" ]; then
+
+        echo "Error: $(basename "$0") can't be run as the superuser"
+        exit 1
+
+    fi
+
+}
+
 # Usage: argument_or_default VAR_TO_SET "default value if there's not exactly one command line argument"
-function argument_or_default {
+function argument_or_default() {
 
     if [ "${#SCRIPT_ARGS[@]}" -eq "1" ]; then
 
@@ -27,7 +81,7 @@ function argument_or_default {
 }
 
 # Usage: echoc "My coloured message" $BOLD $BLUE
-function echoc {
+function echoc() {
 
     echocn "$@"
     echo
@@ -35,7 +89,7 @@ function echoc {
 }
 
 # as above, but no newline afterwards
-function echocn {
+function echocn() {
 
     local MESSAGE="$1" c
 
@@ -52,7 +106,7 @@ function echocn {
 }
 
 # Usage: console_message "Main message to display in bold" "Secondary message with colour too" $BLUE
-function console_message {
+function console_message() {
 
     local MESSAGE1="$1" MESSAGE2="$2"
 
@@ -66,11 +120,23 @@ function console_message {
 }
 
 # Usage: get_confirmation "Do this?" && { do_it; }
-function get_confirmation {
+function get_confirmation() {
 
     read -p "$BOLD$1$RESET [y/n] " YN
 
     [[ "$YN" =~ ^[Yy]$ ]]
+
+}
+
+function apt_package_installed() {
+
+    [ "$IS_DPKG_INSTALLED" -eq "1" ] && dpkg -s "$1" >/dev/null 2>&1
+
+}
+
+function apt_package_available() {
+
+    [ "$IS_APT_INSTALLED" -eq "1" ] && apt-cache madison "$1" 2>/dev/null | grep -q "$1"
 
 }
 
@@ -106,43 +172,77 @@ RESET="$(tput sgr0)"
 
 IS_MACOS=0
 IS_LINUX=0
+IS_UBUNTU=0
+IS_ELEMENTARY_OS=0
 IS_PURE_LINUX=0
 IS_WSL=0
 PLATFORM=
 
 case "$(uname -s)" in
 
-    Darwin)
+Darwin)
 
-        IS_MACOS=1;
-        PLATFORM=mac;
+    IS_MACOS=1
+    PLATFORM=mac
 
     ;;
 
-    Linux)
+Linux)
 
-        IS_LINUX=1;
+    IS_LINUX=1
 
-        if [ -e /proc/version ] && grep -q Microsoft /proc/version; then
+    if [ -e /proc/version ] && grep -q Microsoft /proc/version; then
 
-            IS_WSL=1
-            PLATFORM=wsl
+        IS_WSL=1
+        PLATFORM=wsl
 
-        else
+    else
 
-            IS_PURE_LINUX=1
-            PLATFORM=linux
+        IS_PURE_LINUX=1
+        PLATFORM=linux
+
+    fi
+
+    if command -v lsb_release >/dev/null 2>&1; then
+
+        DISTRIB_ID="$(lsb_release -si)"
+        LSB_RELEASE_EXTRA=
+
+        if [[ "$DISTRIB_ID" == elementary* ]]; then
+
+            DISTRIB_ID="$(lsb_release -siu)"
+            LSB_RELEASE_EXTRA=u
+            IS_ELEMENTARY_OS=1
 
         fi
 
+        if [ "$DISTRIB_ID" = "Ubuntu" ]; then
+
+            IS_UBUNTU=1
+
+        fi
+
+        DISTRIB_RELEASE="$(lsb_release -sr$LSB_RELEASE_EXTRA)"
+        DISTRIB_CODENAME="$(lsb_release -sc$LSB_RELEASE_EXTRA)"
+        DISTRIB_DESCRIPTION="$(lsb_release -sd$LSB_RELEASE_EXTRA)"
+
+    fi
+
+    IS_APT_INSTALLED=1
+    IS_DPKG_INSTALLED=1
+    IS_SNAP_INSTALLED=1
+
+    command -v apt-get >/dev/null 2>&1 || IS_APT_INSTALLED=0
+    command -v dpkg >/dev/null 2>&1 || IS_DPKG_INSTALLED=0
+    command -v snap >/dev/null 2>&1 || IS_SNAP_INSTALLED=0
+
     ;;
 
-    *)
+*)
 
-        echo "Error: unknown platform"
-        exit 1
+    echo "Error: unknown platform"
+    exit 1
 
     ;;
 
 esac
-
