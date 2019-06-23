@@ -13,10 +13,10 @@ assert_not_root
 #export DEBIAN_FRONTEND=noninteractive
 
 # ensure all of Ubuntu's repositories are available (including "proposed" archives)
-apt_enable_ubuntu_repository main proposed
-apt_enable_ubuntu_repository restricted proposed
-apt_enable_ubuntu_repository universe updates proposed
-apt_enable_ubuntu_repository multiverse updates proposed
+apt_enable_ubuntu_repository main "proposed"
+apt_enable_ubuntu_repository restricted "proposed"
+apt_enable_ubuntu_repository universe "updates proposed"
+apt_enable_ubuntu_repository multiverse "updates proposed"
 apt_enable_partner_repository
 
 # prevent "proposed" packages from being installed automatically
