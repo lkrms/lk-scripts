@@ -64,8 +64,9 @@ apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb htt
 
 # ok, time to get underway
 apt_install_packages "package management" "nodejs yarn" N Y
-apt_install_packages "utilities" "attr cifs-utils debconf-utils hfsprogs hwinfo lftp net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils traceroute trickle vim whois" Y Y
+apt_install_packages "utilities" "attr cifs-utils debconf-utils fio hfsprogs hwinfo lftp net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils traceroute trickle vim whois" Y Y
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" Y Y
+apt_install_packages "development" "build-essential git php php-bcmath php-cli php-curl php-dev php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby" Y Y
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io" Y Y
 
 apt_process_queue

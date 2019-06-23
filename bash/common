@@ -280,7 +280,7 @@ function apt_register_ppa() {
 
 function apt_add_key_from_url() {
 
-    curl -fsSL "$1" | sudo apt-key add -
+    curl -fsSL "$1" | sudo apt-key add - >/dev/null 2>&1
 
 }
 
@@ -338,9 +338,9 @@ function apt_install_packages() {
 
     apt_make_cache_clean
 
-    local INSTALLED=() INSTALL=() CANT_INSTALL=() PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX
+    local INSTALLED=() INSTALL=() CANT_INSTALL=() PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX QUEUE
 
-    [ "$UI" = "Y" ] && console_message "Checking $1..." "" $BLUE
+    console_message "Checking $1..." "" $BLUE
 
     for p in $2; do
 
@@ -378,13 +378,19 @@ function apt_install_packages() {
 
     if [ "${#INSTALL[@]}" -gt "0" ]; then
 
-        console_message "$(upper_first "$1") packages to install:" "${INSTALL[*]}" $BLUE
-        [ "${#PPA_QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs) to add:" "${PPA_QUEUE[*]}" $BLUE
-        [ "${#REPO_QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#REPO_QUEUE[@]} Repository Repositories) to add:" "${REPO_QUEUE[*]}" $BLUE
-
         if [ "$UI" = "Y" ]; then
 
-            :
+            console_message "$(upper_first "$1") $(single_or_plural ${#INSTALL[@]} package packages) to install:" "${INSTALL[*]}" $BLUE
+
+            QUEUE=("${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}")
+            [ "${#QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#QUEUE[@]} Repository Repositories) to add:" "${QUEUE[*]}" $BLUE
+            echo
+
+            if ! get_confirmation "Install the $1 $(single_or_plural ${#INSTALL[@]} package packages) listed above?"; then
+
+                return 1
+
+            fi
 
         fi
 
