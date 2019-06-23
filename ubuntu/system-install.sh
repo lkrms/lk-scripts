@@ -66,6 +66,7 @@ apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb htt
 apt_install_packages "package management" "nodejs yarn" N Y
 apt_install_packages "utilities" "attr cifs-utils debconf-utils fio hfsprogs hwinfo lftp net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils traceroute trickle vim whois" Y Y
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" Y Y
+apt_install_packages "desktop essentials" "abcde beets eyed3 filezilla firefox galculator geany ghostwriter gimp google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview scribus speedcrunch thunderbird typora vlc"
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex" Y Y
 apt_install_packages "development" "build-essential git php php-bcmath php-cli php-curl php-dev php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby" Y Y
 apt_install_packages "VirtualBox" "virtualbox-6.0" Y Y

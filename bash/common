@@ -373,14 +373,14 @@ function apt_install_packages() {
 
     done
 
-    [ "$UI" = "Y" -a "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "${INSTALLED[*]}" $GREEN
     [ "${#CANT_INSTALL[@]}" -gt "0" ] && console_message "$(single_or_plural ${#CANT_INSTALL[@]} Package Packages) unavailable for installation:" "${CANT_INSTALL[*]}" $RED
 
     if [ "${#INSTALL[@]}" -gt "0" ]; then
 
         if [ "$UI" = "Y" ]; then
 
-            console_message "$(upper_first "$1") $(single_or_plural ${#INSTALL[@]} package packages) to install:" "${INSTALL[*]}" $BLUE
+            [ "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "${INSTALLED[*]}" $GREEN
+            console_message "$(single_or_plural ${#INSTALL[@]} Package Packages) to install:" "${INSTALL[*]}" $BLUE
 
             QUEUE=("${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}")
             [ "${#QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#QUEUE[@]} Repository Repositories) to add:" "${QUEUE[*]}" $BLUE
