@@ -188,7 +188,7 @@ function do_apt_enable_ubuntu_repository() {
 
         command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
 
-        sudo add-apt-repository "deb $(apt_ubuntu_archive_url) $1 $2"
+        sudo add-apt-repository -yn "deb $(apt_ubuntu_archive_url) $1 $2"
 
         APT_CACHE_DIRTY=1
 
@@ -228,7 +228,7 @@ function apt_enable_partner_repository() {
 
         command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
 
-        sudo add-apt-repository "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner"
+        sudo add-apt-repository -yn "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner"
 
         APT_CACHE_DIRTY=1
 
