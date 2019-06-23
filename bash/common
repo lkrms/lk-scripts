@@ -37,7 +37,7 @@ function assert_is_ubuntu_lts() {
 
     assert_is_ubuntu
 
-    command -v ubuntu-distro-info >/dev/null 2>&1 || apt_force_install_packages "ubuntu-distro-info"
+    command -v ubuntu-distro-info >/dev/null 2>&1 || apt_force_install_packages "distro-info"
 
     if ! ubuntu-distro-info --supported-esm | grep -q '^'"$DISTRIB_CODENAME"'$'; then
 
@@ -172,6 +172,126 @@ function apt_package_available() {
 
 }
 
+function apt_ubuntu_archive_url() {
+
+    # attempt to identify a local archive URL
+    [ -z "$UBUNTU_ARCHIVE_URL" ] && UBUNTU_ARCHIVE_URL="$(grep -Eo '\bhttps?://([[:alnum:]]+\.)archive\.ubuntu\.com/ubuntu\b' /etc/apt/sources.list | head -n1)/"
+    [ "$UBUNTU_ARCHIVE_URL" = "/" ] && UBUNTU_ARCHIVE_URL="http://archive.ubuntu.com/ubuntu/"
+
+    echo "$UBUNTU_ARCHIVE_URL"
+
+}
+
+function do_apt_enable_ubuntu_repository() {
+
+    if ! cat /etc/apt/sources.list | grep -qE '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.ubuntu\.com/ubuntu/?[[:space:]]+'"$1"'[[:space:]]+.*\b'"$2"'\b'; then
+
+        command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
+
+        sudo add-apt-repository "deb $(apt_ubuntu_archive_url) $1 $2"
+
+        APT_CACHE_DIRTY=1
+
+    fi
+
+}
+
+function apt_enable_ubuntu_repository() {
+
+    assert_is_ubuntu
+
+    [ "$IS_DPKG_INSTALLED" -eq "1" -a "$IS_APT_INSTALLED" -eq "1" ] || {
+        echo "Error: $(basename "$0") requires dpkg and apt"
+        exit 1
+    }
+
+    do_apt_enable_ubuntu_repository "$DISTRIB_CODENAME" "$1"
+
+    [ -n "$2" ] && for suffix in $2; do
+
+        do_apt_enable_ubuntu_repository "${DISTRIB_CODENAME}-${suffix}" "$1"
+
+    done
+
+}
+
+function apt_enable_partner_repository() {
+
+    assert_is_ubuntu
+
+    [ "$IS_DPKG_INSTALLED" -eq "1" -a "$IS_APT_INSTALLED" -eq "1" ] || {
+        echo "Error: $(basename "$0") requires dpkg and apt"
+        exit 1
+    }
+
+    if ! cat /etc/apt/sources.list | grep -qE '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.canonical\.com/ubuntu/?[[:space:]]+'"$DISTRIB_CODENAME"'[[:space:]]+.*\bpartner\b'; then
+
+        command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
+
+        sudo add-apt-repository "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner"
+
+        APT_CACHE_DIRTY=1
+
+    fi
+
+}
+
+# Usage: apt_register_ppa "the/ppa" "package1 package2 ..."
+function apt_register_ppa() {
+
+    command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
+
+    if ! cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q "^[^#]*/$1"; then
+
+        for p in $2; do
+
+            # without BASH 4+, we have to kludge our associative arrays
+            APT_PPA_REGISTRY+=("$1")
+            APT_PPA_PACKAGES+=("$p")
+
+        done
+
+    fi
+
+}
+
+function apt_add_key_from_url() {
+
+    curl -fsSL "$1" | sudo apt-key add -
+
+}
+
+# Usage: apt_register_repository my-repo-identifier "https://gpg.key.url" "content for my-repo-identifier.list" "package1 package2 ..."
+function apt_register_repository() {
+
+    [ "$IS_DPKG_INSTALLED" -eq "1" -a "$IS_APT_INSTALLED" -eq "1" ] || {
+        echo "Error: $(basename "$0") requires dpkg and apt"
+        exit 1
+    }
+
+    command -v curl >/dev/null 2>&1 || apt_force_install_packages "curl"
+
+    if [ ! -e "/etc/apt/sources.list.d/$1.list" ]; then
+
+        for p in $4; do
+
+            # without BASH 4+, we have to kludge our associative arrays
+            APT_REPO_REGISTRY+=("$1")
+            APT_REPO_KEY_URLS+=("$2")
+            APT_REPO_ENTRIES+=("$3")
+            APT_REPO_PACKAGES+=("$p")
+
+        done
+
+    else
+
+        # because keys change sometimes
+        apt_add_key_from_url "$2"
+
+    fi
+
+}
+
 # Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override (Y/N)] [queue only (Y/N)]
 function apt_install_packages() {
 
@@ -254,7 +374,7 @@ function apt_process_queue() {
 
 function apt_force_install_packages() {
 
-    apt_install_packages "$(basename "$0") prerequisites" "$1" || exit 1
+    apt_install_packages "prerequisites" "$1" || exit 1
 
 }
 
@@ -267,7 +387,6 @@ BLUE="$(tput setaf 4)"
 MAGENTA="$(tput setaf 5)"
 CYAN="$(tput setaf 6)"
 WHITE="$(tput setaf 7)"
-#NO_COLOUR="$(tput setaf 9)"
 
 # background colours
 BLACK_BG="$(tput setab 0)"
@@ -278,7 +397,6 @@ BLUE_BG="$(tput setab 4)"
 MAGENTA_BG="$(tput setab 5)"
 CYAN_BG="$(tput setab 6)"
 WHITE_BG="$(tput setab 7)"
-#NO_COLOUR_BG="$(tput setab 9)"
 
 # other "formatting"
 BOLD="$(tput bold)"
@@ -356,6 +474,13 @@ Linux)
 
     if [ "$IS_DPKG_INSTALLED" -eq "1" -a "$IS_APT_INSTALLED" -eq "1" ]; then
 
+        APT_CACHE_DIRTY=0
+        APT_PPA_REGISTRY=()
+        APT_PPA_PACKAGES=()
+        APT_REPO_REGISTRY=()
+        APT_REPO_KEY_URLS=()
+        APT_REPO_ENTRIES=()
+        APT_REPO_PACKAGES=()
         APT_INSTALL_QUEUE=()
         APT_REMOVE_QUEUE=()
 
