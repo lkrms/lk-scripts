@@ -37,20 +37,14 @@ function assert_is_ubuntu_lts() {
 
     assert_is_ubuntu
 
-    case "$DISTRIB_CODENAME" in
+    command -v ubuntu-distro-info >/dev/null 2>&1 || apt_force_install_packages "ubuntu-distro-info"
 
-    xenial | bionic)
-
-        :
-        ;;
-
-    *)
+    if ! ubuntu-distro-info --supported-esm | grep -q '^'"$DISTRIB_CODENAME"'$'; then
 
         echo "Error: $(basename "$0") is only supported on LTS releases of Ubuntu"
         exit 1
-        ;;
 
-    esac
+    fi
 
 }
 
@@ -122,21 +116,145 @@ function console_message() {
 # Usage: get_confirmation "Do this?" && { do_it; }
 function get_confirmation() {
 
+    local YN
+
     read -p "$BOLD$1$RESET [y/n] " YN
 
     [[ "$YN" =~ ^[Yy]$ ]]
 
 }
 
+# Usage: single_or_plural <number> "singular noun" "plural noun"
+function single_or_plural() {
+
+    if [ "$1" -eq "1" ]; then
+
+        echo "$2"
+
+    else
+
+        echo "$3"
+
+    fi
+
+}
+
+# because we can't rely on BASH 4+
+function upper_first() {
+
+    echo "$(echo "$1" | cut -c1 | tr [a-z] [A-Z])$(echo "$1" | cut -c2-)"
+
+}
+
+function apt_refresh_packages() {
+
+    [ "$IS_DPKG_INSTALLED" -eq "1" -a "$IS_APT_INSTALLED" -eq "1" ] || {
+        echo "Error: $(basename "$0") requires dpkg and apt"
+        exit 1
+    }
+
+    APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\n' -W)"
+    APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames)"
+
+}
+
 function apt_package_installed() {
 
-    [ "$IS_DPKG_INSTALLED" -eq "1" ] && dpkg -s "$1" >/dev/null 2>&1
+    [ -n "$APT_INSTALLED_PACKAGES" ] || apt_refresh_packages
+    echo "$APT_INSTALLED_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
 
 }
 
 function apt_package_available() {
 
-    [ "$IS_APT_INSTALLED" -eq "1" ] && apt-cache madison "$1" 2>/dev/null | grep -q "$1"
+    [ -n "$APT_AVAILABLE_PACKAGES" ] || apt_refresh_packages
+    echo "$APT_AVAILABLE_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
+
+}
+
+# Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override (Y/N)] [queue only (Y/N)]
+function apt_install_packages() {
+
+    local UI="$3" QUEUE_ONLY="$4"
+    [ "$UI" = "Y" ] || UI=N
+    [ "$QUEUE_ONLY" = "Y" ] || QUEUE_ONLY=N
+
+    local INSTALLED=() INSTALL=() CANT_INSTALL=()
+
+    [ "$UI" = "Y" ] && console_message "Checking $1..." "" $BLUE
+
+    for p in $2; do
+
+        if apt_package_installed "$p"; then
+
+            INSTALLED+=("$p")
+
+        elif apt_package_available "$p"; then
+
+            INSTALL+=("$p")
+
+        else
+
+            CANT_INSTALL+=("$p")
+
+        fi
+
+    done
+
+    [ "$UI" = "Y" -a "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "${INSTALLED[@]}" $GREEN
+    [ "${#CANT_INSTALL[@]}" -gt "0" ] && console_message "$(single_or_plural ${#CANT_INSTALL[@]} Package Packages) unavailable for installation:" "${CANT_INSTALL[@]}" $RED
+
+    if [ "${#INSTALL[@]}" -gt "0" ]; then
+
+        console_message "$(upper_first "$1") to install:" "${INSTALL[@]}" $BLUE
+
+        if [ "$UI" = "Y" ]; then
+
+            :
+
+        fi
+
+        if [ "$QUEUE_ONLY" != "Y" ]; then
+
+            console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "${INSTALL[@]}" $GREEN
+
+            sudo apt-get -y install "${INSTALL[@]}" && [ "${#CANT_INSTALL[@]}" -eq "0" ]
+            return
+
+        else
+
+            APT_INSTALL_QUEUE+=("${INSTALL[@]}")
+            return 1
+
+        fi
+
+    else
+
+        [ "${#CANT_INSTALL[@]}" -eq "0" ]
+        return
+
+    fi
+
+}
+
+function apt_process_queue() {
+
+    RETURN_VALUE=0
+
+    if [ "${#APT_INSTALL_QUEUE[@]}" -gt "0" ]; then
+
+        console_message "Installing ${#APT_INSTALL_QUEUE[@]} $(single_or_plural ${#APT_INSTALL_QUEUE[@]} package packages):" "${APT_INSTALL_QUEUE[@]}" $GREEN
+        sudo apt-get -y install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
+
+    fi
+
+    return $RETURN_VALUE
+
+}
+
+function apt_force_install_packages() {
+
+    apt_install_packages "$(basename "$0") prerequisites" "$1" || exit 1
 
 }
 
@@ -235,6 +353,13 @@ Linux)
     command -v apt-get >/dev/null 2>&1 || IS_APT_INSTALLED=0
     command -v dpkg >/dev/null 2>&1 || IS_DPKG_INSTALLED=0
     command -v snap >/dev/null 2>&1 || IS_SNAP_INSTALLED=0
+
+    if [ "$IS_DPKG_INSTALLED" -eq "1" -a "$IS_APT_INSTALLED" -eq "1" ]; then
+
+        APT_INSTALL_QUEUE=()
+        APT_REMOVE_QUEUE=()
+
+    fi
 
     ;;
 

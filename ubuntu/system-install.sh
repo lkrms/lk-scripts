@@ -6,8 +6,11 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 . "$SCRIPT_DIR/../bash/common" || exit 1
 
-assert_is_ubuntu_lts
+assert_is_ubuntu
 assert_not_root
+
+# TODO
+#export DEBIAN_FRONTEND=noninteractive
 
 console_message "Upgrading everything that's currently installed..." "" $BLUE
 
@@ -15,10 +18,4 @@ sudo apt-get update || exit 1
 sudo apt-get -y dist-upgrade || exit 1
 [ "$IS_SNAP_INSTALLED" -eq "1" ] && { sudo snap refresh || exit 1; }
 
-if ! apt_package_installed software-properties-common; then
-
-    console_message "Installing software-properties-common to get add-apt-repository..." "" $BLUE
-
-    sudo apt-get -y install software-properties-common || exit 1
-
-fi
+apt_force_install_packages "aptitude software-properties-common ubuntu-distro-info whiptail"
