@@ -149,13 +149,15 @@ function upper_first() {
 # Usage: array_search <needle> <haystack-name>
 function array_search() {
 
-    local HAYSTACK
+    local KEYS VALUE
 
-    eval 'HAYSTACK=("${'"$2"'[@]}")'
+    eval KEYS='"${!'"$2"'[@]}"'
 
-    for i in "${!HAYSTACK[@]}"; do
+    for i in $KEYS; do
 
-        if [[ "$1" == ${HAYSTACK[$i]} ]]; then
+        eval VALUE='"${'"$2"'[$i]}"'
+
+        if [[ "$1" == $VALUE ]]; then
 
             echo "$i"
             return 0
