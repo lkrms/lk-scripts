@@ -373,14 +373,14 @@ function apt_install_packages() {
 
     done
 
-    [ "$UI" = "Y" -a "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "${INSTALLED[@]}" $GREEN
-    [ "${#CANT_INSTALL[@]}" -gt "0" ] && console_message "$(single_or_plural ${#CANT_INSTALL[@]} Package Packages) unavailable for installation:" "${CANT_INSTALL[@]}" $RED
+    [ "$UI" = "Y" -a "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "${INSTALLED[*]}" $GREEN
+    [ "${#CANT_INSTALL[@]}" -gt "0" ] && console_message "$(single_or_plural ${#CANT_INSTALL[@]} Package Packages) unavailable for installation:" "${CANT_INSTALL[*]}" $RED
 
     if [ "${#INSTALL[@]}" -gt "0" ]; then
 
-        console_message "$(upper_first "$1") packages to install:" "${INSTALL[@]}" $BLUE
-        [ "${#PPA_QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs) to add:" "${PPA_QUEUE[@]}" $BLUE
-        [ "${#REPO_QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#REPO_QUEUE[@]} Repository Repositories) to add:" "${REPO_QUEUE[@]}" $BLUE
+        console_message "$(upper_first "$1") packages to install:" "${INSTALL[*]}" $BLUE
+        [ "${#PPA_QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs) to add:" "${PPA_QUEUE[*]}" $BLUE
+        [ "${#REPO_QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#REPO_QUEUE[@]} Repository Repositories) to add:" "${REPO_QUEUE[*]}" $BLUE
 
         if [ "$UI" = "Y" ]; then
 
@@ -391,16 +391,16 @@ function apt_install_packages() {
         if [ "$QUEUE_ONLY" != "Y" ]; then
 
             [ "${#PPA_QUEUE[@]}" -gt "0" ] && {
-                console_message "Adding ${#PPA_QUEUE[@]} $(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs):" "${PPA_QUEUE[@]}" $GREEN
+                console_message "Adding ${#PPA_QUEUE[@]} $(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs):" "${PPA_QUEUE[*]}" $GREEN
                 apt_add_ppa "${PPA_QUEUE[@]}"
             }
 
             [ "${#REPO_QUEUE[@]}" -gt "0" ] && {
-                console_message "Adding ${#REPO_QUEUE[@]} $(single_or_plural ${#REPO_QUEUE[@]} repository repositories):" "${REPO_QUEUE[@]}" $GREEN
+                console_message "Adding ${#REPO_QUEUE[@]} $(single_or_plural ${#REPO_QUEUE[@]} repository repositories):" "${REPO_QUEUE[*]}" $GREEN
                 apt_add_repo "${REPO_QUEUE[@]}"
             }
 
-            console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "${INSTALL[@]}" $GREEN
+            console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "${INSTALL[*]}" $GREEN
             apt_make_cache_clean
             sudo apt-get -y install "${INSTALL[@]}" && [ "${#CANT_INSTALL[@]}" -eq "0" ]
             return
@@ -515,16 +515,16 @@ function apt_process_queue() {
     if [ "${#APT_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
         [ "${#APT_PPA_QUEUE[@]}" -gt "0" ] && {
-            console_message "Adding ${#APT_PPA_QUEUE[@]} $(single_or_plural ${#APT_PPA_QUEUE[@]} PPA PPAs):" "${APT_PPA_QUEUE[@]}" $GREEN
+            console_message "Adding ${#APT_PPA_QUEUE[@]} $(single_or_plural ${#APT_PPA_QUEUE[@]} PPA PPAs):" "${APT_PPA_QUEUE[*]}" $GREEN
             apt_add_ppa "${APT_PPA_QUEUE[@]}"
         }
 
         [ "${#APT_REPO_QUEUE[@]}" -gt "0" ] && {
-            console_message "Adding ${#APT_REPO_QUEUE[@]} $(single_or_plural ${#APT_REPO_QUEUE[@]} repository repositories):" "${APT_REPO_QUEUE[@]}" $GREEN
+            console_message "Adding ${#APT_REPO_QUEUE[@]} $(single_or_plural ${#APT_REPO_QUEUE[@]} repository repositories):" "${APT_REPO_QUEUE[*]}" $GREEN
             apt_add_repo "${APT_REPO_QUEUE[@]}"
         }
 
-        console_message "Installing ${#APT_INSTALL_QUEUE[@]} $(single_or_plural ${#APT_INSTALL_QUEUE[@]} package packages):" "${APT_INSTALL_QUEUE[@]}" $GREEN
+        console_message "Installing ${#APT_INSTALL_QUEUE[@]} $(single_or_plural ${#APT_INSTALL_QUEUE[@]} package packages):" "${APT_INSTALL_QUEUE[*]}" $GREEN
         apt_make_cache_clean
         sudo apt-get -y install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
 
