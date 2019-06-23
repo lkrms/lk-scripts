@@ -155,7 +155,7 @@ function array_search() {
 
     for i in "${!HAYSTACK[@]}"; do
 
-        if [ "$1" = "${HAYSTACK[$i]}" ]; then
+        if [[ "$1" == ${HAYSTACK[$i]} ]]; then
 
             echo "$i"
             return 0
@@ -378,7 +378,7 @@ function apt_install_packages() {
 
     if [ "${#INSTALL[@]}" -gt "0" ]; then
 
-        console_message "$(upper_first "$1") to install:" "${INSTALL[@]}" $BLUE
+        console_message "$(upper_first "$1") packages to install:" "${INSTALL[@]}" $BLUE
         [ "${#PPA_QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs) to add:" "${PPA_QUEUE[@]}" $BLUE
         [ "${#REPO_QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#REPO_QUEUE[@]} Repository Repositories) to add:" "${REPO_QUEUE[@]}" $BLUE
 
@@ -393,6 +393,11 @@ function apt_install_packages() {
             [ "${#PPA_QUEUE[@]}" -gt "0" ] && {
                 console_message "Adding ${#PPA_QUEUE[@]} $(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs):" "${PPA_QUEUE[@]}" $GREEN
                 apt_add_ppa "${PPA_QUEUE[@]}"
+            }
+
+            [ "${#REPO_QUEUE[@]}" -gt "0" ] && {
+                console_message "Adding ${#REPO_QUEUE[@]} $(single_or_plural ${#REPO_QUEUE[@]} repository repositories):" "${REPO_QUEUE[@]}" $GREEN
+                apt_add_repo "${REPO_QUEUE[@]}"
             }
 
             console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "${INSTALL[@]}" $GREEN
@@ -455,6 +460,54 @@ function apt_add_ppa() {
 
 }
 
+function apt_add_repo() {
+
+    local repo i KEY_URL ENTRY
+
+    for repo in $(printf '%s\n' "$@" | sort | uniq); do
+
+        [ -z "$repo" ] && continue
+
+        i=$(array_search "$repo" APT_REPO_REGISTRY) || {
+            echo "Error: unable to find metadata for repository '$repo'"
+            exit 1
+        }
+
+        KEY_URL="${APT_REPO_KEY_URLS[$i]}"
+        ENTRY="${APT_REPO_ENTRIES[$i]}"
+
+        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || exit 1
+        apt_add_key_from_url "$KEY_URL" || exit 1
+
+        APT_CACHE_DIRTY=1
+
+        for i in "${!APT_REPO_REGISTRY[@]}"; do
+
+            if [ "$repo" = "${APT_REPO_REGISTRY[$i]}" ]; then
+
+                unset APT_REPO_REGISTRY[$i]
+                unset APT_REPO_KEY_URLS[$i]
+                unset APT_REPO_ENTRIES[$i]
+                unset APT_REPO_PACKAGES[$i]
+
+            fi
+
+        done
+
+        for i in "${!APT_REPO_QUEUE[@]}"; do
+
+            if [ "$repo" = "${APT_REPO_QUEUE[$i]}" ]; then
+
+                unset APT_REPO_QUEUE[$i]
+
+            fi
+
+        done
+
+    done
+
+}
+
 function apt_process_queue() {
 
     RETURN_VALUE=0
@@ -464,6 +517,11 @@ function apt_process_queue() {
         [ "${#APT_PPA_QUEUE[@]}" -gt "0" ] && {
             console_message "Adding ${#APT_PPA_QUEUE[@]} $(single_or_plural ${#APT_PPA_QUEUE[@]} PPA PPAs):" "${APT_PPA_QUEUE[@]}" $GREEN
             apt_add_ppa "${APT_PPA_QUEUE[@]}"
+        }
+
+        [ "${#APT_REPO_QUEUE[@]}" -gt "0" ] && {
+            console_message "Adding ${#APT_REPO_QUEUE[@]} $(single_or_plural ${#APT_REPO_QUEUE[@]} repository repositories):" "${APT_REPO_QUEUE[@]}" $GREEN
+            apt_add_repo "${APT_REPO_QUEUE[@]}"
         }
 
         console_message "Installing ${#APT_INSTALL_QUEUE[@]} $(single_or_plural ${#APT_INSTALL_QUEUE[@]} package packages):" "${APT_INSTALL_QUEUE[@]}" $GREEN

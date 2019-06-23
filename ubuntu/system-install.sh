@@ -63,7 +63,7 @@ apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_v
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "yarn"
 
 # ok, time to get underway
-apt_install_packages "Docker Community Edition" "docker-ce docker-ce-cli containerd.io" Y Y
+apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io" Y Y
 
 apt_process_queue
 
