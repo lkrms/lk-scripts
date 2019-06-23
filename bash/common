@@ -146,6 +146,29 @@ function upper_first() {
 
 }
 
+# Usage: array_search <needle> <haystack-name>
+function array_search() {
+
+    local HAYSTACK
+
+    eval 'HAYSTACK=("${'"$2"'[@]}")'
+
+    for i in "${!HAYSTACK[@]}"; do
+
+        if [ "$1" = "${HAYSTACK[$i]}" ]; then
+
+            echo "$i"
+            return 0
+
+        fi
+
+    done
+
+    echo "-1"
+    return 1
+
+}
+
 function apt_refresh_packages() {
 
     [ "$IS_DPKG_INSTALLED" -eq "1" -a "$IS_APT_INSTALLED" -eq "1" ] || {
@@ -188,7 +211,7 @@ function do_apt_enable_ubuntu_repository() {
 
         command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
 
-        sudo add-apt-repository -yn "deb $(apt_ubuntu_archive_url) $1 $2"
+        sudo add-apt-repository -yn "deb $(apt_ubuntu_archive_url) $1 $2" || exit 1
 
         APT_CACHE_DIRTY=1
 
@@ -228,7 +251,7 @@ function apt_enable_partner_repository() {
 
         command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
 
-        sudo add-apt-repository -yn "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner"
+        sudo add-apt-repository -yn "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner" || exit 1
 
         APT_CACHE_DIRTY=1
 
@@ -292,6 +315,20 @@ function apt_register_repository() {
 
 }
 
+function apt_make_cache_clean() {
+
+    [ "$IS_DPKG_INSTALLED" -eq "1" -a "$IS_APT_INSTALLED" -eq "1" ] || {
+        echo "Error: $(basename "$0") requires dpkg and apt"
+        exit 1
+    }
+
+    [ "$APT_CACHE_DIRTY" -eq "0" ] || sudo apt-get -qq update && APT_CACHE_DIRTY=0 || {
+        echo "Error: apt-get update failed"
+        exit 1
+    }
+
+}
+
 # Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override (Y/N)] [queue only (Y/N)]
 function apt_install_packages() {
 
@@ -299,13 +336,28 @@ function apt_install_packages() {
     [ "$UI" = "Y" ] || UI=N
     [ "$QUEUE_ONLY" = "Y" ] || QUEUE_ONLY=N
 
-    local INSTALLED=() INSTALL=() CANT_INSTALL=()
+    apt_make_cache_clean
+
+    local INSTALLED=() INSTALL=() CANT_INSTALL=() PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX
 
     [ "$UI" = "Y" ] && console_message "Checking $1..." "" $BLUE
 
     for p in $2; do
 
-        if apt_package_installed "$p"; then
+        PPA_INDEX=$(array_search "$p" APT_PPA_PACKAGES)
+        REPO_INDEX=$(array_search "$p" APT_REPO_PACKAGES)
+
+        if [ "$PPA_INDEX" -gt "-1" ]; then
+
+            INSTALL+=("$p")
+            PPA_QUEUE+=("${APT_PPA_REGISTRY[$PPA_INDEX]}")
+
+        elif [ "$REPO_INDEX" -gt "-1" ]; then
+
+            INSTALL+=("$p")
+            REPO_QUEUE+=("${APT_REPO_REGISTRY[$REPO_INDEX]}")
+
+        elif apt_package_installed "$p"; then
 
             INSTALLED+=("$p")
 
@@ -327,6 +379,8 @@ function apt_install_packages() {
     if [ "${#INSTALL[@]}" -gt "0" ]; then
 
         console_message "$(upper_first "$1") to install:" "${INSTALL[@]}" $BLUE
+        [ "${#PPA_QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs) to add:" "${PPA_QUEUE[@]}" $BLUE
+        [ "${#REPO_QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#REPO_QUEUE[@]} Repository Repositories) to add:" "${REPO_QUEUE[@]}" $BLUE
 
         if [ "$UI" = "Y" ]; then
 
@@ -336,14 +390,21 @@ function apt_install_packages() {
 
         if [ "$QUEUE_ONLY" != "Y" ]; then
 
-            console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "${INSTALL[@]}" $GREEN
+            [ "${#PPA_QUEUE[@]}" -gt "0" ] && {
+                console_message "Adding ${#PPA_QUEUE[@]} $(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs):" "${PPA_QUEUE[@]}" $GREEN
+                apt_add_ppa "${PPA_QUEUE[@]}"
+            }
 
+            console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "${INSTALL[@]}" $GREEN
+            apt_make_cache_clean
             sudo apt-get -y install "${INSTALL[@]}" && [ "${#CANT_INSTALL[@]}" -eq "0" ]
             return
 
         else
 
             APT_INSTALL_QUEUE+=("${INSTALL[@]}")
+            APT_PPA_QUEUE+=("${PPA_QUEUE[@]}")
+            APT_REPO_QUEUE+=("${REPO_QUEUE[@]}")
             return 1
 
         fi
@@ -357,13 +418,56 @@ function apt_install_packages() {
 
 }
 
+function apt_add_ppa() {
+
+    local ppa i
+
+    for ppa in $(printf '%s\n' "$@" | sort | uniq); do
+
+        [ -z "$ppa" ] && continue
+
+        sudo add-apt-repository -yn "ppa:$ppa" || exit 1
+
+        APT_CACHE_DIRTY=1
+
+        for i in "${!APT_PPA_REGISTRY[@]}"; do
+
+            if [ "$ppa" = "${APT_PPA_REGISTRY[$i]}" ]; then
+
+                unset APT_PPA_REGISTRY[$i]
+                unset APT_PPA_PACKAGES[$i]
+
+            fi
+
+        done
+
+        for i in "${!APT_PPA_QUEUE[@]}"; do
+
+            if [ "$ppa" = "${APT_PPA_QUEUE[$i]}" ]; then
+
+                unset APT_PPA_QUEUE[$i]
+
+            fi
+
+        done
+
+    done
+
+}
+
 function apt_process_queue() {
 
     RETURN_VALUE=0
 
     if [ "${#APT_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
+        [ "${#APT_PPA_QUEUE[@]}" -gt "0" ] && {
+            console_message "Adding ${#APT_PPA_QUEUE[@]} $(single_or_plural ${#APT_PPA_QUEUE[@]} PPA PPAs):" "${APT_PPA_QUEUE[@]}" $GREEN
+            apt_add_ppa "${APT_PPA_QUEUE[@]}"
+        }
+
         console_message "Installing ${#APT_INSTALL_QUEUE[@]} $(single_or_plural ${#APT_INSTALL_QUEUE[@]} package packages):" "${APT_INSTALL_QUEUE[@]}" $GREEN
+        apt_make_cache_clean
         sudo apt-get -y install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
 
     fi
@@ -474,7 +578,7 @@ Linux)
 
     if [ "$IS_DPKG_INSTALLED" -eq "1" -a "$IS_APT_INSTALLED" -eq "1" ]; then
 
-        APT_CACHE_DIRTY=0
+        APT_CACHE_DIRTY=1
         APT_PPA_REGISTRY=()
         APT_PPA_PACKAGES=()
         APT_REPO_REGISTRY=()
@@ -483,6 +587,8 @@ Linux)
         APT_REPO_PACKAGES=()
         APT_INSTALL_QUEUE=()
         APT_REMOVE_QUEUE=()
+        APT_PPA_QUEUE=()
+        APT_REPO_QUEUE=()
 
     fi
 
