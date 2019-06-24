@@ -74,6 +74,17 @@ apt_install_packages "development" "build-essential git php php-bcmath php-cli p
 apt_install_packages "VirtualBox" "virtualbox-6.0" Y Y
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io" Y Y
 
+if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
+
+    # because too many indicators don't play by the rules (see: https://www.reddit.com/r/elementaryos/comments/aghyiq/system_tray/)
+    mkdir -p "$HOME/.config/autostart"
+    cp -f "/etc/xdg/autostart/indicator-application.desktop" "$HOME/.config/autostart/"
+    sed -i 's/^OnlyShowIn.*/OnlyShowIn=Unity;GNOME;Pantheon;/' "$HOME/.config/autostart/indicator-application.desktop"
+
+    apt_install_deb "http://ppa.launchpad.net/elementary-os/stable/ubuntu/pool/main/w/wingpanel-indicator-ayatana/wingpanel-indicator-ayatana_2.0.3+r27+pkg17~ubuntu0.4.1.1_amd64.deb"
+
+fi
+
 apt_process_queue
 
 console_message "${#APT_INSTALLED[@]} installed $(single_or_plural ${#APT_INSTALLED[@]} "package is" "packages are") managed by $(basename "$0"):" "" $BLUE

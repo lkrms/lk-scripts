@@ -375,6 +375,22 @@ function apt_add_repo() {
 
 }
 
+# Usage: apt_install_deb "http://url.to/package.deb"
+function apt_install_deb() {
+
+    command -v curl >/dev/null 2>&1 || apt_force_install_packages "curl"
+
+    local DEB_PATH="$RS_SCRIPT_DIR/cache/${1//[^._[:alnum:]]/-}"
+
+    curl --create-dirs -C - -#fLo "$DEB_PATH" "$1" || {
+        echo "Error: unable to retrieve '$1'"
+        exit 1
+    }
+
+    APT_DEB_QUEUE+=("$DEB_PATH")
+
+}
+
 function apt_process_queue() {
 
     local RETURN_VALUE=0 QUEUE
@@ -401,6 +417,13 @@ function apt_process_queue() {
 
     fi
 
+    if [ "${#APT_DEB_QUEUE[@]}" -gt "0" ]; then
+
+        # TODO: list package names
+        sudo dpkg -EGi "${APT_DEB_QUEUE[@]}" || sudo aptitude -yf install || RETURN_VALUE=1
+
+    fi
+
     return $RETURN_VALUE
 
 }
@@ -424,3 +447,4 @@ APT_INSTALL_QUEUE=()
 APT_REMOVE_QUEUE=()
 APT_PPA_QUEUE=()
 APT_REPO_QUEUE=()
+APT_DEB_QUEUE=()

@@ -175,6 +175,10 @@ function array_search() {
 
 }
 
+RS_SCRIPT_PATH="${BASH_SOURCE[0]}"
+[ -L "$RS_SCRIPT_PATH" ] && RS_SCRIPT_PATH="$(readlink "$RS_SCRIPT_PATH")"
+RS_SCRIPT_DIR="$(cd "$(dirname "$RS_SCRIPT_PATH")" && pwd -P)"
+
 # foreground colours
 BLACK="$(tput setaf 0)"
 RED="$(tput setaf 1)"
