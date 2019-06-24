@@ -380,7 +380,7 @@ function apt_install_deb() {
 
     command -v curl >/dev/null 2>&1 || apt_force_install_packages "curl"
 
-    local DEB_PATH="$RS_SCRIPT_DIR/cache/${1//[^._[:alnum:]]/-}"
+    local DEB_PATH="$RS_SCRIPT_DIR/../cache/${1//[^._[:alnum:]]/-}"
 
     curl --create-dirs -C - -#fLo "$DEB_PATH" "$1" || {
         echo "Error: unable to retrieve '$1'"
