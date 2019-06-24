@@ -224,13 +224,15 @@ function apt_install_packages() {
 
     done
 
+    APT_INSTALLED+=("${INSTALLED[@]}")
+
     [ "${#CANT_INSTALL[@]}" -gt "0" ] && console_message "$(single_or_plural ${#CANT_INSTALL[@]} Package Packages) unavailable for installation:" "${CANT_INSTALL[*]}" $RED
 
     if [ "${#INSTALL[@]}" -gt "0" ]; then
 
         if [ "$UI" = "Y" ]; then
 
-            [ "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "${INSTALLED[*]}" $GREEN
+            [ "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "$(apt_pretty_packages "${INSTALLED[*]}")" $GREEN
             console_message "$(single_or_plural ${#INSTALL[@]} Package Packages) to install:" "${INSTALL[*]}" $BLUE
 
             QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}" | sort | uniq))
@@ -264,7 +266,7 @@ function apt_install_packages() {
             console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "${INSTALL[*]}")" $GREEN
             echo
 
-            get_confirmation "Continue?" && sudo apt-get "${APT_GET_OPTIONS[@]}" -y install "${INSTALL[@]}" && [ "${#CANT_INSTALL[@]}" -eq "0" ]
+            get_confirmation "Continue?" && sudo apt-get "${APT_GET_OPTIONS[@]}" -y install "${INSTALL[@]}" && APT_INSTALLED+=("${INSTALL[@]}") && [ "${#CANT_INSTALL[@]}" -eq "0" ]
             return
 
         else
@@ -395,7 +397,7 @@ function apt_process_queue() {
         console_message "Installing ${#APT_INSTALL_QUEUE[@]} $(single_or_plural ${#APT_INSTALL_QUEUE[@]} package packages):" "$(apt_pretty_packages "${APT_INSTALL_QUEUE[*]}")" $GREEN
         echo
 
-        get_confirmation "Continue?" && sudo apt-get "${APT_GET_OPTIONS[@]}" -y install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
+        get_confirmation "Continue?" && sudo apt-get "${APT_GET_OPTIONS[@]}" -y install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALLED+=("${APT_INSTALL_QUEUE[@]}") && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
 
     fi
 
@@ -417,6 +419,7 @@ APT_REPO_REGISTRY=()
 APT_REPO_KEY_URLS=()
 APT_REPO_ENTRIES=()
 APT_REPO_PACKAGES=()
+APT_INSTALLED=()
 APT_INSTALL_QUEUE=()
 APT_REMOVE_QUEUE=()
 APT_PPA_QUEUE=()
