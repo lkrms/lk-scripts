@@ -1,0 +1,372 @@
+assert_is_linux
+
+if [ "$IS_APT_INSTALLED" -ne "1" ]; then
+
+    echo "Error: $(basename "$0") requires apt and dpkg"
+    exit 1
+
+fi
+
+function apt_refresh_packages() {
+
+    APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\n' -W)"
+    APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames)"
+
+}
+
+function apt_package_installed() {
+
+    [ -n "$APT_INSTALLED_PACKAGES" ] || apt_refresh_packages
+    echo "$APT_INSTALLED_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
+
+}
+
+function apt_package_available() {
+
+    [ -n "$APT_AVAILABLE_PACKAGES" ] || apt_refresh_packages
+    echo "$APT_AVAILABLE_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
+
+}
+
+function apt_ubuntu_archive_url() {
+
+    # attempt to identify a local archive URL
+    [ -z "$UBUNTU_ARCHIVE_URL" ] && UBUNTU_ARCHIVE_URL="$(grep -Eo '\bhttps?://([[:alnum:]]+\.)archive\.ubuntu\.com/ubuntu\b' /etc/apt/sources.list | head -n1)/"
+    [ "$UBUNTU_ARCHIVE_URL" = "/" ] && UBUNTU_ARCHIVE_URL="http://archive.ubuntu.com/ubuntu/"
+
+    echo "$UBUNTU_ARCHIVE_URL"
+
+}
+
+function do_apt_enable_ubuntu_repository() {
+
+    if ! cat /etc/apt/sources.list | grep -qE '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.ubuntu\.com/ubuntu/?[[:space:]]+'"$1"'[[:space:]]+.*\b'"$2"'\b'; then
+
+        command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
+
+        sudo add-apt-repository -yn "deb $(apt_ubuntu_archive_url) $1 $2" || exit 1
+
+        APT_CACHE_DIRTY=1
+
+    fi
+
+}
+
+function apt_enable_ubuntu_repository() {
+
+    assert_is_ubuntu
+
+    do_apt_enable_ubuntu_repository "$DISTRIB_CODENAME" "$1"
+
+    [ -n "$2" ] && for suffix in $2; do
+
+        do_apt_enable_ubuntu_repository "${DISTRIB_CODENAME}-${suffix}" "$1"
+
+    done
+
+}
+
+function apt_enable_partner_repository() {
+
+    assert_is_ubuntu
+
+    if ! cat /etc/apt/sources.list | grep -qE '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.canonical\.com/ubuntu/?[[:space:]]+'"$DISTRIB_CODENAME"'[[:space:]]+.*\bpartner\b'; then
+
+        command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
+
+        sudo add-apt-repository -yn "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner" || exit 1
+
+        APT_CACHE_DIRTY=1
+
+    fi
+
+}
+
+# Usage: apt_register_ppa "the/ppa" "package1 package2 ..."
+function apt_register_ppa() {
+
+    command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
+
+    if ! cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q "^[^#]*/$1"; then
+
+        for p in $2; do
+
+            # without BASH 4+, we have to kludge our associative arrays
+            APT_PPA_REGISTRY+=("$1")
+            APT_PPA_PACKAGES+=("$p")
+
+        done
+
+    fi
+
+}
+
+function apt_add_key_from_url() {
+
+    curl -fsSL "$1" | sudo apt-key add - >/dev/null 2>&1
+
+}
+
+# Usage: apt_register_repository my-repo-identifier "https://gpg.key.url" "content for my-repo-identifier.list" "package1 package2 ..."
+function apt_register_repository() {
+
+    command -v curl >/dev/null 2>&1 || apt_force_install_packages "curl"
+
+    if [ ! -e "/etc/apt/sources.list.d/$1.list" ]; then
+
+        for p in $4; do
+
+            # without BASH 4+, we have to kludge our associative arrays
+            APT_REPO_REGISTRY+=("$1")
+            APT_REPO_KEY_URLS+=("$2")
+            APT_REPO_ENTRIES+=("$3")
+            APT_REPO_PACKAGES+=("$p")
+
+        done
+
+    else
+
+        # because keys change sometimes
+        apt_add_key_from_url "$2"
+
+    fi
+
+}
+
+function apt_make_cache_clean() {
+
+    [ "$APT_CACHE_DIRTY" -eq "0" ] || sudo apt-get -qq update && APT_CACHE_DIRTY=0 || {
+        echo "Error: apt-get update failed"
+        exit 1
+    }
+
+}
+
+# Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override (Y/N)] [queue only (Y/N)]
+function apt_install_packages() {
+
+    local UI="$3" QUEUE_ONLY="$4"
+    [ "$UI" = "Y" ] || UI=N
+    [ "$QUEUE_ONLY" = "Y" ] || QUEUE_ONLY=N
+
+    apt_make_cache_clean
+
+    local INSTALLED=() INSTALL=() CANT_INSTALL=() PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX QUEUE
+
+    console_message "Checking $1..." "" $BLUE
+
+    for p in $2; do
+
+        PPA_INDEX=$(array_search "$p" APT_PPA_PACKAGES)
+        REPO_INDEX=$(array_search "$p" APT_REPO_PACKAGES)
+
+        if [ "$PPA_INDEX" -gt "-1" ]; then
+
+            INSTALL+=("$p")
+            PPA_QUEUE+=("${APT_PPA_REGISTRY[$PPA_INDEX]}")
+
+        elif [ "$REPO_INDEX" -gt "-1" ]; then
+
+            INSTALL+=("$p")
+            REPO_QUEUE+=("${APT_REPO_REGISTRY[$REPO_INDEX]}")
+
+        elif apt_package_installed "$p"; then
+
+            INSTALLED+=("$p")
+
+        elif apt_package_available "$p"; then
+
+            INSTALL+=("$p")
+
+        else
+
+            CANT_INSTALL+=("$p")
+
+        fi
+
+    done
+
+    [ "${#CANT_INSTALL[@]}" -gt "0" ] && console_message "$(single_or_plural ${#CANT_INSTALL[@]} Package Packages) unavailable for installation:" "${CANT_INSTALL[*]}" $RED
+
+    if [ "${#INSTALL[@]}" -gt "0" ]; then
+
+        if [ "$UI" = "Y" ]; then
+
+            [ "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "${INSTALLED[*]}" $GREEN
+            console_message "$(single_or_plural ${#INSTALL[@]} Package Packages) to install:" "${INSTALL[*]}" $BLUE
+
+            QUEUE=("${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}")
+            [ "${#QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#QUEUE[@]} Repository Repositories) to add:" "${QUEUE[*]}" $BLUE
+            echo
+
+            if ! get_confirmation "Install the $1 $(single_or_plural ${#INSTALL[@]} package packages) listed above?"; then
+
+                return 1
+
+            fi
+
+        fi
+
+        if [ "$QUEUE_ONLY" != "Y" ]; then
+
+            [ "${#PPA_QUEUE[@]}" -gt "0" ] && {
+                console_message "Adding ${#PPA_QUEUE[@]} $(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs):" "${PPA_QUEUE[*]}" $GREEN
+                apt_add_ppa "${PPA_QUEUE[@]}"
+            }
+
+            [ "${#REPO_QUEUE[@]}" -gt "0" ] && {
+                console_message "Adding ${#REPO_QUEUE[@]} $(single_or_plural ${#REPO_QUEUE[@]} repository repositories):" "${REPO_QUEUE[*]}" $GREEN
+                apt_add_repo "${REPO_QUEUE[@]}"
+            }
+
+            console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "${INSTALL[*]}" $GREEN
+            apt_make_cache_clean
+            sudo apt-get -y install "${INSTALL[@]}" && [ "${#CANT_INSTALL[@]}" -eq "0" ]
+            return
+
+        else
+
+            APT_INSTALL_QUEUE+=("${INSTALL[@]}")
+            APT_PPA_QUEUE+=("${PPA_QUEUE[@]}")
+            APT_REPO_QUEUE+=("${REPO_QUEUE[@]}")
+            return 1
+
+        fi
+
+    else
+
+        [ "${#CANT_INSTALL[@]}" -eq "0" ]
+        return
+
+    fi
+
+}
+
+function apt_add_ppa() {
+
+    local ppa i
+
+    for ppa in $(printf '%s\n' "$@" | sort | uniq); do
+
+        [ -z "$ppa" ] && continue
+
+        sudo add-apt-repository -yn "ppa:$ppa" || exit 1
+
+        APT_CACHE_DIRTY=1
+
+        for i in "${!APT_PPA_REGISTRY[@]}"; do
+
+            if [ "$ppa" = "${APT_PPA_REGISTRY[$i]}" ]; then
+
+                unset APT_PPA_REGISTRY[$i]
+                unset APT_PPA_PACKAGES[$i]
+
+            fi
+
+        done
+
+        for i in "${!APT_PPA_QUEUE[@]}"; do
+
+            if [ "$ppa" = "${APT_PPA_QUEUE[$i]}" ]; then
+
+                unset APT_PPA_QUEUE[$i]
+
+            fi
+
+        done
+
+    done
+
+}
+
+function apt_add_repo() {
+
+    local repo i KEY_URL ENTRY
+
+    for repo in $(printf '%s\n' "$@" | sort | uniq); do
+
+        [ -z "$repo" ] && continue
+
+        i=$(array_search "$repo" APT_REPO_REGISTRY) || {
+            echo "Error: unable to find metadata for repository '$repo'"
+            exit 1
+        }
+
+        KEY_URL="${APT_REPO_KEY_URLS[$i]}"
+        ENTRY="${APT_REPO_ENTRIES[$i]}"
+
+        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || exit 1
+        apt_add_key_from_url "$KEY_URL" || exit 1
+
+        APT_CACHE_DIRTY=1
+
+        for i in "${!APT_REPO_REGISTRY[@]}"; do
+
+            if [ "$repo" = "${APT_REPO_REGISTRY[$i]}" ]; then
+
+                unset APT_REPO_REGISTRY[$i]
+                unset APT_REPO_KEY_URLS[$i]
+                unset APT_REPO_ENTRIES[$i]
+                unset APT_REPO_PACKAGES[$i]
+
+            fi
+
+        done
+
+        for i in "${!APT_REPO_QUEUE[@]}"; do
+
+            if [ "$repo" = "${APT_REPO_QUEUE[$i]}" ]; then
+
+                unset APT_REPO_QUEUE[$i]
+
+            fi
+
+        done
+
+    done
+
+}
+
+function apt_process_queue() {
+
+    RETURN_VALUE=0
+
+    if [ "${#APT_INSTALL_QUEUE[@]}" -gt "0" ]; then
+
+        [ "${#APT_PPA_QUEUE[@]}" -gt "0" ] && {
+            console_message "Adding ${#APT_PPA_QUEUE[@]} $(single_or_plural ${#APT_PPA_QUEUE[@]} PPA PPAs):" "${APT_PPA_QUEUE[*]}" $GREEN
+            apt_add_ppa "${APT_PPA_QUEUE[@]}"
+        }
+
+        [ "${#APT_REPO_QUEUE[@]}" -gt "0" ] && {
+            console_message "Adding ${#APT_REPO_QUEUE[@]} $(single_or_plural ${#APT_REPO_QUEUE[@]} repository repositories):" "${APT_REPO_QUEUE[*]}" $GREEN
+            apt_add_repo "${APT_REPO_QUEUE[@]}"
+        }
+
+        console_message "Installing ${#APT_INSTALL_QUEUE[@]} $(single_or_plural ${#APT_INSTALL_QUEUE[@]} package packages):" "${APT_INSTALL_QUEUE[*]}" $GREEN
+        apt_make_cache_clean
+        sudo apt-get -y install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
+
+    fi
+
+    return $RETURN_VALUE
+
+}
+
+function apt_force_install_packages() {
+
+    apt_install_packages "prerequisites" "$1" || exit 1
+
+}
+
+APT_CACHE_DIRTY=1
+APT_PPA_REGISTRY=()
+APT_PPA_PACKAGES=()
+APT_REPO_REGISTRY=()
+APT_REPO_KEY_URLS=()
+APT_REPO_ENTRIES=()
+APT_REPO_PACKAGES=()
+APT_INSTALL_QUEUE=()
+APT_REMOVE_QUEUE=()
+APT_PPA_QUEUE=()
+APT_REPO_QUEUE=()
