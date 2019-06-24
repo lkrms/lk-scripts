@@ -15,8 +15,8 @@ assert_not_root
 
 console_message "Upgrading everything that's currently installed..." "" $BLUE
 
-sudo apt-get -qq update && APT_CACHE_DIRTY=0 || exit 1
-sudo apt-get -y dist-upgrade || exit 1
+sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && APT_CACHE_DIRTY=0 || exit 1
+sudo apt-get "${APT_GET_OPTIONS[@]}" -y dist-upgrade || exit 1
 [ "$IS_SNAP_INSTALLED" -eq "1" ] && { sudo snap refresh || exit 1; }
 
 # install prequisites and packages that may be needed to bootstrap others

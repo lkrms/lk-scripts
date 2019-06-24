@@ -173,7 +173,7 @@ function apt_register_repository() {
 
 function apt_make_cache_clean() {
 
-    [ "$APT_CACHE_DIRTY" -eq "0" ] || sudo apt-get -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || {
+    [ "$APT_CACHE_DIRTY" -eq "0" ] || sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || {
         echo "Error: apt-get update failed"
         exit 1
     }
@@ -264,7 +264,7 @@ function apt_install_packages() {
             console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "${INSTALL[*]}")" $GREEN
             echo
 
-            get_confirmation "Continue?" && sudo apt-get -y install "${INSTALL[@]}" && [ "${#CANT_INSTALL[@]}" -eq "0" ]
+            get_confirmation "Continue?" && sudo apt-get "${APT_GET_OPTIONS[@]}" -y install "${INSTALL[@]}" && [ "${#CANT_INSTALL[@]}" -eq "0" ]
             return
 
         else
@@ -395,7 +395,7 @@ function apt_process_queue() {
         console_message "Installing ${#APT_INSTALL_QUEUE[@]} $(single_or_plural ${#APT_INSTALL_QUEUE[@]} package packages):" "$(apt_pretty_packages "${APT_INSTALL_QUEUE[*]}")" $GREEN
         echo
 
-        get_confirmation "Continue?" && sudo apt-get -y install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
+        get_confirmation "Continue?" && sudo apt-get "${APT_GET_OPTIONS[@]}" -y install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
 
     fi
 
@@ -409,6 +409,7 @@ function apt_force_install_packages() {
 
 }
 
+APT_GET_OPTIONS=(-o Acquire::ForceIPv4=true)
 APT_CACHE_DIRTY=1
 APT_PPA_REGISTRY=()
 APT_PPA_PACKAGES=()
