@@ -135,7 +135,7 @@ function apt_register_repository() {
 
 function apt_make_cache_clean() {
 
-    [ "$APT_CACHE_DIRTY" -eq "0" ] || sudo apt-get -qq update && APT_CACHE_DIRTY=0 || {
+    [ "$APT_CACHE_DIRTY" -eq "0" ] || sudo apt-get -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || {
         echo "Error: apt-get update failed"
         exit 1
     }
@@ -151,7 +151,7 @@ function apt_install_packages() {
 
     apt_make_cache_clean
 
-    local INSTALLED=() INSTALL=() CANT_INSTALL=() PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX QUEUE
+    local INSTALLED=() INSTALL=() CANT_INSTALL=() PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX QUEUE p
 
     console_message "Checking $1..." "" $BLUE
 
@@ -195,7 +195,8 @@ function apt_install_packages() {
             [ "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "${INSTALLED[*]}" $GREEN
             console_message "$(single_or_plural ${#INSTALL[@]} Package Packages) to install:" "${INSTALL[*]}" $BLUE
 
-            QUEUE=("${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}")
+            QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}" | sort | uniq))
+
             [ "${#QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#QUEUE[@]} Repository Repositories) to add:" "${QUEUE[*]}" $BLUE
             echo
 
@@ -210,11 +211,13 @@ function apt_install_packages() {
         if [ "$QUEUE_ONLY" != "Y" ]; then
 
             [ "${#PPA_QUEUE[@]}" -gt "0" ] && {
+                QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" | sort | uniq))
                 console_message "Adding ${#PPA_QUEUE[@]} $(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs):" "${PPA_QUEUE[*]}" $GREEN
                 apt_add_ppa "${PPA_QUEUE[@]}"
             }
 
             [ "${#REPO_QUEUE[@]}" -gt "0" ] && {
+                QUEUE=($(printf '%s\n' "${REPO_QUEUE[@]}" | sort | uniq))
                 console_message "Adding ${#REPO_QUEUE[@]} $(single_or_plural ${#REPO_QUEUE[@]} repository repositories):" "${REPO_QUEUE[*]}" $GREEN
                 apt_add_repo "${REPO_QUEUE[@]}"
             }
@@ -296,7 +299,10 @@ function apt_add_repo() {
         ENTRY="${APT_REPO_ENTRIES[$i]}"
 
         echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || exit 1
-        apt_add_key_from_url "$KEY_URL" || exit 1
+        apt_add_key_from_url "$KEY_URL" || {
+            echo "Error: unable to add GPG key for $repo from $1"
+            exit 1
+        }
 
         APT_CACHE_DIRTY=1
 
