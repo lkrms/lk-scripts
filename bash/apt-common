@@ -11,6 +11,7 @@ function apt_refresh_packages() {
 
     APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\n' -W)"
     APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames)"
+    APT_GUI_PACKAGES="$(apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances x11-common libx11-6 | grep -Ev " " | sort | uniq)"
 
 }
 
@@ -25,6 +26,43 @@ function apt_package_available() {
 
     [ -n "$APT_AVAILABLE_PACKAGES" ] || apt_refresh_packages
     echo "$APT_AVAILABLE_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
+
+}
+
+function apt_package_is_gui() {
+
+    [ -n "$APT_GUI_PACKAGES" ] || apt_refresh_packages
+    echo "$APT_GUI_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
+
+}
+
+function apt_package_is_cli() {
+
+    ! apt_package_is_gui "$1"
+
+}
+
+function apt_pretty_packages() {
+
+    local FORMATTED=() p
+
+    for p in $1; do
+
+        [ -n "$p" ] || continue
+
+        if apt_package_is_gui "$p"; then
+
+            FORMATTED+=("${UNDERLINE}${p}${NO_UNDERLINE}")
+
+        else
+
+            FORMATTED+=("$p")
+
+        fi
+
+    done
+
+    echo "${FORMATTED[*]}"
 
 }
 
@@ -222,9 +260,11 @@ function apt_install_packages() {
                 apt_add_repo "${REPO_QUEUE[@]}"
             }
 
-            console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "${INSTALL[*]}" $GREEN
             apt_make_cache_clean
-            sudo apt-get -y install "${INSTALL[@]}" && [ "${#CANT_INSTALL[@]}" -eq "0" ]
+            console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "${INSTALL[*]}")" $GREEN
+            echo
+
+            get_confirmation "Continue?" && sudo apt-get -y install "${INSTALL[@]}" && [ "${#CANT_INSTALL[@]}" -eq "0" ]
             return
 
         else
@@ -335,23 +375,27 @@ function apt_add_repo() {
 
 function apt_process_queue() {
 
-    RETURN_VALUE=0
+    local RETURN_VALUE=0 QUEUE
 
     if [ "${#APT_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
         [ "${#APT_PPA_QUEUE[@]}" -gt "0" ] && {
-            console_message "Adding ${#APT_PPA_QUEUE[@]} $(single_or_plural ${#APT_PPA_QUEUE[@]} PPA PPAs):" "${APT_PPA_QUEUE[*]}" $GREEN
-            apt_add_ppa "${APT_PPA_QUEUE[@]}"
+            QUEUE=($(printf '%s\n' "${APT_PPA_QUEUE[@]}" | sort | uniq))
+            console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} PPA PPAs):" "${QUEUE[*]}" $GREEN
+            apt_add_ppa "${QUEUE[@]}"
         }
 
         [ "${#APT_REPO_QUEUE[@]}" -gt "0" ] && {
-            console_message "Adding ${#APT_REPO_QUEUE[@]} $(single_or_plural ${#APT_REPO_QUEUE[@]} repository repositories):" "${APT_REPO_QUEUE[*]}" $GREEN
-            apt_add_repo "${APT_REPO_QUEUE[@]}"
+            QUEUE=($(printf '%s\n' "${APT_REPO_QUEUE[@]}" | sort | uniq))
+            console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $GREEN
+            apt_add_repo "${QUEUE[@]}"
         }
 
-        console_message "Installing ${#APT_INSTALL_QUEUE[@]} $(single_or_plural ${#APT_INSTALL_QUEUE[@]} package packages):" "${APT_INSTALL_QUEUE[*]}" $GREEN
         apt_make_cache_clean
-        sudo apt-get -y install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
+        console_message "Installing ${#APT_INSTALL_QUEUE[@]} $(single_or_plural ${#APT_INSTALL_QUEUE[@]} package packages):" "$(apt_pretty_packages "${APT_INSTALL_QUEUE[*]}")" $GREEN
+        echo
+
+        get_confirmation "Continue?" && sudo apt-get -y install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
 
     fi
 

@@ -20,7 +20,7 @@ sudo apt-get -y dist-upgrade || exit 1
 [ "$IS_SNAP_INSTALLED" -eq "1" ] && { sudo snap refresh || exit 1; }
 
 # install prequisites and packages that may be needed to bootstrap others
-apt_force_install_packages "apt-transport-https aptitude ca-certificates curl distro-info gnupg-agent software-properties-common software-properties-common whiptail"
+apt_force_install_packages "apt-transport-https aptitude ca-certificates curl distro-info dmidecode gnupg-agent software-properties-common software-properties-common whiptail"
 
 # ensure all of Ubuntu's repositories are available (including "proposed" archives)
 apt_enable_ubuntu_repository main "proposed"
@@ -65,7 +65,8 @@ apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb htt
 
 # ok, time to get underway
 apt_install_packages "package management" "nodejs snapd yarn" N Y
-apt_install_packages "utilities" "attr cifs-utils debconf-utils fio hfsprogs hwinfo lftp net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils traceroute trickle vim whois" Y Y
+apt_install_packages "essential utilities" "attr cifs-utils debconf-utils fio hfsprogs hwinfo lftp linux-tools-generic net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois" Y Y
+sudo dmidecode -t system | grep -qi ThinkPad && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms" Y Y
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" Y Y
 apt_install_packages "desktop essentials" "abcde beets eyed3 filezilla firefox galculator geany ghostwriter gimp google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview scribus speedcrunch thunderbird typora vlc" Y Y
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex" Y Y
