@@ -17,7 +17,10 @@ if [ ! -f "$PACKAGE_LIST_FILE" ]; then
 
 fi
 
-REMOVE_LIST="$(comm -23 <(brew list -1 | sort) <((cat "$PACKAGE_LIST_FILE"; brew deps --installed --union $(echo $(cat "$PACKAGE_LIST_FILE"))) | sort | uniq))" || exit 1
+REMOVE_LIST="$(comm -23 <(brew list -1 | sort) <((
+    cat "$PACKAGE_LIST_FILE"
+    brew deps --union $(echo $(cat "$PACKAGE_LIST_FILE"))
+) | sort | uniq))" || exit 1
 
 REMOVE_COUNT=0
 [ -n "$REMOVE_LIST" ] && REMOVE_COUNT=$(echo "$REMOVE_LIST" | wc -l | sed -e 's/ //g')
@@ -42,4 +45,3 @@ else
     console_message "No formulae to uninstall" "" $GREEN
 
 fi
-

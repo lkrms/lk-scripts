@@ -8,10 +8,14 @@ ghostscript
 gradle
 imagemagick
 lftp
+magic-wormhole
 mariadb
+mas
+media-info
 msmtp
 ocrmypdf
 pandoc
+php-cs-fixer
 php@7.2
 pkg-config
 poppler
