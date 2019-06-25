@@ -415,6 +415,8 @@ function do_apt_install_deb() {
 
     local DEB_PATH DEB_PATHS=() PIDS=() WGET_RESULT=0 SKIPPED=() NOT_SKIPPED=() DEB_PACKAGE DEB_VERSION INSTALLED_VERSION pid url path
 
+    console_message "Downloading $# deb $(single_or_plural "$#" package packages)..." "" $BLUE
+
     for url in "$@"; do
 
         DEB_PATH="$(apt_deb_path "$url")"
@@ -422,8 +424,8 @@ function do_apt_install_deb() {
         mkdir -p "$(dirname "$DEB_PATH")"
 
         (
-            if ! wget -qcO "$DEB_PATH" "$url" && console_message "Finished downloading:" "$url" ${GREEN}; then
-                console_message "Unable to download:" "$url" ${RED}
+            if ! { wget -qcO "$DEB_PATH" "$url" && console_message "Finished downloading:" "$url" $GREEN; }; then
+                console_message "Unable to download:" "$url" $RED
                 exit 1
             fi
         ) &
