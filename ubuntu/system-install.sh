@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 assert_is_ubuntu
 assert_not_root
+offer_sudo_password_bypass
 
 # TODO
 #export DEBIAN_FRONTEND=noninteractive

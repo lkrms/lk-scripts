@@ -175,6 +175,27 @@ function array_search() {
 
 }
 
+function offer_sudo_password_bypass() {
+
+    local USERNAME="$SUDO_USER" FILENAME
+    [ -n "$USERNAME" ] || USERNAME="$USER"
+
+    FILENAME="/etc/sudoers.d/nopasswd-$USERNAME"
+
+    if ! sudo test -e "$FILENAME"; then
+
+        if get_confirmation "Allow user '$USERNAME' to skip future password prompts?"; then
+
+            sudo tee "$FILENAME" >/dev/null <<EOF && sudo chmod 0440 "$FILENAME"
+${USERNAME} ALL=(ALL) NOPASSWD:ALL
+EOF
+
+        fi
+
+    fi
+
+}
+
 RS_SCRIPT_PATH="${BASH_SOURCE[0]}"
 [ -L "$RS_SCRIPT_PATH" ] && RS_SCRIPT_PATH="$(readlink "$RS_SCRIPT_PATH")"
 RS_SCRIPT_DIR="$(cd "$(dirname "$RS_SCRIPT_PATH")" && pwd -P)"
