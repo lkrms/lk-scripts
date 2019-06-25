@@ -17,6 +17,7 @@ function apt_refresh_packages() {
 
 function apt_package_installed() {
 
+    apt_make_cache_clean
     [ -n "$APT_INSTALLED_PACKAGES" ] || apt_refresh_packages
     echo "$APT_INSTALLED_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
 
@@ -24,6 +25,7 @@ function apt_package_installed() {
 
 function apt_package_available() {
 
+    apt_make_cache_clean
     [ -n "$APT_AVAILABLE_PACKAGES" ] || apt_refresh_packages
     echo "$APT_AVAILABLE_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
 
@@ -31,6 +33,7 @@ function apt_package_available() {
 
 function apt_package_is_gui() {
 
+    apt_make_cache_clean
     [ -n "$APT_GUI_PACKAGES" ] || apt_refresh_packages
     echo "$APT_GUI_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
 
@@ -122,7 +125,7 @@ function apt_enable_partner_repository() {
 
 }
 
-# Usage: apt_register_ppa "the/ppa" "package1 package2 ..."
+# Usage: apt_register_ppa "the/ppa" "package1 package2 ..." [add immediately (Y/N)]
 function apt_register_ppa() {
 
     command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
@@ -139,6 +142,12 @@ function apt_register_ppa() {
 
         done
 
+        if [ "$3" = "Y" ]; then
+
+            apt_add_ppa "$1"
+
+        fi
+
     fi
 
 }
@@ -149,7 +158,7 @@ function apt_add_key_from_url() {
 
 }
 
-# Usage: apt_register_repository my-repo-identifier "https://gpg.key.url" "content for my-repo-identifier.list" "package1 package2 ..."
+# Usage: apt_register_repository my-repo-identifier "https://gpg.key.url" "content for my-repo-identifier.list" "package1 package2 ..." [add immediately (Y/N)]
 function apt_register_repository() {
 
     command -v wget >/dev/null 2>&1 || apt_force_install_packages "wget"
@@ -167,6 +176,12 @@ function apt_register_repository() {
             APT_REPO_PACKAGES+=("$p")
 
         done
+
+        if [ "$5" = "Y" ]; then
+
+            apt_add_repo "$1"
+
+        fi
 
     else
 

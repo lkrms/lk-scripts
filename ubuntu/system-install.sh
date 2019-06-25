@@ -55,7 +55,7 @@ apt_register_ppa "wereturtle/ppa" "ghostwriter"
 # ditto for non-PPA repositories
 apt_register_repository docker "https://download.docker.com/linux/ubuntu/gpg" "deb [arch=amd64] https://download.docker.com/linux/ubuntu $DISTRIB_CODENAME stable" "docker-ce* containerd.io"
 apt_register_repository google-chrome "https://dl.google.com/linux/linux_signing_key.pub" "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" "google-chrome-stable"
-apt_register_repository microsoft "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/ubuntu/$DISTRIB_RELEASE/prod $DISTRIB_CODENAME main" "powershell*"
+apt_register_repository microsoft "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/ubuntu/$DISTRIB_RELEASE/prod $DISTRIB_CODENAME main" "powershell*" Y
 apt_register_repository mkvtoolnix "https://mkvtoolnix.download/gpg-pub-moritzbunkus.txt" "deb https://mkvtoolnix.download/ubuntu/ $DISTRIB_CODENAME main" "mkvtoolnix mkvtoolnix-gui"
 apt_register_repository nodesource "https://deb.nodesource.com/gpgkey/nodesource.gpg.key" "deb https://deb.nodesource.com/node_8.x $DISTRIB_CODENAME main" "nodejs"
 apt_register_repository owncloud-client "https://download.opensuse.org/repositories/isv:ownCloud:desktop/Ubuntu_$DISTRIB_RELEASE/Release.key" "deb http://download.opensuse.org/repositories/isv:/ownCloud:/desktop/Ubuntu_$DISTRIB_RELEASE/ /" "owncloud-client"
@@ -73,7 +73,7 @@ apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysst
 apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman eyed3 filezilla firefox galculator geany ghostwriter gimp google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview scribus speedcrunch thunderbird typora vlc" Y Y
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex" Y Y
 apt_install_packages "development" "build-essential git php php-bcmath php-cli php-curl php-dev php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby" Y Y
-apt_install_packages "PowerShell" "powershell powershell-preview"
+apt_package_available powershell && apt_install_packages "PowerShell" "powershell" || apt_install_packages "PowerShell" "powershell-preview"
 apt_install_packages "VirtualBox" "virtualbox-6.0" Y Y
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io" Y Y
 
