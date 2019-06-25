@@ -194,7 +194,7 @@ function apt_register_repository() {
 
 function apt_make_cache_clean() {
 
-    [ "$APT_CACHE_DIRTY" -eq "0" ] || sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || {
+    [ "$APT_CACHE_DIRTY" -eq "0" ] || { sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages; } && APT_CACHE_DIRTY=0 || {
         echo "Error: apt-get update failed"
         exit 1
     }
