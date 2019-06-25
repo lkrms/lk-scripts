@@ -73,6 +73,7 @@ apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysst
 apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman eyed3 filezilla firefox galculator geany ghostwriter gimp google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview scribus speedcrunch thunderbird typora vlc" Y Y
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex" Y Y
 apt_install_packages "development" "build-essential git php php-bcmath php-cli php-curl php-dev php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby" Y Y
+apt_install_packages "PowerShell" "powershell powershell-preview"
 apt_install_packages "VirtualBox" "virtualbox-6.0" Y Y
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io" Y Y
 
@@ -90,6 +91,10 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
     sed -i 's/^OnlyShowIn.*/OnlyShowIn=Unity;GNOME;Pantheon;/' "$HOME/.config/autostart/indicator-application.desktop"
 
     apt_install_deb "http://ppa.launchpad.net/elementary-os/stable/ubuntu/pool/main/w/wingpanel-indicator-ayatana/wingpanel-indicator-ayatana_2.0.3+r27+pkg17~ubuntu0.4.1.1_amd64.deb"
+
+    # otherwise the computer will fall asleep at the login screen
+    sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0
+    sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing
 
 fi
 
