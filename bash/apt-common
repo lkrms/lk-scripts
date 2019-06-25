@@ -145,7 +145,7 @@ function apt_register_ppa() {
 
 function apt_add_key_from_url() {
 
-    wget -O - "$1" | sudo apt-key add - >/dev/null 2>&1
+    wget -qO - "$1" | sudo apt-key add - >/dev/null 2>&1
 
 }
 
@@ -420,7 +420,14 @@ function do_apt_install_deb() {
         DEB_PATH="$(apt_deb_path "$url")"
         DEB_PATHS+=("$DEB_PATH")
         mkdir -p "$(dirname "$DEB_PATH")"
-        wget -cO "$DEB_PATH" "$url" &
+
+        (
+            if ! wget -qcO "$DEB_PATH" "$url" && console_message "Finished downloading:" "$url" ${GREEN}; then
+                console_message "Unable to download:" "$url" ${RED}
+                exit 1
+            fi
+        ) &
+
         PIDS+=("$!")
 
     done
@@ -431,10 +438,7 @@ function do_apt_install_deb() {
 
     done
 
-    [ "$WGET_RESULT" -eq "0" ] || {
-        echo "Error: unable to retrieve queued deb packages"
-        exit 1
-    }
+    [ "$WGET_RESULT" -eq "0" ] || exit 1
 
     for path in "${!DEB_PATHS[@]}"; do
 
@@ -463,7 +467,11 @@ function do_apt_install_deb() {
     [ "${#SKIPPED[@]}" -gt "0" ] && console_message "Packages skipped because they don't upgrade the installed version:" "${SKIPPED[*]}" $BLUE
     [ "${#NOT_SKIPPED[@]}" -gt "0" ] && console_message "Installing deb packages:" "${NOT_SKIPPED[*]}" $GREEN
 
-    sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -yf install && APT_INSTALLED+=("$NOT_SKIPPED[@]")
+    if [ "${#DEB_PATHS[@]}" -gt "0" ]; then
+
+        sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -yf install && APT_INSTALLED+=("$NOT_SKIPPED[@]")
+
+    fi
 
 }
 
