@@ -145,14 +145,14 @@ function apt_register_ppa() {
 
 function apt_add_key_from_url() {
 
-    curl -fsSL "$1" | sudo apt-key add - >/dev/null 2>&1
+    wget -O - "$1" | sudo apt-key add - >/dev/null 2>&1
 
 }
 
 # Usage: apt_register_repository my-repo-identifier "https://gpg.key.url" "content for my-repo-identifier.list" "package1 package2 ..."
 function apt_register_repository() {
 
-    command -v curl >/dev/null 2>&1 || apt_force_install_packages "curl"
+    command -v wget >/dev/null 2>&1 || apt_force_install_packages "wget"
 
     local p
 
@@ -390,7 +390,7 @@ function apt_deb_path() {
 # Usage: apt_install_deb "http://url.to/package.deb" [delete cached (Y/N)] [queue only (Y/N)]
 function apt_install_deb() {
 
-    command -v curl >/dev/null 2>&1 || apt_force_install_packages "curl"
+    command -v wget >/dev/null 2>&1 || apt_force_install_packages "wget"
 
     if [ "$2" = "Y" ]; then
 
@@ -413,16 +413,25 @@ function apt_install_deb() {
 
 function do_apt_install_deb() {
 
-    local CURL_OPTIONS=() DEB_PATHS=() SKIPPED=() NOT_SKIPPED=() DEB_PACKAGE DEB_VERSION INSTALLED_VERSION url path
+    local DEB_PATH DEB_PATHS=() PIDS=() WGET_RESULT=0 SKIPPED=() NOT_SKIPPED=() DEB_PACKAGE DEB_VERSION INSTALLED_VERSION pid url path
 
     for url in "$@"; do
 
-        CURL_OPTIONS+=("-o" "$(apt_deb_path "$url")")
-        DEB_PATHS+=("$(apt_deb_path "$url")")
+        DEB_PATH="$(apt_deb_path "$url")"
+        DEB_PATHS+=("$DEB_PATH")
+        mkdir -p "$(dirname "$DEB_PATH")"
+        wget -cO "$DEB_PATH" "$url" &
+        PIDS+=("$!")
 
     done
 
-    curl --create-dirs --retry 2 -C - -fL "${CURL_OPTIONS[@]}" "$@" || {
+    for pid in "${PIDS[@]}"; do
+
+        wait "$pid" || WGET_RESULT=1
+
+    done
+
+    [ "$WGET_RESULT" -eq "0" ] || {
         echo "Error: unable to retrieve queued deb packages"
         exit 1
     }

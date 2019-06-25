@@ -21,7 +21,7 @@ sudo apt-get "${APT_GET_OPTIONS[@]}" -y dist-upgrade || exit 1
 [ "$IS_SNAP_INSTALLED" -eq "1" ] && { sudo snap refresh || exit 1; }
 
 # install prequisites and packages that may be needed to bootstrap others
-apt_force_install_packages "apt-transport-https aptitude ca-certificates curl distro-info dmidecode gnupg-agent software-properties-common software-properties-common whiptail"
+apt_force_install_packages "apt-transport-https aptitude ca-certificates distro-info dmidecode gnupg-agent software-properties-common software-properties-common wget whiptail"
 
 # ensure all of Ubuntu's repositories are available (including "proposed" archives)
 apt_enable_ubuntu_repository main "proposed"
