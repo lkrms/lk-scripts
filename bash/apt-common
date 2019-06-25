@@ -96,6 +96,8 @@ function apt_enable_ubuntu_repository() {
 
     do_apt_enable_ubuntu_repository "$DISTRIB_CODENAME" "$1"
 
+    local suffix
+
     [ -n "$2" ] && for suffix in $2; do
 
         do_apt_enable_ubuntu_repository "${DISTRIB_CODENAME}-${suffix}" "$1"
@@ -125,6 +127,8 @@ function apt_register_ppa() {
 
     command -v add-apt-repository >/dev/null 2>&1 || apt_force_install_packages "software-properties-common"
 
+    local p
+
     if ! cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q "^[^#]*/$1"; then
 
         for p in $2; do
@@ -149,6 +153,8 @@ function apt_add_key_from_url() {
 function apt_register_repository() {
 
     command -v curl >/dev/null 2>&1 || apt_force_install_packages "curl"
+
+    local p
 
     if [ ! -e "/etc/apt/sources.list.d/$1.list" ]; then
 
@@ -232,12 +238,12 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            [ "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "$(apt_pretty_packages "${INSTALLED[*]}")" $GREEN
-            console_message "$(single_or_plural ${#INSTALL[@]} Package Packages) to install:" "${INSTALL[*]}" $BLUE
+            [ "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "$(apt_pretty_packages "${INSTALLED[*]}")" $BLUE
+            console_message "$(single_or_plural ${#INSTALL[@]} Package Packages) to install:" "${INSTALL[*]}" $MAGENTA
 
             QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}" | sort | uniq))
 
-            [ "${#QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#QUEUE[@]} Repository Repositories) to add:" "${QUEUE[*]}" $BLUE
+            [ "${#QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#QUEUE[@]} Repository Repositories) to add:" "${QUEUE[*]}" $MAGENTA
             echo
 
             if ! get_confirmation "Install the $1 $(single_or_plural ${#INSTALL[@]} package packages) listed above?"; then
@@ -375,19 +381,80 @@ function apt_add_repo() {
 
 }
 
-# Usage: apt_install_deb "http://url.to/package.deb"
+function apt_deb_path() {
+
+    echo "$RS_SCRIPT_DIR/../cache/${1//[^._[:alnum:]]/-}"
+
+}
+
+# Usage: apt_install_deb "http://url.to/package.deb" [delete cached (Y/N)] [queue only (Y/N)]
 function apt_install_deb() {
 
     command -v curl >/dev/null 2>&1 || apt_force_install_packages "curl"
 
-    local DEB_PATH="$RS_SCRIPT_DIR/../cache/${1//[^._[:alnum:]]/-}"
+    if [ "$2" = "Y" ]; then
 
-    curl --create-dirs -C - -#fLo "$DEB_PATH" "$1" || {
-        echo "Error: unable to retrieve '$1'"
+        rm -f "$(apt_deb_path "$1")"
+
+    fi
+
+    # queue by default
+    if [ "$3" != "N" ]; then
+
+        APT_DEB_QUEUE+=("$1")
+
+    else
+
+        do_apt_install_deb "$1"
+
+    fi
+
+}
+
+function do_apt_install_deb() {
+
+    local CURL_OPTIONS=() DEB_PATHS=() SKIPPED=() NOT_SKIPPED=() DEB_PACKAGE DEB_VERSION INSTALLED_VERSION url path
+
+    for url in "$@"; do
+
+        CURL_OPTIONS+=("-o" "$(apt_deb_path "$url")")
+        DEB_PATHS+=("$(apt_deb_path "$url")")
+
+    done
+
+    curl --create-dirs --retry 2 -C - -fL "${CURL_OPTIONS[@]}" "$@" || {
+        echo "Error: unable to retrieve queued deb packages"
         exit 1
     }
 
-    APT_DEB_QUEUE+=("$DEB_PATH")
+    for path in "${!DEB_PATHS[@]}"; do
+
+        DEB_PACKAGE="$(dpkg-deb --showformat '${Package}' -W "$DEB_PATHS[$path]" | tail -n 1)" || exit 1
+
+        if apt_package_installed "$DEB_PACKAGE"; then
+
+            DEB_VERSION="$(dpkg-deb --showformat '${Version}' -W "$DEB_PATHS[$path]" | tail -n 1)" || exit 1
+            INSTALLED_VERSION="$(dpkg-query -f '${Version}' -W "$DEB_PACKAGE")" || exit 1
+
+            if dpkg --compare-versions "$DEB_VERSION" le "$INSTALLED_VERSION"; then
+
+                SKIPPED+=("$DEB_PACKAGE")
+                APT_INSTALLED+=("$DEB_PACKAGE")
+                unset DEB_PATHS[$path]
+                continue
+
+            fi
+
+        fi
+
+        NOT_SKIPPED+=("$DEB_PACKAGE")
+
+    done
+
+    [ "${#SKIPPED[@]}" -gt "0" ] && console_message "Packages skipped because they don't upgrade the installed version:" "$SKIPPED[*]" $BLUE
+    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && console_message "Installing deb packages:" "$NOT_SKIPPED[*]" $GREEN
+
+    sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -yf install && APT_INSTALLED+=("$NOT_SKIPPED[@]")
 
 }
 
@@ -419,8 +486,7 @@ function apt_process_queue() {
 
     if [ "${#APT_DEB_QUEUE[@]}" -gt "0" ]; then
 
-        # TODO: list package names
-        sudo dpkg -EGi "${APT_DEB_QUEUE[@]}" || sudo aptitude -yf install || RETURN_VALUE=1
+        do_apt_install_deb "${APT_DEB_QUEUE[@]}" || RETURN_VALUE=1
 
     fi
 

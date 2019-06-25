@@ -61,6 +61,7 @@ apt_register_repository owncloud-client "https://download.opensuse.org/repositor
 apt_register_repository sublime-text "https://download.sublimetext.com/sublimehq-pub.gpg" "deb https://download.sublimetext.com/ apt/stable/" "sublime-text"
 apt_register_repository typora "https://typora.io/linux/public-key.asc" "deb https://typora.io/linux ./" "typora"
 apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_vbox_2016.asc" "deb https://download.virtualbox.org/virtualbox/debian $DISTRIB_CODENAME contrib" "virtualbox-*"
+apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "code code-insiders"
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "yarn"
 
 # ok, time to get underway
@@ -73,6 +74,12 @@ apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex" Y Y
 apt_install_packages "development" "build-essential git php php-bcmath php-cli php-curl php-dev php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby" Y Y
 apt_install_packages "VirtualBox" "virtualbox-6.0" Y Y
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io" Y Y
+
+apt_install_deb "https://code-industry.net/public/master-pdf-editor-5.4.30-qt5.amd64.deb"
+apt_install_deb "https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb" Y
+apt_install_deb "https://github.com/careteditor/releases-beta/releases/download/4.0.0-rc23/caret-beta.deb"
+apt_install_deb "https://go.skype.com/skypeforlinux-64.deb" Y
+apt_install_deb "https://release.gitkraken.com/linux/gitkraken-amd64.deb" Y
 
 if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
 
