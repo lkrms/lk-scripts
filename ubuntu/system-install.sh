@@ -65,12 +65,15 @@ apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_v
 apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "code code-insiders"
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "yarn"
 
+# suppress any "recommended" packages we don't want to install
+sudo apt-mark hold bsd-mailx >/dev/null
+
 # ok, time to get underway
 apt_install_packages "package management" "nodejs snapd yarn" N Y
 apt_install_packages "essential utilities" "attr cifs-utils debconf-utils fio hfsprogs hwinfo lftp linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois" Y Y
 sudo dmidecode -t system | grep -qi ThinkPad && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms" Y Y
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" Y Y
-apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman copyq dconf-editor eyed3 filezilla firefox galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text thunderbird tilda tilix typora vlc" Y Y
+apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman copyq dconf-editor eyed3 filezilla firefox galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text thunderbird tilda tilix typora usb-creator-gtk vlc" Y Y
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex" Y Y
 apt_install_packages "development" "build-essential git php php-bcmath php-cli php-curl php-dev php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby" Y Y
 apt_package_available powershell && apt_install_packages "PowerShell" "powershell" || apt_install_packages "PowerShell" "powershell-preview"

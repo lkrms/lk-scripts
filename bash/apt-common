@@ -287,7 +287,7 @@ function apt_install_packages() {
             console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "${INSTALL[*]}")" $GREEN
             echo
 
-            get_confirmation "Continue?" && sudo apt-get "${APT_GET_OPTIONS[@]}" -y install "${INSTALL[@]}" && APT_INSTALLED+=("${INSTALL[@]}") && [ "${#CANT_INSTALL[@]}" -eq "0" ]
+            sudo apt-get "${APT_GET_OPTIONS[@]}" install "${INSTALL[@]}" && APT_INSTALLED+=("${INSTALL[@]}") && [ "${#CANT_INSTALL[@]}" -eq "0" ]
             return
 
         else
@@ -514,7 +514,7 @@ function apt_process_queue() {
         console_message "Installing ${#APT_INSTALL_QUEUE[@]} $(single_or_plural ${#APT_INSTALL_QUEUE[@]} package packages):" "$(apt_pretty_packages "${APT_INSTALL_QUEUE[*]}")" $GREEN
         echo
 
-        get_confirmation "Continue?" && sudo apt-get "${APT_GET_OPTIONS[@]}" -y install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALLED+=("${APT_INSTALL_QUEUE[@]}") && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
+        sudo apt-get "${APT_GET_OPTIONS[@]}" install "${APT_INSTALL_QUEUE[@]}" && APT_INSTALLED+=("${APT_INSTALL_QUEUE[@]}") && APT_INSTALL_QUEUE=() || RETURN_VALUE=1
 
     fi
 
