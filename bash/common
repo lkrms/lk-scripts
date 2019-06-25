@@ -198,7 +198,8 @@ EOF
 
 RS_SCRIPT_PATH="${BASH_SOURCE[0]}"
 [ -L "$RS_SCRIPT_PATH" ] && RS_SCRIPT_PATH="$(readlink "$RS_SCRIPT_PATH")"
-RS_SCRIPT_DIR="$(cd "$(dirname "$RS_SCRIPT_PATH")" && pwd -P)"
+RS_ROOT_DIR="$(cd "$(dirname "$RS_SCRIPT_PATH")/.." && pwd -P)"
+RS_CACHE_DIR="$RS_ROOT_DIR/cache"
 
 # foreground colours
 BLACK="$(tput setaf 0)"

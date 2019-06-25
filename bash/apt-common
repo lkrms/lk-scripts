@@ -398,7 +398,7 @@ function apt_add_repo() {
 
 function apt_deb_path() {
 
-    echo "$RS_SCRIPT_DIR/../cache/${1//[^._[:alnum:]]/-}"
+    echo "$RS_CACHE_DIR/${1//[^._[:alnum:]]/-}"
 
 }
 
