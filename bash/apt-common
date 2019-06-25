@@ -429,11 +429,11 @@ function do_apt_install_deb() {
 
     for path in "${!DEB_PATHS[@]}"; do
 
-        DEB_PACKAGE="$(dpkg-deb --showformat '${Package}' -W "$DEB_PATHS[$path]" | tail -n 1)" || exit 1
+        DEB_PACKAGE="$(dpkg-deb --showformat '${Package}' -W "${DEB_PATHS[$path]}" | tail -n 1)" || exit 1
 
         if apt_package_installed "$DEB_PACKAGE"; then
 
-            DEB_VERSION="$(dpkg-deb --showformat '${Version}' -W "$DEB_PATHS[$path]" | tail -n 1)" || exit 1
+            DEB_VERSION="$(dpkg-deb --showformat '${Version}' -W "${DEB_PATHS[$path]}" | tail -n 1)" || exit 1
             INSTALLED_VERSION="$(dpkg-query -f '${Version}' -W "$DEB_PACKAGE")" || exit 1
 
             if dpkg --compare-versions "$DEB_VERSION" le "$INSTALLED_VERSION"; then
@@ -451,8 +451,8 @@ function do_apt_install_deb() {
 
     done
 
-    [ "${#SKIPPED[@]}" -gt "0" ] && console_message "Packages skipped because they don't upgrade the installed version:" "$SKIPPED[*]" $BLUE
-    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && console_message "Installing deb packages:" "$NOT_SKIPPED[*]" $GREEN
+    [ "${#SKIPPED[@]}" -gt "0" ] && console_message "Packages skipped because they don't upgrade the installed version:" "${SKIPPED[*]}" $BLUE
+    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && console_message "Installing deb packages:" "${NOT_SKIPPED[*]}" $GREEN
 
     sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -yf install && APT_INSTALLED+=("$NOT_SKIPPED[@]")
 
