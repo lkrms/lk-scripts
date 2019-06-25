@@ -273,14 +273,14 @@ function apt_install_packages() {
 
             [ "${#PPA_QUEUE[@]}" -gt "0" ] && {
                 QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" | sort | uniq))
-                console_message "Adding ${#PPA_QUEUE[@]} $(single_or_plural ${#PPA_QUEUE[@]} PPA PPAs):" "${PPA_QUEUE[*]}" $GREEN
-                apt_add_ppa "${PPA_QUEUE[@]}"
+                console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} PPA PPAs):" "${QUEUE[*]}" $GREEN
+                apt_add_ppa "${QUEUE[@]}"
             }
 
             [ "${#REPO_QUEUE[@]}" -gt "0" ] && {
                 QUEUE=($(printf '%s\n' "${REPO_QUEUE[@]}" | sort | uniq))
-                console_message "Adding ${#REPO_QUEUE[@]} $(single_or_plural ${#REPO_QUEUE[@]} repository repositories):" "${REPO_QUEUE[*]}" $GREEN
-                apt_add_repo "${REPO_QUEUE[@]}"
+                console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $GREEN
+                apt_add_repo "${QUEUE[@]}"
             }
 
             apt_make_cache_clean
