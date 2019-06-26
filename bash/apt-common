@@ -201,32 +201,55 @@ function apt_make_cache_clean() {
 
 }
 
+function apt_package_prefix_regex() {
+    echo '[\?]'
+}
+
 # Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override (Y/N)] [queue only (Y/N)]
 function apt_install_packages() {
 
     local UI="$3" QUEUE_ONLY="$4"
-    [ "$UI" = "Y" ] || UI=N
-    [ "$QUEUE_ONLY" = "Y" ] || QUEUE_ONLY=N
+    [ "$UI" = "N" ] || UI=Y
+    [ "$QUEUE_ONLY" = "N" ] || QUEUE_ONLY=Y
 
     apt_make_cache_clean
 
-    local INSTALLED=() INSTALL=() CANT_INSTALL=() PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX QUEUE p
+    local INSTALLED=() INSTALL=() INSTALL_TRIMMED=() CANT_INSTALL=() IGNORE_CANT_INSTALL PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX QUEUE PROMPT_EXTRA p op
 
     console_message "Checking $1..." "" $BLUE
 
     for p in $2; do
+
+        op="$p"
+        IGNORE_CANT_INSTALL=0
+
+        while [[ "${p:0:1}" =~ $(apt_package_prefix_regex) ]]; do
+
+            case "${p:0:1}" in
+
+            ?)
+                IGNORE_CANT_INSTALL=1
+                ;;
+
+            esac
+
+            p="${p:1}"
+
+        done
 
         PPA_INDEX=$(array_search "$p" APT_PPA_PACKAGES)
         REPO_INDEX=$(array_search "$p" APT_REPO_PACKAGES)
 
         if [ "$PPA_INDEX" -gt "-1" ]; then
 
-            INSTALL+=("$p")
+            INSTALL+=("$op")
+            INSTALL_TRIMMED+=("$p")
             PPA_QUEUE+=("${APT_PPA_REGISTRY[$PPA_INDEX]}")
 
         elif [ "$REPO_INDEX" -gt "-1" ]; then
 
-            INSTALL+=("$p")
+            INSTALL+=("$op")
+            INSTALL_TRIMMED+=("$p")
             REPO_QUEUE+=("${APT_REPO_REGISTRY[$REPO_INDEX]}")
 
         elif apt_package_installed "$p"; then
@@ -235,11 +258,12 @@ function apt_install_packages() {
 
         elif apt_package_available "$p"; then
 
-            INSTALL+=("$p")
+            INSTALL+=("$op")
+            INSTALL_TRIMMED+=("$p")
 
         else
 
-            CANT_INSTALL+=("$p")
+            [ "$IGNORE_CANT_INSTALL" -eq "1" ] || CANT_INSTALL+=("$p")
 
         fi
 
@@ -251,17 +275,17 @@ function apt_install_packages() {
 
     if [ "${#INSTALL[@]}" -gt "0" ]; then
 
+        QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}" | sort | uniq))
+
         if [ "$UI" = "Y" ]; then
 
-            [ "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "$(apt_pretty_packages "${INSTALLED[*]}")" $BLUE
-            console_message "$(single_or_plural ${#INSTALL[@]} Package Packages) to install:" "${INSTALL[*]}" $MAGENTA
+            #[ "${#INSTALLED[@]}" -gt "0" ] && console_message "$(single_or_plural ${#INSTALLED[@]} Package Packages) already installed:" "$(apt_pretty_packages "${INSTALLED[*]}")" $BLUE
+            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "${INSTALL_TRIMMED[*]}" $MAGENTA
 
-            QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}" | sort | uniq))
-
-            [ "${#QUEUE[@]}" -gt "0" ] && console_message "$(single_or_plural ${#QUEUE[@]} Repository Repositories) to add:" "${QUEUE[*]}" $MAGENTA
+            [ "${#QUEUE[@]}" -gt "0" ] && console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $MAGENTA && PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
             echo
 
-            if ! get_confirmation "Install the $1 $(single_or_plural ${#INSTALL[@]} package packages) listed above?"; then
+            if ! get_confirmation "Add the $1 $(single_or_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?"; then
 
                 return 1
 
@@ -271,28 +295,28 @@ function apt_install_packages() {
 
         if [ "$QUEUE_ONLY" != "Y" ]; then
 
+            [ "${#QUEUE[@]}" -gt "0" ] && console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $GREEN
+
             [ "${#PPA_QUEUE[@]}" -gt "0" ] && {
                 QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" | sort | uniq))
-                console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} PPA PPAs):" "${QUEUE[*]}" $GREEN
                 apt_add_ppa "${QUEUE[@]}"
             }
 
             [ "${#REPO_QUEUE[@]}" -gt "0" ] && {
                 QUEUE=($(printf '%s\n' "${REPO_QUEUE[@]}" | sort | uniq))
-                console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $GREEN
                 apt_add_repo "${QUEUE[@]}"
             }
 
             apt_make_cache_clean
-            console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "${INSTALL[*]}")" $GREEN
+            console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "${INSTALL_TRIMMED[*]}")" $GREEN
             echo
 
-            sudo apt-get "${APT_GET_OPTIONS[@]}" install "${INSTALL[@]}" && APT_INSTALLED+=("${INSTALL[@]}") && [ "${#CANT_INSTALL[@]}" -eq "0" ]
+            sudo apt-get "${APT_GET_OPTIONS[@]}" install "${INSTALL_TRIMMED[@]}" && APT_INSTALLED+=("${INSTALL_TRIMMED[@]}") && [ "${#CANT_INSTALL[@]}" -eq "0" ]
             return
 
         else
 
-            APT_INSTALL_QUEUE+=("${INSTALL[@]}")
+            APT_INSTALL_QUEUE+=("${INSTALL_TRIMMED[@]}")
             APT_PPA_QUEUE+=("${PPA_QUEUE[@]}")
             APT_REPO_QUEUE+=("${REPO_QUEUE[@]}")
             return 1
@@ -498,15 +522,17 @@ function apt_process_queue() {
 
     if [ "${#APT_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
+        QUEUE=($(printf '%s\n' "${APT_PPA_QUEUE[@]}" "${APT_REPO_QUEUE[@]}" | sort | uniq))
+
+        [ "${#QUEUE[@]}" -gt "0" ] && console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $GREEN
+
         [ "${#APT_PPA_QUEUE[@]}" -gt "0" ] && {
             QUEUE=($(printf '%s\n' "${APT_PPA_QUEUE[@]}" | sort | uniq))
-            console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} PPA PPAs):" "${QUEUE[*]}" $GREEN
             apt_add_ppa "${QUEUE[@]}"
         }
 
         [ "${#APT_REPO_QUEUE[@]}" -gt "0" ] && {
             QUEUE=($(printf '%s\n' "${APT_REPO_QUEUE[@]}" | sort | uniq))
-            console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $GREEN
             apt_add_repo "${QUEUE[@]}"
         }
 
@@ -530,11 +556,11 @@ function apt_process_queue() {
 
 function apt_force_install_packages() {
 
-    apt_install_packages "prerequisites" "$1" || exit 1
+    apt_install_packages "prerequisites" "$1" N N || exit 1
 
 }
 
-APT_GET_OPTIONS=(-o Acquire::ForceIPv4=true)
+APT_GET_OPTIONS=(-o Acquire::ForceIPv4=true --no-install-recommends)
 APT_CACHE_DIRTY=1
 APT_PPA_REGISTRY=()
 APT_PPA_PACKAGES=()

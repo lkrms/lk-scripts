@@ -69,16 +69,16 @@ apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb htt
 sudo apt-mark hold bsd-mailx >/dev/null
 
 # ok, time to get underway
-apt_install_packages "package management" "nodejs snapd yarn" N Y
-apt_install_packages "essential utilities" "attr cifs-utils debconf-utils fio hfsprogs hwinfo lftp linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois" Y Y
-sudo dmidecode -t system | grep -qi ThinkPad && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms" Y Y
-apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" Y Y
-apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman copyq dconf-editor eyed3 filezilla firefox galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text thunderbird tilda tilix typora usb-creator-gtk vlc" Y Y
-apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex" Y Y
-apt_install_packages "development" "build-essential git php php-bcmath php-cli php-curl php-dev php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby" Y Y
+apt_install_packages "package management" "nodejs snapd yarn" N
+apt_install_packages "essential utilities" "attr cifs-utils debconf-utils fio hfsprogs hwinfo lftp linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois"
+sudo dmidecode -t system | grep -qi ThinkPad && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms"
+apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat"
+apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman code copyq dconf-editor eyed3 filezilla firefox galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text thunderbird tilda tilix typora usb-creator-gtk vlc"
+apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
+apt_install_packages "development" "build-essential git php php-bcmath php-cli php-curl php-dev php-gd php-gettext php-imagick php-imap php-json php-mbstring ?php-mcrypt php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby"
 apt_package_available powershell && apt_install_packages "PowerShell" "powershell" || apt_install_packages "PowerShell" "powershell-preview"
-apt_install_packages "VirtualBox" "virtualbox-6.0" Y Y
-apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io" Y Y
+apt_install_packages "VirtualBox" "virtualbox-6.0"
+apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
 apt_install_deb "https://code-industry.net/public/master-pdf-editor-5.4.30-qt5.amd64.deb"
 apt_install_deb "https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb" Y
@@ -96,8 +96,9 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
     apt_install_deb "http://ppa.launchpad.net/elementary-os/stable/ubuntu/pool/main/w/wingpanel-indicator-ayatana/wingpanel-indicator-ayatana_2.0.3+r27+pkg17~ubuntu0.4.1.1_amd64.deb"
 
     # otherwise the computer will fall asleep at the login screen
-    sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0
-    sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing
+    sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 2>/dev/null &&
+        sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing 2>/dev/null ||
+        console_message "Unable to apply power settings for 'lightdm' user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" $RED
 
 fi
 
