@@ -1,22 +1,25 @@
 #!/bin/bash
 
+set -euo pipefail
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 [ -L "$SCRIPT_PATH" ] && SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
-. "$SCRIPT_DIR/../bash/common" || exit 1
-. "$SCRIPT_DIR/../bash/apt-common" || exit 1
+. "$SCRIPT_DIR/../bash/common"
+. "$SCRIPT_DIR/../bash/apt-common"
+
+# TODO
+#export DEBIAN_FRONTEND=noninteractive
 
 assert_is_ubuntu
 assert_not_root
 offer_sudo_password_bypass
 
-# TODO
-#export DEBIAN_FRONTEND=noninteractive
+apt_make_cache_clean
 
 console_message "Upgrading everything that's currently installed..." "" $BLUE
 
-sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && APT_CACHE_DIRTY=0 || exit 1
 sudo apt-get "${APT_GET_OPTIONS[@]}" -y dist-upgrade || exit 1
 [ "$IS_SNAP_INSTALLED" -eq "1" ] && { sudo snap refresh || exit 1; }
 
@@ -65,17 +68,14 @@ apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_v
 apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "code code-insiders"
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "yarn"
 
-# suppress any "recommended" packages we don't want to install
-sudo apt-mark hold bsd-mailx >/dev/null
-
 # ok, time to get underway
 apt_install_packages "package management" "nodejs snapd yarn" N
 apt_install_packages "essential utilities" "attr cifs-utils debconf-utils fio hfsprogs hwinfo lftp linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois"
 sudo dmidecode -t system | grep -qi ThinkPad && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms"
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat"
-apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman code copyq dconf-editor eyed3 filezilla firefox galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text thunderbird tilda tilix typora usb-creator-gtk vlc"
+apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman bsd-mailx- code copyq dconf-editor eyed3 filezilla firefox galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text thunderbird tilda tilix typora usb-creator-gtk vlc"
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
-apt_install_packages "development" "build-essential git php php-bcmath php-cli php-curl php-dev php-gd php-gettext php-imagick php-imap php-json php-mbstring ?php-mcrypt php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby"
+apt_install_packages "development" 'libapache2-mod-php*-'" build-essential git php php-bcmath php-cli php-curl php-dev php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby"
 apt_package_available powershell && apt_install_packages "PowerShell" "powershell" || apt_install_packages "PowerShell" "powershell-preview"
 apt_install_packages "VirtualBox" "virtualbox-6.0"
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
@@ -96,16 +96,15 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
     apt_install_deb "http://ppa.launchpad.net/elementary-os/stable/ubuntu/pool/main/w/wingpanel-indicator-ayatana/wingpanel-indicator-ayatana_2.0.3+r27+pkg17~ubuntu0.4.1.1_amd64.deb"
 
     # otherwise the computer will fall asleep at the login screen
-    sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 2>/dev/null &&
-        sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing 2>/dev/null ||
+    sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 &>/dev/null &&
+        sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing &>/dev/null ||
         console_message "Unable to apply power settings for 'lightdm' user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" $RED
 
 fi
 
 apt_process_queue
 
-console_message "${#APT_INSTALLED[@]} installed $(single_or_plural ${#APT_INSTALLED[@]} "package is" "packages are") managed by $(basename "$0"):" "" $BLUE
-
 ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | sort | uniq))
+console_message "${#APT_INSTALLED[@]} installed $(single_or_plural ${#APT_INSTALLED[@]} "package is" "packages are") managed by $(basename "$0"):" "" $BLUE
 ALL_PACKAGES=($(apt_pretty_packages "${ALL_PACKAGES[*]}"))
 printf '%s\n' "${ALL_PACKAGES[@]}" | column

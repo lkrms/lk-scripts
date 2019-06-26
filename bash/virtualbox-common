@@ -1,10 +1,10 @@
-function virtualbox_exists {
+function virtualbox_exists() {
 
-    VBoxManage showvminfo "$1" >/dev/null 2>&1
+    VBoxManage showvminfo "$1" &>/dev/null
 
 }
 
-function assert_virtualbox_exists {
+function assert_virtualbox_exists() {
 
     if ! virtualbox_exists "$1"; then
 
@@ -16,7 +16,7 @@ function assert_virtualbox_exists {
 }
 
 # creates VM_* variables for the given VM (name or UUID)
-function virtualbox_load_info {
+function virtualbox_load_info() {
 
     local IFS=$'\n' LINE VALUE VALUE_NAME
 
@@ -27,9 +27,9 @@ function virtualbox_load_info {
         VALUE_NAME="${LINE%%=*}"
         VALUE="${LINE#*=}"
 
-        VALUE_NAME="${VALUE_NAME//-/_}"                                     # replace hyphens
-        VALUE_NAME="${VALUE_NAME//\"/}"                                     # remove quotes
-        VALUE_NAME="$(echo "$VALUE_NAME" | tr "[:lower:]" "[:upper:]")"     # UPPERCASE
+        VALUE_NAME="${VALUE_NAME//-/_}"                                 # replace hyphens
+        VALUE_NAME="${VALUE_NAME//\"/}"                                 # remove quotes
+        VALUE_NAME="$(echo "$VALUE_NAME" | tr "[:lower:]" "[:upper:]")" # UPPERCASE
 
         eval "VM_${VALUE_NAME}=${VALUE}"
 
@@ -177,4 +177,3 @@ function virtualbox_load_info {
 # VM_CAPTUREVIDEOFPS=25
 # VM_CAPTUREOPTS="vc_enabled=true,ac_enabled=false,ac_profile=med"
 # VM_GUESTMEMORYBALLOON=0
-

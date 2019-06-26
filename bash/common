@@ -4,7 +4,7 @@ function assert_is_macos() {
 
     if [ "$IS_MACOS" -ne "1" ]; then
 
-        echo "Error: $(basename "$0") is not supported on this platform"
+        echo "Error: $(basename "$0") is not supported on this platform (macOS required)"
         exit 1
 
     fi
@@ -15,7 +15,7 @@ function assert_is_linux() {
 
     if [ "$IS_LINUX" -ne "1" ]; then
 
-        echo "Error: $(basename "$0") is not supported on this platform"
+        echo "Error: $(basename "$0") is not supported on this platform (Linux required)"
         exit 1
 
     fi
@@ -26,7 +26,20 @@ function assert_is_ubuntu() {
 
     if [ "$IS_UBUNTU" -ne "1" ]; then
 
-        echo "Error: $(basename "$0") is not supported on this platform"
+        echo "Error: $(basename "$0") is not supported on this platform (Ubuntu required)"
+        exit 1
+
+    fi
+
+}
+
+function assert_apt_available() {
+
+    assert_is_linux
+
+    if [ "$IS_APT_INSTALLED" -ne "1" ]; then
+
+        echo "Error: $(basename "$0") requires apt and dpkg"
         exit 1
 
     fi
@@ -37,11 +50,22 @@ function assert_is_ubuntu_lts() {
 
     assert_is_ubuntu
 
-    command -v ubuntu-distro-info >/dev/null 2>&1 || apt_force_install_packages "distro-info"
+    command -v ubuntu-distro-info &>/dev/null || apt_request_package "distro-info"
 
     if ! ubuntu-distro-info --supported-esm | grep -q "^${DISTRIB_CODENAME}\$"; then
 
         echo "Error: $(basename "$0") is only supported on LTS releases of Ubuntu"
+        exit 1
+
+    fi
+
+}
+
+function assert_root() {
+
+    if [ "$EUID" -ne "0" ]; then
+
+        echo "Error: $(basename "$0") must be run as the superuser"
         exit 1
 
     fi
@@ -64,11 +88,11 @@ function argument_or_default() {
 
     if [ "${#SCRIPT_ARGS[@]}" -eq "1" ]; then
 
-        eval $1="${SCRIPT_ARGS[0]}"
+        eval $1='"${SCRIPT_ARGS[0]}"'
 
     else
 
-        eval $1="$2"
+        eval $1='"$2"'
 
     fi
 
@@ -177,7 +201,7 @@ function array_search() {
 
 function offer_sudo_password_bypass() {
 
-    local USERNAME="$SUDO_USER" FILENAME
+    local USERNAME="${SUDO_USER:-}" FILENAME
     [ -n "$USERNAME" ] || USERNAME="$USER"
 
     FILENAME="/etc/sudoers.d/nopasswd-$USERNAME"
@@ -262,7 +286,7 @@ Linux)
 
     fi
 
-    if command -v lsb_release >/dev/null 2>&1; then
+    if command -v lsb_release &>/dev/null; then
 
         DISTRIB_ID="$(lsb_release -si)"
         LSB_RELEASE_EXTRA=
@@ -290,8 +314,8 @@ Linux)
     IS_APT_INSTALLED=1
     IS_SNAP_INSTALLED=1
 
-    command -v apt-get >/dev/null 2>&1 && command -v dpkg >/dev/null 2>&1 || IS_APT_INSTALLED=0
-    command -v snap >/dev/null 2>&1 || IS_SNAP_INSTALLED=0
+    { command -v apt-get &>/dev/null && command -v dpkg &>/dev/null; } || IS_APT_INSTALLED=0
+    command -v snap &>/dev/null || IS_SNAP_INSTALLED=0
 
     ;;
 
