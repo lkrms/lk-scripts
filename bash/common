@@ -188,6 +188,7 @@ function array_search() {
         if [[ "$1" == $VALUE ]]; then
 
             echo "$i"
+            return
 
         fi
 
