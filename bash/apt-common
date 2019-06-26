@@ -62,7 +62,7 @@ function apt_pretty_packages() {
 function apt_ubuntu_archive_url() {
 
     # attempt to identify a local archive URL
-    [ -z "$UBUNTU_ARCHIVE_URL" ] && UBUNTU_ARCHIVE_URL="$(grep -Eo '\bhttps?://([[:alnum:]]+\.)archive\.ubuntu\.com/ubuntu\b' /etc/apt/sources.list | head -n1)/"
+    [ -z "${UBUNTU_ARCHIVE_URL:-}" ] && UBUNTU_ARCHIVE_URL="$(grep -Eo '\bhttps?://([[:alnum:]]+\.)archive\.ubuntu\.com/ubuntu\b' /etc/apt/sources.list | head -n1)/"
     [ "$UBUNTU_ARCHIVE_URL" = "/" ] && UBUNTU_ARCHIVE_URL="http://archive.ubuntu.com/ubuntu/"
 
     echo "$UBUNTU_ARCHIVE_URL"
