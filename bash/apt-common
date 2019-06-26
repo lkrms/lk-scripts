@@ -11,21 +11,21 @@ function apt_refresh_packages() {
 function apt_package_installed() {
 
     apt_make_cache_clean
-    echo "$APT_INSTALLED_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
+    echo "$APT_INSTALLED_PACKAGES" | grep -E "^$1"'(:.*)?$' &>/dev/null
 
 }
 
 function apt_package_available() {
 
     apt_make_cache_clean
-    echo "$APT_AVAILABLE_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
+    echo "$APT_AVAILABLE_PACKAGES" | grep -E "^$1"'(:.*)?$' &>/dev/null
 
 }
 
 function apt_package_is_gui() {
 
     apt_make_cache_clean
-    apt_package_available "$1" && echo "$APT_GUI_PACKAGES" | grep -Eq "^$1"'(:.*)?$'
+    apt_package_available "$1" && echo "$APT_GUI_PACKAGES" | grep -E "^$1"'(:.*)?$' &>/dev/null
 
 }
 
@@ -71,7 +71,7 @@ function apt_ubuntu_archive_url() {
 
 function do_apt_enable_ubuntu_repository() {
 
-    if ! cat /etc/apt/sources.list | grep -qE '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.ubuntu\.com/ubuntu/?[[:space:]]+'"$1"'[[:space:]]+.*\b'"$2"'\b'; then
+    if ! cat /etc/apt/sources.list | grep -E '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.ubuntu\.com/ubuntu/?[[:space:]]+'"$1"'[[:space:]]+.*\b'"$2"'\b' &>/dev/null; then
 
         command -v add-apt-repository &>/dev/null || apt_force_install_packages "software-properties-common"
 
@@ -103,7 +103,7 @@ function apt_enable_partner_repository() {
 
     assert_is_ubuntu
 
-    if ! cat /etc/apt/sources.list | grep -qE '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.canonical\.com/ubuntu/?[[:space:]]+'"$DISTRIB_CODENAME"'[[:space:]]+.*\bpartner\b'; then
+    if ! cat /etc/apt/sources.list | grep -E '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.canonical\.com/ubuntu/?[[:space:]]+'"$DISTRIB_CODENAME"'[[:space:]]+.*\bpartner\b' &>/dev/null; then
 
         command -v add-apt-repository &>/dev/null || apt_force_install_packages "software-properties-common"
 
@@ -122,7 +122,7 @@ function apt_register_ppa() {
 
     local p
 
-    if ! cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep -q "^[^#]*/$1"; then
+    if ! cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep "^[^#]*/$1" &>/dev/null; then
 
         for p in $2; do
 
@@ -264,7 +264,7 @@ function apt_install_packages() {
 
     apt_make_cache_clean
 
-    local INSTALLED=() INSTALL=() IGNORED=() SUPPRESSED=() IGNORE SUPPRESS PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX QUEUE PROMPT_EXTRA p
+    local INSTALLED=() INSTALL=() IGNORED=() SUPPRESSED=() IGNORE SUPPRESS PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX QUEUE PROMPT_EXTRA= p
 
     console_message "Checking $1..." "" $BLUE
 
@@ -277,11 +277,11 @@ function apt_install_packages() {
 
             case "${p:(-1)}" in
 
-            ?)
+            \?)
                 IGNORE=1
                 ;;
 
-            -)
+            \-)
                 SUPPRESS=1
                 ;;
 

@@ -52,7 +52,7 @@ function assert_is_ubuntu_lts() {
 
     command -v ubuntu-distro-info &>/dev/null || apt_request_package "distro-info"
 
-    if ! ubuntu-distro-info --supported-esm | grep -q "^${DISTRIB_CODENAME}\$"; then
+    if ! ubuntu-distro-info --supported-esm | grep "^${DISTRIB_CODENAME}\$" &>/dev/null; then
 
         echo "Error: $(basename "$0") is only supported on LTS releases of Ubuntu"
         exit 1

@@ -71,7 +71,7 @@ apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb htt
 # ok, time to get underway
 apt_install_packages "package management" "nodejs snapd yarn" N
 apt_install_packages "essential utilities" "attr cifs-utils debconf-utils fio hfsprogs hwinfo lftp linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois"
-sudo dmidecode -t system | grep -qi ThinkPad && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms"
+sudo dmidecode -t system | grep -i ThinkPad &>/dev/null && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms"
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat"
 apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman bsd-mailx- code copyq dconf-editor eyed3 filezilla firefox galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text thunderbird tilda tilix typora usb-creator-gtk vlc"
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
