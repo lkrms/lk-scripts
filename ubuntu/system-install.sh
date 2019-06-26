@@ -75,7 +75,7 @@ sudo dmidecode -t system | grep -i ThinkPad &>/dev/null && apt_install_packages 
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat"
 apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman bsd-mailx- code copyq dconf-editor eyed3 filezilla firefox galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text thunderbird tilda tilix typora usb-creator-gtk vlc"
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
-apt_install_packages "development" 'libapache2-mod-php*-'" build-essential git php php-bcmath php-cli php-curl php-dev php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby"
+apt_install_packages "development" 'libapache2-mod-php*- '"build-essential git php php-bcmath php-cli php-curl php-dev php-fpm php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby"
 apt_package_available powershell && apt_install_packages "PowerShell" "powershell" || apt_install_packages "PowerShell" "powershell-preview"
 apt_install_packages "VirtualBox" "virtualbox-6.0"
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
