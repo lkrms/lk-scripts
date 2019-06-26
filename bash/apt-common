@@ -223,14 +223,15 @@ function apt_get_package_list() {
 
             if [[ "$IGNORED" == *" $p "* ]]; then
 
-                console_message "Package unavailable for installation (ignoring):" "$p" $RED
+                console_message "Package unavailable for installation (ignoring):" "$p" $RED >&2
 
             else
 
                 BAD_LIST+=("$p")
-                continue
 
             fi
+
+            continue
 
         fi
 
@@ -243,13 +244,13 @@ function apt_get_package_list() {
     for q in "${SUPPRESSED[@]}"; do
 
         # suppressing doesn't mean removing
-        ! apt_package_installed && LIST+=("${q}-")
+        ! apt_package_installed "$q" && LIST+=("${q}-")
 
     done
 
     for q in "${REMOVE[@]}"; do
 
-        apt_package_installed && LIST+=("${q}-")
+        apt_package_installed "$q" && LIST+=("${q}-")
 
     done
 
