@@ -91,7 +91,7 @@ function apt_enable_ubuntu_repository() {
 
     local suffix
 
-    [ -n "$2" ] && for suffix in $2; do
+    [ -n "${2:-}" ] && for suffix in $2; do
 
         do_apt_enable_ubuntu_repository "${DISTRIB_CODENAME}-${suffix}" "$1"
 
@@ -132,7 +132,7 @@ function apt_register_ppa() {
 
         done
 
-        if [ "$3" = "Y" ]; then
+        if [ "${3:-N}" = "Y" ]; then
 
             apt_add_ppa "$1"
 
@@ -167,7 +167,7 @@ function apt_register_repository() {
 
         done
 
-        if [ "$5" = "Y" ]; then
+        if [ "${5:-N}" = "Y" ]; then
 
             apt_add_repo "$1"
 
@@ -260,9 +260,7 @@ function apt_get_package_list() {
 # Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override (Y/N)] [queue only (Y/N)]
 function apt_install_packages() {
 
-    local UI="$3" QUEUE_ONLY="$4"
-    [ "$UI" = "N" ] || UI=Y
-    [ "$QUEUE_ONLY" = "N" ] || QUEUE_ONLY=Y
+    local UI="${3:-Y}" QUEUE_ONLY="${4:-Y}"
 
     apt_make_cache_clean
 
@@ -299,12 +297,12 @@ function apt_install_packages() {
         PPA_INDEX=$(array_search "$p" APT_PPA_PACKAGES)
         REPO_INDEX=$(array_search "$p" APT_REPO_PACKAGES)
 
-        if [ "$PPA_INDEX" -gt "-1" ]; then
+        if [ -n "$PPA_INDEX" ]; then
 
             INSTALL+=("$p")
             PPA_QUEUE+=("${APT_PPA_REGISTRY[$PPA_INDEX]}")
 
-        elif [ "$REPO_INDEX" -gt "-1" ]; then
+        elif [ -n "$REPO_INDEX" ]; then
 
             INSTALL+=("$p")
             REPO_QUEUE+=("${APT_REPO_REGISTRY[$REPO_INDEX]}")
@@ -421,7 +419,9 @@ function apt_add_repo() {
 
         [ -z "$repo" ] && continue
 
-        i=$(array_search "$repo" APT_REPO_REGISTRY) || {
+        i=$(array_search "$repo" APT_REPO_REGISTRY)
+
+        [ -n "$i" ] || {
             echo "Error: unable to find metadata for repository '$repo'"
             exit 1
         }
@@ -429,7 +429,11 @@ function apt_add_repo() {
         KEY_URL="${APT_REPO_KEY_URLS[$i]}"
         ENTRY="${APT_REPO_ENTRIES[$i]}"
 
-        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || exit 1
+        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || {
+            echo "Error: unable to write to /etc/apt/sources.list.d/$repo.list"
+            exit 1
+        }
+
         apt_add_key_from_url "$KEY_URL" || {
             echo "Error: unable to add GPG key for $repo from $1"
             exit 1
@@ -475,14 +479,14 @@ function apt_install_deb() {
 
     command -v wget &>/dev/null || apt_force_install_packages "wget"
 
-    if [ "$2" = "Y" ]; then
+    if [ "${2:-N}" = "Y" ]; then
 
         rm -f "$(apt_deb_path "$1")"
 
     fi
 
     # queue by default
-    if [ "$3" != "N" ]; then
+    if [ "${3:-Y}" = "Y" ]; then
 
         APT_DEB_QUEUE+=("$1")
 

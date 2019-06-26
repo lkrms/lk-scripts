@@ -171,7 +171,7 @@ function upper_first() {
 }
 
 # Searches the array (must be global, passed by name) for the given value and outputs the first corresponding key if successful.
-# Plays nicely with globs and sparse arrays. Outputs -1 and a non-zero exit code if the value isn't found.
+# Plays nicely with globs and sparse arrays. Returns an empty string if the value isn't found.
 #
 # Usage: array_search <needle> <haystack-name>
 function array_search() {
@@ -188,14 +188,10 @@ function array_search() {
         if [[ "$1" == $VALUE ]]; then
 
             echo "$i"
-            return 0
 
         fi
 
     done
-
-    echo "-1"
-    return 1
 
 }
 
