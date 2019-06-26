@@ -328,9 +328,9 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "${INSTALL[*]}" $MAGENTA
+            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "${INSTALL[*]}")" $BLUE
 
-            [ "${#QUEUE[@]}" -gt "0" ] && console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $MAGENTA && PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
+            [ "${#QUEUE[@]}" -gt "0" ] && console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $BLUE && PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
             echo
 
             get_confirmation "Add the $1 $(single_or_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" || return

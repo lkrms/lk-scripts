@@ -64,7 +64,7 @@ apt_register_repository nodesource "https://deb.nodesource.com/gpgkey/nodesource
 apt_register_repository owncloud-client "https://download.opensuse.org/repositories/isv:ownCloud:desktop/Ubuntu_$DISTRIB_RELEASE/Release.key" "deb http://download.opensuse.org/repositories/isv:/ownCloud:/desktop/Ubuntu_$DISTRIB_RELEASE/ /" "owncloud-client"
 apt_register_repository sublime-text "https://download.sublimetext.com/sublimehq-pub.gpg" "deb https://download.sublimetext.com/ apt/stable/" "sublime-text"
 apt_register_repository typora "https://typora.io/linux/public-key.asc" "deb https://typora.io/linux ./" "typora"
-apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_vbox_2016.asc" "deb https://download.virtualbox.org/virtualbox/debian $DISTRIB_CODENAME contrib" "virtualbox-*"
+apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_vbox_2016.asc" "deb [arch=amd64] https://download.virtualbox.org/virtualbox/debian $DISTRIB_CODENAME contrib" "virtualbox-*"
 apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "code code-insiders"
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "yarn"
 
