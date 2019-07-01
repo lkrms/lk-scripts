@@ -75,8 +75,9 @@ apt_install_packages "package management" "nodejs snapd yarn" N
 apt_install_packages "essential utilities" "attr cifs-utils debsums fio hfsprogs hwinfo lftp linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois"
 sudo dmidecode -t system | grep -i ThinkPad &>/dev/null && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms"
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat"
-apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman bsd-mailx- code copyq dconf-editor eyed3 filezilla firefox galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg! libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text thunderbird tilda tilix typora usb-creator-gtk vlc"
+apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman bsd-mailx- code copyq dconf-editor eyed3 filezilla firefox fonts-symbola fonts-twemoji-svginot galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg! libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text synaptic synergy thunderbird tilda tilix typora usb-creator-gtk vlc x11vnc"
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
+apt_install_packages "photography" "geeqie rapid-photo-downloader"
 apt_install_packages "MakeMKV dependencies" "libavcodec-dev libc6-dev libexpat1-dev libgl1-mesa-dev libqt4-dev libssl-dev pkg-config zlib1g-dev"
 apt_install_packages "development" 'libapache2-mod-php*- '"build-essential git php php-bcmath php-cli php-curl php-dev php-fpm php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby"
 apt_install_packages "development services" "apache2 mariadb-server mongodb-org"
@@ -89,6 +90,8 @@ apt_install_deb "https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb" Y
 apt_install_deb "https://github.com/careteditor/releases-beta/releases/download/4.0.0-rc23/caret-beta.deb"
 apt_install_deb "https://go.skype.com/skypeforlinux-64.deb" Y
 apt_install_deb "https://release.gitkraken.com/linux/gitkraken-amd64.deb" Y
+
+apt_remove_packages apport deja-dup
 
 if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
 

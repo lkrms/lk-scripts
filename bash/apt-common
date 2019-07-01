@@ -297,7 +297,7 @@ function apt_get_package_list() {
 
     [ "${#BAD_LIST[@]}" -gt "0" ] && console_message "$(single_or_plural ${#BAD_LIST[@]} Package Packages) unavailable for installation:" "${BAD_LIST[*]}" $RED >&2 && false
 
-    for q in "${REMOVE[@]}"; do
+    [ "$RETURN_SILENT" != "Y" ] && for q in "${REMOVE[@]}"; do
 
         apt_package_installed "$q" && LIST+=("${q}-")
 
@@ -410,7 +410,7 @@ function apt_install_packages() {
 
         else
 
-            array_search "-y" APT_GET_OPTIONS || array_search "--yes" APT_GET_OPTIONS || array_search "--assume-yes" APT_GET_OPTIONS || OPTIONS+=("-y")
+            { array_search "-y" APT_GET_OPTIONS || array_search "--yes" APT_GET_OPTIONS || array_search "--assume-yes" APT_GET_OPTIONS || OPTIONS+=("-y"); } >/dev/null
 
         fi
 
@@ -651,6 +651,23 @@ function do_apt_install_deb() {
 
 }
 
+# Usage: apt_remove_packages "package1 package2 ..."
+function apt_remove_packages() {
+
+    local p
+
+    for p in $*; do
+
+        if apt_package_installed "$p" && ! array_search "$p" APT_REMOVE_QUEUE >/dev/null; then
+
+            APT_REMOVE_QUEUE+=("$p")
+
+        fi
+
+    done
+
+}
+
 function apt_process_queue() {
 
     local QUEUE SILENT_QUEUE PRETTY_QUEUE
@@ -681,7 +698,6 @@ function apt_process_queue() {
         [ "${#QUEUE[@]}" -gt "0" ] && sudo apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
             APT_INSTALLED+=("${QUEUE[@]}")
             APT_JUST_INSTALLED+=("${QUEUE[@]}")
-            APT_INSTALL_QUEUE=()
             APT_REMOVE_QUEUE=()
             apt_refresh_packages
         }
@@ -690,7 +706,6 @@ function apt_process_queue() {
             APT_INSTALLED+=("${SILENT_QUEUE[@]}")
             APT_JUST_INSTALLED+=("${SILENT_QUEUE[@]}")
             APT_INSTALL_QUEUE=()
-            APT_REMOVE_QUEUE=()
             apt_refresh_packages
         }
 
