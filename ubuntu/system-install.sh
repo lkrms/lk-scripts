@@ -135,6 +135,6 @@ sudo apt-get "${APT_GET_OPTIONS[@]}" -y dist-upgrade
 [ "$IS_SNAP_INSTALLED" -eq "1" ] && sudo snap refresh
 
 ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | sort | uniq))
-console_message "${#APT_INSTALLED[@]} installed $(single_or_plural ${#APT_INSTALLED[@]} "package is" "packages are") managed by $(basename "$0"):" "" $BLUE
+console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "" $BLUE
 COLUMNS="$(tput cols)"
 apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")"

@@ -39,16 +39,18 @@ function apt_package_is_cli() {
 }
 
 # Removes duplicates and suppressed packages.
-# Usage: apt_filter_packages "package1 package2 package3-"
+# Usage: apt_filter_packages "package1 package2 package3-" [include removed? (Y/N)]
 function apt_filter_packages() {
 
-    local PACKAGES=($1) FILTERED=() p
+    local PACKAGES=($1) INCLUDE_REMOVED="${2:-Y}" FILTERED=() p
 
     PACKAGES=($(printf '%s\n' "${PACKAGES[@]}" | sort | uniq))
 
     for p in "${PACKAGES[@]}"; do
 
         if [ "${p:(-1)}" = "-" ]; then
+
+            [ "$INCLUDE_REMOVED" = "Y" ] || continue
 
             # don't display at all if just a suppression
             apt_package_installed "${p::(-1)}" || continue
@@ -437,17 +439,25 @@ function apt_install_packages() {
             console_message "Installing ${#PRETTY_INSTALL[@]} $(single_or_plural ${#PRETTY_INSTALL[@]} package packages):" "${PRETTY_INSTALL[*]}" $GREEN
             echo
 
-            [ "${#INSTALL[@]}" -gt "0" ] && sudo apt-get "${OPTIONS[@]}" install "${INSTALL[@]}" && {
-                APT_INSTALLED+=("${INSTALL[@]}")
-                APT_JUST_INSTALLED+=("${INSTALL[@]}")
-                apt_refresh_packages
-            }
+            if [ "${#INSTALL[@]}" -gt "0" ]; then
 
-            [ "${#SILENT_INSTALL[@]}" -gt "0" ] && sudo DEBIAN_FRONTEND=noninteractive apt-get "${OPTIONS[@]}" install "${SILENT_INSTALL[@]}" && {
-                APT_INSTALLED+=("${SILENT_INSTALL[@]}")
-                APT_JUST_INSTALLED+=("${SILENT_INSTALL[@]}")
-                apt_refresh_packages
-            }
+                sudo apt-get "${OPTIONS[@]}" install "${INSTALL[@]}" && {
+                    APT_INSTALLED+=($(apt_filter_packages "${INSTALL[*]}" N))
+                    APT_JUST_INSTALLED+=("${INSTALL[@]}")
+                    apt_refresh_packages
+                }
+
+            fi
+
+            if [ "${#SILENT_INSTALL[@]}" -gt "0" ]; then
+
+                sudo DEBIAN_FRONTEND=noninteractive apt-get "${OPTIONS[@]}" install "${SILENT_INSTALL[@]}" && {
+                    APT_INSTALLED+=($(apt_filter_packages "${SILENT_INSTALL[*]}" N))
+                    APT_JUST_INSTALLED+=("${SILENT_INSTALL[@]}")
+                    apt_refresh_packages
+                }
+
+            fi
 
         else
 
@@ -697,26 +707,33 @@ function apt_process_queue() {
         console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "${PRETTY_QUEUE[*]}" $GREEN
         echo
 
-        [ "${#QUEUE[@]}" -gt "0" ] && sudo apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
-            APT_INSTALLED+=("${QUEUE[@]}")
-            APT_JUST_INSTALLED+=("${QUEUE[@]}")
-            APT_REMOVE_QUEUE=()
-            apt_refresh_packages
-        }
+        if [ "${#QUEUE[@]}" -gt "0" ]; then
 
-        [ "${#SILENT_QUEUE[@]}" -gt "0" ] && sudo DEBIAN_FRONTEND=noninteractive apt-get "${APT_GET_OPTIONS[@]}" install "${SILENT_QUEUE[@]}" && {
-            APT_INSTALLED+=("${SILENT_QUEUE[@]}")
-            APT_JUST_INSTALLED+=("${SILENT_QUEUE[@]}")
-            APT_INSTALL_QUEUE=()
-            apt_refresh_packages
-        }
+            sudo apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
+                APT_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
+                APT_JUST_INSTALLED+=("${QUEUE[@]}")
+                APT_REMOVE_QUEUE=()
+                apt_refresh_packages
+            }
+
+        fi
+
+        if [ "${#SILENT_QUEUE[@]}" -gt "0" ]; then
+
+            sudo DEBIAN_FRONTEND=noninteractive apt-get "${APT_GET_OPTIONS[@]}" install "${SILENT_QUEUE[@]}" && {
+                APT_INSTALLED+=($(apt_filter_packages "${SILENT_QUEUE[*]}" N))
+                APT_JUST_INSTALLED+=("${SILENT_QUEUE[@]}")
+                APT_INSTALL_QUEUE=()
+                apt_refresh_packages
+            }
+
+        fi
 
     fi
 
     if [ "${#APT_DEB_QUEUE[@]}" -gt "0" ]; then
 
-        do_apt_install_deb "${APT_DEB_QUEUE[@]}"
-        APT_DEB_QUEUE=()
+        do_apt_install_deb "${APT_DEB_QUEUE[@]}" && APT_DEB_QUEUE=()
 
     fi
 
