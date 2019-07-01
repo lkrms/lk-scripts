@@ -119,7 +119,7 @@ function console_message() {
     shift
     shift
     echocn "==> " "$@"
-    echocn "$MESSAGE1" $BOLD
+    echocn "$MESSAGE1"
     [ -n "$MESSAGE2" ] && echocn " $MESSAGE2" $BOLD "$@"
     echo
 
@@ -204,6 +204,18 @@ EOF
         fi
 
     fi
+
+}
+
+function sed_escape_search() {
+
+    echo "${1:-}" | sed 's/[]\/$*.^()[]/\\&/g'
+
+}
+
+function sed_escape_replace() {
+
+    echo "${1:-}" | sed 's/[\/&]/\\&/g'
 
 }
 

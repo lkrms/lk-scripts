@@ -38,25 +38,57 @@ function apt_package_is_cli() {
 
 }
 
-# Underlines "gui" packages.
-# Usage: apt_pretty_packages "package1 package2 package3"
-function apt_pretty_packages() {
+# Removes duplicates and suppressed packages.
+# Usage: apt_filter_packages "package1 package2 package3-"
+function apt_filter_packages() {
 
-    local FORMATTED=() p
+    local PACKAGES=($1) FILTERED=() p
 
-    for p in ${1:-}; do
+    PACKAGES=($(printf '%s\n' "${PACKAGES[@]}" | sort | uniq))
 
-        [ -n "$p" ] || continue
+    for p in "${PACKAGES[@]}"; do
 
-        if apt_package_is_gui "$p"; then
+        if [ "${p:(-1)}" = "-" ]; then
 
-            FORMATTED+=("${UNDERLINE}${p}${NO_UNDERLINE}")
-
-        else
-
-            FORMATTED+=("$p")
+            # don't display at all if just a suppression
+            apt_package_installed "${p::(-1)}" || continue
 
         fi
+
+    done
+
+    echo "${FILTERED[*]}"
+
+}
+
+# Underlines "gui" packages, and colours packages being removed red. Doesn't re-flow text.
+# Usage: apt_pretty_packages "package1 package2 package3-" [$BLUE ...]
+function apt_pretty_packages() {
+
+    local PACKAGES=($1) FORMATTED="$1" COLOUR_RESET="${RESET}" p q s r
+
+    [ "$#" -gt "1" ] && {
+        shift
+        COLOUR_RESET="$(printf '%s' "$@")"
+    }
+
+    for p in "${PACKAGES[@]}"; do
+
+        s="$(sed_escape_search "$p")"
+        q="$p"
+
+        if [ "${p:(-1)}" = "-" ]; then
+
+            p="${p::(-1)}"
+            q="${BOLD}${RED}${p} "
+
+        fi
+
+        apt_package_is_gui "$p" && q="${UNDERLINE}${q}${NO_UNDERLINE}"
+        q="${q}${COLOUR_RESET}"
+
+        r="$(sed_escape_replace "$q")"
+        FORMATTED="$(echo "$FORMATTED" | sed -E 's/(\s|^)'"$s"'(\s|$)/\1'"$r"'\2/g')"
 
     done
 
@@ -212,10 +244,10 @@ function apt_make_cache_clean() {
 
 }
 
-# Usage: apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "${REMOVE[*]}"
+# Usage: apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "${REMOVE[*]}" "${SILENCED[*]}" [return silent? (Y/N)]
 function apt_get_package_list() {
 
-    local p q IGNORED=" $2 " SUPPRESSED=($3) REMOVE=($4) LIST=() BAD_LIST=()
+    local p q IGNORED=" $2 " SUPPRESSED=($3) REMOVE=($4) SILENCED=" $5 " RETURN_SILENT="${6:-N}" LIST=() BAD_LIST=()
 
     for p in $1; do
 
@@ -250,22 +282,31 @@ function apt_get_package_list() {
 
         fi
 
-        LIST+=("$p")
+        # return silent and non-silent packages separately
+        if [[ "$SILENCED" == *" $p "* ]]; then
+
+            [ "$RETURN_SILENT" = "Y" ] && LIST+=("$p")
+
+        else
+
+            [ "$RETURN_SILENT" != "Y" ] && LIST+=("$p")
+
+        fi
 
     done
 
     [ "${#BAD_LIST[@]}" -gt "0" ] && console_message "$(single_or_plural ${#BAD_LIST[@]} Package Packages) unavailable for installation:" "${BAD_LIST[*]}" $RED >&2 && false
 
-    for q in "${SUPPRESSED[@]}"; do
-
-        # suppressing doesn't mean removing
-        ! apt_package_installed "$q" && LIST+=("${q}-")
-
-    done
-
     for q in "${REMOVE[@]}"; do
 
         apt_package_installed "$q" && LIST+=("${q}-")
+
+    done
+
+    [ "${#LIST[@]}" -gt "0" ] && for q in "${SUPPRESSED[@]}"; do
+
+        # suppressing doesn't mean removing
+        ! apt_package_installed "$q" && LIST+=("${q}-")
 
     done
 
@@ -280,16 +321,17 @@ function apt_install_packages() {
 
     apt_make_cache_clean
 
-    local INSTALLED=() INSTALL=() IGNORED=() SUPPRESSED=() IGNORE SUPPRESS PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX OPTIONS QUEUE PROMPT_EXTRA= p
+    local INSTALLED=() INSTALL=() SILENT_INSTALL=() PRETTY_INSTALL=() IGNORED=() SUPPRESSED=() SILENCED=() IGNORE SUPPRESS NO_INTERACT PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX OPTIONS QUEUE PROMPT_EXTRA= p
 
-    console_message "Checking $1..." "" $BLUE
+    console_message "Checking $1..." "" $CYAN
 
     for p in $2; do
 
         IGNORE=0
         SUPPRESS=0
+        NO_INTERACT=0
 
-        while [[ "${p:(-1)}" =~ [+?-] ]]; do
+        while [[ "${p:(-1)}" =~ [+?\!-] ]]; do
 
             case "${p:(-1)}" in
 
@@ -301,6 +343,10 @@ function apt_install_packages() {
                 SUPPRESS=1
                 ;;
 
+            \!)
+                NO_INTERACT=1
+                ;;
+
             esac
 
             p="${p::(-1)}"
@@ -309,6 +355,7 @@ function apt_install_packages() {
 
         [ "$SUPPRESS" -eq "1" ] && SUPPRESSED+=("$p") && continue
         [ "$IGNORE" -eq "1" ] && IGNORED+=("$p")
+        [ "$NO_INTERACT" -eq "1" ] && SILENCED+=("$p")
 
         PPA_INDEX=$(array_search "$p" APT_PPA_PACKAGES) || true
         REPO_INDEX=$(array_search "$p" APT_REPO_PACKAGES) || true
@@ -354,7 +401,7 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "${INSTALL[*]}")" $BLUE
+            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "$(apt_filter_packages "${INSTALL[*]}")" $BLUE)" $BLUE
 
             [ "${#QUEUE[@]}" -gt "0" ] && console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $BLUE && PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
             echo
@@ -382,13 +429,21 @@ function apt_install_packages() {
             }
 
             apt_make_cache_clean
-            INSTALL=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" ""))
-            console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "${INSTALL[*]}")" $GREEN
+            INSTALL=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}"))
+            SILENT_INSTALL=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" Y))
+            PRETTY_INSTALL=($(apt_pretty_packages "$(apt_filter_packages "${INSTALL[*]} ${SILENT_INSTALL[*]}")" $GREEN))
+            console_message "Installing ${#PRETTY_INSTALL[@]} $(single_or_plural ${#PRETTY_INSTALL[@]} package packages):" "${PRETTY_INSTALL[*]}" $GREEN
             echo
 
-            sudo apt-get "${OPTIONS[@]}" install "${INSTALL[@]}" && {
+            [ "${#INSTALL[@]}" -gt "0" ] && sudo apt-get "${OPTIONS[@]}" install "${INSTALL[@]}" && {
                 APT_INSTALLED+=("${INSTALL[@]}")
                 APT_JUST_INSTALLED+=("${INSTALL[@]}")
+                apt_refresh_packages
+            }
+
+            [ "${#SILENT_INSTALL[@]}" -gt "0" ] && sudo DEBIAN_FRONTEND=noninteractive apt-get "${OPTIONS[@]}" install "${SILENT_INSTALL[@]}" && {
+                APT_INSTALLED+=("${SILENT_INSTALL[@]}")
+                APT_JUST_INSTALLED+=("${SILENT_INSTALL[@]}")
                 apt_refresh_packages
             }
 
@@ -397,6 +452,7 @@ function apt_install_packages() {
             APT_INSTALL_QUEUE+=("${INSTALL[@]}")
             APT_IGNORED+=("${IGNORED[@]}")
             APT_SUPPRESSED+=("${SUPPRESSED[@]}")
+            APT_SILENCED+=("${SILENCED[@]}")
             APT_PPA_QUEUE+=("${PPA_QUEUE[@]}")
             APT_REPO_QUEUE+=("${REPO_QUEUE[@]}")
 
@@ -597,7 +653,7 @@ function do_apt_install_deb() {
 
 function apt_process_queue() {
 
-    local QUEUE
+    local QUEUE SILENT_QUEUE PRETTY_QUEUE
 
     if [ "${#APT_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
@@ -616,13 +672,23 @@ function apt_process_queue() {
         }
 
         apt_make_cache_clean
-        QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "${APT_REMOVE_QUEUE[*]}"))
-        console_message "Installing ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} package packages):" "$(apt_pretty_packages "${QUEUE[*]}")" $GREEN
+        QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "${APT_REMOVE_QUEUE[*]}" "${APT_SILENCED[*]}"))
+        SILENT_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "${APT_REMOVE_QUEUE[*]}" "${APT_SILENCED[*]}" Y))
+        PRETTY_QUEUE=($(apt_pretty_packages "$(apt_filter_packages "${QUEUE[*]} ${SILENT_QUEUE[*]}")" $GREEN))
+        console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "${PRETTY_QUEUE[*]}" $GREEN
         echo
 
-        sudo apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
+        [ "${#QUEUE[@]}" -gt "0" ] && sudo apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
             APT_INSTALLED+=("${QUEUE[@]}")
             APT_JUST_INSTALLED+=("${QUEUE[@]}")
+            APT_INSTALL_QUEUE=()
+            APT_REMOVE_QUEUE=()
+            apt_refresh_packages
+        }
+
+        [ "${#SILENT_QUEUE[@]}" -gt "0" ] && sudo DEBIAN_FRONTEND=noninteractive apt-get "${APT_GET_OPTIONS[@]}" install "${SILENT_QUEUE[@]}" && {
+            APT_INSTALLED+=("${SILENT_QUEUE[@]}")
+            APT_JUST_INSTALLED+=("${SILENT_QUEUE[@]}")
             APT_INSTALL_QUEUE=()
             APT_REMOVE_QUEUE=()
             apt_refresh_packages
@@ -633,6 +699,7 @@ function apt_process_queue() {
     if [ "${#APT_DEB_QUEUE[@]}" -gt "0" ]; then
 
         do_apt_install_deb "${APT_DEB_QUEUE[@]}"
+        APT_DEB_QUEUE=()
 
     fi
 
@@ -660,7 +727,7 @@ function apt_get_new_configuration_files() {
 
     sudo find /etc -type f | grep -vFf <(
         set -euo pipefail
-        sudo debsums -e 2>/dev/null | sed -r 's/[[:space:]]*[A-Z]+$//'
+        sudo debsums -e 2>/dev/null | sed -E 's/[[:space:]]*[A-Z]+$//'
     )
 
 }
@@ -677,6 +744,7 @@ APT_INSTALLED=()
 APT_JUST_INSTALLED=()
 APT_IGNORED=()
 APT_SUPPRESSED=()
+APT_SILENCED=()
 APT_INSTALL_QUEUE=()
 APT_REMOVE_QUEUE=()
 APT_PPA_QUEUE=()

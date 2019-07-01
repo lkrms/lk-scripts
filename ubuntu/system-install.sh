@@ -18,11 +18,6 @@ offer_sudo_password_bypass
 
 apt_make_cache_clean
 
-console_message "Upgrading everything that's currently installed..." "" $BLUE
-
-sudo apt-get "${APT_GET_OPTIONS[@]}" -y dist-upgrade
-[ "$IS_SNAP_INSTALLED" -eq "1" ] && sudo snap refresh
-
 # install prequisites and packages that may be needed to bootstrap others
 apt_force_install_packages "apt-transport-https aptitude ca-certificates debconf-utils distro-info dmidecode gnupg-agent software-properties-common wget whiptail"
 
@@ -47,11 +42,6 @@ fi
 # seed debconf database with answers
 sudo debconf-set-selections <<EOF
 libc6 libraries/restart-without-asking boolean true
-libdvd-pkg libdvd-pkg/build boolean true
-libdvd-pkg libdvd-pkg/first-install note
-libdvd-pkg libdvd-pkg/post-invoke_hook-install boolean true
-libdvd-pkg libdvd-pkg/post-invoke_hook-remove boolean false
-libdvd-pkg libdvd-pkg/upgrade note
 libpam0g libraries/restart-without-asking boolean true
 EOF
 
@@ -85,7 +75,7 @@ apt_install_packages "package management" "nodejs snapd yarn" N
 apt_install_packages "essential utilities" "attr cifs-utils debsums fio hfsprogs hwinfo lftp linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois"
 sudo dmidecode -t system | grep -i ThinkPad &>/dev/null && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms"
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat"
-apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman bsd-mailx- code copyq dconf-editor eyed3 filezilla firefox galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text thunderbird tilda tilix typora usb-creator-gtk vlc"
+apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman bsd-mailx- code copyq dconf-editor eyed3 filezilla firefox galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg! libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text thunderbird tilda tilix typora usb-creator-gtk vlc"
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
 apt_install_packages "MakeMKV dependencies" "libavcodec-dev libc6-dev libexpat1-dev libgl1-mesa-dev libqt4-dev libssl-dev pkg-config zlib1g-dev"
 apt_install_packages "development" 'libapache2-mod-php*- '"build-essential git php php-bcmath php-cli php-curl php-dev php-fpm php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby"
@@ -104,7 +94,7 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
 
     apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Install workaround for removal of system tray indicators?" && {
 
-        # because too many indicators don't play by the rules (see: https://www.reddit.com/r/elementaryos/comments/aghyiq/system_tray/)
+        # because too many apps don't play by the rules (see: https://www.reddit.com/r/elementaryos/comments/aghyiq/system_tray/)
         mkdir -p "$HOME/.config/autostart"
         cp -f "/etc/xdg/autostart/indicator-application.desktop" "$HOME/.config/autostart/"
         sed -i 's/^OnlyShowIn.*/OnlyShowIn=Unity;GNOME;Pantheon;/' "$HOME/.config/autostart/indicator-application.desktop"
@@ -122,7 +112,26 @@ fi
 
 apt_process_queue
 
+if array_search "libdvd-pkg" APT_JUST_INSTALLED; then
+
+    sudo debconf-set-selections <<EOF
+libdvd-pkg libdvd-pkg/build boolean true
+libdvd-pkg libdvd-pkg/first-install note
+libdvd-pkg libdvd-pkg/post-invoke_hook-install boolean true
+libdvd-pkg libdvd-pkg/post-invoke_hook-remove boolean false
+libdvd-pkg libdvd-pkg/upgrade note
+EOF
+
+    sudo DEBIAN_FRONTEND=noninteractive dpkg-reconfigure libdvd-pkg
+
+fi
+
+console_message "Upgrading everything that's currently installed..." "" $BLUE
+
+sudo apt-get "${APT_GET_OPTIONS[@]}" -y dist-upgrade
+[ "$IS_SNAP_INSTALLED" -eq "1" ] && sudo snap refresh
+
 ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | sort | uniq))
 console_message "${#APT_INSTALLED[@]} installed $(single_or_plural ${#APT_INSTALLED[@]} "package is" "packages are") managed by $(basename "$0"):" "" $BLUE
-ALL_PACKAGES=($(apt_pretty_packages "${ALL_PACKAGES[*]}"))
-printf '%s\n' "${ALL_PACKAGES[@]}" | column
+COLUMNS="$(tput cols)"
+apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")"
