@@ -11,11 +11,7 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 assert_not_root
 
-if [ "$#" -ne "1" ]; then
-
-    die "Usage: $(basename "$0") </path/to/changed/file>"
-
-fi
+[ "$#" -eq "1" ] || die "Usage: $(basename "$0") </path/to/changed/file>"
 
 FILE_PATH="$(readlink -e "$1")"
 

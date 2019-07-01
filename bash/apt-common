@@ -38,11 +38,13 @@ function apt_package_is_cli() {
 
 }
 
+# Underlines "gui" packages.
+# Usage: apt_pretty_packages "package1 package2 package3"
 function apt_pretty_packages() {
 
     local FORMATTED=() p
 
-    for p in $1; do
+    for p in ${1:-}; do
 
         [ -n "$p" ] || continue
 
@@ -65,11 +67,14 @@ function apt_pretty_packages() {
 function apt_ubuntu_archive_url() {
 
     # attempt to identify a local archive URL
-    [ -z "${UBUNTU_ARCHIVE_URL:-}" ] && UBUNTU_ARCHIVE_URL="$(
-        set -euo pipefail
-        grep -Eo '\bhttps?://([[:alnum:]]+\.)archive\.ubuntu\.com/ubuntu\b' /etc/apt/sources.list | head -n1
-    )/"
-    [ "$UBUNTU_ARCHIVE_URL" = "/" ] && UBUNTU_ARCHIVE_URL="http://archive.ubuntu.com/ubuntu/"
+    if [ -z "${UBUNTU_ARCHIVE_URL:-}" ]; then
+
+        UBUNTU_ARCHIVE_URL="$(
+            set -euo pipefail
+            grep -Eo '\bhttps?://([[:alnum:]]+\.)archive\.ubuntu\.com/ubuntu\b' /etc/apt/sources.list | head -n1
+        )/" || UBUNTU_ARCHIVE_URL="http://archive.ubuntu.com/ubuntu/"
+
+    fi
 
     echo "$UBUNTU_ARCHIVE_URL"
 
@@ -275,7 +280,7 @@ function apt_install_packages() {
 
     apt_make_cache_clean
 
-    local INSTALLED=() INSTALL=() IGNORED=() SUPPRESSED=() IGNORE SUPPRESS PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX QUEUE PROMPT_EXTRA= p
+    local INSTALLED=() INSTALL=() IGNORED=() SUPPRESSED=() IGNORE SUPPRESS PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX OPTIONS QUEUE PROMPT_EXTRA= p
 
     console_message "Checking $1..." "" $BLUE
 
@@ -305,8 +310,8 @@ function apt_install_packages() {
         [ "$SUPPRESS" -eq "1" ] && SUPPRESSED+=("$p") && continue
         [ "$IGNORE" -eq "1" ] && IGNORED+=("$p")
 
-        PPA_INDEX=$(array_search "$p" APT_PPA_PACKAGES)
-        REPO_INDEX=$(array_search "$p" APT_REPO_PACKAGES)
+        PPA_INDEX=$(array_search "$p" APT_PPA_PACKAGES) || true
+        REPO_INDEX=$(array_search "$p" APT_REPO_PACKAGES) || true
 
         if [ -n "$PPA_INDEX" ]; then
 
@@ -324,7 +329,16 @@ function apt_install_packages() {
 
         else
 
-            INSTALL+=("$p")
+            # if this package is allowed to be unavailable, isn't associated with a queued repo, and isn't available, ignore it now rather than prompting the user
+            if [ "$IGNORE" -eq "1" -a -z "$PPA_INDEX" -a -z "$REPO_INDEX" ] && ! apt_package_available "$p"; then
+
+                console_message "Package unavailable for installation (ignoring):" "$p" $RED >&2
+
+            else
+
+                INSTALL+=("$p")
+
+            fi
 
         fi
 
@@ -333,6 +347,8 @@ function apt_install_packages() {
     APT_INSTALLED+=("${INSTALLED[@]}")
 
     if [ "${#INSTALL[@]}" -gt "0" ]; then
+
+        OPTIONS=("${APT_GET_OPTIONS[@]}")
 
         QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}" | sort | uniq))
 
@@ -344,6 +360,10 @@ function apt_install_packages() {
             echo
 
             get_confirmation "Add the $1 $(single_or_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" || return
+
+        else
+
+            array_search "-y" APT_GET_OPTIONS || array_search "--yes" APT_GET_OPTIONS || array_search "--assume-yes" APT_GET_OPTIONS || OPTIONS+=("-y")
 
         fi
 
@@ -366,8 +386,9 @@ function apt_install_packages() {
             console_message "Installing ${#INSTALL[@]} $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "${INSTALL[*]}")" $GREEN
             echo
 
-            sudo apt-get "${APT_GET_OPTIONS[@]}" install "${INSTALL[@]}" && {
+            sudo apt-get "${OPTIONS[@]}" install "${INSTALL[@]}" && {
                 APT_INSTALLED+=("${INSTALL[@]}")
+                APT_JUST_INSTALLED+=("${INSTALL[@]}")
                 apt_refresh_packages
             }
 
@@ -430,9 +451,7 @@ function apt_add_repo() {
 
         [ -z "$repo" ] && continue
 
-        i=$(array_search "$repo" APT_REPO_REGISTRY)
-
-        [ -n "$i" ] || die "Error: unable to find metadata for repository '$repo'"
+        i=$(array_search "$repo" APT_REPO_REGISTRY) || die "Error: unable to find metadata for repository '$repo'"
 
         KEY_URL="${APT_REPO_KEY_URLS[$i]}"
         ENTRY="${APT_REPO_ENTRIES[$i]}"
@@ -568,6 +587,7 @@ function do_apt_install_deb() {
 
         { sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -yf install; } && {
             APT_INSTALLED+=("${NOT_SKIPPED[@]}")
+            APT_JUST_INSTALLED+=("${NOT_SKIPPED[@]}")
             apt_refresh_packages
         }
 
@@ -602,6 +622,7 @@ function apt_process_queue() {
 
         sudo apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
             APT_INSTALLED+=("${QUEUE[@]}")
+            APT_JUST_INSTALLED+=("${QUEUE[@]}")
             APT_INSTALL_QUEUE=()
             APT_REMOVE_QUEUE=()
             apt_refresh_packages
@@ -653,6 +674,7 @@ APT_REPO_KEY_URLS=()
 APT_REPO_ENTRIES=()
 APT_REPO_PACKAGES=()
 APT_INSTALLED=()
+APT_JUST_INSTALLED=()
 APT_IGNORED=()
 APT_SUPPRESSED=()
 APT_INSTALL_QUEUE=()
