@@ -471,7 +471,7 @@ function apt_add_repo() {
 
 function apt_deb_path() {
 
-    echo "$RS_CACHE_DIR/${1//[^._[:alnum:]]/-}"
+    echo "$RS_CACHE_DIR/deb/${1//[^._[:alnum:]]/-}"
 
 }
 
@@ -613,6 +613,24 @@ function apt_process_queue() {
 function apt_force_install_packages() {
 
     apt_install_packages "prerequisites" "$1" N N
+
+}
+
+# returns all changed configuration files (note: deleted files aren't detected)
+function apt_get_changed_configuration_files() {
+
+    command -v debsums &>/dev/null || apt_force_install_packages "debsums"
+
+    sudo debsums -ce 2>/dev/null
+
+}
+
+# returns all new files under /etc
+function apt_get_new_configuration_files() {
+
+    command -v debsums &>/dev/null || apt_force_install_packages "debsums"
+
+    sudo find /etc -type f | grep -vFf <(sudo debsums -e 2>/dev/null | sed -r 's/[[:space:]]*[A-Z]+$//')
 
 }
 
