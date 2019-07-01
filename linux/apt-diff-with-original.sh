@@ -60,7 +60,7 @@ for p in "${PACKAGES[@]}"; do
 
     if [ -e "$EXTRACT_PATH$1" ]; then
 
-        diff "$EXTRACT_PATH$1" "$FILE"
+        diff "$EXTRACT_PATH$1" "$1"
         exit
 
     fi
