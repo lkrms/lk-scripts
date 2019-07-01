@@ -13,25 +13,20 @@ assert_not_root
 
 if [ "$#" -ne "1" ]; then
 
-    echo "Usage: $(basename "$0") </path/to/changed/file>"
-    exit 1
+    die "Usage: $(basename "$0") </path/to/changed/file>"
 
 fi
 
-FILE_PATH="$(readlink -e "$1")" || {
-    echo "File not found: $1"
-    exit 1
-}
+FILE_PATH="$(readlink -e "$1")"
 
 PACKAGES=($(
     set -euo pipefail
     dpkg-query -S "$FILE_PATH" | sed 's/:.*$//' | sort | uniq
-)) || exit 1
+))
 
-[ "${#PACKAGES[@]}" -gt "0" ] || {
-    echo "Package couldn't be identified for $1"
-    exit 1
-}
+[ "${#PACKAGES[@]}" -gt "0" ] || die "Package couldn't be identified for $1"
+
+apt_mark_cache_clean
 
 for p in "${PACKAGES[@]}"; do
 
@@ -67,5 +62,4 @@ for p in "${PACKAGES[@]}"; do
 
 done
 
-echo "Unable to find $1. Searched in: $PACKAGES[*]"
-exit 1
+die "Unable to find original version of $1. Searched in: $PACKAGES[*]"

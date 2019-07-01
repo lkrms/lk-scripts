@@ -20,9 +20,9 @@ php@7.2
 pkg-config
 poppler
 pv
-python3
 rsync
 telnet
+terminal-notifier
 tesseract
 tesseract-lang
 wget

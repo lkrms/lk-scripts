@@ -20,8 +20,8 @@ apt_make_cache_clean
 
 console_message "Upgrading everything that's currently installed..." "" $BLUE
 
-sudo apt-get "${APT_GET_OPTIONS[@]}" -y dist-upgrade || exit 1
-[ "$IS_SNAP_INSTALLED" -eq "1" ] && { sudo snap refresh || exit 1; }
+sudo apt-get "${APT_GET_OPTIONS[@]}" -y dist-upgrade
+[ "$IS_SNAP_INSTALLED" -eq "1" ] && sudo snap refresh
 
 # install prequisites and packages that may be needed to bootstrap others
 apt_force_install_packages "apt-transport-https aptitude ca-certificates distro-info dmidecode gnupg-agent software-properties-common wget whiptail"

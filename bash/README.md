@@ -5,11 +5,13 @@
 The suggested method for sourcing `common` in your scripts is as follows:
 
 ```bash
+set -euo pipefail
+
 SCRIPT_PATH="${BASH_SOURCE[0]}"
 [ -L "$SCRIPT_PATH" ] && SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
-. "$SCRIPT_DIR/path/to/common" || exit 1
+. "$SCRIPT_DIR/path/to/common"
 ```
 
 If this seems unnecessarily complex, consider that:

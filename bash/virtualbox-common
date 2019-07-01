@@ -6,12 +6,7 @@ function virtualbox_exists() {
 
 function assert_virtualbox_exists() {
 
-    if ! virtualbox_exists "$1"; then
-
-        echo "Error: '$1' is not a registered virtual machine"
-        exit 1
-
-    fi
+    virtualbox_exists "$1" || die "Error: '$1' is not a registered virtual machine"
 
 }
 

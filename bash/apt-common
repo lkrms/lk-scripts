@@ -4,7 +4,10 @@ function apt_refresh_packages() {
 
     APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\n' -W)"
     APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames)"
-    APT_GUI_PACKAGES="$(apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances x11-common libx11-6 | grep -Ev " " | sort | uniq)"
+    APT_GUI_PACKAGES="$(
+        set -euo pipefail
+        apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances x11-common libx11-6 | grep -Ev " " | sort | uniq
+    )"
 
 }
 
@@ -62,7 +65,10 @@ function apt_pretty_packages() {
 function apt_ubuntu_archive_url() {
 
     # attempt to identify a local archive URL
-    [ -z "${UBUNTU_ARCHIVE_URL:-}" ] && UBUNTU_ARCHIVE_URL="$(grep -Eo '\bhttps?://([[:alnum:]]+\.)archive\.ubuntu\.com/ubuntu\b' /etc/apt/sources.list | head -n1)/"
+    [ -z "${UBUNTU_ARCHIVE_URL:-}" ] && UBUNTU_ARCHIVE_URL="$(
+        set -euo pipefail
+        grep -Eo '\bhttps?://([[:alnum:]]+\.)archive\.ubuntu\.com/ubuntu\b' /etc/apt/sources.list | head -n1
+    )/"
     [ "$UBUNTU_ARCHIVE_URL" = "/" ] && UBUNTU_ARCHIVE_URL="http://archive.ubuntu.com/ubuntu/"
 
     echo "$UBUNTU_ARCHIVE_URL"
@@ -75,7 +81,7 @@ function do_apt_enable_ubuntu_repository() {
 
         command -v add-apt-repository &>/dev/null || apt_force_install_packages "software-properties-common"
 
-        sudo add-apt-repository -yn "deb $(apt_ubuntu_archive_url) $1 $2" || exit 1
+        sudo add-apt-repository -yn "deb $(apt_ubuntu_archive_url) $1 $2"
 
         APT_CACHE_DIRTY=1
 
@@ -107,7 +113,7 @@ function apt_enable_partner_repository() {
 
         command -v add-apt-repository &>/dev/null || apt_force_install_packages "software-properties-common"
 
-        sudo add-apt-repository -yn "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner" || exit 1
+        sudo add-apt-repository -yn "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner"
 
         APT_CACHE_DIRTY=1
 
@@ -182,16 +188,20 @@ function apt_register_repository() {
 
 }
 
+# use this when you don't need the latest package index files
+function apt_mark_cache_clean() {
+
+    [ "$APT_CACHE_DIRTY" -ne "0" ] && apt_refresh_packages && APT_CACHE_DIRTY=0
+
+}
+
 function apt_make_cache_clean() {
 
     if [ "$APT_CACHE_DIRTY" -ne "0" ]; then
 
         console_message "Updating package lists..." "" $BLUE
 
-        sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || {
-            echo "Error: apt-get update failed"
-            exit 1
-        }
+        sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || die "Error: apt-get update failed"
 
     fi
 
@@ -239,7 +249,7 @@ function apt_get_package_list() {
 
     done
 
-    [ "${#BAD_LIST[@]}" -gt "0" ] && console_message "$(single_or_plural ${#BAD_LIST[@]} Package Packages) unavailable for installation:" "${BAD_LIST[*]}" $RED && exit 1
+    [ "${#BAD_LIST[@]}" -gt "0" ] && console_message "$(single_or_plural ${#BAD_LIST[@]} Package Packages) unavailable for installation:" "${BAD_LIST[*]}" $RED >&2 && false
 
     for q in "${SUPPRESSED[@]}"; do
 
@@ -359,7 +369,7 @@ function apt_install_packages() {
             sudo apt-get "${APT_GET_OPTIONS[@]}" install "${INSTALL[@]}" && {
                 APT_INSTALLED+=("${INSTALL[@]}")
                 apt_refresh_packages
-            } || exit 1
+            }
 
         else
 
@@ -383,7 +393,7 @@ function apt_add_ppa() {
 
         [ -z "$ppa" ] && continue
 
-        sudo add-apt-repository -yn "ppa:$ppa" || exit 1
+        sudo add-apt-repository -yn "ppa:$ppa"
 
         APT_CACHE_DIRTY=1
 
@@ -422,23 +432,14 @@ function apt_add_repo() {
 
         i=$(array_search "$repo" APT_REPO_REGISTRY)
 
-        [ -n "$i" ] || {
-            echo "Error: unable to find metadata for repository '$repo'"
-            exit 1
-        }
+        [ -n "$i" ] || die "Error: unable to find metadata for repository '$repo'"
 
         KEY_URL="${APT_REPO_KEY_URLS[$i]}"
         ENTRY="${APT_REPO_ENTRIES[$i]}"
 
-        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || {
-            echo "Error: unable to write to /etc/apt/sources.list.d/$repo.list"
-            exit 1
-        }
+        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || die "Error: unable to write to /etc/apt/sources.list.d/$repo.list"
 
-        apt_add_key_from_url "$KEY_URL" || {
-            echo "Error: unable to add GPG key for $repo from $1"
-            exit 1
-        }
+        apt_add_key_from_url "$KEY_URL" || die "Error: unable to add GPG key for $repo from $1"
 
         APT_CACHE_DIRTY=1
 
@@ -512,10 +513,10 @@ function do_apt_install_deb() {
         mkdir -p "$(dirname "$DEB_PATH")"
 
         (
-            if ! { wget -qcO "$DEB_PATH" "$url" && console_message "Finished downloading:" "$url" $GREEN; }; then
-                console_message "Unable to download:" "$url" $RED
-                exit 1
-            fi
+            wget -qcO "$DEB_PATH" "$url" && console_message "Finished downloading:" "$url" $GREEN || {
+                console_message "Unable to download:" "$url" $RED >&2
+                false
+            }
         ) &
 
         PIDS+=("$!")
@@ -528,16 +529,22 @@ function do_apt_install_deb() {
 
     done
 
-    [ "$WGET_RESULT" -eq "0" ] || exit 1
+    [ "$WGET_RESULT" -eq "0" ]
 
     for path in "${!DEB_PATHS[@]}"; do
 
-        DEB_PACKAGE="$(dpkg-deb --showformat '${Package}' -W "${DEB_PATHS[$path]}" | tail -n 1)" || exit 1
+        DEB_PACKAGE="$(
+            set -euo pipefail
+            dpkg-deb --showformat '${Package}' -W "${DEB_PATHS[$path]}" | tail -n 1
+        )"
 
         if apt_package_installed "$DEB_PACKAGE"; then
 
-            DEB_VERSION="$(dpkg-deb --showformat '${Version}' -W "${DEB_PATHS[$path]}" | tail -n 1)" || exit 1
-            INSTALLED_VERSION="$(dpkg-query -f '${Version}' -W "$DEB_PACKAGE")" || exit 1
+            DEB_VERSION="$(
+                set -euo pipefail
+                dpkg-deb --showformat '${Version}' -W "${DEB_PATHS[$path]}" | tail -n 1
+            )"
+            INSTALLED_VERSION="$(dpkg-query -f '${Version}' -W "$DEB_PACKAGE")"
 
             if dpkg --compare-versions "$DEB_VERSION" le "$INSTALLED_VERSION"; then
 
@@ -562,7 +569,7 @@ function do_apt_install_deb() {
         { sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -yf install; } && {
             APT_INSTALLED+=("${NOT_SKIPPED[@]}")
             apt_refresh_packages
-        } || exit 1
+        }
 
     fi
 
@@ -598,7 +605,7 @@ function apt_process_queue() {
             APT_INSTALL_QUEUE=()
             APT_REMOVE_QUEUE=()
             apt_refresh_packages
-        } || exit 1
+        }
 
     fi
 
@@ -630,7 +637,10 @@ function apt_get_new_configuration_files() {
 
     command -v debsums &>/dev/null || apt_force_install_packages "debsums"
 
-    sudo find /etc -type f | grep -vFf <(sudo debsums -e 2>/dev/null | sed -r 's/[[:space:]]*[A-Z]+$//')
+    sudo find /etc -type f | grep -vFf <(
+        set -euo pipefail
+        sudo debsums -e 2>/dev/null | sed -r 's/[[:space:]]*[A-Z]+$//'
+    )
 
 }
 

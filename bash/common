@@ -1,11 +1,12 @@
+set -euo pipefail
+
 SCRIPT_ARGS=("$@")
 
 function assert_is_macos() {
 
     if [ "$IS_MACOS" -ne "1" ]; then
 
-        echo "Error: $(basename "$0") is not supported on this platform (macOS required)"
-        exit 1
+        die "Error: $(basename "$0") is not supported on this platform (macOS required)"
 
     fi
 
@@ -15,8 +16,7 @@ function assert_is_linux() {
 
     if [ "$IS_LINUX" -ne "1" ]; then
 
-        echo "Error: $(basename "$0") is not supported on this platform (Linux required)"
-        exit 1
+        die "Error: $(basename "$0") is not supported on this platform (Linux required)"
 
     fi
 
@@ -26,8 +26,7 @@ function assert_is_ubuntu() {
 
     if [ "$IS_UBUNTU" -ne "1" ]; then
 
-        echo "Error: $(basename "$0") is not supported on this platform (Ubuntu required)"
-        exit 1
+        die "Error: $(basename "$0") is not supported on this platform (Ubuntu required)"
 
     fi
 
@@ -39,8 +38,7 @@ function assert_apt_available() {
 
     if [ "$IS_APT_INSTALLED" -ne "1" ]; then
 
-        echo "Error: $(basename "$0") requires apt and dpkg"
-        exit 1
+        die "Error: $(basename "$0") requires apt and dpkg"
 
     fi
 
@@ -54,8 +52,7 @@ function assert_is_ubuntu_lts() {
 
     if ! ubuntu-distro-info --supported-esm | grep "^${DISTRIB_CODENAME}\$" &>/dev/null; then
 
-        echo "Error: $(basename "$0") is only supported on LTS releases of Ubuntu"
-        exit 1
+        die "Error: $(basename "$0") is only supported on LTS releases of Ubuntu"
 
     fi
 
@@ -65,8 +62,7 @@ function assert_root() {
 
     if [ "$EUID" -ne "0" ]; then
 
-        echo "Error: $(basename "$0") must be run as the superuser"
-        exit 1
+        die "Error: $(basename "$0") must be run as the superuser"
 
     fi
 
@@ -76,23 +72,7 @@ function assert_not_root() {
 
     if [ "$EUID" -eq "0" ]; then
 
-        echo "Error: $(basename "$0") can't be run as the superuser"
-        exit 1
-
-    fi
-
-}
-
-# Usage: argument_or_default VAR_TO_SET "default value if there's not exactly one command line argument"
-function argument_or_default() {
-
-    if [ "${#SCRIPT_ARGS[@]}" -eq "1" ]; then
-
-        eval $1='"${SCRIPT_ARGS[0]}"'
-
-    else
-
-        eval $1='"$2"'
+        die "Error: $(basename "$0") can't be run as the superuser"
 
     fi
 
@@ -120,6 +100,14 @@ function echocn() {
     done
 
     echo -ne "${MESSAGE}${RESET}"
+
+}
+
+function die() {
+
+    [ "$#" -gt "0" ] && echoc "$@" >&2
+
+    exit 1
 
 }
 
@@ -321,8 +309,7 @@ Linux)
 
 *)
 
-    echo "Error: unknown platform"
-    exit 1
+    die "Error: unknown platform"
 
     ;;
 
