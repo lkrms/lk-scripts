@@ -55,6 +55,8 @@ function apt_filter_packages() {
 
         fi
 
+        FILTERED+=("$p")
+
     done
 
     echo "${FILTERED[*]}"
