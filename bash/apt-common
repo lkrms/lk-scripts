@@ -627,8 +627,8 @@ function do_apt_install_deb() {
         mkdir -p "$(dirname "$DEB_PATH")"
 
         (
-            wget -qcO "$DEB_PATH" "$url" && console_message "Finished downloading:" "$url" $CYAN || {
-                console_message "Unable to download:" "$url" $BOLD $RED >&2
+            wget -qcO "$DEB_PATH" "$url" && console_message "Finished downloading:" "${NO_WRAP}${url}${WRAP}" $CYAN || {
+                console_message "Unable to download:" "${NO_WRAP}${url}${WRAP}" $BOLD $RED >&2
                 false
             }
         ) &

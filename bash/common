@@ -287,6 +287,8 @@ UNDERLINE="$(tput smul)"
 NO_UNDERLINE="$(tput rmul)"
 STANDOUT="$(tput smso)"
 NO_STANDOUT="$(tput rmso)"
+NO_WRAP="$(tput rmam)"
+WRAP="$(tput smam)"
 RESET="$(tput sgr0)"
 
 IS_MACOS=0
