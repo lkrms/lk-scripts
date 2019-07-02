@@ -6,7 +6,7 @@ function apt_refresh_packages() {
     APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames)"
     APT_GUI_PACKAGES="$(
         set -euo pipefail
-        apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances x11-common libx11-6 | grep -Ev " " | sort | uniq
+        apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances x11-common libx11-6 | grep -v " " | sort | uniq
     )"
 
 }
@@ -15,6 +15,12 @@ function apt_package_installed() {
 
     apt_make_cache_clean
     echo "$APT_INSTALLED_PACKAGES" | grep -E "^$1"'(:.*)?$' &>/dev/null
+
+}
+
+function apt_package_just_installed() {
+
+    echo "$(printf '%s\n' "${APT_JUST_INSTALLED[@]}")" | grep -E "^$1"'(:.*)?$' &>/dev/null
 
 }
 
@@ -50,10 +56,12 @@ function apt_filter_packages() {
 
         if [ "${p:(-1)}" = "-" ]; then
 
-            [ "$INCLUDE_REMOVED" = "Y" ] || continue
-
             # don't display at all if just a suppression
-            apt_package_installed "${p::(-1)}" || continue
+            if ! { apt_package_installed "${p::(-1)}" || [ "$INCLUDE_REMOVED" = "Y" ]; }; then
+
+                continue
+
+            fi
 
         fi
 
@@ -191,7 +199,7 @@ function apt_register_ppa() {
 
 function apt_add_key_from_url() {
 
-    wget -qO - "$1" | sudo apt-key add - &>/dev/null
+    wget -qO - "$1" | sudo apt-key add - &>/dev/null || die "Error: unable to add GPG key from $1"
 
 }
 
@@ -242,7 +250,7 @@ function apt_make_cache_clean() {
 
         console_message "Updating package lists..." "" $BLUE
 
-        sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || die "Error: apt-get update failed"
+        sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0
 
     fi
 
@@ -269,6 +277,17 @@ function apt_get_package_list() {
 
         done
 
+        # return silent and non-silent packages separately
+        if [[ "$SILENCED" == *" $p "* ]]; then
+
+            [ "$RETURN_SILENT" = "Y" ] || continue
+
+        else
+
+            [ "$RETURN_SILENT" != "Y" ] || continue
+
+        fi
+
         # unavailable? ignore if possible, otherwise add to BAD_LIST
         if ! apt_package_available "$p"; then
 
@@ -286,22 +305,13 @@ function apt_get_package_list() {
 
         fi
 
-        # return silent and non-silent packages separately
-        if [[ "$SILENCED" == *" $p "* ]]; then
-
-            [ "$RETURN_SILENT" = "Y" ] && LIST+=("$p")
-
-        else
-
-            [ "$RETURN_SILENT" != "Y" ] && LIST+=("$p")
-
-        fi
+        LIST+=("$p")
 
     done
 
     [ "${#BAD_LIST[@]}" -gt "0" ] && console_message "$(single_or_plural ${#BAD_LIST[@]} Package Packages) unavailable for installation:" "${BAD_LIST[*]}" $RED >&2 && false
 
-    [ "$RETURN_SILENT" != "Y" ] && for q in "${REMOVE[@]}"; do
+    for q in "${REMOVE[@]}"; do
 
         apt_package_installed "$q" && LIST+=("${q}-")
 
@@ -321,11 +331,9 @@ function apt_get_package_list() {
 # Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override (Y/N)] [queue only (Y/N)]
 function apt_install_packages() {
 
-    local UI="${3:-Y}" QUEUE_ONLY="${4:-Y}"
+    local UI="${3:-Y}" QUEUE_ONLY="${4:-Y}" INSTALLED=() INSTALL=() IGNORED=() SUPPRESSED=() SILENCED=() IGNORE SUPPRESS SILENCE PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX OPTIONS QUEUE PROMPT_EXTRA= INSTALL_QUEUE SILENT_QUEUE PRETTY_QUEUE SUDO_EXTRA=() p q
 
     apt_make_cache_clean
-
-    local INSTALLED=() INSTALL=() SILENT_INSTALL=() PRETTY_INSTALL=() IGNORED=() SUPPRESSED=() SILENCED=() IGNORE SUPPRESS NO_INTERACT PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX OPTIONS QUEUE PROMPT_EXTRA= p
 
     console_message "Checking $1..." "" $CYAN
 
@@ -333,7 +341,7 @@ function apt_install_packages() {
 
         IGNORE=0
         SUPPRESS=0
-        NO_INTERACT=0
+        SILENCE=0
 
         while [[ "${p:(-1)}" =~ [+?\!-] ]]; do
 
@@ -348,7 +356,7 @@ function apt_install_packages() {
                 ;;
 
             \!)
-                NO_INTERACT=1
+                SILENCE=1
                 ;;
 
             esac
@@ -359,7 +367,7 @@ function apt_install_packages() {
 
         [ "$SUPPRESS" -eq "1" ] && SUPPRESSED+=("$p") && continue
         [ "$IGNORE" -eq "1" ] && IGNORED+=("$p")
-        [ "$NO_INTERACT" -eq "1" ] && SILENCED+=("$p")
+        [ "$SILENCE" -eq "1" ] && SILENCED+=("$p")
 
         PPA_INDEX=$(array_search "$p" APT_PPA_PACKAGES) || true
         REPO_INDEX=$(array_search "$p" APT_REPO_PACKAGES) || true
@@ -407,14 +415,17 @@ function apt_install_packages() {
 
             console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "$(apt_filter_packages "${INSTALL[*]}")" $BLUE)" $BLUE
 
-            [ "${#QUEUE[@]}" -gt "0" ] && console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $BLUE && PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
-            echo
+            [ "${#QUEUE[@]}" -gt "0" ] && {
+                console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $BLUE
+                PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
+            }
 
+            echo
             get_confirmation "Add the $1 $(single_or_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" || return
 
         else
 
-            { array_search "-y" APT_GET_OPTIONS || array_search "--yes" APT_GET_OPTIONS || array_search "--assume-yes" APT_GET_OPTIONS || OPTIONS+=("-y"); } >/dev/null
+            [[ "${APT_GET_OPTIONS[*]}" =~ ([[:space:]]|^)(-y|--yes|--assume-yes)([[:space:]]|$) ]] || OPTIONS+=("-y")
 
         fi
 
@@ -422,42 +433,41 @@ function apt_install_packages() {
 
             [ "${#QUEUE[@]}" -gt "0" ] && console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $GREEN
 
-            [ "${#PPA_QUEUE[@]}" -gt "0" ] && {
-                QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" | sort | uniq))
-                apt_add_ppa "${QUEUE[@]}"
-            }
+            for q in PPA REPO; do
 
-            [ "${#REPO_QUEUE[@]}" -gt "0" ] && {
-                QUEUE=($(printf '%s\n' "${REPO_QUEUE[@]}" | sort | uniq))
-                apt_add_repo "${QUEUE[@]}"
-            }
+                eval QUEUE='("${'$q'_QUEUE[@]}")'
+
+                [ "${#QUEUE[@]}" -gt "0" ] && {
+                    QUEUE=($(printf '%s\n' "${QUEUE[@]}" | sort | uniq))
+                    eval apt_add_$(lower $q) "${QUEUE[@]}"
+                }
+
+            done
 
             apt_make_cache_clean
-            INSTALL=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}"))
-            SILENT_INSTALL=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" Y))
-            PRETTY_INSTALL=($(apt_pretty_packages "$(apt_filter_packages "${INSTALL[*]} ${SILENT_INSTALL[*]}")" $GREEN))
-            console_message "Installing ${#PRETTY_INSTALL[@]} $(single_or_plural ${#PRETTY_INSTALL[@]} package packages):" "${PRETTY_INSTALL[*]}" $GREEN
-            echo
+            INSTALL_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" N))
+            SILENT_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" Y))
+            PRETTY_QUEUE=($(apt_pretty_packages "$(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}")" $GREEN))
+            console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "${PRETTY_QUEUE[*]}" $GREEN
 
-            if [ "${#INSTALL[@]}" -gt "0" ]; then
+            for q in "INSTALL_" "SILENT_"; do
 
-                sudo apt-get "${OPTIONS[@]}" install "${INSTALL[@]}" && {
-                    APT_INSTALLED+=($(apt_filter_packages "${INSTALL[*]}" N))
-                    APT_JUST_INSTALLED+=("${INSTALL[@]}")
-                    apt_refresh_packages
-                }
+                eval QUEUE='("${'$q'_QUEUE[@]}")'
 
-            fi
+                if [ "${#QUEUE[@]}" -gt "0" ]; then
 
-            if [ "${#SILENT_INSTALL[@]}" -gt "0" ]; then
+                    sudo "${SUDO_EXTRA[@]}" apt-get "${OPTIONS[@]}" install "${QUEUE[@]}" && {
+                        APT_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
+                        APT_JUST_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
+                    }
 
-                sudo DEBIAN_FRONTEND=noninteractive apt-get "${OPTIONS[@]}" install "${SILENT_INSTALL[@]}" && {
-                    APT_INSTALLED+=($(apt_filter_packages "${SILENT_INSTALL[*]}" N))
-                    APT_JUST_INSTALLED+=("${SILENT_INSTALL[@]}")
-                    apt_refresh_packages
-                }
+                fi
 
-            fi
+                SUDO_EXTRA+=("DEBIAN_FRONTEND=noninteractive")
+
+            done
+
+            apt_refresh_packages
 
         else
 
@@ -524,9 +534,9 @@ function apt_add_repo() {
         KEY_URL="${APT_REPO_KEY_URLS[$i]}"
         ENTRY="${APT_REPO_ENTRIES[$i]}"
 
-        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || die "Error: unable to write to /etc/apt/sources.list.d/$repo.list"
+        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null
 
-        apt_add_key_from_url "$KEY_URL" || die "Error: unable to add GPG key for $repo from $1"
+        apt_add_key_from_url "$KEY_URL"
 
         APT_CACHE_DIRTY=1
 
@@ -682,7 +692,7 @@ function apt_remove_packages() {
 
 function apt_process_queue() {
 
-    local QUEUE SILENT_QUEUE PRETTY_QUEUE
+    local q QUEUE INSTALL_QUEUE SILENT_QUEUE PRETTY_QUEUE SUDO_EXTRA=()
 
     if [ "${#APT_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
@@ -690,50 +700,52 @@ function apt_process_queue() {
 
         [ "${#QUEUE[@]}" -gt "0" ] && console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $GREEN
 
-        [ "${#APT_PPA_QUEUE[@]}" -gt "0" ] && {
-            QUEUE=($(printf '%s\n' "${APT_PPA_QUEUE[@]}" | sort | uniq))
-            apt_add_ppa "${QUEUE[@]}"
-        }
+        for q in PPA REPO; do
 
-        [ "${#APT_REPO_QUEUE[@]}" -gt "0" ] && {
-            QUEUE=($(printf '%s\n' "${APT_REPO_QUEUE[@]}" | sort | uniq))
-            apt_add_repo "${QUEUE[@]}"
-        }
+            eval QUEUE='("${APT_'$q'_QUEUE[@]}")'
+
+            [ "${#QUEUE[@]}" -gt "0" ] && {
+                QUEUE=($(printf '%s\n' "${QUEUE[@]}" | sort | uniq))
+                eval apt_add_$(lower $q) "${QUEUE[@]}"
+            }
+
+        done
 
         apt_make_cache_clean
-        QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "${APT_REMOVE_QUEUE[*]}" "${APT_SILENCED[*]}"))
-        SILENT_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "${APT_REMOVE_QUEUE[*]}" "${APT_SILENCED[*]}" Y))
-        PRETTY_QUEUE=($(apt_pretty_packages "$(apt_filter_packages "${QUEUE[*]} ${SILENT_QUEUE[*]}")" $GREEN))
-        console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "${PRETTY_QUEUE[*]}" $GREEN
-        echo
+        INSTALL_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "${APT_REMOVE_QUEUE[*]}" "${APT_SILENCED[*]}" N))
+        SILENT_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "" "${APT_SILENCED[*]}" Y))
+        PRETTY_QUEUE=($(apt_pretty_packages "$(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}")" $GREEN))
+        console_message "Applying ${#PRETTY_QUEUE[@]} package $(single_or_plural ${#PRETTY_QUEUE[@]} change changes):" "${PRETTY_QUEUE[*]}" $GREEN
 
-        if [ "${#QUEUE[@]}" -gt "0" ]; then
+        for q in "INSTALL_" "SILENT_"; do
 
-            sudo apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
-                APT_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
-                APT_JUST_INSTALLED+=("${QUEUE[@]}")
-                APT_REMOVE_QUEUE=()
-                apt_refresh_packages
-            }
+            eval QUEUE='("${'$q'_QUEUE[@]}")'
 
-        fi
+            if [ "${#QUEUE[@]}" -gt "0" ]; then
 
-        if [ "${#SILENT_QUEUE[@]}" -gt "0" ]; then
+                sudo "${SUDO_EXTRA[@]}" apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
+                    APT_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
+                    APT_JUST_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
+                }
 
-            sudo DEBIAN_FRONTEND=noninteractive apt-get "${APT_GET_OPTIONS[@]}" install "${SILENT_QUEUE[@]}" && {
-                APT_INSTALLED+=($(apt_filter_packages "${SILENT_QUEUE[*]}" N))
-                APT_JUST_INSTALLED+=("${SILENT_QUEUE[@]}")
-                APT_INSTALL_QUEUE=()
-                apt_refresh_packages
-            }
+            fi
 
-        fi
+            SUDO_EXTRA+=("DEBIAN_FRONTEND=noninteractive")
+
+        done
+
+        APT_INSTALL_QUEUE=()
+        APT_REMOVE_QUEUE=()
+        apt_refresh_packages
 
     fi
 
     if [ "${#APT_DEB_QUEUE[@]}" -gt "0" ]; then
 
-        do_apt_install_deb "${APT_DEB_QUEUE[@]}" && APT_DEB_QUEUE=()
+        do_apt_install_deb "${APT_DEB_QUEUE[@]}" && {
+            APT_DEB_QUEUE=()
+            apt_refresh_packages
+        }
 
     fi
 
@@ -742,6 +754,16 @@ function apt_process_queue() {
 function apt_force_install_packages() {
 
     apt_install_packages "prerequisites" "$1" N N
+
+}
+
+function apt_upgrade_all() {
+
+    apt_make_cache_clean
+
+    console_message "Installing all available package updates..." "" $BLUE
+
+    sudo apt-get "${APT_GET_OPTIONS[@]}" dist-upgrade && APT_CACHE_DIRTY=1
 
 }
 
@@ -766,7 +788,7 @@ function apt_get_new_configuration_files() {
 
 }
 
-APT_GET_OPTIONS=(-o Acquire::ForceIPv4=true)
+APT_GET_OPTIONS=(-o Acquire::ForceIPv4=true -y)
 APT_CACHE_DIRTY=1
 APT_PPA_REGISTRY=()
 APT_PPA_PACKAGES=()

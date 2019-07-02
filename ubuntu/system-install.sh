@@ -9,17 +9,16 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 . "$SCRIPT_DIR/../bash/common"
 . "$SCRIPT_DIR/../bash/apt-common"
 
-# TODO
-#export DEBIAN_FRONTEND=noninteractive
-
 assert_is_ubuntu
+assert_not_server
 assert_not_root
+
 offer_sudo_password_bypass
 
 apt_make_cache_clean
 
 # install prequisites and packages that may be needed to bootstrap others
-apt_force_install_packages "apt-transport-https aptitude ca-certificates debconf-utils distro-info dmidecode gnupg-agent software-properties-common wget whiptail"
+apt_force_install_packages "apt-transport-https aptitude debconf-utils distro-info dmidecode software-properties-common whiptail"
 
 # ensure all of Ubuntu's repositories are available (including "proposed" archives)
 apt_enable_ubuntu_repository main "proposed"
@@ -70,23 +69,25 @@ apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_v
 apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "code code-insiders"
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "yarn"
 
-# see here re: MakeMKV: http://www.makemkv.com/forum2/viewtopic.php?f=3&t=224
 apt_install_packages "package management" "nodejs snapd yarn" N
-apt_install_packages "essential utilities" "attr cifs-utils debsums fio hfsprogs hwinfo lftp linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois"
-sudo dmidecode -t system | grep -i ThinkPad &>/dev/null && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms"
-apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat"
-apt_install_packages "desktop essentials" "abcde autokey-gtk beets blueman bsd-mailx- code copyq dconf-editor eyed3 filezilla firefox fonts-symbola fonts-twemoji-svginot galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk inkscape keepassxc lame libdvd-pkg! libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text synaptic synergy thunderbird tilda tilix typora usb-creator-gtk vlc x11vnc"
+apt_install_packages "essential utilities" "attr cifs-utils debsums fio hfsprogs hwinfo lftp linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois" N
+sudo dmidecode -t system | grep -i ThinkPad &>/dev/null && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms" N
+apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" N
+apt_install_packages "desktop essentials" "abcde autokey-gtk autorandr beets blueman bsd-mailx- caffeine code copyq dconf-editor eyed3 filezilla firefox fonts-symbola fonts-twemoji-svginot galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk indicator-multiload inkscape keepassxc lame libdvd-pkg! libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text synaptic synergy thunderbird tilda tilix typora usb-creator-gtk vlc x11vnc"
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
 apt_install_packages "photography" "geeqie rapid-photo-downloader"
-apt_install_packages "MakeMKV dependencies" "libavcodec-dev libc6-dev libexpat1-dev libgl1-mesa-dev libqt4-dev libssl-dev pkg-config zlib1g-dev"
 apt_install_packages "development" 'libapache2-mod-php*- '"build-essential git php php-bcmath php-cli php-curl php-dev php-fpm php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby"
-apt_install_packages "development services" "apache2 mariadb-server mongodb-org"
+apt_install_packages "development services" 'libapache2-mod-php*- '"apache2 libapache2-mod-fastcgi? libapache2-mod-fcgid? mariadb-server mongodb-org"
 apt_package_available powershell && apt_install_packages "PowerShell" "powershell" || apt_install_packages "PowerShell" "powershell-preview"
 apt_install_packages "VirtualBox" "virtualbox-6.0"
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
+# http://www.makemkv.com/forum2/viewtopic.php?f=3&t=224
+apt_install_packages "MakeMKV dependencies" "libavcodec-dev libc6-dev libexpat1-dev libgl1-mesa-dev libqt4-dev libssl-dev pkg-config zlib1g-dev"
+
 apt_install_deb "https://code-industry.net/public/master-pdf-editor-5.4.30-qt5.amd64.deb"
 apt_install_deb "https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb" Y
+#apt_install_deb "https://download.teamviewer.com/download/linux/teamviewer_amd64.deb" Y
 apt_install_deb "https://github.com/careteditor/releases-beta/releases/download/4.0.0-rc23/caret-beta.deb"
 apt_install_deb "https://go.skype.com/skypeforlinux-64.deb" Y
 apt_install_deb "https://release.gitkraken.com/linux/gitkraken-amd64.deb" Y
@@ -106,16 +107,23 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
 
     }
 
-    # otherwise the computer will fall asleep at the login screen
-    sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 &>/dev/null &&
-        sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing &>/dev/null ||
-        console_message "Unable to apply power settings for 'lightdm' user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" $RED
+    SLEEP_INACTIVE_AC_TIMEOUT="$(sudo -u lightdm -H dbus-launch gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 2>/dev/null)"
+    SLEEP_INACTIVE_AC_TYPE="$(sudo -u lightdm -H dbus-launch gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 2>/dev/null)"
+
+    [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" -a "$SLEEP_INACTIVE_AC_TYPE" = "nothing" ] || get_confirmation "Prevent elementary OS from sleeping when locked?" && {
+
+        sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 &>/dev/null &&
+            sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing &>/dev/null ||
+            console_message "Unable to apply power settings for 'lightdm' user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" $RED
+
+    }
 
 fi
 
+apt_upgrade_all
 apt_process_queue
 
-if array_search "libdvd-pkg" APT_JUST_INSTALLED; then
+if apt_package_just_installed "libdvd-pkg"; then
 
     sudo debconf-set-selections <<EOF
 libdvd-pkg libdvd-pkg/build boolean true
@@ -129,10 +137,56 @@ EOF
 
 fi
 
-console_message "Upgrading everything that's currently installed..." "" $BLUE
+if command -v snap &>/dev/null; then
 
-sudo apt-get "${APT_GET_OPTIONS[@]}" -y dist-upgrade
-[ "$IS_SNAP_INSTALLED" -eq "1" ] && sudo snap refresh
+    console_message "Installing all available snap updates..." "" $BLUE
+    sudo snap refresh
+
+    SNAPS_INSTALLED=($(sudo snap list 2>/dev/null))
+    SNAPS_INSTALL=()
+
+    for s in caprine slack spotify teams-for-linux twist; do
+
+        array_search "$s" SNAPS_INSTALLED >/dev/null || SNAPS_INSTALL+=("$s")
+
+    done
+
+    if [ "${#SNAPS_INSTALL[@]}" -gt "0"]; then
+
+        console_message "Missing $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps):" "${SNAPS_INSTALL[*]}" $BLUE
+
+        echo
+        if get_confirmation "Add the $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps) listed above?"; then
+
+            # tolerate errors because snap can be temperamental
+            sudo snap install --classic "${SNAPS_INSTALL[*]}" || true
+
+        fi
+
+    fi
+
+fi
+
+if apt_package_installed "cups-browsed"; then
+
+    # prevent AirPrint printers being added automatically
+    sudo systemctl stop cups-browsed
+    sudo systemctl disable cups-browsed
+
+fi
+
+if apt_package_installed "virtualbox-6.0"; then
+
+    sudo adduser "$USER" vboxusers
+
+fi
+
+if apt_package_installed "docker-ce"; then
+
+    sudo groupadd -f docker
+    sudo adduser "$USER" docker
+
+fi
 
 ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | sort | uniq))
 console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "" $BLUE

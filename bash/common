@@ -32,6 +32,16 @@ function assert_is_ubuntu() {
 
 }
 
+function assert_not_server() {
+
+    if [ "$IS_SERVER" -eq "1" ]; then
+
+        die "Error: $(basename "$0") requires a desktop environment"
+
+    fi
+
+}
+
 function assert_apt_available() {
 
     assert_is_linux
@@ -154,7 +164,19 @@ function single_or_plural() {
 # because we can't rely on BASH 4+
 function upper_first() {
 
-    echo "$(echo "$1" | cut -c1 | tr "[a-z]" "[A-Z]")$(echo "$1" | cut -c2-)"
+    echo "$(echo "$1" | cut -c1 | tr "[:lower:]" "[:upper:]")$(echo "$1" | cut -c2-)"
+
+}
+
+function lower() {
+
+    echo "$(echo "$1" | tr "[:upper:]" "[:lower:]")"
+
+}
+
+function upper() {
+
+    echo "$(echo "$1" | tr "[:lower:]" "[:upper:]")"
 
 }
 
@@ -188,22 +210,33 @@ function array_search() {
 
 function offer_sudo_password_bypass() {
 
-    local USERNAME="${SUDO_USER:-}" FILENAME
-    [ -n "$USERNAME" ] || USERNAME="$USER"
+    local USERNAME="${SUDO_USER:-$USER}" FILENAME CHECK_FILENAME
 
     FILENAME="/etc/sudoers.d/nopasswd-$USERNAME"
+    CHECK_FILENAME="$RS_CONFIG_DIR/.nopasswd-$USERNAME"
+
+    [ -e "$CHECK_FILENAME" ] && return
+
+    console_message "Please provide your computer password if requested" "" $BLUE
 
     if ! sudo test -e "$FILENAME"; then
 
-        if get_confirmation "Allow user '$USERNAME' to skip future password prompts?"; then
+        if get_confirmation "Allow user ${BOLD}${USERNAME}${RESET} to skip future password prompts?"; then
 
             sudo tee "$FILENAME" >/dev/null <<EOF && sudo chmod 0440 "$FILENAME"
 ${USERNAME} ALL=(ALL) NOPASSWD:ALL
 EOF
 
+        else
+
+            return
+
         fi
 
     fi
+
+    # save time next time
+    touch "$CHECK_FILENAME"
 
 }
 
@@ -222,10 +255,11 @@ function sed_escape_replace() {
 RS_SCRIPT_PATH="${BASH_SOURCE[0]}"
 [ -L "$RS_SCRIPT_PATH" ] && RS_SCRIPT_PATH="$(readlink "$RS_SCRIPT_PATH")"
 RS_ROOT_DIR="$(cd "$(dirname "$RS_SCRIPT_PATH")/.." && pwd -P)"
+RS_CONFIG_DIR="$RS_ROOT_DIR/config"
 RS_CACHE_DIR="$RS_ROOT_DIR/cache"
 RS_TEMP_DIR="$RS_ROOT_DIR/tmp"
 
-mkdir -p "$RS_CACHE_DIR" "$RS_TEMP_DIR"
+mkdir -p "$RS_CONFIG_DIR" "$RS_CACHE_DIR" "$RS_TEMP_DIR"
 
 # foreground colours
 BLACK="$(tput setaf 0)"
@@ -258,6 +292,7 @@ RESET="$(tput sgr0)"
 IS_MACOS=0
 IS_LINUX=0
 IS_UBUNTU=0
+IS_SERVER=0
 IS_ELEMENTARY_OS=0
 IS_PURE_LINUX=0
 IS_WSL=0
@@ -287,6 +322,8 @@ Linux)
         PLATFORM=linux
 
     fi
+
+    command -v X &>/dev/null || IS_SERVER=1
 
     if command -v lsb_release &>/dev/null; then
 
