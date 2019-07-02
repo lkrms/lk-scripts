@@ -110,7 +110,7 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
     SLEEP_INACTIVE_AC_TIMEOUT="$(sudo -u lightdm -H dbus-launch gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 2>/dev/null)"
     SLEEP_INACTIVE_AC_TYPE="$(sudo -u lightdm -H dbus-launch gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 2>/dev/null)"
 
-    [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" -a "$SLEEP_INACTIVE_AC_TYPE" = "nothing" ] || get_confirmation "Prevent elementary OS from sleeping when locked?" && {
+    [[ "$SLEEP_INACTIVE_AC_TIMEOUT" == 0 && "$SLEEP_INACTIVE_AC_TYPE" == *nothing* ]] || get_confirmation "Prevent elementary OS from sleeping when locked?" && {
 
         sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 &>/dev/null &&
             sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing &>/dev/null ||
@@ -157,8 +157,12 @@ if command -v snap &>/dev/null; then
 
         if get_confirmation "Add the $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps) listed above?"; then
 
-            # tolerate errors because snap can be temperamental
-            sudo snap install --classic "${SNAPS_INSTALL[@]}" || true
+            for s in "${SNAPS_INSTALL[@]}"; do
+
+                # tolerate errors because snap can be temperamental
+                sudo snap install --classic "$s" || true
+
+            done
 
         fi
 
