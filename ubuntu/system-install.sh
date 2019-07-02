@@ -18,7 +18,7 @@ offer_sudo_password_bypass
 apt_make_cache_clean
 
 # install prequisites and packages that may be needed to bootstrap others
-apt_force_install_packages "apt-transport-https aptitude debconf-utils distro-info dmidecode software-properties-common whiptail"
+apt_force_install_packages "apt-transport-https aptitude debconf-utils distro-info dmidecode snapd software-properties-common whiptail"
 
 # ensure all of Ubuntu's repositories are available (including "proposed" archives)
 apt_enable_ubuntu_repository main "proposed"
@@ -69,14 +69,13 @@ apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_v
 apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "code code-insiders"
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "yarn"
 
-apt_install_packages "package management" "nodejs snapd yarn" N
 apt_install_packages "essential utilities" "attr cifs-utils debsums fio hfsprogs hwinfo lftp linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois" N
 sudo dmidecode -t system | grep -i ThinkPad &>/dev/null && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms" N
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" N
 apt_install_packages "desktop essentials" "abcde autokey-gtk autorandr beets blueman bsd-mailx- caffeine code copyq dconf-editor eyed3 filezilla firefox fonts-symbola fonts-twemoji-svginot galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk indicator-multiload inkscape keepassxc lame libdvd-pkg! libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text synaptic synergy thunderbird tilda tilix typora usb-creator-gtk vlc x11vnc"
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
 apt_install_packages "photography" "geeqie rapid-photo-downloader"
-apt_install_packages "development" 'libapache2-mod-php*- '"build-essential git php php-bcmath php-cli php-curl php-dev php-fpm php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby"
+apt_install_packages "development" 'libapache2-mod-php*- '"build-essential git nodejs php php-bcmath php-cli php-curl php-dev php-fpm php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby yarn"
 apt_install_packages "development services" 'libapache2-mod-php*- '"apache2 libapache2-mod-fastcgi? libapache2-mod-fcgid? mariadb-server mongodb-org"
 apt_package_available powershell && apt_install_packages "PowerShell" "powershell" || apt_install_packages "PowerShell" "powershell-preview"
 apt_install_packages "VirtualBox" "virtualbox-6.0"
@@ -88,6 +87,7 @@ apt_install_packages "MakeMKV dependencies" "libavcodec-dev libc6-dev libexpat1-
 apt_install_deb "https://code-industry.net/public/master-pdf-editor-5.4.30-qt5.amd64.deb"
 apt_install_deb "https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb" Y
 #apt_install_deb "https://download.teamviewer.com/download/linux/teamviewer_amd64.deb" Y
+apt_install_deb "https://github.com/KryDos/todoist-linux/releases/download/1.17/Todoist_1.17.0_amd64.deb"
 apt_install_deb "https://github.com/careteditor/releases-beta/releases/download/4.0.0-rc23/caret-beta.deb"
 apt_install_deb "https://go.skype.com/skypeforlinux-64.deb" Y
 apt_install_deb "https://release.gitkraken.com/linux/gitkraken-amd64.deb" Y
@@ -110,7 +110,7 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
     SLEEP_INACTIVE_AC_TIMEOUT="$(sudo -u lightdm -H dbus-launch gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 2>/dev/null)"
     SLEEP_INACTIVE_AC_TYPE="$(sudo -u lightdm -H dbus-launch gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 2>/dev/null)"
 
-    [[ "$SLEEP_INACTIVE_AC_TIMEOUT" == 0 && "$SLEEP_INACTIVE_AC_TYPE" == *nothing* ]] || get_confirmation "Prevent elementary OS from sleeping when locked?" && {
+    [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" -a "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ]] || get_confirmation "Prevent elementary OS from sleeping when locked?" && {
 
         sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 &>/dev/null &&
             sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing &>/dev/null ||
@@ -120,8 +120,39 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
 
 fi
 
+SNAPS_INSTALL=()
+
+if command -v snap &>/dev/null; then
+
+    console_message "Installing all available snap updates..." "" $GREEN
+    sudo snap refresh
+
+    SNAPS_INSTALLED=($(sudo snap list 2>/dev/null))
+
+    for s in caprine slack spotify teams-for-linux twist; do
+
+        array_search "$s" SNAPS_INSTALLED >/dev/null || SNAPS_INSTALL+=("$s")
+
+    done
+
+    if [ "${#SNAPS_INSTALL[@]}" -gt "0" ]; then
+
+        console_message "Missing $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps):" "${SNAPS_INSTALL[*]}" $BOLD $MAGENTA
+
+        if ! get_confirmation "Add the $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps) listed above?"; then
+
+            SNAPS_INSTALL=()
+
+        fi
+
+    fi
+
+fi
+
 apt_upgrade_all
 apt_process_queue
+
+# critical post-apt tasks
 
 if apt_package_just_installed "libdvd-pkg"; then
 
@@ -137,57 +168,33 @@ EOF
 
 fi
 
-if command -v snap &>/dev/null; then
+# non-apt installations
 
-    console_message "Installing all available snap updates..." "" $GREEN
-    sudo snap refresh
+for s in "${SNAPS_INSTALL[@]}"; do
 
-    SNAPS_INSTALLED=($(sudo snap list 2>/dev/null))
-    SNAPS_INSTALL=()
+    # tolerate errors because snap can be temperamental
+    sudo snap install --classic "$s" || true
 
-    for s in caprine slack spotify teams-for-linux twist; do
+done
 
-        array_search "$s" SNAPS_INSTALLED >/dev/null || SNAPS_INSTALL+=("$s")
-
-    done
-
-    if [ "${#SNAPS_INSTALL[@]}" -gt "0" ]; then
-
-        console_message "Missing $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps):" "${SNAPS_INSTALL[*]}" $BOLD $MAGENTA
-
-        if get_confirmation "Add the $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps) listed above?"; then
-
-            for s in "${SNAPS_INSTALL[@]}"; do
-
-                # tolerate errors because snap can be temperamental
-                sudo snap install --classic "$s" || true
-
-            done
-
-        fi
-
-    fi
-
-fi
+# final tasks
 
 if apt_package_installed "cups-browsed"; then
 
     # prevent AirPrint printers being added automatically
-    sudo systemctl stop cups-browsed
-    sudo systemctl disable cups-browsed
+    sudo systemctl stop cups-browsed &>/dev/null && sudo systemctl disable cups-browsed &>/dev/null || die "Error disabling cups-browsed service"
 
 fi
 
 if apt_package_installed "virtualbox-6.0"; then
 
-    sudo adduser "$USER" vboxusers
+    sudo adduser "$USER" vboxusers &>/dev/null || die "Error adding $USER to vboxusers group"
 
 fi
 
 if apt_package_installed "docker-ce"; then
 
-    sudo groupadd -f docker
-    sudo adduser "$USER" docker
+    sudo groupadd -f docker &>/dev/null && sudo adduser "$USER" docker &>/dev/null || die "Error adding $USER to docker group"
 
 fi
 
