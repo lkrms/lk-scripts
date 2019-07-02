@@ -56,12 +56,11 @@ function apt_filter_packages() {
 
         if [ "${p:(-1)}" = "-" ]; then
 
-            # don't display at all if just a suppression
-            if ! { apt_package_installed "${p::(-1)}" || [ "$INCLUDE_REMOVED" = "Y" ]; }; then
+            # don't ever include suppressions
+            apt_package_installed "${p::(-1)}" || continue
 
-                continue
-
-            fi
+            # optionally include removals
+            [ "$INCLUDE_REMOVED" = "Y" ] || continue
 
         fi
 
@@ -73,13 +72,14 @@ function apt_filter_packages() {
 
 }
 
-# Underlines "gui" packages, and colours packages being removed red. Doesn't re-flow text.
-# Usage: apt_pretty_packages "package1 package2 package3-" [$BLUE ...]
+# Underlines "gui" packages, and colours packages being removed red. Optionally reflows text.
+# Usage: apt_pretty_packages "package1 package2 package3-" [reflow text? (Y/N)] [$BLUE ...]
 function apt_pretty_packages() {
 
-    local PACKAGES=($1) FORMATTED="$1" COLOUR_RESET="${RESET}" p q s r
+    local PACKAGES=($1) FORMATTED="$1" REFLOW="${2:-N}" REFLOWED=() COLOUR_RESET="${RESET}" p q s r
 
-    [ "$#" -gt "1" ] && {
+    [ "$#" -gt "2" ] && {
+        shift
         shift
         COLOUR_RESET="$(printf '%s' "$@")"
     }
@@ -100,11 +100,29 @@ function apt_pretty_packages() {
         q="${q}${COLOUR_RESET}"
 
         r="$(sed_escape_replace "$q")"
-        FORMATTED="$(echo "$FORMATTED" | sed -E 's/(\s|^)'"$s"'(\s|$)/\1'"$r"'\2/g')"
+
+        if [ "$REFLOW" = "N" ]; then
+
+            FORMATTED="$(echo "$FORMATTED" | sed -E 's/(\s|^)'"$s"'(\s|$)/\1'"$r"'\2/g')"
+
+        else
+
+            # remove trailing space
+            REFLOWED+=("${q% }")
+
+        fi
 
     done
 
-    echo "${FORMATTED[*]}"
+    if [ "$REFLOW" = "N" ]; then
+
+        echo "$FORMATTED"
+
+    else
+
+        echo "${REFLOWED[*]}"
+
+    fi
 
 }
 
@@ -413,14 +431,13 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "$(apt_filter_packages "${INSTALL[*]}")" $BLUE)" $BLUE
+            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "$(apt_filter_packages "${INSTALL[*]}")" Y $BLUE)" $BLUE
 
             [ "${#QUEUE[@]}" -gt "0" ] && {
                 console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $BLUE
                 PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
             }
 
-            echo
             get_confirmation "Add the $1 $(single_or_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" || return
 
         else
@@ -447,10 +464,10 @@ function apt_install_packages() {
             apt_make_cache_clean
             INSTALL_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" N))
             SILENT_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" Y))
-            PRETTY_QUEUE=($(apt_pretty_packages "$(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}")" $GREEN))
+            PRETTY_QUEUE=($(apt_pretty_packages "$(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}")" Y $GREEN))
             console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "${PRETTY_QUEUE[*]}" $GREEN
 
-            for q in "INSTALL_" "SILENT_"; do
+            for q in INSTALL SILENT; do
 
                 eval QUEUE='("${'$q'_QUEUE[@]}")'
 
@@ -714,10 +731,10 @@ function apt_process_queue() {
         apt_make_cache_clean
         INSTALL_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "${APT_REMOVE_QUEUE[*]}" "${APT_SILENCED[*]}" N))
         SILENT_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "" "${APT_SILENCED[*]}" Y))
-        PRETTY_QUEUE=($(apt_pretty_packages "$(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}")" $GREEN))
+        PRETTY_QUEUE=($(apt_pretty_packages "$(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}")" Y $GREEN))
         console_message "Applying ${#PRETTY_QUEUE[@]} package $(single_or_plural ${#PRETTY_QUEUE[@]} change changes):" "${PRETTY_QUEUE[*]}" $GREEN
 
-        for q in "INSTALL_" "SILENT_"; do
+        for q in INSTALL SILENT; do
 
             eval QUEUE='("${'$q'_QUEUE[@]}")'
 

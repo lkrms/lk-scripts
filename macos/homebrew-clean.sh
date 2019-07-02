@@ -95,7 +95,6 @@ if [ "${#REMOVE_LIST[@]}" -gt "0" ]; then
 
     console_message "Found "${#REMOVE_LIST[@]}" $NOUN to uninstall:" "" $BLUE
     echo "${REMOVE_LIST[@]}" | column
-    echo
 
     if get_confirmation "Uninstall the $NOUN listed above?"; then
 
