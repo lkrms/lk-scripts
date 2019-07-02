@@ -114,7 +114,7 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
 
         sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 &>/dev/null &&
             sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing &>/dev/null ||
-            console_message "Unable to apply power settings for 'lightdm' user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" $RED
+            console_message "Unable to apply power settings for ${BOLD}lightdm${RESET} user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" $BOLD $RED >&2
 
     }
 
@@ -139,7 +139,7 @@ fi
 
 if command -v snap &>/dev/null; then
 
-    console_message "Installing all available snap updates..." "" $BLUE
+    console_message "Installing all available snap updates..." "" $GREEN
     sudo snap refresh
 
     SNAPS_INSTALLED=($(sudo snap list 2>/dev/null))
@@ -153,12 +153,12 @@ if command -v snap &>/dev/null; then
 
     if [ "${#SNAPS_INSTALL[@]}" -gt "0" ]; then
 
-        console_message "Missing $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps):" "${SNAPS_INSTALL[*]}" $BLUE
+        console_message "Missing $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps):" "${SNAPS_INSTALL[*]}" $BOLD $MAGENTA
 
         if get_confirmation "Add the $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps) listed above?"; then
 
             # tolerate errors because snap can be temperamental
-            sudo snap install --classic "${SNAPS_INSTALL[*]}" || true
+            sudo snap install --classic "${SNAPS_INSTALL[@]}" || true
 
         fi
 

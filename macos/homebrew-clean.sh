@@ -47,7 +47,7 @@ for f in "${LIST_FILES[@]}"; do
 
     if [ "${#BAD_PACKAGES[@]}" -gt "0" ]; then
 
-        console_message "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae) found in $f:" "${BAD_PACKAGES[*]}" $RED >&2
+        console_message "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae) found in $f:" "${BAD_PACKAGES[*]}" $BOLD $RED >&2
 
         [ "$f" = "$MAIN_LIST_FILE" ] && {
             SAFE_PACKAGES+=($(comm -12 <(printf '%s\n' "${PACKAGES[@]}") <(printf '%s\n' "${AVAILABLE_PACKAGES[@]}")))
@@ -69,7 +69,7 @@ if [ "$#" -gt "0" ]; then
 
     if [ "${#BAD_PACKAGES[@]}" -gt "0" ]; then
 
-        console_message "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae):" "${BAD_PACKAGES[*]}" $RED >&2
+        console_message "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae):" "${BAD_PACKAGES[*]}" $BOLD $RED >&2
         die "$USAGE"
 
     fi
@@ -93,12 +93,12 @@ if [ "${#REMOVE_LIST[@]}" -gt "0" ]; then
 
     NOUN="$(single_or_plural "${#REMOVE_LIST[@]}" formula formulae)"
 
-    console_message "Found "${#REMOVE_LIST[@]}" $NOUN to uninstall:" "" $BLUE
+    console_message "Found "${#REMOVE_LIST[@]}" $NOUN to uninstall:" "" $BOLD $MAGENTA
     echo "${REMOVE_LIST[@]}" | column
 
     if get_confirmation "Uninstall the $NOUN listed above?"; then
 
-        console_message "Uninstalling $NOUN..." "" $RED
+        console_message "Uninstalling $NOUN..." "" $GREEN
         brew uninstall "${REMOVE_LIST[@]}"
 
     fi

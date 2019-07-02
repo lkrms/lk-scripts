@@ -266,7 +266,7 @@ function apt_make_cache_clean() {
 
     if [ "$APT_CACHE_DIRTY" -ne "0" ]; then
 
-        console_message "Updating package lists..." "" $BLUE
+        console_message "Updating package lists..." "" $CYAN
 
         sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0
 
@@ -311,7 +311,7 @@ function apt_get_package_list() {
 
             if [[ "$IGNORED" == *" $p "* ]]; then
 
-                console_message "Package unavailable for installation (ignoring):" "$p" $RED >&2
+                APT_SKIPPED+=("$p")
 
             else
 
@@ -327,7 +327,7 @@ function apt_get_package_list() {
 
     done
 
-    [ "${#BAD_LIST[@]}" -gt "0" ] && console_message "$(single_or_plural ${#BAD_LIST[@]} Package Packages) unavailable for installation:" "${BAD_LIST[*]}" $RED >&2 && false
+    [ "${#BAD_LIST[@]}" -gt "0" ] && console_message "$(single_or_plural ${#BAD_LIST[@]} Package Packages) unavailable for installation:" "${BAD_LIST[*]}" $BOLD $RED >&2 && false
 
     for q in "${REMOVE[@]}"; do
 
@@ -409,7 +409,7 @@ function apt_install_packages() {
             # if this package is allowed to be unavailable, isn't associated with a queued repo, and isn't available, ignore it now rather than prompting the user
             if [ "$IGNORE" -eq "1" -a -z "$PPA_INDEX" -a -z "$REPO_INDEX" ] && ! apt_package_available "$p"; then
 
-                console_message "Package unavailable for installation (ignoring):" "$p" $RED >&2
+                APT_SKIPPED+=("$p")
 
             else
 
@@ -431,10 +431,10 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "$(apt_filter_packages "${INSTALL[*]}")" Y $BLUE)" $BLUE
+            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "$(apt_filter_packages "${INSTALL[*]}")" Y $BOLD $MAGENTA)" $BOLD $MAGENTA
 
             [ "${#QUEUE[@]}" -gt "0" ] && {
-                console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $BLUE
+                console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" $BOLD $MAGENTA
                 PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
             }
 
@@ -618,7 +618,7 @@ function do_apt_install_deb() {
 
     local DEB_PATH DEB_PATHS=() PIDS=() WGET_RESULT=0 SKIPPED=() NOT_SKIPPED=() DEB_PACKAGE DEB_VERSION INSTALLED_VERSION pid url path
 
-    console_message "Downloading $# deb $(single_or_plural "$#" package packages)..." "" $BLUE
+    console_message "Downloading $# deb $(single_or_plural "$#" package packages)..." "" $CYAN
 
     for url in "$@"; do
 
@@ -627,8 +627,8 @@ function do_apt_install_deb() {
         mkdir -p "$(dirname "$DEB_PATH")"
 
         (
-            wget -qcO "$DEB_PATH" "$url" && console_message "Finished downloading:" "$url" $GREEN || {
-                console_message "Unable to download:" "$url" $RED >&2
+            wget -qcO "$DEB_PATH" "$url" && console_message "Finished downloading:" "$url" $CYAN || {
+                console_message "Unable to download:" "$url" $BOLD $RED >&2
                 false
             }
         ) &
@@ -675,7 +675,6 @@ function do_apt_install_deb() {
 
     done
 
-    [ "${#SKIPPED[@]}" -gt "0" ] && console_message "Packages skipped because they don't upgrade the installed version:" "${SKIPPED[*]}" $BLUE
     [ "${#NOT_SKIPPED[@]}" -gt "0" ] && console_message "Installing deb packages:" "${NOT_SKIPPED[*]}" $GREEN
 
     if [ "${#DEB_PATHS[@]}" -gt "0" ]; then
@@ -683,6 +682,7 @@ function do_apt_install_deb() {
         { sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -yf install; } && {
             APT_INSTALLED+=("${NOT_SKIPPED[@]}")
             APT_JUST_INSTALLED+=("${NOT_SKIPPED[@]}")
+            APT_SKIPPED+=("${SKIPPED[@]}")
             apt_refresh_packages
         }
 
@@ -778,7 +778,7 @@ function apt_upgrade_all() {
 
     apt_make_cache_clean
 
-    console_message "Installing all available package updates..." "" $BLUE
+    console_message "Installing all available package updates..." "" $GREEN
 
     sudo apt-get "${APT_GET_OPTIONS[@]}" dist-upgrade && APT_CACHE_DIRTY=1
 
@@ -805,8 +805,8 @@ function apt_get_new_configuration_files() {
 
 }
 
-APT_GET_OPTIONS=(-o Acquire::ForceIPv4=true -y)
 APT_CACHE_DIRTY=1
+APT_GET_OPTIONS=(-o Acquire::ForceIPv4=true -y)
 APT_PPA_REGISTRY=()
 APT_PPA_PACKAGES=()
 APT_REPO_REGISTRY=()
@@ -823,3 +823,4 @@ APT_REMOVE_QUEUE=()
 APT_PPA_QUEUE=()
 APT_REPO_QUEUE=()
 APT_DEB_QUEUE=()
+APT_SKIPPED=()

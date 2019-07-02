@@ -39,7 +39,7 @@ for p in "${PACKAGES[@]}"; do
         mkdir -p "$(dirname "$DEB_PATH")" "$(dirname "$EXTRACT_PATH")"
         rm -Rf "$EXTRACT_PATH"
 
-        console_message "Downloading:" "$url" $BLUE
+        console_message "Downloading:" "$url" $CYAN
         wget -qcO "$DEB_PATH" "$url"
 
         dpkg-deb -x "$DEB_PATH" "$EXTRACT_PATH" || {
