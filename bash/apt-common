@@ -288,7 +288,7 @@ function apt_make_cache_clean() {
 
         console_message "Updating package lists..." "" $CYAN
 
-        sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0
+        sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || die
 
     fi
 
@@ -659,17 +659,28 @@ function do_apt_install_deb() {
             }
         ) &
 
-        PIDS+=("$!")
+    done
+
+    PIDS=($(jobs -p))
+
+    while [ "${#PIDS[@]}" -gt "0" ]; do
+
+        # requires BASH 4.3+
+        wait -n || {
+
+            # don't wait for other downloads to finish if we're going to fail anyway
+            PIDS=($(jobs -p))
+            [ "${#PIDS[@]}" -gt "0" ] && kill "${PIDS[@]}" || true
+            WGET_RESULT=1
+            break
+
+        }
+
+        PIDS=($(jobs -p))
 
     done
 
-    for pid in "${PIDS[@]}"; do
-
-        wait "$pid" || WGET_RESULT=1
-
-    done
-
-    [ "$WGET_RESULT" -eq "0" ]
+    [ "$WGET_RESULT" -eq "0" ] || return 1
 
     for path in "${!DEB_PATHS[@]}"; do
 
