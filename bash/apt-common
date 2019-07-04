@@ -193,7 +193,22 @@ function apt_register_ppa() {
 
     command -v add-apt-repository &>/dev/null || apt_force_install_packages "software-properties-common"
 
-    local p
+    local p PREFERENCES=
+
+    if [ -n "$2" ]; then
+
+        # exits non-zero on EOF
+        read -rd '' PREFERENCES <<EOF || true
+Package: *
+Pin: release o=LP-PPA-${1/\//-}
+Pin-Priority: 400
+
+Package: $2
+Pin: release o=LP-PPA-${1/\//-}
+Pin-Priority: 500
+EOF
+
+    fi
 
     if ! cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep "^[^#]*/$1" &>/dev/null; then
 
@@ -202,6 +217,7 @@ function apt_register_ppa() {
             # without BASH 4+, we have to kludge our associative arrays
             APT_PPA_REGISTRY+=("$1")
             APT_PPA_PACKAGES+=("$p")
+            APT_PPA_PREFERENCES+=("$PREFERENCES")
 
         done
 
@@ -210,6 +226,10 @@ function apt_register_ppa() {
             apt_add_ppa "$1"
 
         fi
+
+    elif [ -n "$PREFERENCES" ]; then
+
+        echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/${1//[\/.]/-}" >/dev/null
 
     fi
 
@@ -503,13 +523,18 @@ function apt_install_packages() {
 
 function apt_add_ppa() {
 
-    local ppa i
+    local ppa i PREFERENCES
 
     for ppa in $(printf '%s\n' "$@" | sort | uniq); do
 
         [ -z "$ppa" ] && continue
 
+        i=$(array_search "$ppa" APT_PPA_REGISTRY) || die "Error: unable to find metadata for PPA '$ppa'"
+
         sudo add-apt-repository -yn "ppa:$ppa"
+
+        PREFERENCES="${APT_PPA_PREFERENCES[$i]}"
+        [ -n "$PREFERENCES" ] && echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/${ppa//[\/.]/-}" >/dev/null
 
         APT_CACHE_DIRTY=1
 
@@ -519,6 +544,7 @@ function apt_add_ppa() {
 
                 unset APT_PPA_REGISTRY[$i]
                 unset APT_PPA_PACKAGES[$i]
+                unset APT_PPA_PREFERENCES[$i]
 
             fi
 
@@ -809,6 +835,7 @@ APT_CACHE_DIRTY=1
 APT_GET_OPTIONS=(-o Acquire::ForceIPv4=true -y)
 APT_PPA_REGISTRY=()
 APT_PPA_PACKAGES=()
+APT_PPA_PREFERENCES=()
 APT_REPO_REGISTRY=()
 APT_REPO_KEY_URLS=()
 APT_REPO_ENTRIES=()

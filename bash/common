@@ -88,6 +88,24 @@ function assert_not_root() {
 
 }
 
+function command_exists() {
+
+    command -v "$1" &>/dev/null
+
+}
+
+function is_bool() {
+
+    [[ "$1" =~ ^(true|false)$ ]]
+
+}
+
+function is_int() {
+
+    [[ "$1" =~ ^[0-9]+$ ]]
+
+}
+
 # Usage: echoc "My coloured message" $BOLD $BLUE
 function echoc() {
 
@@ -135,14 +153,70 @@ function console_message() {
 
 }
 
-# Usage: get_confirmation "Do this?" && { do_it; }
+# Usage: get_confirmation "Do this?" [default response (Y/N)] [force valid response? (Y/N)] && { do_it; }
 function get_confirmation() {
 
-    local YN
+    local PROMPT=() DEFAULT="${2:-}" FORCE="${3:-N}" YN
 
-    read -p "$BOLD$1$RESET [y/n] " YN
+    [ -n "$1" ] && PROMPT+=("$1")
 
-    [[ "$YN" =~ ^[Yy]$ ]]
+    case DEFAULT in
+
+    Y)
+        PROMPT+=("[Y/n]")
+        ;;
+
+    N)
+        PROMPT+=("[y/N]")
+        ;;
+
+    *)
+        PROMPT+=("[y/n]")
+        ;;
+
+    esac
+
+    while :; do
+
+        read -p "${PROMPT[*]} " YN
+
+        [ -z "$YN" -a -n "$DEFAULT" ] && YN="$DEFAULT" || true
+
+        YN="$(upper "$YN")"
+
+        if [ "$FORCE" != "Y" ] || [[ "$YN" =~ ^(Y|YES|N|NO)$ ]]; then
+
+            break
+
+        fi
+
+    done
+
+    [[ "$YN" =~ ^(Y|YES)$ ]]
+
+}
+
+# Usage: file_to_array "/path/to/file" [exclude-pattern...]
+function file_to_array() {
+
+    local FILENAME LINE PATTERN
+
+    FILENAME="$1"
+    shift
+
+    FILE_TO_ARRAY=()
+
+    while IFS= read -r LINE || [ -n "$LINE" ]; do
+
+        for PATTERN in "$@"; do
+
+            [[ "$LINE" =~ $PATTERN ]] && continue 2
+
+        done
+
+        FILE_TO_ARRAY+=("$LINE")
+
+    done <"$FILENAME"
 
 }
 
@@ -240,15 +314,100 @@ EOF
 
 }
 
+# Usage: sed_escape_search "text to escape" [extended regular expressions? (Y/N)]
 function sed_escape_search() {
 
-    echo "${1:-}" | sed 's/[]\/$*.^()[]/\\&/g'
+    if [ "${2:-Y}" = "Y" ]; then
+
+        echo "${1:-}" | sed 's/[]$()*+./?\^{|}[]/\\&/g'
+
+    else
+
+        echo "${1:-}" | sed 's/[]$*./\^[]/\\&/g'
+
+    fi
 
 }
 
 function sed_escape_replace() {
 
-    echo "${1:-}" | sed 's/[\/&]/\\&/g'
+    local ESCAPED=$(echo "${1:-}" | sed 's/[\/&]/\\&/g')
+    echo "${ESCAPED//$'\n'/\\n}"
+
+}
+
+function git_add_global_ignore() {
+
+    local i IGNORE_FILE
+
+    IGNORE_FILE="$(git config --global core.excludesFile)"
+    IGNORE_FILE="${IGNORE_FILE/#\~/$HOME}"
+
+    [ -f "$IGNORE_FILE" ] || touch "$IGNORE_FILE"
+
+    [ -f "$IGNORE_FILE" ]
+
+    for i in "$@"; do
+
+        if ! grep -q '^'"$(sed_escape_search "$i" N)"'$' "$IGNORE_FILE"; then
+
+            echo "$i" >>"$IGNORE_FILE"
+
+        fi
+
+    done
+
+}
+
+# Usage: git_add_global_setting <setting.name> <value> [change if already set? (Y/N, default N)]
+function git_add_global_setting() {
+
+    if [ "${3:-N}" = "Y" ] || ! git config --global "$1" &>/dev/null; then
+
+        local EXTRA=()
+
+        if is_bool "$1"; then
+
+            EXTRA+=("--bool")
+
+        elif is_int "$1"; then
+
+            EXTRA+=("--int")
+
+        fi
+
+        git config --global "${EXTRA[@]}" "$1" "$2"
+
+    fi
+
+}
+
+function apply_system_config() {
+
+    if command_exists git; then
+
+        if [ -e "$RS_CONFIG_DIR/gitignore" ]; then
+
+            git_add_global_setting core.excludesFile "~/.gitignore"
+            file_to_array "$RS_CONFIG_DIR/gitignore" '^[[:space:]]*$' '^#'
+            git_add_global_ignore "${FILE_TO_ARRAY[@]}"
+
+        fi
+
+        git_add_global_setting push.default simple
+
+        local MERGETOOL=
+
+        command_exists meld && MERGETOOL=meld || true
+
+        if [ -n "$MERGETOOL" ]; then
+
+            git_add_global_setting merge.guitool "$MERGETOOL" Y
+            git_add_global_setting mergetool.prompt false
+
+        fi
+
+    fi
 
 }
 
