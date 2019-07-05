@@ -345,7 +345,7 @@ function git_add_global_ignore() {
 
     [ -f "$IGNORE_FILE" ] || touch "$IGNORE_FILE"
 
-    [ -f "$IGNORE_FILE" ]
+    [ -f "$IGNORE_FILE" ] || return 1
 
     for i in "$@"; do
 

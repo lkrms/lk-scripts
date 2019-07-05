@@ -85,6 +85,7 @@ apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 # http://www.makemkv.com/forum2/viewtopic.php?f=3&t=224
 apt_install_packages "MakeMKV dependencies" "libavcodec-dev libc6-dev libexpat1-dev libgl1-mesa-dev libqt4-dev libssl-dev pkg-config zlib1g-dev"
 
+apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.2-stable-8c010140/synergy_1.10.2.stable_b10%2B8c010140_ubuntu18_amd64.deb"
 apt_install_deb "https://code-industry.net/public/master-pdf-editor-5.4.30-qt5.amd64.deb"
 apt_install_deb "https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb" Y
 #apt_install_deb "https://download.teamviewer.com/download/linux/teamviewer_amd64.deb" Y
