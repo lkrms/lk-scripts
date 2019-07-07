@@ -8,7 +8,7 @@ The suggested method for sourcing `common` in your scripts is as follows:
 set -euo pipefail
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
-[ -L "$SCRIPT_PATH" ] && SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 . "$SCRIPT_DIR/path/to/common"

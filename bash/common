@@ -1,5 +1,16 @@
 set -euo pipefail
 
+function error_trap() {
+
+    echo "Error: $(basename "$0") failed with exit code $1 in $2 at line $3" >&2
+    exit $1
+
+}
+
+trap 'error_trap "$?" "${BASH_SOURCE[0]}" "$LINENO"' ERR
+
+set -E
+
 SCRIPT_ARGS=("$@")
 
 function assert_is_macos() {
@@ -57,10 +68,11 @@ function assert_apt_available() {
 function assert_is_ubuntu_lts() {
 
     assert_is_ubuntu
+    assert_function_exists "apt_require_package"
 
-    command -v ubuntu-distro-info &>/dev/null || apt_request_package "distro-info"
+    command_exists ubuntu-distro-info || apt_require_package "distro-info"
 
-    if ! ubuntu-distro-info --supported-esm | grep "^${DISTRIB_CODENAME}\$" &>/dev/null; then
+    if ! ubuntu-distro-info --supported-esm | grep "^${DISTRIB_CODENAME}\$" >/dev/null 2>&1; then
 
         die "Error: $(basename "$0") is only supported on LTS releases of Ubuntu"
 
@@ -88,9 +100,35 @@ function assert_not_root() {
 
 }
 
+function assert_command_exists() {
+
+    if ! command_exists "$1"; then
+
+        die "Error: $(basename "$0") requires $1"
+
+    fi
+
+}
+
+function assert_function_exists() {
+
+    if ! function_exists "$1"; then
+
+        die "Error: $(basename "$0") requires Bash function $1"
+
+    fi
+
+}
+
 function command_exists() {
 
-    command -v "$1" &>/dev/null
+    command -v "$1" >/dev/null 2>&1
+
+}
+
+function function_exists() {
+
+    declare -F "$1" >/dev/null 2>&1
 
 }
 
@@ -133,7 +171,7 @@ function echocn() {
 
 function die() {
 
-    [ "$#" -gt "0" ] && echoc "$@" >&2
+    [ "$#" -gt "0" ] && echoc "$@" >&2 || true
 
     exit 1
 
@@ -148,19 +186,19 @@ function console_message() {
     shift
     echocn "==> " "$@"
     echocn "$MESSAGE1"
-    [ -n "$MESSAGE2" ] && echocn " $MESSAGE2" "$@"
+    [ -n "$MESSAGE2" ] && echocn " $MESSAGE2" "$@" || true
     echo
 
 }
 
-# Usage: get_confirmation "Do this?" [default response (Y/N)] [force valid response? (Y/N)] && { do_it; }
+# Usage: get_confirmation "Do this?" [default response (y/n)] [force valid response? (y/N)] && { do_it; }
 function get_confirmation() {
 
     local PROMPT=() DEFAULT="${2:-}" FORCE="${3:-N}" YN
 
-    [ -n "$1" ] && PROMPT+=("$1")
+    [ -n "$1" ] && PROMPT+=("$1") || true
 
-    case DEFAULT in
+    case "$DEFAULT" in
 
     Y)
         PROMPT+=("[Y/n]")
@@ -210,7 +248,7 @@ function file_to_array() {
 
         for PATTERN in "$@"; do
 
-            [[ "$LINE" =~ $PATTERN ]] && continue 2
+            [[ "$LINE" =~ $PATTERN ]] && continue 2 || true
 
         done
 
@@ -235,7 +273,6 @@ function single_or_plural() {
 
 }
 
-# because we can't rely on BASH 4+
 function upper_first() {
 
     echo "$(echo "$1" | cut -c1 | tr "[:lower:]" "[:upper:]")$(echo "$1" | cut -c2-)"
@@ -289,7 +326,7 @@ function offer_sudo_password_bypass() {
     FILENAME="/etc/sudoers.d/nopasswd-$USERNAME"
     CHECK_FILENAME="$RS_CONFIG_DIR/.nopasswd-$USERNAME"
 
-    [ -e "$CHECK_FILENAME" ] && return
+    [ -e "$CHECK_FILENAME" ] && return || true
 
     console_message "Please provide your computer password if requested" "" $BLUE
 
@@ -297,7 +334,7 @@ function offer_sudo_password_bypass() {
 
         if get_confirmation "Allow user ${BOLD}${USERNAME}${RESET} to skip future password prompts?"; then
 
-            sudo tee "$FILENAME" >/dev/null <<EOF && sudo chmod 0440 "$FILENAME"
+            sudo tee "$FILENAME" >/dev/null <<EOF && sudo chmod 0440 "$FILENAME" || die
 ${USERNAME} ALL=(ALL) NOPASSWD:ALL
 EOF
 
@@ -310,11 +347,11 @@ EOF
     fi
 
     # save time next time
-    touch "$CHECK_FILENAME"
+    touch "$CHECK_FILENAME" || die
 
 }
 
-# Usage: sed_escape_search "text to escape" [extended regular expressions? (Y/N)]
+# Usage: sed_escape_search "text to escape" [extended regular expressions? (Y/n)]
 function sed_escape_search() {
 
     if [ "${2:-Y}" = "Y" ]; then
@@ -340,12 +377,12 @@ function git_add_global_ignore() {
 
     local i IGNORE_FILE
 
-    IGNORE_FILE="$(git config --global core.excludesFile)"
+    IGNORE_FILE="$(git config --global core.excludesFile)" || die "Error: Git global option core.excludesFile not defined"
     IGNORE_FILE="${IGNORE_FILE/#\~/$HOME}"
 
-    [ -f "$IGNORE_FILE" ] || touch "$IGNORE_FILE"
+    [ -f "$IGNORE_FILE" ] || touch "$IGNORE_FILE" || die
 
-    [ -f "$IGNORE_FILE" ] || return 1
+    [ -f "$IGNORE_FILE" ] || die "Error: unable to create file $IGNORE_FILE"
 
     for i in "$@"; do
 
@@ -359,10 +396,10 @@ function git_add_global_ignore() {
 
 }
 
-# Usage: git_add_global_setting <setting.name> <value> [change if already set? (Y/N, default N)]
+# Usage: git_add_global_setting <setting.name> <value> [change if already set? (y/N)]
 function git_add_global_setting() {
 
-    if [ "${3:-N}" = "Y" ] || ! git config --global "$1" &>/dev/null; then
+    if [ "${3:-N}" = "Y" ] || ! git config --global "$1" >/dev/null 2>&1; then
 
         local EXTRA=()
 
@@ -411,8 +448,16 @@ function apply_system_config() {
 
 }
 
+# results are returned in document order without de-duplication
+function get_urls_from_url() {
+
+    # from: https://daringfireball.net/2009/11/liberal_regex_for_matching_urls
+    wget -qO - "$1" | grep -Po '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))'
+
+}
+
 RS_SCRIPT_PATH="${BASH_SOURCE[0]}"
-[ -L "$RS_SCRIPT_PATH" ] && RS_SCRIPT_PATH="$(readlink "$RS_SCRIPT_PATH")"
+if command -v realpath >/dev/null 2>&1; then RS_SCRIPT_PATH="$(realpath "$RS_SCRIPT_PATH")"; fi
 RS_ROOT_DIR="$(cd "$(dirname "$RS_SCRIPT_PATH")/.." && pwd -P)"
 RS_CONFIG_DIR="$RS_ROOT_DIR/config"
 RS_CACHE_DIR="$RS_ROOT_DIR/cache"
@@ -484,9 +529,9 @@ Linux)
 
     fi
 
-    command -v X &>/dev/null || IS_SERVER=1
+    command_exists X || IS_SERVER=1
 
-    if command -v lsb_release &>/dev/null; then
+    if command_exists lsb_release; then
 
         DISTRIB_ID="$(lsb_release -si)"
         LSB_RELEASE_EXTRA=
@@ -514,8 +559,8 @@ Linux)
     IS_APT_INSTALLED=1
     IS_SNAP_INSTALLED=1
 
-    { command -v apt-get &>/dev/null && command -v dpkg &>/dev/null; } || IS_APT_INSTALLED=0
-    command -v snap &>/dev/null || IS_SNAP_INSTALLED=0
+    { command_exists apt-get && command_exists dpkg; } || IS_APT_INSTALLED=0
+    command_exists snap || IS_SNAP_INSTALLED=0
 
     ;;
 

@@ -3,7 +3,7 @@
 set -euo pipefail
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
-[ -L "$SCRIPT_PATH" ] && SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 . "$SCRIPT_DIR/../bash/common"
@@ -14,8 +14,6 @@ assert_not_server
 assert_not_root
 
 offer_sudo_password_bypass
-
-apt_make_cache_clean
 
 # install prequisites and packages that may be needed to bootstrap others
 apt_force_install_packages "apt-transport-https aptitude debconf-utils distro-info dmidecode snapd software-properties-common whiptail"
@@ -47,13 +45,14 @@ EOF
 # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
 apt_register_ppa "caffeine-developers/ppa" "caffeine"
 apt_register_ppa "eosrei/fonts" "fonts-twemoji-svginot"
+apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
 apt_register_ppa "hluk/copyq" "copyq"
 apt_register_ppa "inkscape.dev/stable" "inkscape"
 apt_register_ppa "linrunner/tlp" "tlp"
 apt_register_ppa "oibaf/graphics-drivers" "" Y
 apt_register_ppa "phoerious/keepassxc" "keepassxc"
 apt_register_ppa "scribus/ppa" "scribus"
-apt_register_ppa "stebbins/handbrake-releases" "handbrake-cli handbrake-gtk"
+apt_register_ppa "stebbins/handbrake-releases" "handbrake-*"
 apt_register_ppa "wereturtle/ppa" "ghostwriter"
 
 # ditto for non-PPA repositories
@@ -71,14 +70,31 @@ apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.as
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "yarn"
 
 apt_install_packages "essential utilities" "attr cifs-utils debsums fio hfsprogs hwinfo lftp linux-generic-hwe-$DISTRIB_RELEASE linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois xserver-xorg-hwe-$DISTRIB_RELEASE" N
-sudo dmidecode -t system | grep -i ThinkPad &>/dev/null && apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms" N
+
+if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
+
+    apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms" N
+
+fi
+
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" N
-apt_install_packages "desktop essentials" "abcde autokey-gtk autorandr beets blueman bsd-mailx- caffeine code copyq dconf-editor eyed3 filezilla firefox fonts-symbola fonts-twemoji-svginot galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable handbrake-cli handbrake-gtk indicator-multiload inkscape keepassxc lame libdvd-pkg! libreoffice meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text synaptic synergy thunderbird tilda tilix typora usb-creator-gtk vlc x11vnc youtube-dl"
+apt_install_packages "desktop essentials" "abcde autorandr beets blueman bsd-mailx- caffeine code copyq dconf-editor eyed3 filezilla firefox fonts-symbola fonts-twemoji-svginot galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable gparted handbrake-cli handbrake-gtk indicator-multiload inkscape keepassxc lame libdvd-pkg! libreoffice makemkv-bin makemkv-oss meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse speedcrunch sublime-text synaptic synergy thunderbird tilda tilix typora usb-creator-gtk vlc x11vnc xbindkeys xdotool youtube-dl"
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
 apt_install_packages "photography" "geeqie rapid-photo-downloader"
 apt_install_packages "development" 'libapache2-mod-php*- '"build-essential git nodejs php php-bcmath php-cli php-curl php-dev php-fpm php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby yarn"
 apt_install_packages "development services" 'libapache2-mod-php*- '"apache2 libapache2-mod-fastcgi? libapache2-mod-fcgid? mariadb-server mongodb-org"
-apt_package_available powershell && apt_install_packages "PowerShell" "powershell" || apt_install_packages "PowerShell" "powershell-preview"
+
+if apt_package_available powershell; then
+
+    apt_install_packages "PowerShell" "powershell"
+    apt_remove_packages powershell-preview
+
+else
+
+    apt_install_packages "PowerShell" "powershell-preview"
+
+fi
+
 apt_install_packages "VirtualBox" "virtualbox-6.0"
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
@@ -87,12 +103,14 @@ apt_install_packages "MakeMKV dependencies" "libavcodec-dev libc6-dev libexpat1-
 
 apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.2-stable-8c010140/synergy_1.10.2.stable_b10%2B8c010140_ubuntu18_amd64.deb"
 apt_install_deb "https://code-industry.net/public/master-pdf-editor-5.4.30-qt5.amd64.deb"
-apt_install_deb "https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb" Y
-#apt_install_deb "https://download.teamviewer.com/download/linux/teamviewer_amd64.deb" Y
+apt_install_deb "https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb"
+#apt_install_deb "https://download.teamviewer.com/download/linux/teamviewer_amd64.deb"
 apt_install_deb "https://github.com/KryDos/todoist-linux/releases/download/1.17/Todoist_1.17.0_amd64.deb"
+apt_install_deb "https://github.com/autokey/autokey/releases/download/v0.95.7/autokey-common_0.95.7-0_all.deb"
+apt_install_deb "https://github.com/autokey/autokey/releases/download/v0.95.7/autokey-gtk_0.95.7-0_all.deb"
 apt_install_deb "https://github.com/careteditor/releases-beta/releases/download/4.0.0-rc23/caret-beta.deb"
-apt_install_deb "https://go.skype.com/skypeforlinux-64.deb" Y
-apt_install_deb "https://release.gitkraken.com/linux/gitkraken-amd64.deb" Y
+apt_install_deb "https://go.skype.com/skypeforlinux-64.deb"
+apt_install_deb "https://release.gitkraken.com/linux/gitkraken-amd64.deb"
 
 apt_remove_packages apport deja-dup
 
@@ -100,7 +118,7 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
 
     apt_install_packages "elementary OS extras" "gnome-tweaks"
 
-    apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Install workaround for removal of system tray indicators?" && {
+    if apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Install workaround for removal of system tray indicators?"; then
 
         # because too many apps don't play by the rules (see: https://www.reddit.com/r/elementaryos/comments/aghyiq/system_tray/)
         mkdir -p "$HOME/.config/autostart"
@@ -109,24 +127,24 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
 
         apt_install_deb "http://ppa.launchpad.net/elementary-os/stable/ubuntu/pool/main/w/wingpanel-indicator-ayatana/wingpanel-indicator-ayatana_2.0.3+r27+pkg17~ubuntu0.4.1.1_amd64.deb"
 
-    }
+    fi
 
     SLEEP_INACTIVE_AC_TIMEOUT="$(sudo -u lightdm -H dbus-launch gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 2>/dev/null)"
     SLEEP_INACTIVE_AC_TYPE="$(sudo -u lightdm -H dbus-launch gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 2>/dev/null)"
 
-    [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" -a "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked?" && {
+    if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" -a "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked?"; then
 
-        sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 &>/dev/null &&
-            sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing &>/dev/null ||
+        sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 >/dev/null 2>&1 &&
+            sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing >/dev/null 2>&1 ||
             console_message "Unable to apply power settings for ${BOLD}lightdm${RESET} user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" $BOLD $RED >&2
 
-    }
+    fi
 
 fi
 
 SNAPS_INSTALL=()
 
-if command -v snap &>/dev/null; then
+if command_exists snap; then
 
     console_message "Installing all available snap updates..." "" $GREEN
     sudo snap refresh
@@ -188,19 +206,19 @@ apply_system_config
 if apt_package_installed "cups-browsed"; then
 
     # prevent AirPrint printers being added automatically
-    sudo systemctl stop cups-browsed &>/dev/null && sudo systemctl disable cups-browsed &>/dev/null || die "Error disabling cups-browsed service"
+    sudo systemctl stop cups-browsed >/dev/null 2>&1 && sudo systemctl disable cups-browsed >/dev/null 2>&1 || die "Error disabling cups-browsed service"
 
 fi
 
 if apt_package_installed "virtualbox-6.0"; then
 
-    sudo adduser "$USER" vboxusers &>/dev/null || die "Error adding $USER to vboxusers group"
+    sudo adduser "$USER" vboxusers >/dev/null 2>&1 || die "Error adding $USER to vboxusers group"
 
 fi
 
 if apt_package_installed "docker-ce"; then
 
-    sudo groupadd -f docker &>/dev/null && sudo adduser "$USER" docker &>/dev/null || die "Error adding $USER to docker group"
+    sudo groupadd -f docker >/dev/null 2>&1 && sudo adduser "$USER" docker >/dev/null 2>&1 || die "Error adding $USER to docker group"
 
 fi
 

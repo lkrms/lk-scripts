@@ -1,5 +1,19 @@
 assert_apt_available
 
+function apt_require_package() {
+
+    if get_confirmation "$(basename "$0") needs to install the $1 package. Is that OK?" Y Y; then
+
+        sudo apt-get install -y "$1" || die
+
+    else
+
+        die
+
+    fi
+
+}
+
 function apt_refresh_packages() {
 
     APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\n' -W)"
@@ -14,27 +28,27 @@ function apt_refresh_packages() {
 function apt_package_installed() {
 
     apt_make_cache_clean
-    echo "$APT_INSTALLED_PACKAGES" | grep -E "^$1"'(:.*)?$' &>/dev/null
+    echo "$APT_INSTALLED_PACKAGES" | grep -E "^$1"'(:.*)?$' >/dev/null 2>&1
 
 }
 
 function apt_package_just_installed() {
 
-    echo "$(printf '%s\n' "${APT_JUST_INSTALLED[@]}")" | grep -E "^$1"'(:.*)?$' &>/dev/null
+    echo "$(printf '%s\n' "${APT_JUST_INSTALLED[@]}")" | grep -E "^$1"'(:.*)?$' >/dev/null 2>&1
 
 }
 
 function apt_package_available() {
 
     apt_make_cache_clean
-    echo "$APT_AVAILABLE_PACKAGES" | grep -E "^$1"'(:.*)?$' &>/dev/null
+    echo "$APT_AVAILABLE_PACKAGES" | grep -E "^$1"'(:.*)?$' >/dev/null 2>&1
 
 }
 
 function apt_package_is_gui() {
 
     apt_make_cache_clean
-    apt_package_available "$1" && echo "$APT_GUI_PACKAGES" | grep -E "^$1"'(:.*)?$' &>/dev/null
+    apt_package_available "$1" && echo "$APT_GUI_PACKAGES" | grep -E "^$1"'(:.*)?$' >/dev/null 2>&1
 
 }
 
@@ -144,9 +158,9 @@ function apt_ubuntu_archive_url() {
 
 function do_apt_enable_ubuntu_repository() {
 
-    if ! cat /etc/apt/sources.list | grep -E '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.ubuntu\.com/ubuntu/?[[:space:]]+'"$1"'[[:space:]]+.*\b'"$2"'\b' &>/dev/null; then
+    if ! cat /etc/apt/sources.list | grep -E '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.ubuntu\.com/ubuntu/?[[:space:]]+'"$1"'[[:space:]]+.*\b'"$2"'\b' >/dev/null 2>&1; then
 
-        command -v add-apt-repository &>/dev/null || apt_force_install_packages "software-properties-common"
+        command_exists add-apt-repository || apt_force_install_packages "software-properties-common"
 
         sudo add-apt-repository -yn "deb $(apt_ubuntu_archive_url) $1 $2"
 
@@ -176,9 +190,9 @@ function apt_enable_partner_repository() {
 
     assert_is_ubuntu
 
-    if ! cat /etc/apt/sources.list | grep -E '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.canonical\.com/ubuntu/?[[:space:]]+'"$DISTRIB_CODENAME"'[[:space:]]+.*\bpartner\b' &>/dev/null; then
+    if ! cat /etc/apt/sources.list | grep -E '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.canonical\.com/ubuntu/?[[:space:]]+'"$DISTRIB_CODENAME"'[[:space:]]+.*\bpartner\b' >/dev/null 2>&1; then
 
-        command -v add-apt-repository &>/dev/null || apt_force_install_packages "software-properties-common"
+        command_exists add-apt-repository || apt_force_install_packages "software-properties-common"
 
         sudo add-apt-repository -yn "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner"
 
@@ -191,7 +205,7 @@ function apt_enable_partner_repository() {
 # Usage: apt_register_ppa "the/ppa" "package1 package2 ..." [add immediately (Y/N)]
 function apt_register_ppa() {
 
-    command -v add-apt-repository &>/dev/null || apt_force_install_packages "software-properties-common"
+    command_exists add-apt-repository || apt_force_install_packages "software-properties-common"
 
     local p PREFERENCES=
 
@@ -210,7 +224,7 @@ EOF
 
     fi
 
-    if ! cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep "^[^#]*/$1" &>/dev/null; then
+    if ! cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep "^[^#]*/$1" >/dev/null 2>&1; then
 
         for p in $2; do
 
@@ -237,14 +251,14 @@ EOF
 
 function apt_add_key_from_url() {
 
-    wget -qO - "$1" | sudo apt-key add - &>/dev/null || die "Error: unable to add GPG key from $1"
+    wget -qO - "$1" | sudo apt-key add - >/dev/null 2>&1 || die "Error: unable to add GPG key from $1"
 
 }
 
 # Usage: apt_register_repository my-repo-identifier "https://gpg.key.url" "content for my-repo-identifier.list" "package1 package2 ..." [add immediately (Y/N)]
 function apt_register_repository() {
 
-    command -v wget &>/dev/null || apt_force_install_packages "wget"
+    command_exists wget || apt_force_install_packages "wget"
 
     local p
 
@@ -616,19 +630,13 @@ function apt_deb_path() {
 
 }
 
-# Usage: apt_install_deb "http://url.to/package.deb" [delete cached (Y/N)] [queue only (Y/N)]
+# Usage: apt_install_deb "http://url.to/package.deb" [queue only (Y/n)]
 function apt_install_deb() {
 
-    command -v wget &>/dev/null || apt_force_install_packages "wget"
-
-    if [ "${2:-N}" = "Y" ]; then
-
-        rm -f "$(apt_deb_path "$1")"
-
-    fi
+    command_exists wget || apt_force_install_packages "wget"
 
     # queue by default
-    if [ "${3:-Y}" = "Y" ]; then
+    if [ "${2:-Y}" = "Y" ]; then
 
         APT_DEB_QUEUE+=("$1")
 
@@ -824,7 +832,7 @@ function apt_upgrade_all() {
 # returns all changed configuration files (note: deleted files aren't detected)
 function apt_get_changed_configuration_files() {
 
-    command -v debsums &>/dev/null || apt_force_install_packages "debsums"
+    command_exists debsums || apt_force_install_packages "debsums"
 
     sudo debsums -ce 2>/dev/null
 
@@ -833,7 +841,7 @@ function apt_get_changed_configuration_files() {
 # returns all new files under /etc
 function apt_get_new_configuration_files() {
 
-    command -v debsums &>/dev/null || apt_force_install_packages "debsums"
+    command_exists debsums || apt_force_install_packages "debsums"
 
     sudo find /etc -type f | grep -vFf <(
         set -euo pipefail

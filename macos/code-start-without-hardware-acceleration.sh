@@ -18,7 +18,7 @@ if [ "$MAKE_PERMANENT" -eq "1" ]; then
     [ -w "$PLIST" ] || exit
 
     SCRIPT_PATH="${BASH_SOURCE[0]}"
-    [ -L "$SCRIPT_PATH" ] && SCRIPT_PATH="$(readlink "$SCRIPT_PATH")"
+    if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
     SCRIPT_NAME="$(basename "$SCRIPT_PATH")"
     EXECUTABLE="/Applications/Visual Studio Code.app/Contents/MacOS/$SCRIPT_NAME"
 

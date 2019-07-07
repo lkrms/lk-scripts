@@ -1,6 +1,6 @@
 function virtualbox_exists() {
 
-    VBoxManage showvminfo "$1" &>/dev/null
+    VBoxManage showvminfo "$1" >/dev/null 2>&1
 
 }
 
