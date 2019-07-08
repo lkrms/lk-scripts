@@ -319,6 +319,16 @@ function array_search() {
 
 }
 
+# Usage: array_join_by ":" "${MY_ARRAY[@]}"
+function array_join_by() {
+
+    local IFS="$1"
+
+    shift
+    echo "$*"
+
+}
+
 function offer_sudo_password_bypass() {
 
     local USERNAME="${SUDO_USER:-$USER}" FILENAME CHECK_FILENAME
@@ -443,6 +453,22 @@ function apply_system_config() {
             git_add_global_setting mergetool.prompt false
 
         fi
+
+    fi
+
+    if command_exists php && ! command_exists composer && [ ! -e /usr/local/bin/composer -a -d /usr/local ]; then
+
+        {
+            sudo mkdir -p /usr/local/bin &&
+                "$RS_ROOT_DIR/bash/composer-install.sh" &&
+                sudo mv "composer.phar" /usr/local/bin/composer
+        } || console_message "Unable to install Composer" "" $BOLD $RED >&2
+
+    fi
+
+    if command_exists composer; then
+
+        composer global require "friendsofphp/php-cs-fixer"
 
     fi
 
