@@ -130,20 +130,24 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
     (
         set -euo pipefail
 
-        . <(sudo -u lightdm -H dbus-launch --sh-syntax)
+        LIGHTDM_HOME=~lightdm
 
-        SLEEP_INACTIVE_AC_TIMEOUT="$(sudo -u lightdm -H gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 2>/dev/null)" || true
-        SLEEP_INACTIVE_AC_TYPE="$(sudo -u lightdm -H gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 2>/dev/null)" || true
+        SUDO_EXTRA=(-u lightdm -H DISPLAY= "XAUTHORITY=\"$LIGHTDM_HOME/.Xauthority\"")
+
+        . <(sudo "${SUDO_EXTRA[@]}" dbus-launch --sh-syntax)
+
+        SLEEP_INACTIVE_AC_TIMEOUT="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 2>/dev/null)"
+        SLEEP_INACTIVE_AC_TYPE="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 2>/dev/null)"
 
         if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" -a "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked?"; then
 
-            sudo -u lightdm -H gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 >/dev/null 2>&1 &&
-                sudo -u lightdm -H gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing >/dev/null 2>&1 ||
+            sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 >/dev/null 2>&1 &&
+                sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing >/dev/null 2>&1 ||
                 console_message "Unable to apply power settings for ${BOLD}lightdm${RESET} user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" $BOLD $RED >&2
 
         fi
 
-        sudo -u lightdm -H kill "$DBUS_SESSION_BUS_PID" || true
+        sudo "${SUDO_EXTRA[@]}" kill "$DBUS_SESSION_BUS_PID"
     )
 
 fi
