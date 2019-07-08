@@ -98,9 +98,6 @@ fi
 apt_install_packages "VirtualBox" "virtualbox-6.0"
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
-# http://www.makemkv.com/forum2/viewtopic.php?f=3&t=224
-apt_install_packages "MakeMKV dependencies" "libavcodec-dev libc6-dev libexpat1-dev libgl1-mesa-dev libqt4-dev libssl-dev pkg-config zlib1g-dev"
-
 apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.2-stable-8c010140/synergy_1.10.2.stable_b10%2B8c010140_ubuntu18_amd64.deb"
 apt_install_deb "https://code-industry.net/public/master-pdf-editor-5.4.30-qt5.amd64.deb"
 apt_install_deb "https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb"
@@ -116,7 +113,7 @@ apt_remove_packages apport deja-dup
 
 if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
 
-    apt_install_packages "elementary OS extras" "gnome-tweaks"
+    apt_install_packages "elementary OS extras" "gnome-tweaks libgtk-3-dev"
 
     if apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Install workaround for removal of system tray indicators?"; then
 
@@ -129,16 +126,25 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
 
     fi
 
-    SLEEP_INACTIVE_AC_TIMEOUT="$(sudo -u lightdm -H dbus-launch gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 2>/dev/null)"
-    SLEEP_INACTIVE_AC_TYPE="$(sudo -u lightdm -H dbus-launch gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 2>/dev/null)"
+    # use a subshell to protect existing D-Bus environment variables
+    (
+        set -euo pipefail
 
-    if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" -a "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked?"; then
+        . <(sudo -u lightdm -H dbus-launch --sh-syntax)
 
-        sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 >/dev/null 2>&1 &&
-            sudo -u lightdm -H dbus-launch gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing >/dev/null 2>&1 ||
-            console_message "Unable to apply power settings for ${BOLD}lightdm${RESET} user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" $BOLD $RED >&2
+        SLEEP_INACTIVE_AC_TIMEOUT="$(sudo -u lightdm -H gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 2>/dev/null)" || true
+        SLEEP_INACTIVE_AC_TYPE="$(sudo -u lightdm -H gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 2>/dev/null)" || true
 
-    fi
+        if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" -a "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked?"; then
+
+            sudo -u lightdm -H gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 >/dev/null 2>&1 &&
+                sudo -u lightdm -H gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing >/dev/null 2>&1 ||
+                console_message "Unable to apply power settings for ${BOLD}lightdm${RESET} user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" $BOLD $RED >&2
+
+        fi
+
+        sudo -u lightdm -H kill "$DBUS_SESSION_BUS_PID" || true
+    )
 
 fi
 
@@ -202,6 +208,12 @@ done
 # final tasks
 
 apply_system_config
+
+if apt_package_installed "libgtk-3-dev"; then
+
+    gsettings set org.gtk.Settings.Debug enable-inspector-keybinding true
+
+fi
 
 if apt_package_installed "cups-browsed"; then
 
