@@ -6,7 +6,10 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
+# shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
+
+# shellcheck source=../bash/apt-common
 . "$SCRIPT_DIR/../bash/apt-common"
 
 assert_not_root
@@ -30,7 +33,7 @@ for p in "${PACKAGES[@]}"; do
 
     DOWNLOAD_INFO=($(apt-get download --print-uris "$p")) && [ "${#DOWNLOAD_INFO[@]}" -ge "2" ] || continue
 
-    eval url=${DOWNLOAD_INFO[0]}
+    eval url="${DOWNLOAD_INFO[0]}"
     DEB_PATH="$(apt_deb_path "$url")"
     EXTRACT_PATH="$RS_TEMP_DIR/extract/${DOWNLOAD_INFO[1]}"
 
@@ -39,7 +42,7 @@ for p in "${PACKAGES[@]}"; do
         mkdir -p "$(dirname "$DEB_PATH")" "$(dirname "$EXTRACT_PATH")"
         rm -Rf "$EXTRACT_PATH"
 
-        console_message "Downloading:" "$url" $CYAN
+        console_message "Downloading:" "$url" "$CYAN"
         wget -qcO "$DEB_PATH" "$url"
 
         dpkg-deb -x "$DEB_PATH" "$EXTRACT_PATH" || {
@@ -58,4 +61,4 @@ for p in "${PACKAGES[@]}"; do
 
 done
 
-die "Unable to find original version of $1. Searched in: $PACKAGES[*]"
+die "Unable to find original version of $1. Searched in: ${PACKAGES[*]}"

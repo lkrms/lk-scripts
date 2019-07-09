@@ -1,9 +1,12 @@
+#!/bin/bash
+# shellcheck disable=SC2034
+
 set -euo pipefail
 
 function error_trap() {
 
     echo "Error: $(basename "$0") failed with exit code $1 in $2 at line $3" >&2
-    exit $1
+    exit "$1"
 
 }
 
@@ -216,9 +219,9 @@ function get_confirmation() {
 
     while :; do
 
-        read -p "${PROMPT[*]} " YN
+        read -rp "${PROMPT[*]} " YN
 
-        [ -z "$YN" -a -n "$DEFAULT" ] && YN="$DEFAULT" || true
+        [ -z "$YN" ] && [ -n "$DEFAULT" ] && YN="$DEFAULT" || true
 
         YN="$(upper "$YN")"
 
@@ -281,13 +284,13 @@ function upper_first() {
 
 function lower() {
 
-    echo "$(echo "$1" | tr "[:upper:]" "[:lower:]")"
+    echo "$1" | tr "[:upper:]" "[:lower:]"
 
 }
 
 function upper() {
 
-    echo "$(echo "$1" | tr "[:lower:]" "[:upper:]")"
+    echo "$1" | tr "[:lower:]" "[:upper:]"
 
 }
 
@@ -306,6 +309,7 @@ function array_search() {
         eval VALUE='"${'"$2"'[$i]}"'
 
         # $VALUE is left unquoted for globbing purposes
+        # shellcheck disable=SC2053
         if [[ "$1" == $VALUE ]]; then
 
             echo "$i"
@@ -338,7 +342,7 @@ function offer_sudo_password_bypass() {
 
     [ -e "$CHECK_FILENAME" ] && return || true
 
-    console_message "Please provide your computer password if requested" "" $BLUE
+    console_message "Please provide your computer password if requested" "" "$BLUE"
 
     if ! sudo test -e "$FILENAME"; then
 
@@ -366,6 +370,7 @@ function sed_escape_search() {
 
     if [ "${2:-Y}" = "Y" ]; then
 
+        # shellcheck disable=SC2016
         echo "${1:-}" | sed 's/[]$()*+./?\^{|}[]/\\&/g'
 
     else
@@ -378,7 +383,9 @@ function sed_escape_search() {
 
 function sed_escape_replace() {
 
-    local ESCAPED=$(echo "${1:-}" | sed 's/[\/&]/\\&/g')
+    local ESCAPED
+
+    ESCAPED="$(echo "${1:-}" | sed 's/[\/&]/\\&/g')"
     echo "${ESCAPED//$'\n'/\\n}"
 
 }
@@ -435,6 +442,7 @@ function apply_system_config() {
 
         if [ -e "$RS_CONFIG_DIR/gitignore" ]; then
 
+            # shellcheck disable=SC2088
             git_add_global_setting core.excludesFile "~/.gitignore"
             file_to_array "$RS_CONFIG_DIR/gitignore" '^[[:space:]]*$' '^#'
             git_add_global_ignore "${FILE_TO_ARRAY[@]}"
@@ -456,13 +464,13 @@ function apply_system_config() {
 
     fi
 
-    if command_exists php && ! command_exists composer && [ ! -e /usr/local/bin/composer -a -d /usr/local ]; then
+    if command_exists php && ! command_exists composer && [ ! -e /usr/local/bin/composer ] && [ -d /usr/local ]; then
 
         {
             sudo mkdir -p /usr/local/bin &&
                 "$RS_ROOT_DIR/bash/composer-install.sh" &&
                 sudo mv "composer.phar" /usr/local/bin/composer
-        } || console_message "Unable to install Composer" "" $BOLD $RED >&2
+        } || console_message "Unable to install Composer" "" "$BOLD" "$RED" >&2
 
     fi
 

@@ -6,7 +6,8 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
-. "$SCRIPT_DIR/bash/common"
+# shellcheck source=common
+. "$SCRIPT_DIR/common"
 
 assert_command_exists wget
 assert_command_exists php

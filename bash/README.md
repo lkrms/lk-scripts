@@ -11,7 +11,8 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
-. "$SCRIPT_DIR/path/to/common"
+# shellcheck source=path/to/bash/common
+. "$SCRIPT_DIR/path/to/bash/common"
 ```
 
 If this seems unnecessarily complex, consider that:

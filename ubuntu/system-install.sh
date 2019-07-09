@@ -6,7 +6,10 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
+# shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
+
+# shellcheck source=../bash/apt-common
 . "$SCRIPT_DIR/../bash/apt-common"
 
 assert_is_ubuntu
@@ -63,6 +66,7 @@ apt_register_repository mkvtoolnix "https://mkvtoolnix.download/gpg-pub-moritzbu
 apt_register_repository mongodb-org-4.0 "https://www.mongodb.org/static/pgp/server-4.0.asc" "deb [arch=amd64] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse" "mongodb-org"
 apt_register_repository nodesource "https://deb.nodesource.com/gpgkey/nodesource.gpg.key" "deb https://deb.nodesource.com/node_8.x $DISTRIB_CODENAME main" "nodejs"
 apt_register_repository owncloud-client "https://download.opensuse.org/repositories/isv:ownCloud:desktop/Ubuntu_$DISTRIB_RELEASE/Release.key" "deb http://download.opensuse.org/repositories/isv:/ownCloud:/desktop/Ubuntu_$DISTRIB_RELEASE/ /" "owncloud-client"
+apt_register_repository skype-stable "https://repo.skype.com/data/SKYPE-GPG-KEY" "deb [arch=amd64] https://repo.skype.com/deb stable main" "skypeforlinux"
 apt_register_repository sublime-text "https://download.sublimetext.com/sublimehq-pub.gpg" "deb https://download.sublimetext.com/ apt/stable/" "sublime-text"
 apt_register_repository typora "https://typora.io/linux/public-key.asc" "deb https://typora.io/linux ./" "typora"
 apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_vbox_2016.asc" "deb [arch=amd64] https://download.virtualbox.org/virtualbox/debian $DISTRIB_CODENAME contrib" "virtualbox-*"
@@ -78,7 +82,7 @@ if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
 fi
 
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" N
-apt_install_packages "desktop essentials" "abcde autorandr beets blueman bsd-mailx- caffeine code copyq dconf-editor eyed3 filezilla firefox fonts-symbola fonts-twemoji-svginot galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable gparted handbrake-cli handbrake-gtk indicator-multiload inkscape keepassxc lame libdvd-pkg! libreoffice makemkv-bin makemkv-oss meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse shellcheck speedcrunch sublime-text synaptic synergy thunderbird tilda tilix typora usb-creator-gtk vlc x11vnc xbindkeys xdotool youtube-dl"
+apt_install_packages "desktop essentials" "abcde autorandr beets blueman bsd-mailx- caffeine code copyq dconf-editor eyed3 filezilla firefox fonts-symbola fonts-twemoji-svginot galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable gparted handbrake-cli handbrake-gtk indicator-multiload inkscape keepassxc lame libdvd-pkg! libreoffice makemkv-bin makemkv-oss meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse shellcheck skypeforlinux speedcrunch sublime-text synaptic synergy thunderbird tilda tilix typora usb-creator-gtk vlc x11vnc xbindkeys xdotool youtube-dl"
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
 apt_install_packages "photography" "geeqie rapid-photo-downloader"
 apt_install_packages "development" 'libapache2-mod-php*- '"build-essential git nodejs php php-bcmath php-cli php-curl php-dev php-fpm php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby yarn"
@@ -106,12 +110,11 @@ apt_install_deb "https://github.com/KryDos/todoist-linux/releases/download/1.17/
 apt_install_deb "https://github.com/autokey/autokey/releases/download/v0.95.7/autokey-common_0.95.7-0_all.deb"
 apt_install_deb "https://github.com/autokey/autokey/releases/download/v0.95.7/autokey-gtk_0.95.7-0_all.deb"
 apt_install_deb "https://github.com/careteditor/releases-beta/releases/download/4.0.0-rc23/caret-beta.deb"
-apt_install_deb "https://go.skype.com/skypeforlinux-64.deb"
 apt_install_deb "https://release.gitkraken.com/linux/gitkraken-amd64.deb"
 
 apt_remove_packages apport deja-dup
 
-if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
+if [ "$IS_ELEMENTARY_OS" -eq "1" ] && [ "$(lsb_release -sc)" = "juno" ]; then
 
     apt_install_packages "elementary OS extras" "gnome-tweaks libgtk-3-dev"
 
@@ -132,18 +135,19 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" -a "$(lsb_release -sc)" = "juno" ]; then
 
         LIGHTDM_HOME=~lightdm
 
-        SUDO_EXTRA=(-u lightdm -H DISPLAY= "XAUTHORITY=\"$LIGHTDM_HOME/.Xauthority\"")
+        SUDO_EXTRA=(-u lightdm -H "DISPLAY=" "XAUTHORITY=\"$LIGHTDM_HOME/.Xauthority\"")
 
+        # shellcheck disable=SC1090
         . <(sudo "${SUDO_EXTRA[@]}" dbus-launch --sh-syntax)
 
         SLEEP_INACTIVE_AC_TIMEOUT="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 2>/dev/null)"
         SLEEP_INACTIVE_AC_TYPE="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 2>/dev/null)"
 
-        if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" -a "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked?"; then
+        if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" ] && [ "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked?"; then
 
             sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 >/dev/null 2>&1 &&
                 sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing >/dev/null 2>&1 ||
-                console_message "Unable to apply power settings for ${BOLD}lightdm${RESET} user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" $BOLD $RED >&2
+                console_message "Unable to apply power settings for ${BOLD}lightdm${RESET} user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" "$BOLD" "$RED" >&2
 
         fi
 
@@ -156,9 +160,10 @@ SNAPS_INSTALL=()
 
 if command_exists snap; then
 
-    console_message "Installing all available snap updates..." "" $GREEN
+    console_message "Installing all available snap updates..." "" "$GREEN"
     sudo snap refresh
 
+    # shellcheck disable=SC2034
     SNAPS_INSTALLED=($(sudo snap list 2>/dev/null))
 
     for s in caprine slack spotify teams-for-linux twist; do
@@ -169,7 +174,7 @@ if command_exists snap; then
 
     if [ "${#SNAPS_INSTALL[@]}" -gt "0" ]; then
 
-        console_message "Missing $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps):" "${SNAPS_INSTALL[*]}" $BOLD $MAGENTA
+        console_message "Missing $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps):" "${SNAPS_INSTALL[*]}" "$BOLD" "$MAGENTA"
 
         if ! get_confirmation "Add the $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps) listed above?"; then
 
@@ -239,6 +244,6 @@ if apt_package_installed "docker-ce"; then
 fi
 
 ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | sort | uniq))
-console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "" $BLUE
+console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "" "$BLUE"
 COLUMNS="$(tput cols)"
 apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")"

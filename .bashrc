@@ -1,3 +1,6 @@
+#!/bin/bash
+
+# shellcheck disable=SC1090
 . <(
     set -euo pipefail
 
@@ -5,6 +8,7 @@
     if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
     SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
+    # shellcheck source=bash/common
     . "$SCRIPT_DIR/bash/common"
 
     ADD_TO_PATH=("$RS_ROOT_DIR" "$RS_ROOT_DIR/bash")
@@ -20,12 +24,13 @@
 
         if [ ! -d "${ADD_TO_PATH[$KEY]}" ]; then
 
-            unset ADD_TO_PATH[$KEY]
+            unset "ADD_TO_PATH[$KEY]"
 
         fi
 
     done
 
+    # shellcheck disable=SC2016
     echo 'export PATH="$PATH:'"$(array_join_by ":" "${ADD_TO_PATH[@]}")"'"'
 
     command_exists gtk-launch && echo 'alias gtk-debug="GTK_DEBUG=interactive "'
