@@ -19,6 +19,7 @@
 
     ADD_TO_PATH+=("$HOME/.composer/vendor/bin")
     ADD_TO_PATH+=("$HOME/.config/composer/vendor/bin")
+    ADD_TO_PATH+=("$HOME/.local/bin")
 
     for KEY in "${!ADD_TO_PATH[@]}"; do
 

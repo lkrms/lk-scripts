@@ -47,7 +47,6 @@ EOF
 
 # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
 apt_register_ppa "caffeine-developers/ppa" "caffeine"
-apt_register_ppa "eosrei/fonts" "fonts-twemoji-svginot"
 apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
 apt_register_ppa "hluk/copyq" "copyq"
 apt_register_ppa "inkscape.dev/stable" "inkscape"
@@ -82,10 +81,10 @@ if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
 fi
 
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" N
-apt_install_packages "desktop essentials" "abcde autorandr beets blueman bsd-mailx- caffeine code copyq dconf-editor eyed3 filezilla firefox fonts-symbola fonts-twemoji-svginot galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable gparted handbrake-cli handbrake-gtk indicator-multiload inkscape keepassxc lame libdvd-pkg! libreoffice makemkv-bin makemkv-oss meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse shellcheck skypeforlinux speedcrunch sublime-text synaptic synergy thunderbird tilda tilix typora usb-creator-gtk vlc x11vnc xbindkeys xdotool youtube-dl"
+apt_install_packages "desktop essentials" "abcde autorandr beets blueman bsd-mailx- caffeine code copyq dconf-editor eyed3 filezilla firefox flameshot fonts-symbola galculator gconf-editor geany ghostwriter gimp git-cola google-chrome-stable gparted handbrake-cli handbrake-gtk indicator-multiload inkscape keepassxc lame libdvd-pkg! libreoffice makemkv-bin makemkv-oss meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse shellcheck skypeforlinux speedcrunch sublime-text synaptic synergy thunderbird tilda tilix typora usb-creator-gtk vlc x11vnc xbindkeys xdotool youtube-dl"
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
 apt_install_packages "photography" "geeqie rapid-photo-downloader"
-apt_install_packages "development" 'libapache2-mod-php*- '"build-essential git nodejs php php-bcmath php-cli php-curl php-dev php-fpm php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-requests ruby yarn"
+apt_install_packages "development" 'libapache2-mod-php*- '"build-essential cmake git nodejs php php-bcmath php-cli php-curl php-dev php-fpm php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-pip python-requests python3 python3-dateutil python3-dev python3-mysqldb python3-pip python3-requests ruby yarn"
 apt_install_packages "development services" 'libapache2-mod-php*- '"apache2 libapache2-mod-fastcgi? libapache2-mod-fcgid? mariadb-server mongodb-org"
 
 if apt_package_available powershell; then
@@ -112,7 +111,7 @@ apt_install_deb "https://github.com/autokey/autokey/releases/download/v0.95.7/au
 apt_install_deb "https://github.com/careteditor/releases-beta/releases/download/4.0.0-rc23/caret-beta.deb"
 apt_install_deb "https://release.gitkraken.com/linux/gitkraken-amd64.deb"
 
-apt_remove_packages apport deja-dup
+apt_remove_packages apport deja-dup fonts-twemoji-svginot
 
 if [ "$IS_ELEMENTARY_OS" -eq "1" ] && [ "$(lsb_release -sc)" = "juno" ]; then
 
