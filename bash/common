@@ -464,6 +464,12 @@ function apply_system_config() {
 
     fi
 
+    if command_exists npm; then
+
+        sudo npm install -g eslint
+
+    fi
+
     if command_exists php && ! command_exists composer && [ ! -e /usr/local/bin/composer ] && [ -d /usr/local ]; then
 
         {

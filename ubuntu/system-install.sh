@@ -115,7 +115,7 @@ apt_remove_packages apport deja-dup fonts-twemoji-svginot
 
 if [ "$IS_ELEMENTARY_OS" -eq "1" ] && [ "$(lsb_release -sc)" = "juno" ]; then
 
-    apt_install_packages "elementary OS extras" "gnome-tweaks libgtk-3-dev"
+    apt_install_packages "elementary OS extras" "com.github.cassidyjames.ideogram gnome-tweaks libgtk-3-dev"
 
     if apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Install workaround for removal of system tray indicators?"; then
 
