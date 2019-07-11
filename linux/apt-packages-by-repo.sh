@@ -6,23 +6,32 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
+# shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
+
+# shellcheck source=../bash/apt-common
 . "$SCRIPT_DIR/../bash/apt-common"
 
 assert_not_root
 
-command_exists aptitude || apt_force_install_packages "aptitude"
+command_exists aptitude || apt_require_package "aptitude"
 
-file_to_array <(apt-cache policy | grep -oP '(?<=(,|\s)o=).*?(?=,)' | sort | uniq)
+# https://www.debian.org/doc/manuals/aptitude/ch02s05s01.en.html#secDisplayFormat
+FORMAT="%?p|%?v|%?O"
 
-ORIGINS=("${FILE_TO_ARRAY[@]}")
+# https://www.debian.org/doc/manuals/aptitude/ch02s04s05.en.html
+case "${1:-}" in
 
-for ORIGIN in "${ORIGINS[@]}"; do
+installed)
+    aptitude search "?installed?not(?virtual)" -F "$FORMAT" | tee
+    ;;
 
-    echoc "Packages from ${ORIGIN}:" $BOLD >&2
-    aptitude search "?origin($ORIGIN) ?installed" -F "%?p %?v %?O" || true
+available)
+    aptitude search "?not(?virtual)" -F "$FORMAT" | tee
+    ;;
 
-done
+*)
+    die "Usage: $(basename "$0") <installed|available>"
+    ;;
 
-echoc "Packages with no origin:" $BOLD >&2
-aptitude search "?obsolete" -F "%?p %?v %?O" || true
+esac
