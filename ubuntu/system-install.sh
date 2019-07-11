@@ -21,11 +21,11 @@ offer_sudo_password_bypass
 # install prequisites and packages that may be needed to bootstrap others
 apt_force_install_packages "apt-transport-https aptitude debconf-utils distro-info dmidecode snapd software-properties-common whiptail"
 
-# ensure all of Ubuntu's repositories are available (including "proposed" archives)
-apt_enable_ubuntu_repository main "proposed"
-apt_enable_ubuntu_repository restricted "proposed"
-apt_enable_ubuntu_repository universe "updates proposed"
-apt_enable_ubuntu_repository multiverse "updates proposed"
+# ensure all of Ubuntu's repositories are available (including "backports" and "proposed" archives)
+apt_enable_ubuntu_repository main "updates backports proposed"
+apt_enable_ubuntu_repository restricted "updates backports proposed"
+apt_enable_ubuntu_repository universe "updates backports proposed"
+apt_enable_ubuntu_repository multiverse "updates backports proposed"
 apt_enable_partner_repository
 
 # prevent "proposed" packages from being installed automatically
@@ -53,7 +53,7 @@ apt_register_ppa "inkscape.dev/stable" "inkscape"
 apt_register_ppa "linrunner/tlp" "tlp"
 apt_register_ppa "oibaf/graphics-drivers" "" Y
 apt_register_ppa "phoerious/keepassxc" "keepassxc"
-apt_register_ppa "scribus/ppa" "scribus"
+apt_register_ppa "scribus/ppa" "scribus*"
 apt_register_ppa "stebbins/handbrake-releases" "handbrake-*"
 apt_register_ppa "wereturtle/ppa" "ghostwriter"
 
@@ -104,12 +104,12 @@ apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.2-stable-8c010140/synergy_1.10.2.stable_b10%2B8c010140_ubuntu18_amd64.deb"
 apt_install_deb "https://code-industry.net/public/master-pdf-editor-5.4.30-qt5.amd64.deb"
 apt_install_deb "https://dbeaver.io/files/dbeaver-ce_latest_amd64.deb"
-#apt_install_deb "https://download.teamviewer.com/download/linux/teamviewer_amd64.deb"
-apt_install_deb "https://github.com/KryDos/todoist-linux/releases/download/1.17/Todoist_1.17.0_amd64.deb"
 apt_install_deb "https://github.com/autokey/autokey/releases/download/v0.95.7/autokey-common_0.95.7-0_all.deb"
 apt_install_deb "https://github.com/autokey/autokey/releases/download/v0.95.7/autokey-gtk_0.95.7-0_all.deb"
 apt_install_deb "https://github.com/careteditor/releases-beta/releases/download/4.0.0-rc23/caret-beta.deb"
+apt_install_deb "https://github.com/KryDos/todoist-linux/releases/download/1.17/Todoist_1.17.0_amd64.deb"
 apt_install_deb "https://release.gitkraken.com/linux/gitkraken-amd64.deb"
+apt_install_deb "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
 
 apt_remove_packages apport deja-dup fonts-twemoji-svginot
 
