@@ -204,7 +204,7 @@ function apt_enable_partner_repository() {
 
 }
 
-# Usage: apt_register_ppa "the/ppa" "package1 package2 ..." [add immediately (Y/N)]
+# Usage: apt_register_ppa "the/ppa" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? [Y/n]]
 function apt_register_ppa() {
 
     command_exists add-apt-repository || apt_force_install_packages "software-properties-common"
@@ -213,8 +213,10 @@ function apt_register_ppa() {
 
     if [ -n "$2" ]; then
 
-        # exits non-zero on EOF
-        read -rd '' PREFERENCES <<EOF || true
+        if [ "${4:-Y}" = "Y" ]; then
+
+            # exits non-zero on EOF
+            read -rd '' PREFERENCES <<EOF || true
 Package: *
 Pin: release o=LP-PPA-${1/\//-}
 Pin-Priority: 400
@@ -223,6 +225,8 @@ Package: $2
 Pin: release o=LP-PPA-${1/\//-}
 Pin-Priority: 500
 EOF
+
+        fi
 
     fi
 
@@ -474,7 +478,7 @@ function apt_install_packages() {
                 PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
             }
 
-            get_confirmation "Add the $1 $(single_or_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" || return
+            get_confirmation "Add the $1 $(single_or_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" || return 0
 
         else
 
