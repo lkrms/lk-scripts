@@ -9,8 +9,8 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
 
-# shellcheck source=../bash/apt-common
-. "$SCRIPT_DIR/../bash/apt-common"
+# shellcheck source=../bash/common-apt
+. "$SCRIPT_DIR/../bash/common-apt"
 
 assert_is_ubuntu
 assert_not_server

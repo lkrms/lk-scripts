@@ -597,12 +597,6 @@ Linux)
 
             fi
 
-            if [ "$DISTRIB_ID" = "Ubuntu" ]; then
-
-                IS_UBUNTU=1
-
-            fi
-
             DISTRIB_RELEASE="$(lsb_release -sr$LSB_RELEASE_EXTRA)"
             DISTRIB_CODENAME="$(lsb_release -sc$LSB_RELEASE_EXTRA)"
             DISTRIB_DESCRIPTION="$(lsb_release -sd$LSB_RELEASE_EXTRA)"
@@ -613,8 +607,13 @@ DISTRIB_RELEASE="$DISTRIB_RELEASE"
 DISTRIB_CODENAME="$DISTRIB_CODENAME"
 DISTRIB_DESCRIPTION="$DISTRIB_DESCRIPTION"
 IS_ELEMENTARY_OS=$IS_ELEMENTARY_OS
-IS_UBUNTU=$IS_UBUNTU
 EOF
+
+        fi
+
+        if [ "$DISTRIB_ID" = "Ubuntu" ]; then
+
+            IS_UBUNTU=1
 
         fi
 

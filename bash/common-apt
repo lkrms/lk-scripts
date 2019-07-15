@@ -18,12 +18,12 @@ function apt_require_package() {
 
 function apt_refresh_packages() {
 
-    APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\n' -W)"
-    APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames)"
+    APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\n' -W)" || die
+    APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames)" || die
     APT_GUI_PACKAGES="$(
         set -euo pipefail
         apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances x11-common libx11-6 | grep -v " " | sort | uniq
-    )"
+    )" || die
 
 }
 
@@ -61,7 +61,7 @@ function apt_package_is_cli() {
 }
 
 # Removes duplicates and suppressed packages.
-# Usage: apt_filter_packages "package1 package2 package3-" [include removed? (Y/N)]
+# Usage: apt_filter_packages "package1 package2 package3-" [include removed? (Y/n)]
 function apt_filter_packages() {
 
     local PACKAGES=($1) INCLUDE_REMOVED="${2:-Y}" FILTERED=() p
@@ -89,7 +89,7 @@ function apt_filter_packages() {
 }
 
 # Underlines "gui" packages, and colours packages being removed red. Optionally reflows text.
-# Usage: apt_pretty_packages "package1 package2 package3-" [reflow text? (Y/N)] [$BLUE ...]
+# Usage: apt_pretty_packages "package1 package2 package3-" [reflow text? (y/N)] [$BLUE ...]
 function apt_pretty_packages() {
 
     local PACKAGES=($1) FORMATTED="$1" REFLOW="${2:-N}" REFLOWED=() COLOUR_RESET="${RESET}" p q s r
@@ -98,7 +98,7 @@ function apt_pretty_packages() {
         shift
         shift
         COLOUR_RESET="$(printf '%s' "$@")"
-    }
+    } || true
 
     for p in "${PACKAGES[@]}"; do
 
@@ -164,7 +164,7 @@ function do_apt_enable_ubuntu_repository() {
 
         command_exists add-apt-repository || apt_force_install_packages "software-properties-common"
 
-        sudo add-apt-repository -yn "deb $(apt_ubuntu_archive_url) $1 $2"
+        sudo add-apt-repository -yn "deb $(apt_ubuntu_archive_url) $1 $2" || die
 
         APT_CACHE_DIRTY=1
 
@@ -196,7 +196,7 @@ function apt_enable_partner_repository() {
 
         command_exists add-apt-repository || apt_force_install_packages "software-properties-common"
 
-        sudo add-apt-repository -yn "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner"
+        sudo add-apt-repository -yn "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner" || die
 
         APT_CACHE_DIRTY=1
 
@@ -249,7 +249,7 @@ EOF
 
     elif [ -n "$PREFERENCES" ]; then
 
-        echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/${1//[\/.]/-}" >/dev/null
+        echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/${1//[\/.]/-}" >/dev/null || die
 
     fi
 
@@ -324,14 +324,14 @@ function apt_get_package_list() {
         # suppressed? lift the suppression
         for q in "${!SUPPRESSED[@]}"; do
 
-            [ "$p" = "${SUPPRESSED[$q]}" ] && unset "SUPPRESSED[$q]"
+            [ "$p" = "${SUPPRESSED[$q]}" ] && unset "SUPPRESSED[$q]" || true
 
         done
 
         # being removed? not anymore
         for q in "${!REMOVE[@]}"; do
 
-            [ "$p" = "${REMOVE[$q]}" ] && unset "REMOVE[$q]"
+            [ "$p" = "${REMOVE[$q]}" ] && unset "REMOVE[$q]" || true
 
         done
 
@@ -367,7 +367,7 @@ function apt_get_package_list() {
 
     done
 
-    [ "${#BAD_LIST[@]}" -gt "0" ] && console_message "$(single_or_plural ${#BAD_LIST[@]} Package Packages) unavailable for installation:" "${BAD_LIST[*]}" "$BOLD" "$RED" >&2 && false
+    [ "${#BAD_LIST[@]}" -gt "0" ] && console_message "$(single_or_plural ${#BAD_LIST[@]} Package Packages) unavailable for installation:" "${BAD_LIST[*]}" "$BOLD" "$RED" >&2 && die
 
     for q in "${REMOVE[@]}"; do
 
@@ -423,9 +423,9 @@ function apt_install_packages() {
 
         done
 
-        [ "$SUPPRESS" -eq "1" ] && SUPPRESSED+=("$p") && continue
-        [ "$IGNORE" -eq "1" ] && IGNORED+=("$p")
-        [ "$SILENCE" -eq "1" ] && SILENCED+=("$p")
+        [ "$SUPPRESS" -eq "1" ] && SUPPRESSED+=("$p") && continue || true
+        [ "$IGNORE" -eq "1" ] && IGNORED+=("$p") || true
+        [ "$SILENCE" -eq "1" ] && SILENCED+=("$p") || true
 
         PPA_INDEX=$(array_search "$p" APT_PPA_PACKAGES) || true
         REPO_INDEX=$(array_search "$p" APT_REPO_PACKAGES) || true
@@ -497,7 +497,7 @@ function apt_install_packages() {
                 [ "${#QUEUE[@]}" -gt "0" ] && {
                     QUEUE=($(printf '%s\n' "${QUEUE[@]}" | sort | uniq))
                     eval "apt_add_$(lower $q)" "${QUEUE[@]}"
-                }
+                } || die
 
             done
 
@@ -516,7 +516,7 @@ function apt_install_packages() {
                     sudo "${SUDO_EXTRA[@]}" apt-get "${OPTIONS[@]}" install "${QUEUE[@]}" && {
                         APT_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
                         APT_JUST_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
-                    }
+                    } || die
 
                 fi
 
@@ -547,14 +547,19 @@ function apt_add_ppa() {
 
     for ppa in $(printf '%s\n' "$@" | sort | uniq); do
 
-        [ -z "$ppa" ] && continue
+        [ -z "$ppa" ] && continue || true
 
         i=$(array_search "$ppa" APT_PPA_REGISTRY) || die "Error: unable to find metadata for PPA '$ppa'"
 
-        sudo add-apt-repository -yn "ppa:$ppa"
+        sudo add-apt-repository -yn "ppa:$ppa" || die
 
         PREFERENCES="${APT_PPA_PREFERENCES[$i]}"
-        [ -n "$PREFERENCES" ] && echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/${ppa//[\/.]/-}" >/dev/null
+
+        if [ -n "$PREFERENCES" ]; then
+
+            echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/${ppa//[\/.]/-}" >/dev/null || die
+
+        fi
 
         APT_CACHE_DIRTY=1
 
@@ -590,14 +595,14 @@ function apt_add_repo() {
 
     for repo in $(printf '%s\n' "$@" | sort | uniq); do
 
-        [ -z "$repo" ] && continue
+        [ -z "$repo" ] && continue || true
 
         i=$(array_search "$repo" APT_REPO_REGISTRY) || die "Error: unable to find metadata for repository '$repo'"
 
         KEY_URL="${APT_REPO_KEY_URLS[$i]}"
         ENTRY="${APT_REPO_ENTRIES[$i]}"
 
-        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null
+        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || die
 
         apt_add_key_from_url "$KEY_URL"
 
@@ -780,7 +785,7 @@ function apt_process_queue() {
             [ "${#QUEUE[@]}" -gt "0" ] && {
                 QUEUE=($(printf '%s\n' "${QUEUE[@]}" | sort | uniq))
                 eval "apt_add_$(lower $q)" "${QUEUE[@]}"
-            }
+            } || die
 
         done
 
@@ -799,7 +804,7 @@ function apt_process_queue() {
                 sudo "${SUDO_EXTRA[@]}" apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
                     APT_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
                     APT_JUST_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
-                }
+                } || die
 
             fi
 
@@ -836,7 +841,7 @@ function apt_upgrade_all() {
 
     console_message "Installing all available package updates..." "" "$GREEN"
 
-    sudo apt-get "${APT_GET_OPTIONS[@]}" dist-upgrade && APT_CACHE_DIRTY=1
+    sudo apt-get "${APT_GET_OPTIONS[@]}" dist-upgrade && APT_CACHE_DIRTY=1 || die
 
 }
 
@@ -845,7 +850,7 @@ function apt_get_changed_configuration_files() {
 
     command_exists debsums || apt_force_install_packages "debsums"
 
-    sudo debsums -ce 2>/dev/null
+    sudo debsums -ce 2>/dev/null || die
 
 }
 
@@ -856,8 +861,8 @@ function apt_get_new_configuration_files() {
 
     sudo find /etc -type f | grep -vFf <(
         set -euo pipefail
-        sudo debsums -e 2>/dev/null | sed -E 's/[[:space:]]*[A-Z]+$//'
-    )
+        sudo debsums -e 2>/dev/null | sed -E 's/[[:space:]]*[A-Z]+$//' || die
+    ) || die
 
 }
 

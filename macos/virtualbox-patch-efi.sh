@@ -7,7 +7,7 @@ if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PA
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 . "$SCRIPT_DIR/../bash/common"
-. "$SCRIPT_DIR/../bash/virtualbox-common"
+. "$SCRIPT_DIR/../bash/common-virtualbox"
 
 [ "$#" -eq "1" ] || die "Usage: $(basename "$0") <uuid|vmname>"
 
