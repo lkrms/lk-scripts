@@ -310,7 +310,7 @@ function array_search() {
 
         # $VALUE is left unquoted for globbing purposes
         # shellcheck disable=SC2053
-        if [[ "$1" == $VALUE ]]; then
+        if [[ "$1" == $VALUE ]] || [[ "$VALUE" == $1 ]]; then
 
             echo "$i"
             return
@@ -346,7 +346,7 @@ function offer_sudo_password_bypass() {
 
     if ! sudo test -e "$FILENAME"; then
 
-        if get_confirmation "Allow user ${BOLD}${USERNAME}${RESET} to skip future password prompts?"; then
+        if get_confirmation "Allow user ${BOLD}${USERNAME}${RESET} to skip future password prompts?" Y Y; then
 
             sudo tee "$FILENAME" >/dev/null <<EOF && sudo chmod 0440 "$FILENAME" || die
 ${USERNAME} ALL=(ALL) NOPASSWD:ALL
@@ -354,7 +354,7 @@ EOF
 
         else
 
-            return
+            return 0
 
         fi
 
@@ -461,6 +461,12 @@ function apply_system_config() {
             git_add_global_setting mergetool.prompt false
 
         fi
+
+    fi
+
+    if command_exists pip; then
+
+        sudo -H pip install ps_mem
 
     fi
 
@@ -573,26 +579,43 @@ Linux)
 
     if command_exists lsb_release; then
 
-        DISTRIB_ID="$(lsb_release -si)"
-        LSB_RELEASE_EXTRA=
+        if [ -e "$RS_CONFIG_DIR/.lsb-release" ]; then
 
-        if [[ "$DISTRIB_ID" == elementary* ]]; then
+            # shellcheck disable=SC1090
+            . "$RS_CONFIG_DIR/.lsb-release"
 
-            DISTRIB_ID="$(lsb_release -siu)"
-            LSB_RELEASE_EXTRA=u
-            IS_ELEMENTARY_OS=1
+        else
+
+            DISTRIB_ID="$(lsb_release -si)"
+            LSB_RELEASE_EXTRA=
+
+            if [[ "$DISTRIB_ID" == elementary* ]]; then
+
+                DISTRIB_ID="$(lsb_release -siu)"
+                LSB_RELEASE_EXTRA=u
+                IS_ELEMENTARY_OS=1
+
+            fi
+
+            if [ "$DISTRIB_ID" = "Ubuntu" ]; then
+
+                IS_UBUNTU=1
+
+            fi
+
+            DISTRIB_RELEASE="$(lsb_release -sr$LSB_RELEASE_EXTRA)"
+            DISTRIB_CODENAME="$(lsb_release -sc$LSB_RELEASE_EXTRA)"
+            DISTRIB_DESCRIPTION="$(lsb_release -sd$LSB_RELEASE_EXTRA)"
+
+            cat <<EOF >"$RS_CONFIG_DIR/.lsb-release"
+DISTRIB_ID="$DISTRIB_ID"
+DISTRIB_RELEASE="$DISTRIB_RELEASE"
+DISTRIB_CODENAME="$DISTRIB_CODENAME"
+DISTRIB_DESCRIPTION="$DISTRIB_DESCRIPTION"
+IS_ELEMENTARY_OS=$IS_ELEMENTARY_OS
+EOF
 
         fi
-
-        if [ "$DISTRIB_ID" = "Ubuntu" ]; then
-
-            IS_UBUNTU=1
-
-        fi
-
-        DISTRIB_RELEASE="$(lsb_release -sr$LSB_RELEASE_EXTRA)"
-        DISTRIB_CODENAME="$(lsb_release -sc$LSB_RELEASE_EXTRA)"
-        DISTRIB_DESCRIPTION="$(lsb_release -sd$LSB_RELEASE_EXTRA)"
 
     fi
 

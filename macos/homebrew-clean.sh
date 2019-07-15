@@ -96,7 +96,7 @@ if [ "${#REMOVE_LIST[@]}" -gt "0" ]; then
     console_message "Found "${#REMOVE_LIST[@]}" $NOUN to uninstall:" "" $BOLD $MAGENTA
     echo "${REMOVE_LIST[@]}" | column
 
-    if get_confirmation "Uninstall the $NOUN listed above?"; then
+    if get_confirmation "Uninstall the $NOUN listed above?" Y Y; then
 
         console_message "Uninstalling $NOUN..." "" $GREEN
         brew uninstall "${REMOVE_LIST[@]}"

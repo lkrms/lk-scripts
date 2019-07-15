@@ -19,7 +19,7 @@ assert_not_root
 offer_sudo_password_bypass
 
 # install prequisites and packages that may be needed to bootstrap others
-apt_force_install_packages "apt-transport-https aptitude debconf-utils distro-info dmidecode snapd software-properties-common whiptail"
+apt_force_install_packages "apt-transport-https aptitude debconf-utils distro-info dmidecode lsb-core snapd software-properties-common whiptail"
 
 # ensure all of Ubuntu's repositories are available (including "backports" and "proposed" archives)
 apt_enable_ubuntu_repository main "updates backports proposed"
@@ -118,7 +118,7 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" ] && [ "$(lsb_release -sc)" = "juno" ]; then
 
     apt_install_packages "elementary OS extras" "com.github.cassidyjames.ideogram gnome-tweaks libgtk-3-dev"
 
-    if apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Install workaround for removal of system tray indicators?"; then
+    if apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Install workaround for removal of system tray indicators?" Y Y; then
 
         # because too many apps don't play by the rules (see: https://www.reddit.com/r/elementaryos/comments/aghyiq/system_tray/)
         mkdir -p "$HOME/.config/autostart"
@@ -143,7 +143,7 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" ] && [ "$(lsb_release -sc)" = "juno" ]; then
         SLEEP_INACTIVE_AC_TIMEOUT="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 2>/dev/null)"
         SLEEP_INACTIVE_AC_TYPE="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 2>/dev/null)"
 
-        if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" ] && [ "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked?"; then
+        if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" ] && [ "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked?" Y Y; then
 
             sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 >/dev/null 2>&1 &&
                 sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing >/dev/null 2>&1 ||
@@ -176,7 +176,7 @@ if command_exists snap; then
 
         console_message "Missing $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps):" "${SNAPS_INSTALL[*]}" "$BOLD" "$MAGENTA"
 
-        if ! get_confirmation "Add the $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps) listed above?"; then
+        if ! get_confirmation "Add the $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps) listed above?" Y Y; then
 
             SNAPS_INSTALL=()
 

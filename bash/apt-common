@@ -478,7 +478,7 @@ function apt_install_packages() {
                 PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
             }
 
-            get_confirmation "Add the $1 $(single_or_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" || return 0
+            get_confirmation "Add the $1 $(single_or_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" Y Y || return 0
 
         else
 
