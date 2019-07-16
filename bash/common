@@ -295,12 +295,12 @@ function upper() {
 }
 
 # Searches the array (must be global, passed by name) for the given value and outputs the first corresponding key if successful.
-# Plays nicely with globs and sparse arrays. Returns an empty string if the value isn't found.
+# Plays nicely with globs and sparse arrays. Outputs nothing and exits non-zero if the value isn't found.
 #
 # Usage: array_search <needle> <haystack-name>
 function array_search() {
 
-    local KEYS VALUE
+    local KEYS VALUE i
 
     eval KEYS='"${!'"$2"'[@]}"'
 
@@ -511,35 +511,66 @@ RS_TEMP_DIR="$RS_ROOT_DIR/tmp"
 
 mkdir -p "$RS_CONFIG_DIR" "$RS_CACHE_DIR" "$RS_TEMP_DIR"
 
-# foreground colours
-BLACK="$(tput setaf 0)"
-RED="$(tput setaf 1)"
-GREEN="$(tput setaf 2)"
-YELLOW="$(tput setaf 3)"
-BLUE="$(tput setaf 4)"
-MAGENTA="$(tput setaf 5)"
-CYAN="$(tput setaf 6)"
-WHITE="$(tput setaf 7)"
+if [ -t 1 ]; then
 
-# background colours
-BLACK_BG="$(tput setab 0)"
-RED_BG="$(tput setab 1)"
-GREEN_BG="$(tput setab 2)"
-YELLOW_BG="$(tput setab 3)"
-BLUE_BG="$(tput setab 4)"
-MAGENTA_BG="$(tput setab 5)"
-CYAN_BG="$(tput setab 6)"
-WHITE_BG="$(tput setab 7)"
+    # foreground colours
+    BLACK="$(tput setaf 0)"
+    RED="$(tput setaf 1)"
+    GREEN="$(tput setaf 2)"
+    YELLOW="$(tput setaf 3)"
+    BLUE="$(tput setaf 4)"
+    MAGENTA="$(tput setaf 5)"
+    CYAN="$(tput setaf 6)"
+    WHITE="$(tput setaf 7)"
 
-# other "formatting"
-BOLD="$(tput bold)"
-UNDERLINE="$(tput smul)"
-NO_UNDERLINE="$(tput rmul)"
-STANDOUT="$(tput smso)"
-NO_STANDOUT="$(tput rmso)"
-NO_WRAP="$(tput rmam)"
-WRAP="$(tput smam)"
-RESET="$(tput sgr0)"
+    # background colours
+    BLACK_BG="$(tput setab 0)"
+    RED_BG="$(tput setab 1)"
+    GREEN_BG="$(tput setab 2)"
+    YELLOW_BG="$(tput setab 3)"
+    BLUE_BG="$(tput setab 4)"
+    MAGENTA_BG="$(tput setab 5)"
+    CYAN_BG="$(tput setab 6)"
+    WHITE_BG="$(tput setab 7)"
+
+    # other "formatting"
+    BOLD="$(tput bold)"
+    UNDERLINE="$(tput smul)"
+    NO_UNDERLINE="$(tput rmul)"
+    STANDOUT="$(tput smso)"
+    NO_STANDOUT="$(tput rmso)"
+    NO_WRAP="$(tput rmam)"
+    WRAP="$(tput smam)"
+    RESET="$(tput sgr0)"
+
+else
+
+    BLACK=
+    RED=
+    GREEN=
+    YELLOW=
+    BLUE=
+    MAGENTA=
+    CYAN=
+    WHITE=
+    BLACK_BG=
+    RED_BG=
+    GREEN_BG=
+    YELLOW_BG=
+    BLUE_BG=
+    MAGENTA_BG=
+    CYAN_BG=
+    WHITE_BG=
+    BOLD=
+    UNDERLINE=
+    NO_UNDERLINE=
+    STANDOUT=
+    NO_STANDOUT=
+    NO_WRAP=
+    WRAP=
+    RESET=
+
+fi
 
 IS_MACOS=0
 IS_LINUX=0
