@@ -34,16 +34,17 @@ for p in "${PACKAGES[@]}"; do
     DOWNLOAD_INFO=($(apt-get download --print-uris "$p")) && [ "${#DOWNLOAD_INFO[@]}" -ge "2" ] || continue
 
     eval url="${DOWNLOAD_INFO[0]}"
-    DEB_PATH="$(apt_deb_path "$url")"
     EXTRACT_PATH="$RS_TEMP_DIR/extract/${DOWNLOAD_INFO[1]}"
 
     if [ ! -d "$EXTRACT_PATH" ]; then
 
-        mkdir -p "$(dirname "$DEB_PATH")" "$(dirname "$EXTRACT_PATH")"
+        mkdir -p "$APT_DEB_PATH" "$(dirname "$EXTRACT_PATH")"
         rm -Rf "$EXTRACT_PATH"
 
+        pushd "$APT_DEB_PATH" >/dev/null
         console_message "Downloading:" "$url" "$CYAN"
-        wget -qcO "$DEB_PATH" "$url"
+        DEB_PATH="$(download_urls "$url")"
+        popd >/dev/null
 
         dpkg-deb -x "$DEB_PATH" "$EXTRACT_PATH" || {
             rm -Rf "$EXTRACT_PATH"
@@ -54,7 +55,7 @@ for p in "${PACKAGES[@]}"; do
 
     if [ -e "$EXTRACT_PATH$1" ]; then
 
-        diff "$EXTRACT_PATH$1" "$1"
+        diff "$EXTRACT_PATH$1" "$1" || true
         exit
 
     fi

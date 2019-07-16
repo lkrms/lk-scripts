@@ -22,7 +22,7 @@ function apt_refresh_packages() {
     APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames)" || die
     APT_GUI_PACKAGES="$(
         set -euo pipefail
-        apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances x11-common libx11-6 | grep -v " " | sort | uniq
+        apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances libwayland-client0 libwayland-server0 libx11-6 x11-common | grep -v " " | sort | uniq
     )" || die
 
 }
@@ -204,7 +204,7 @@ function apt_enable_partner_repository() {
 
 }
 
-# Usage: apt_register_ppa "the/ppa" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? [Y/n]]
+# Usage: apt_register_ppa "the/ppa" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? (Y/n)]
 function apt_register_ppa() {
 
     command_exists add-apt-repository || apt_force_install_packages "software-properties-common"
@@ -249,7 +249,7 @@ EOF
 
     elif [ -n "$PREFERENCES" ]; then
 
-        echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/${1//[\/.]/-}" >/dev/null || die
+        echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/ppa-${1//[\/.]/-}.pref" >/dev/null || die
 
     fi
 
@@ -261,26 +261,46 @@ function apt_add_key_from_url() {
 
 }
 
-# Usage: apt_register_repository my-repo-identifier "https://gpg.key.url" "content for my-repo-identifier.list" "package1 package2 ..." [add immediately (Y/N)]
+# Usage: apt_register_repository my-repo-identifier "https://gpg.key.url" "content for my-repo-identifier.list" "value for Pin field in apt preferences" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? (Y/n)]
 function apt_register_repository() {
 
     command_exists wget || apt_force_install_packages "wget"
 
-    local p
+    local p PREFERENCES=
+
+    if [ -n "$4" ] && [ -n "$5" ]; then
+
+        if [ "${7:-Y}" = "Y" ]; then
+
+            # exits non-zero on EOF
+            read -rd '' PREFERENCES <<EOF || true
+Package: *
+Pin: $4
+Pin-Priority: 400
+
+Package: $5
+Pin: $4
+Pin-Priority: 500
+EOF
+
+        fi
+
+    fi
 
     if [ ! -e "/etc/apt/sources.list.d/$1.list" ]; then
 
-        for p in $4; do
+        for p in $5; do
 
             # without BASH 4+, we have to kludge our associative arrays
             APT_REPO_REGISTRY+=("$1")
             APT_REPO_KEY_URLS+=("$2")
             APT_REPO_ENTRIES+=("$3")
             APT_REPO_PACKAGES+=("$p")
+            APT_REPO_PREFERENCES+=("$PREFERENCES")
 
         done
 
-        if [ "${5:-N}" = "Y" ]; then
+        if [ "${6:-N}" = "Y" ]; then
 
             apt_add_repo "$1"
 
@@ -290,6 +310,12 @@ function apt_register_repository() {
 
         # because keys change sometimes
         apt_add_key_from_url "$2"
+
+        if [ -n "$PREFERENCES" ]; then
+
+            echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/$1.pref" >/dev/null || die
+
+        fi
 
     fi
 
@@ -496,8 +522,8 @@ function apt_install_packages() {
 
                 [ "${#QUEUE[@]}" -gt "0" ] && {
                     QUEUE=($(printf '%s\n' "${QUEUE[@]}" | sort | uniq))
-                    eval "apt_add_$(lower $q)" "${QUEUE[@]}"
-                } || die
+                    eval "apt_add_$(lower $q)" "${QUEUE[@]}" || die
+                }
 
             done
 
@@ -557,7 +583,7 @@ function apt_add_ppa() {
 
         if [ -n "$PREFERENCES" ]; then
 
-            echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/${ppa//[\/.]/-}" >/dev/null || die
+            echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/ppa-${ppa//[\/.]/-}.pref" >/dev/null || die
 
         fi
 
@@ -601,10 +627,17 @@ function apt_add_repo() {
 
         KEY_URL="${APT_REPO_KEY_URLS[$i]}"
         ENTRY="${APT_REPO_ENTRIES[$i]}"
+        PREFERENCES="${APT_REPO_PREFERENCES[$i]}"
 
         echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || die
 
         apt_add_key_from_url "$KEY_URL"
+
+        if [ -n "$PREFERENCES" ]; then
+
+            echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/$repo.pref" >/dev/null || die
+
+        fi
 
         APT_CACHE_DIRTY=1
 
@@ -616,6 +649,7 @@ function apt_add_repo() {
                 unset "APT_REPO_KEY_URLS[$i]"
                 unset "APT_REPO_ENTRIES[$i]"
                 unset "APT_REPO_PACKAGES[$i]"
+                unset "APT_REPO_PREFERENCES[$i]"
 
             fi
 
@@ -632,12 +666,6 @@ function apt_add_repo() {
         done
 
     done
-
-}
-
-function apt_deb_path() {
-
-    echo "$RS_CACHE_DIR/deb/${1//[^._[:alnum:]]/-}"
 
 }
 
@@ -661,45 +689,24 @@ function apt_install_deb() {
 
 function do_apt_install_deb() {
 
-    local DEB_PATH DEB_PATHS=() PIDS=() WGET_RESULT=0 SKIPPED=() NOT_SKIPPED=() DEB_PACKAGE DEB_VERSION INSTALLED_VERSION url path
+    local PATHS DEB_PATHS=() SKIPPED=() NOT_SKIPPED=() DEB_PACKAGE DEB_VERSION INSTALLED_VERSION path
+
+    mkdir -p "$APT_DEB_PATH" && pushd "$APT_DEB_PATH" >/dev/null || die "Error: unable to access $APT_DEB_PATH"
 
     console_message "Downloading $# deb $(single_or_plural "$#" package packages)..." "" "$CYAN"
 
-    for url in "$@"; do
+    PATHS="$(
+        set -euo pipefail
+        download_urls "$@"
+    )" || die
 
-        DEB_PATH="$(apt_deb_path "$url")"
-        DEB_PATHS+=("$DEB_PATH")
-        mkdir -p "$(dirname "$DEB_PATH")"
+    while IFS= read -r path; do
 
-        (
-            wget -qcO "$DEB_PATH" "$url" && console_message "Finished downloading:" "${NO_WRAP}${url}${WRAP}" "$CYAN" || {
-                console_message "Unable to download:" "${NO_WRAP}${url}${WRAP}" "$BOLD" "$RED" >&2
-                false
-            }
-        ) &
+        DEB_PATHS+=("$path")
 
-    done
+    done < <(echo "$PATHS")
 
-    PIDS=($(jobs -p))
-
-    while [ "${#PIDS[@]}" -gt "0" ]; do
-
-        # requires BASH 4.3+
-        wait -n || {
-
-            # don't wait for other downloads to finish if we're going to fail anyway
-            PIDS=($(jobs -p))
-            [ "${#PIDS[@]}" -gt "0" ] && kill "${PIDS[@]}" || true
-            WGET_RESULT=1
-            break
-
-        }
-
-        PIDS=($(jobs -p))
-
-    done
-
-    [ "$WGET_RESULT" -eq "0" ] || return 1
+    popd >/dev/null
 
     for path in "${!DEB_PATHS[@]}"; do
 
@@ -735,16 +742,22 @@ function do_apt_install_deb() {
 
     done
 
-    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && console_message "Installing deb packages:" "${NOT_SKIPPED[*]}" "$GREEN"
+    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && console_message "Installing deb $(single_or_plural "${#NOT_SKIPPED[@]}" package packages):" "${NOT_SKIPPED[*]}" "$GREEN"
 
     if [ "${#DEB_PATHS[@]}" -gt "0" ]; then
 
-        { sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -yf install; } && {
+        if sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -yf install; then
+
             APT_INSTALLED+=("${NOT_SKIPPED[@]}")
             APT_JUST_INSTALLED+=("${NOT_SKIPPED[@]}")
             APT_SKIPPED+=("${SKIPPED[@]}")
             apt_refresh_packages
-        }
+
+        else
+
+            die
+
+        fi
 
     fi
 
@@ -784,8 +797,8 @@ function apt_process_queue() {
 
             [ "${#QUEUE[@]}" -gt "0" ] && {
                 QUEUE=($(printf '%s\n' "${QUEUE[@]}" | sort | uniq))
-                eval "apt_add_$(lower $q)" "${QUEUE[@]}"
-            } || die
+                eval "apt_add_$(lower $q)" "${QUEUE[@]}" || die
+            }
 
         done
 
@@ -867,6 +880,7 @@ function apt_get_new_configuration_files() {
 }
 
 APT_CACHE_DIRTY=1
+APT_DEB_PATH="$RS_CACHE_DIR/deb"
 APT_GET_OPTIONS=(-o "Acquire::ForceIPv4=true" -y)
 APT_PPA_REGISTRY=()
 APT_PPA_PACKAGES=()
@@ -875,6 +889,7 @@ APT_REPO_REGISTRY=()
 APT_REPO_KEY_URLS=()
 APT_REPO_ENTRIES=()
 APT_REPO_PACKAGES=()
+APT_REPO_PREFERENCES=()
 APT_INSTALLED=()
 APT_JUST_INSTALLED=()
 APT_IGNORED=()

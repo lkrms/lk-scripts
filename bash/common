@@ -494,11 +494,84 @@ function apply_system_config() {
 
 }
 
+function url_decode() {
+
+    echo -e "${*//%/\\x}"
+
+}
+
 # results are returned in document order without de-duplication
 function get_urls_from_url() {
 
     # from: https://daringfireball.net/2009/11/liberal_regex_for_matching_urls
     wget -qO - "$1" | grep -Po '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))'
+
+}
+
+# files are downloaded to the current directory, and local filenames are output
+function download_urls() {
+
+    local DOWNLOAD_FAILED=0 url HEADERS HEADER HEADER_PARTS IFS FILENAME
+
+    for url in "$@"; do
+
+        FILENAME=
+        HEADERS="$(wget -SNnv "$url" 2>&1 >/dev/null)" || DOWNLOAD_FAILED=1
+
+        if [ "$DOWNLOAD_FAILED" -eq "1" ]; then
+
+            console_message "Unable to download $(echo "$HEADERS" | head -n1):" "${NO_WRAP}${url}${WRAP}" "$BOLD" "$RED" >&2
+            die
+
+        fi
+
+        if HEADER="$(
+            set -euo pipefail
+            echo "$HEADERS" | grep -Ei '^[[:space:]]*Content-Disposition:' | tail -n1 | sed -E 's/(^[[:space:]]*Content-Disposition:)//ig'
+        )"; then
+
+            IFS=" ;"
+            HEADER_PARTS=($HEADER)
+            unset IFS
+
+            for HEADER in "${HEADER_PARTS[@]}"; do
+
+                if FILENAME="$(
+                    set -euo pipefail
+                    echo "$HEADER" | grep -Pio '(?<=^filename=).*' | sed -E 's/^[[:space:]]*("?)(.*)\1[[:space:]]*$/\2/g'
+                )"; then
+
+                    break
+
+                else
+
+                    FILENAME=
+
+                fi
+
+            done
+
+        fi
+
+        if [ -z "$FILENAME" ] || [ ! -e "$FILENAME" ]; then
+
+            FILENAME="$(url_decode "$url")"
+            FILENAME="${FILENAME##*\/}"
+
+        fi
+
+        if [ ! -e "$FILENAME" ]; then
+
+            console_message "Unable to determine filename for:" "${NO_WRAP}${url}${WRAP}" "$BOLD" "$RED" >&2
+            die
+
+        fi
+
+        echo "$(pwd)/$FILENAME"
+
+        console_message "Finished downloading:" "${NO_WRAP}${url}${WRAP}" "$CYAN" >&2
+
+    done
 
 }
 
