@@ -6,7 +6,10 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
+# shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
+
+# shellcheck source=../bash/common-virtualbox
 . "$SCRIPT_DIR/../bash/common-virtualbox"
 
 [ "$#" -eq "1" ] || die "Usage: $(basename "$0") <uuid|vmname>"
@@ -23,7 +26,6 @@ DST_SPARSE="$DST_DIR/$VM_NAME.efi.sparseimage"
 FILE_EFI="/usr/standalone/i386/apfs.efi"
 
 EFI_VDI="$DST_DIR/$VM_NAME.efi.vdi"
-OLD_EFI_VDI="$EFI_VDI"
 EFI_VDI_NUM=0
 
 while [ -e "$EFI_VDI" ]; do
@@ -46,7 +48,7 @@ EFI_DEVICE=$(hdiutil attach -nomount "$DST_SPARSE")
 
 EFI_DEVICE=$(
   set -euo pipefail
-  echo $EFI_DEVICE | grep -Eo '/dev/disk[[:digit:]]{1}' | head -n1
+  echo "$EFI_DEVICE" | grep -Eo '/dev/disk[[:digit:]]{1}' | head -n1
 )
 
 # add APFS driver to EFI
@@ -79,5 +81,5 @@ diskutil unmount "${EFI_DEVICE}s1"
 VBoxManage convertfromraw "$EFI_DEVICE" "$EFI_VDI" --format VDI
 diskutil eject "$EFI_DEVICE"
 
-console_message "EFI VDI created at:" "$EFI_VDI" $GREEN
-console_message "To continue, add as the first hard drive to VM:" "$VM_NAME" $BLUE
+console_message "EFI VDI created at:" "$EFI_VDI" "$GREEN"
+console_message "To continue, add as the first hard drive to VM:" "$VM_NAME" "$BLUE"

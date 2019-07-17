@@ -6,12 +6,12 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
+# shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
 
 if [ "$#" -ne "2" ]; then
 
-    echo "Usage: $(basename "$0") <my-host-name> <synergy-server>" >&2
-    exit 1
+    die "Usage: $(basename "$0") <my-host-name> <synergy-server>"
 
 fi
 
@@ -34,8 +34,7 @@ done
 
 if [ -z "$SYNERGY_COMMAND" ]; then
 
-    echo "Error: unable to find synergyc command" >&2
-    exit 1
+    die "Error: unable to find synergyc command"
 
 fi
 
@@ -46,7 +45,7 @@ for FILE in "${LOG_FILES[@]}"; do
 
     FILE2="${FILE%.log}.out.log"
 
-    if [ -w "$FILE" -a -w "$FILE2" ]; then
+    if [ -w "$FILE" ] && [ -w "$FILE2" ]; then
 
         LOG_FILE="$FILE"
 
@@ -67,8 +66,7 @@ done
 
 if [ -z "$LOG_FILE" ]; then
 
-    echo "Error: unable to find a writable log file location" >&2
-    exit 1
+    die "Error: unable to find a writable log file location"
 
 fi
 
@@ -96,8 +94,7 @@ if pgrep 'synergy.*' >/dev/null; then
 
     if pgrep 'synergy.*' >/dev/null; then
 
-        echo "Error: synergy is already running" >&2
-        exit 1
+        die "Error: synergy is already running"
 
     fi
 

@@ -6,6 +6,7 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
+# shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
 
 assert_is_macos
@@ -29,7 +30,7 @@ SAFE_PACKAGES=()
 MAIN_LIST_FILE="$SCRIPT_DIR/homebrew-formulae"
 LIST_FILES=("$MAIN_LIST_FILE")
 
-while [ "$#" -gt "0" -a -f "${1:-}" ]; do
+while [ "$#" -gt "0" ] && [ -f "${1:-}" ]; do
 
     LIST_FILES+=("$1")
     shift
@@ -47,7 +48,7 @@ for f in "${LIST_FILES[@]}"; do
 
     if [ "${#BAD_PACKAGES[@]}" -gt "0" ]; then
 
-        console_message "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae) found in $f:" "${BAD_PACKAGES[*]}" $BOLD $RED >&2
+        console_message "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae) found in $f:" "${BAD_PACKAGES[*]}" "$BOLD" "$RED" >&2
 
         [ "$f" = "$MAIN_LIST_FILE" ] && {
             SAFE_PACKAGES+=($(comm -12 <(printf '%s\n' "${PACKAGES[@]}") <(printf '%s\n' "${AVAILABLE_PACKAGES[@]}")))
@@ -69,7 +70,7 @@ if [ "$#" -gt "0" ]; then
 
     if [ "${#BAD_PACKAGES[@]}" -gt "0" ]; then
 
-        console_message "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae):" "${BAD_PACKAGES[*]}" $BOLD $RED >&2
+        console_message "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae):" "${BAD_PACKAGES[*]}" "$BOLD" "$RED" >&2
         die "$USAGE"
 
     fi
@@ -93,18 +94,18 @@ if [ "${#REMOVE_LIST[@]}" -gt "0" ]; then
 
     NOUN="$(single_or_plural "${#REMOVE_LIST[@]}" formula formulae)"
 
-    console_message "Found "${#REMOVE_LIST[@]}" $NOUN to uninstall:" "" $BOLD $MAGENTA
+    console_message "Found ${#REMOVE_LIST[@]} $NOUN to uninstall:" "" "$BOLD" "$MAGENTA"
     echo "${REMOVE_LIST[@]}" | column
 
     if get_confirmation "Uninstall the $NOUN listed above?" Y Y; then
 
-        console_message "Uninstalling $NOUN..." "" $GREEN
+        console_message "Uninstalling $NOUN..." "" "$GREEN"
         brew uninstall "${REMOVE_LIST[@]}"
 
     fi
 
 else
 
-    console_message "No formulae to uninstall" "" $GREEN
+    console_message "No formulae to uninstall" "" "$GREEN"
 
 fi

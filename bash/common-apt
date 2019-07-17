@@ -89,7 +89,7 @@ function apt_filter_packages() {
 }
 
 # Underlines "gui" packages, and colours packages being removed red. Optionally reflows text.
-# Usage: apt_pretty_packages "package1 package2 package3-" [reflow text? (y/N)] [$BLUE ...]
+# Usage: apt_pretty_packages "package1 package2 package3-" [reflow text? (y/N)] ["$BLUE" ...]
 function apt_pretty_packages() {
 
     local PACKAGES=($1) FORMATTED="$1" REFLOW="${2:-N}" REFLOWED=() COLOUR_RESET="${RESET}" p q s r

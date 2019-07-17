@@ -18,7 +18,6 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 If this seems unnecessarily complex, consider that:
 
 - Using `$BASH_SOURCE` instead of `$0` ensures your script can be sourced safely
-- `realpath` isn't platform-independent and `pwd -P` is only useful for directories, which leaves us with a combination of `readlink` and `pwd -P`
-- `readlink` ensures your script locates itself correctly even when symlinked from another directory
+- `realpath` isn't platform-independent, `pwd -P` is only useful for directories, and `readlink` isn't recursive
 - `pwd -P` resolves symbolic links between directories
 

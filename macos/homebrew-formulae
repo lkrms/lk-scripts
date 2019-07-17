@@ -21,6 +21,7 @@ pkg-config
 poppler
 pv
 rsync
+shellcheck
 telnet
 terminal-notifier
 tesseract

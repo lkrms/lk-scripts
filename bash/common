@@ -147,7 +147,7 @@ function is_int() {
 
 }
 
-# Usage: echoc "My coloured message" $BOLD $BLUE
+# Usage: echoc "My coloured message" "$BOLD" "$BLUE"
 function echoc() {
 
     echocn "$@"
@@ -180,7 +180,7 @@ function die() {
 
 }
 
-# Usage: console_message "Main message" "Secondary message with colour too" $BOLD $BLUE
+# Usage: console_message "Main message" "Secondary message with colour too" "$BOLD" "$BLUE"
 function console_message() {
 
     local MESSAGE1="$1" MESSAGE2="$2"

@@ -6,6 +6,7 @@ SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
+# shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
 
 assert_is_macos
@@ -27,4 +28,4 @@ DUMP_COUNT="$(
 
 plutil -convert xml1 "$DUMP_DIR"/*.plist
 
-console_message "$DUMP_COUNT $(single_or_plural "$DUMP_COUNT" notification notifications) dumped to:" "$DUMP_DIR" $BLUE
+console_message "$DUMP_COUNT $(single_or_plural "$DUMP_COUNT" notification notifications) dumped to:" "$DUMP_DIR" "$BLUE"
