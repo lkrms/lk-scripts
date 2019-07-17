@@ -48,7 +48,9 @@ for i in "${!LOCAL_PATHS[@]}"; do
 
     fi
 
+    set -f
     FIND_EXTRA=(${CONDITIONS[$i]})
+    set +f
 
     pushd "$LOCAL_PATH" >/dev/null
 
