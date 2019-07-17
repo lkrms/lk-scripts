@@ -24,10 +24,16 @@ XRANDR_OUTPUT="$(
 # convert to single line for upcoming greps
 XRANDR_OUTPUT="\\n${XRANDR_OUTPUT//$'\n'/\\n}\\n"
 
-# extract output names
+# extract connected output names
 OUTPUTS=($(
     set -euo pipefail
     echo "$XRANDR_OUTPUT" | grep -Po '(?<=\\n)([^[:space:]]+)(?= connected)'
+))
+
+# and all output names (i.e. connected and disconnected)
+ALL_OUTPUTS=($(
+    set -euo pipefail
+    echo "$XRANDR_OUTPUT" | grep -Po '(?<=\\n)([^[:space:]]+)(?= (connected|disconnected))'
 ))
 
 [ "${#OUTPUTS[@]}" -gt 0 ] || die "Error: no connected outputs"
@@ -173,6 +179,30 @@ for i in "${!OUTPUTS[@]}"; do
 
 done
 
+RESET_OPTIONS=()
+
+for i in "${ALL_OUTPUTS[@]}"; do
+
+    RESET_OPTIONS+=(--output "$i")
+
+    if ! array_search "$i" OUTPUTS >/dev/null; then
+
+        RESET_OPTIONS+=(--off)
+
+    else
+
+        RESET_OPTIONS+=(--auto --transform none --panning 0x0)
+
+    fi
+
+done
+
+# check that our configuration is valid
+xrandr --dryrun "${RESET_OPTIONS[@]}" >/dev/null
+xrandr --dryrun "${OPTIONS[@]}" >/dev/null
+
+# apply configuration
+xrandr "${RESET_OPTIONS[@]}" || true
 xrandr "${OPTIONS[@]}"
 
 # ok, xrandr is sorted -- look after everything else
@@ -203,3 +233,9 @@ fi
 RC_CONTENT=$(grep -Ev '^xrandr --dpi [0-9]+$' "$XSESSIONRC")
 echo "$RC_CONTENT" >"$XSESSIONRC"
 echo "xrandr --dpi $DPI" >>"$XSESSIONRC"
+
+if command_exists displaycal-apply-profiles; then
+
+    displaycal-apply-profiles || true
+
+fi
