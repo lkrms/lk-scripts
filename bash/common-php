@@ -1,0 +1,126 @@
+#!/bin/bash
+
+# Usage: php_do_apply_setting "/path/to/php.ini" "error_reporting" "E_ALL"
+function php_do_apply_setting() {
+
+    local INI_FILE SETTINGNAME SETTINGVALUE SEARCH REPLACE PREFIX=()
+
+    INI_FILE="$1"
+    SETTINGNAME="$2"
+    SETTINGVALUE="$3"
+
+    [ -w "$INI_FILE" ] || PREFIX+=(sudo)
+
+    [ -f "${INI_FILE}.original" ] || "${PREFIX[@]}" cp -p "$INI_FILE" "${INI_FILE}.original" || die
+
+    SEARCH="$(sed_escape_search "$SETTINGNAME")"
+    REPLACE="$(sed_escape_replace "$SETTINGNAME = $SETTINGVALUE")"
+
+    if grep -Eq '^\s*'"${SEARCH}"'\s*=' "$INI_FILE"; then
+
+        # we have a defined setting to replace
+        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE"
+
+    elif grep -Eq '^\s*;\s*'"${SEARCH}"'\s*=' "$INI_FILE"; then
+
+        # we have a commented-out setting to replace
+        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*;\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE"
+
+    else
+
+        echo -e "\n$SETTINGNAME = $SETTINGVALUE" | "${PREFIX[@]}" tee -a "$INI_FILE" >/dev/null
+
+    fi
+
+}
+
+# Usage: php_do_enable_extension "/path/to/php.ini" "extension" "/path/to/extension.so"
+function php_do_enable_extension() {
+
+    local INI_FILE SETTINGNAME SETTINGVALUE SEARCHNAME SEARCHVALUE REPLACE PREFIX=()
+
+    INI_FILE="$1"
+    SETTINGNAME="$2"
+    SETTINGVALUE="$3"
+
+    [ -w "$INI_FILE" ] || PREFIX+=(sudo)
+
+    [ -f "${INI_FILE}.original" ] || "${PREFIX[@]}" cp -p "$INI_FILE" "${INI_FILE}.original" || die
+
+    SEARCHNAME="$(sed_escape_search "$SETTINGNAME")"
+    SEARCHVALUE="$(sed_escape_search "$SETTINGVALUE")"
+    REPLACE="$(sed_escape_replace "$SETTINGNAME = $SETTINGVALUE")"
+
+    # similar to php_do_apply_setting, but match on value too
+    if grep -Eq '^\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$' "$INI_FILE"; then
+
+        # we have a defined setting to replace
+        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE"
+
+    elif grep -Eq '^\s*;\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$' "$INI_FILE"; then
+
+        # we have a commented-out setting to replace
+        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*;\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE"
+
+    else
+
+        echo -e "\n$SETTINGNAME = $SETTINGVALUE" | "${PREFIX[@]}" tee -a "$INI_FILE" >/dev/null
+
+    fi
+
+}
+
+# Usage: php_apply_setting "/etc/php" "error_reporting" "E_ALL"
+function php_apply_setting() {
+
+    local INI_ROOT INI_FILE
+
+    INI_ROOT="$1"
+
+    [ -d "$INI_ROOT" ] || die "Error: $INI_ROOT doesn't exist or isn't a directory"
+
+    shift
+
+    while read -rd $'\0' INI_FILE; do
+
+        php_do_apply_setting "$INI_FILE" "$@"
+
+    done < <(find "$INI_ROOT" -type f -name php.ini -print0 | sort -z)
+
+}
+
+# Usage: php_enable_extension "/etc/php" "extension" "/path/to/extension.so"
+function php_enable_extension() {
+
+    local INI_ROOT INI_FILE
+
+    INI_ROOT="$1"
+
+    [ -d "$INI_ROOT" ] || die "Error: $INI_ROOT doesn't exist or isn't a directory"
+
+    shift
+
+    while read -rd $'\0' INI_FILE; do
+
+        php_do_enable_extension "$INI_FILE" "$@"
+
+    done < <(find "$INI_ROOT" -type f -name php.ini -print0 | sort -z)
+
+}
+
+# Usage: php_apply_developer_settings "/etc/php"
+function php_apply_developer_settings() {
+
+    # display all the errors
+    php_apply_setting "$1" error_reporting E_ALL
+    php_apply_setting "$1" display_errors On
+    php_apply_setting "$1" display_startup_errors On
+
+    # enforce healthy limits
+    php_apply_setting "$1" memory_limit 256M
+
+    # enable debugging
+    php_apply_setting "$1" xdebug.remote_enable 1
+    php_apply_setting "$1" xdebug.remote_autostart 1
+
+}

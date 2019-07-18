@@ -476,6 +476,18 @@ function apply_system_config() {
 
     fi
 
+    if command_exists php && function_exists php_apply_developer_settings; then
+
+        local INI_ROOT
+
+        for INI_ROOT in /etc/php /usr/local/etc/php; do
+
+            [ -d "$INI_ROOT" ] && php_apply_developer_settings "$INI_ROOT" || true
+
+        done
+
+    fi
+
     if command_exists php && ! command_exists composer && [ ! -e /usr/local/bin/composer ] && [ -d /usr/local ]; then
 
         {
@@ -745,3 +757,11 @@ EOF
     ;;
 
 esac
+
+SED_IN_PLACE_ARGS=(-i)
+
+if [ "$IS_MACOS" -eq 1 ]; then
+
+    SED_IN_PLACE_ARGS+=("")
+
+fi
