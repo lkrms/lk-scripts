@@ -16,7 +16,7 @@ var linux_defaults = [
     // put your Linux default keybindings.json here
 ];
 
-var i, j, kb, kb2, commands = [], command, found, diff = [], matches = 0, disabled = 0, not_found = 0;
+var i, j, kb, kb2, commands = [], command, found, diff = [], matches = 0, disabled = 0, not_found = 0, skipped = 0, found_in_linux;
 
 for (i = 0; i < mac_defaults.length; i++) {
 
@@ -31,7 +31,7 @@ for (i = 0; i < mac_defaults.length; i++) {
 
     if (command) {
 
-        command["kb"].push(kb);
+        command.kb.push(kb);
 
     } else {
 
@@ -42,7 +42,7 @@ for (i = 0; i < mac_defaults.length; i++) {
         };
 
         if (has(kb, "when"))
-            command["when"] = kb.when;
+            command.when = kb.when;
 
         commands.push(command);
 
@@ -52,6 +52,8 @@ for (i = 0; i < mac_defaults.length; i++) {
 
 for (i = 0; i < commands.length; i++) {
 
+    found_in_linux = false;
+
     command = commands[i];
 
     // first pass: eliminate exact matches
@@ -59,48 +61,58 @@ for (i = 0; i < commands.length; i++) {
 
         kb = command.kb[j];
 
-        found = linux_defaults.find(function (kb2) {
-            return kb.key == kb2.key && command.command == kb2.command && has(command, "when") == has(kb2, "when") && (!has(command, "when") || command.when == kb2.when);
+        found = linux_defaults.filter(function (kb2) {
+            return kb.key == kb2.key && kb2.command.charAt(0) != "-" && command.command == kb2.command && has(command, "when") == has(kb2, "when") && (!has(command, "when") || command.when == kb2.when);
         });
 
         // exact match, so exclude from future searches and proceed
-        if (found) {
+        if (found.length) {
 
-            kb["matched"] = true;
-            found["matched"] = true;
-            found.command = "-" + found.command;
-            command.kb2.push(found);
+            kb.matched = true;
+            found.forEach(function (f) {
+                f.matched = true;
+                f.command = "-" + f.command;
+            });
+            Array.prototype.push.apply(command.kb2, found);
             matches++;
+            found_in_linux = true;
 
         }
 
     }
 
     // second pass: disable remaining Linux shortcuts
-    for (j = 0; j < linux_defaults.length; j++) {
+    linux_defaults.forEach(function (kb2) {
 
-        kb2 = linux_defaults[j];
-
-        if (command.command == kb2.command && has(command, "when") == has(kb2, "when") && (!has(command, "when") || command.when == kb2.when)) {
+        if (kb2.command.charAt(0) != "-" && command.command == kb2.command && has(command, "when") == has(kb2, "when") && (!has(command, "when") || command.when == kb2.when)) {
 
             kb2.command = "-" + kb2.command;
             diff.push(kb2);
             command.kb2.push(kb2);
             disabled++;
+            found_in_linux = true;
 
         }
 
-    }
+    });
 
-    // third pass: enable remaining Mac shortcuts
+    // third pass: enable remaining Mac shortcuts (unless the command doesn't even exist on Linux)
     for (j = 0; j < command.kb.length; j++) {
 
         kb = command.kb[j];
 
         if (!has(kb, "matched")) {
 
-            diff.push(kb);
-            not_found++;
+            if (found_in_linux) {
+
+                diff.push(kb);
+                not_found++;
+
+            } else {
+
+                skipped++;
+
+            }
 
         }
 
@@ -110,7 +122,8 @@ for (i = 0; i < commands.length; i++) {
 
 console.log("Matching commands found in linux_defaults, skipped: " + matches);
 console.log("Commands with different bindings found in linux_defaults, disabled: " + disabled);
-console.log("Commands not found in linux_defaults, added to diff: " + not_found);
+console.log("Commands not matched in linux_defaults, added to diff: " + not_found);
+console.log("Commands not present in linux_defaults, skipped: " + skipped);
 
 diff.sort(function (a, b) { return a.command.replace(/^-/, "").localeCompare(b.command.replace(/^-/, "")); });
 commands.sort(function (a, b) { return a.command.localeCompare(b.command); });
