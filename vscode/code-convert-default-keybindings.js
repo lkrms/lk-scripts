@@ -22,10 +22,6 @@ for (i = 0; i < mac_defaults.length; i++) {
 
     kb = mac_defaults[i];
 
-    // only consider "core" keybindings
-    if (!kb.command.match(/(^[^.]+$|^(actions|breadcrumbs|debug|editor|filesExplorer|workbench)\.)/))
-        continue;
-
     // replace "cmd+" with "meta+"
     kb.key = kb.key.replace(/\bcmd\+/g, "meta+");
 
