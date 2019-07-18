@@ -494,6 +494,12 @@ function apply_system_config() {
 
 }
 
+function get_yyyymmddhhmmss() {
+
+    date +'%Y%m%d%H%M%S'
+
+}
+
 function url_decode() {
 
     echo -e "${*//%/\\x}"
@@ -580,9 +586,10 @@ if command -v realpath >/dev/null 2>&1; then RS_SCRIPT_PATH="$(realpath "$RS_SCR
 RS_ROOT_DIR="$(cd "$(dirname "$RS_SCRIPT_PATH")/.." && pwd -P)"
 RS_CONFIG_DIR="$RS_ROOT_DIR/config"
 RS_CACHE_DIR="$RS_ROOT_DIR/cache"
+RS_LOG_DIR="$RS_ROOT_DIR/log"
 RS_TEMP_DIR="$RS_ROOT_DIR/tmp"
 
-mkdir -p "$RS_CONFIG_DIR" "$RS_CACHE_DIR" "$RS_TEMP_DIR"
+mkdir -p "$RS_CONFIG_DIR" "$RS_CACHE_DIR" "$RS_LOG_DIR" "$RS_TEMP_DIR"
 
 if [ -t 1 ]; then
 

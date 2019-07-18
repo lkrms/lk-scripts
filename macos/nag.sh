@@ -12,7 +12,7 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 assert_is_macos
 assert_not_root
 
-command_exists terminal-notifier || die "Error: $(basename "$0") requires terminal-notifier but it's not installed"
+assert_command_exists terminal-notifier
 
 if [ "$#" -lt "1" ]; then
 
