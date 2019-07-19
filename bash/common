@@ -56,24 +56,10 @@ function assert_not_server() {
 
 }
 
-function assert_apt_available() {
-
-    assert_is_linux
-
-    if [ "$IS_APT_INSTALLED" -ne "1" ]; then
-
-        die "Error: $(basename "$0") requires apt and dpkg"
-
-    fi
-
-}
-
 function assert_is_ubuntu_lts() {
 
     assert_is_ubuntu
-    assert_function_exists "apt_require_package"
-
-    command_exists ubuntu-distro-info || apt_require_package "distro-info"
+    assert_command_exists ubuntu-distro-info
 
     if ! ubuntu-distro-info --supported-esm | grep "^${DISTRIB_CODENAME}\$" >/dev/null 2>&1; then
 
@@ -335,14 +321,28 @@ function array_join_by() {
 
 function offer_sudo_password_bypass() {
 
+    # don't proceed if there's no point
+    groups | grep -Eq '\b(admin|sudo)\b' || return 0
+
     local USERNAME="${SUDO_USER:-$USER}" FILENAME CHECK_FILENAME
 
     FILENAME="/etc/sudoers.d/nopasswd-$USERNAME"
-    CHECK_FILENAME="$RS_CONFIG_DIR/.nopasswd-$USERNAME"
+    CHECK_FILENAME="$CACHE_DIR/.nopasswd-$USERNAME"
 
-    [ -e "$CHECK_FILENAME" ] && return || true
+    if [ -e "$CHECK_FILENAME" ]; then
+
+        return
+
+    fi
 
     console_message "Please provide your computer password if requested" "" "$BLUE"
+
+    # check that we can, in fact, sudo as root
+    if ! sudo true; then
+
+        return 0
+
+    fi
 
     if ! sudo test -e "$FILENAME"; then
 
@@ -360,8 +360,8 @@ EOF
 
     fi
 
-    # save time next time
-    touch "$CHECK_FILENAME" || die
+    # attempt to save time next time
+    { touch "$CHECK_FILENAME" || sudo touch "$CHECK_FILENAME"; } >/dev/null 2>&1 || true
 
 }
 
@@ -390,122 +390,6 @@ function sed_escape_replace() {
 
 }
 
-function git_add_global_ignore() {
-
-    local i IGNORE_FILE
-
-    IGNORE_FILE="$(git config --global core.excludesFile)" || die "Error: Git global option core.excludesFile not defined"
-    IGNORE_FILE="${IGNORE_FILE/#\~/$HOME}"
-
-    [ -f "$IGNORE_FILE" ] || touch "$IGNORE_FILE" || die
-
-    [ -f "$IGNORE_FILE" ] || die "Error: unable to create file $IGNORE_FILE"
-
-    for i in "$@"; do
-
-        if ! grep -q '^'"$(sed_escape_search "$i" N)"'$' "$IGNORE_FILE"; then
-
-            echo "$i" >>"$IGNORE_FILE"
-
-        fi
-
-    done
-
-}
-
-# Usage: git_add_global_setting <setting.name> <value> [change if already set? (y/N)]
-function git_add_global_setting() {
-
-    if [ "${3:-N}" = "Y" ] || ! git config --global "$1" >/dev/null 2>&1; then
-
-        local EXTRA=()
-
-        if is_bool "$1"; then
-
-            EXTRA+=("--bool")
-
-        elif is_int "$1"; then
-
-            EXTRA+=("--int")
-
-        fi
-
-        git config --global "${EXTRA[@]}" "$1" "$2"
-
-    fi
-
-}
-
-function apply_system_config() {
-
-    if command_exists git; then
-
-        if [ -e "$RS_CONFIG_DIR/gitignore" ]; then
-
-            # shellcheck disable=SC2088
-            git_add_global_setting core.excludesFile "~/.gitignore"
-            file_to_array "$RS_CONFIG_DIR/gitignore" '^[[:space:]]*$' '^#'
-            git_add_global_ignore "${FILE_TO_ARRAY[@]}"
-
-        fi
-
-        git_add_global_setting push.default simple
-
-        local MERGETOOL=
-
-        command_exists meld && MERGETOOL=meld || true
-
-        if [ -n "$MERGETOOL" ]; then
-
-            git_add_global_setting merge.guitool "$MERGETOOL" Y
-            git_add_global_setting mergetool.prompt false
-
-        fi
-
-    fi
-
-    if command_exists pip; then
-
-        sudo -H pip install ps_mem
-
-    fi
-
-    if command_exists npm; then
-
-        sudo npm install -g eslint
-
-    fi
-
-    if command_exists php && function_exists php_apply_developer_settings; then
-
-        local INI_ROOT
-
-        for INI_ROOT in /etc/php /usr/local/etc/php; do
-
-            [ -d "$INI_ROOT" ] && php_apply_developer_settings "$INI_ROOT" || true
-
-        done
-
-    fi
-
-    if command_exists php && ! command_exists composer && [ ! -e /usr/local/bin/composer ] && [ -d /usr/local ]; then
-
-        {
-            sudo mkdir -p /usr/local/bin &&
-                "$RS_ROOT_DIR/bash/composer-install.sh" &&
-                sudo mv "composer.phar" /usr/local/bin/composer
-        } || console_message "Unable to install Composer" "" "$BOLD" "$RED" >&2
-
-    fi
-
-    if command_exists composer; then
-
-        composer global require "friendsofphp/php-cs-fixer"
-
-    fi
-
-}
-
 function get_yyyymmddhhmmss() {
 
     date +'%Y%m%d%H%M%S'
@@ -529,16 +413,17 @@ function get_urls_from_url() {
 # files are downloaded to the current directory, and local filenames are output
 function download_urls() {
 
-    local DOWNLOAD_FAILED=0 url HEADERS HEADER HEADER_PARTS IFS FILENAME
+    local DOWNLOAD_FAILED=0 URL PRETTY_URL HEADERS HEADER HEADER_PARTS IFS FILENAME
 
-    for url in "$@"; do
+    for URL in "$@"; do
 
         FILENAME=
-        HEADERS="$(wget -SNnv "$url" 2>&1 >/dev/null)" || DOWNLOAD_FAILED=1
+        PRETTY_URL="${NO_WRAP}${URL}${WRAP}"
+        HEADERS="$(wget -SNnv "$URL" 2>&1 >/dev/null)" || DOWNLOAD_FAILED=1
 
         if [ "$DOWNLOAD_FAILED" -eq "1" ]; then
 
-            console_message "Unable to download $(echo "$HEADERS" | head -n1):" "${NO_WRAP}${url}${WRAP}" "$BOLD" "$RED" >&2
+            console_message "Unable to download ($(echo "$HEADERS" | head -n1)):" "$PRETTY_URL" "$BOLD" "$RED" >&2
             die
 
         fi
@@ -573,35 +458,35 @@ function download_urls() {
 
         if [ -z "$FILENAME" ] || [ ! -e "$FILENAME" ]; then
 
-            FILENAME="$(url_decode "$url")"
+            FILENAME="$(url_decode "$URL")"
             FILENAME="${FILENAME##*\/}"
 
         fi
 
         if [ ! -e "$FILENAME" ]; then
 
-            console_message "Unable to determine filename for:" "${NO_WRAP}${url}${WRAP}" "$BOLD" "$RED" >&2
+            console_message "Unable to determine filename for:" "$PRETTY_URL" "$BOLD" "$RED" >&2
             die
 
         fi
 
         echo "$(pwd)/$FILENAME"
 
-        console_message "Finished downloading:" "${NO_WRAP}${url}${WRAP}" "$CYAN" >&2
+        console_message "Finished downloading:" "$PRETTY_URL" "$CYAN" >&2
 
     done
 
 }
 
-RS_SCRIPT_PATH="${BASH_SOURCE[0]}"
-if command -v realpath >/dev/null 2>&1; then RS_SCRIPT_PATH="$(realpath "$RS_SCRIPT_PATH")"; fi
-RS_ROOT_DIR="$(cd "$(dirname "$RS_SCRIPT_PATH")/.." && pwd -P)"
-RS_CONFIG_DIR="$RS_ROOT_DIR/config"
-RS_CACHE_DIR="$RS_ROOT_DIR/cache"
-RS_LOG_DIR="$RS_ROOT_DIR/log"
-RS_TEMP_DIR="$RS_ROOT_DIR/tmp"
+COMMON_SCRIPT_PATH="${BASH_SOURCE[0]}"
+if command -v realpath >/dev/null 2>&1; then COMMON_SCRIPT_PATH="$(realpath "$COMMON_SCRIPT_PATH")"; fi
+ROOT_DIR="$(cd "$(dirname "$COMMON_SCRIPT_PATH")/.." && pwd -P)"
+CONFIG_DIR="$ROOT_DIR/config"
+CACHE_DIR="$ROOT_DIR/cache"
+LOG_DIR="$ROOT_DIR/log"
+TEMP_DIR="$ROOT_DIR/tmp"
 
-mkdir -p "$RS_CONFIG_DIR" "$RS_CACHE_DIR" "$RS_LOG_DIR" "$RS_TEMP_DIR"
+mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOG_DIR" "$TEMP_DIR"
 
 if [ -t 1 ]; then
 
@@ -702,10 +587,10 @@ Linux)
 
     if command_exists lsb_release; then
 
-        if [ -e "$RS_CONFIG_DIR/.lsb-release" ]; then
+        if [ -e "$CACHE_DIR/.lsb-release" ]; then
 
             # shellcheck disable=SC1090
-            . "$RS_CONFIG_DIR/.lsb-release"
+            . "$CACHE_DIR/.lsb-release"
 
         else
 
@@ -724,7 +609,7 @@ Linux)
             DISTRIB_CODENAME="$(lsb_release -sc$LSB_RELEASE_EXTRA)"
             DISTRIB_DESCRIPTION="$(lsb_release -sd$LSB_RELEASE_EXTRA)"
 
-            cat <<EOF >"$RS_CONFIG_DIR/.lsb-release"
+            cat <<EOF >"$CACHE_DIR/.lsb-release"
 DISTRIB_ID="$DISTRIB_ID"
 DISTRIB_RELEASE="$DISTRIB_RELEASE"
 DISTRIB_CODENAME="$DISTRIB_CODENAME"
@@ -741,12 +626,6 @@ EOF
         fi
 
     fi
-
-    IS_APT_INSTALLED=1
-    IS_SNAP_INSTALLED=1
-
-    { command_exists apt-get && command_exists dpkg; } || IS_APT_INSTALLED=0
-    command_exists snap || IS_SNAP_INSTALLED=0
 
     ;;
 

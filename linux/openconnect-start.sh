@@ -69,7 +69,7 @@ fi
 
 OPENCONNECT_OPTIONS+=(-u "$VPN_USER" "$VPN_HOST")
 
-LOG_FILE="$RS_LOG_DIR/openconnect-$(get_yyyymmddhhmmss).log"
+LOG_FILE="$LOG_DIR/openconnect-$(get_yyyymmddhhmmss).log"
 
 if [ -n "$VPN_PASSWORD" ]; then
 

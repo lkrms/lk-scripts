@@ -13,7 +13,11 @@ for j in $(seq -1 8); do
 
     for i in $(seq -1 8); do
 
-        [ "$i" -ne "-1" ] && [ "$i" -eq "$j" ] && continue
+        if [ "$i" -ne "-1" ] && [ "$i" -eq "$j" ]; then
+
+            continue
+
+        fi
 
         FG_COLOUR="colour $i"
         BG_COLOUR="colour $j"

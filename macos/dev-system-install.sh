@@ -9,7 +9,9 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
 
-# shellcheck source=../bash/common-php
-. "$SCRIPT_DIR/../bash/common-php"
+# shellcheck source=../bash/common-dev
+. "$SCRIPT_DIR/../bash/common-dev"
 
-apply_system_config
+assert_is_macos
+assert_not_root
+offer_sudo_password_bypass

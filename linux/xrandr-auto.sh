@@ -154,10 +154,10 @@ function get_edid_index() {
 }
 
 # customise OPTIONS, OPTIONS_xxx, PRIMARY_INDEX, SCALING_FACTOR and DPI here
-if [ -e "$RS_CONFIG_DIR/xrandr" ]; then
+if [ -e "$CONFIG_DIR/xrandr" ]; then
 
     # shellcheck source=../config/xrandr
-    . "$RS_CONFIG_DIR/xrandr" || die
+    . "$CONFIG_DIR/xrandr" || die
 
 fi
 

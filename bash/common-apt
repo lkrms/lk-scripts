@@ -1,6 +1,12 @@
 #!/bin/bash
 
-assert_apt_available
+assert_is_linux
+
+if ! command_exists apt-get || ! command_exists dpkg; then
+
+    die "Error: $(basename "$0") requires apt and dpkg"
+
+fi
 
 function apt_require_package() {
 
@@ -216,7 +222,7 @@ function apt_register_ppa() {
         if [ "${4:-Y}" = "Y" ]; then
 
             # exits non-zero on EOF
-            read -rd '' PREFERENCES <<EOF || true
+            IFS= read -rd '' PREFERENCES <<EOF || true
 Package: *
 Pin: release o=LP-PPA-${1/\//-}
 Pin-Priority: 400
@@ -273,7 +279,7 @@ function apt_register_repository() {
         if [ "${7:-Y}" = "Y" ]; then
 
             # exits non-zero on EOF
-            read -rd '' PREFERENCES <<EOF || true
+            IFS= read -rd '' PREFERENCES <<EOF || true
 Package: *
 Pin: $4
 Pin-Priority: 400
@@ -880,7 +886,7 @@ function apt_get_new_configuration_files() {
 }
 
 APT_CACHE_DIRTY=1
-APT_DEB_PATH="$RS_CACHE_DIR/deb"
+APT_DEB_PATH="$CACHE_DIR/deb"
 APT_GET_OPTIONS=(-o "Acquire::ForceIPv4=true" -y)
 APT_PPA_REGISTRY=()
 APT_PPA_PACKAGES=()

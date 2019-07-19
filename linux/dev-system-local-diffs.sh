@@ -54,7 +54,7 @@ for i in "${!LOCAL_PATHS[@]}"; do
 
     pushd "$LOCAL_PATH" >/dev/null
 
-    while read -rd $'\0' FILENAME; do
+    while IFS= read -rd $'\0' FILENAME; do
 
         FILENAME="${FILENAME##./}"
 

@@ -1,5 +1,121 @@
 #!/bin/bash
 
+function git_add_global_ignore() {
+
+    local i IGNORE_FILE
+
+    IGNORE_FILE="$(git config --global core.excludesFile)" || die "Error: Git global option core.excludesFile not defined"
+    IGNORE_FILE="${IGNORE_FILE/#\~/$HOME}"
+
+    [ -f "$IGNORE_FILE" ] || touch "$IGNORE_FILE" || die
+
+    [ -f "$IGNORE_FILE" ] || die "Error: unable to create file $IGNORE_FILE"
+
+    for i in "$@"; do
+
+        if ! grep -q '^'"$(sed_escape_search "$i" N)"'$' "$IGNORE_FILE"; then
+
+            echo "$i" >>"$IGNORE_FILE"
+
+        fi
+
+    done
+
+}
+
+# Usage: git_add_global_setting <setting.name> <value> [change if already set? (y/N)]
+function git_add_global_setting() {
+
+    if [ "${3:-N}" = "Y" ] || ! git config --global "$1" >/dev/null 2>&1; then
+
+        local EXTRA=()
+
+        if is_bool "$1"; then
+
+            EXTRA+=("--bool")
+
+        elif is_int "$1"; then
+
+            EXTRA+=("--int")
+
+        fi
+
+        git config --global "${EXTRA[@]}" "$1" "$2"
+
+    fi
+
+}
+
+function dev_apply_system_config() {
+
+    if command_exists git; then
+
+        if [ -e "$CONFIG_DIR/gitignore" ]; then
+
+            # shellcheck disable=SC2088
+            git_add_global_setting core.excludesFile "~/.gitignore"
+            file_to_array "$CONFIG_DIR/gitignore" '^[[:space:]]*$' '^#'
+            git_add_global_ignore "${FILE_TO_ARRAY[@]}"
+
+        fi
+
+        git_add_global_setting push.default simple
+
+        local MERGETOOL=
+
+        command_exists meld && MERGETOOL=meld || true
+
+        if [ -n "$MERGETOOL" ]; then
+
+            git_add_global_setting merge.guitool "$MERGETOOL" Y
+            git_add_global_setting mergetool.prompt false
+
+        fi
+
+    fi
+
+    if command_exists pip; then
+
+        sudo -H pip install ps_mem
+
+    fi
+
+    if command_exists npm; then
+
+        sudo npm install -g eslint
+
+    fi
+
+    if command_exists php && function_exists php_apply_developer_settings; then
+
+        local INI_ROOT
+
+        for INI_ROOT in /etc/php /usr/local/etc/php; do
+
+            [ -d "$INI_ROOT" ] && php_apply_developer_settings "$INI_ROOT" || true
+
+        done
+
+    fi
+
+    if command_exists php && ! command_exists composer && [ ! -e /usr/local/bin/composer ] && [ -d /usr/local ]; then
+
+        {
+            sudo mkdir -p /usr/local/bin &&
+                "$ROOT_DIR/bash/composer-install.sh" &&
+                sudo mv "composer.phar" /usr/local/bin/composer
+        } || console_message "Unable to install Composer" "" "$BOLD" "$RED" >&2
+
+    fi
+
+    if command_exists composer; then
+
+        composer global require "friendsofphp/php-cs-fixer"
+
+    fi
+
+}
+
 # Usage: php_do_apply_setting "/path/to/php.ini" "error_reporting" "E_ALL"
 function php_do_apply_setting() {
 
@@ -81,7 +197,7 @@ function php_apply_setting() {
 
     shift
 
-    while read -rd $'\0' INI_FILE; do
+    while IFS= read -rd $'\0' INI_FILE; do
 
         php_do_apply_setting "$INI_FILE" "$@"
 
@@ -100,7 +216,7 @@ function php_enable_extension() {
 
     shift
 
-    while read -rd $'\0' INI_FILE; do
+    while IFS= read -rd $'\0' INI_FILE; do
 
         php_do_enable_extension "$INI_FILE" "$@"
 

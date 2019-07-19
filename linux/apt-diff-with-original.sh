@@ -34,7 +34,7 @@ for p in "${PACKAGES[@]}"; do
     DOWNLOAD_INFO=($(apt-get download --print-uris "$p")) && [ "${#DOWNLOAD_INFO[@]}" -ge "2" ] || continue
 
     eval url="${DOWNLOAD_INFO[0]}"
-    EXTRACT_PATH="$RS_TEMP_DIR/extract/${DOWNLOAD_INFO[1]}"
+    EXTRACT_PATH="$TEMP_DIR/extract/${DOWNLOAD_INFO[1]}"
 
     if [ ! -d "$EXTRACT_PATH" ]; then
 

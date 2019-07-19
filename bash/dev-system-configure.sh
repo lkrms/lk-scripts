@@ -9,6 +9,7 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
 
-assert_is_macos
-assert_not_root
-offer_sudo_password_bypass
+# shellcheck source=../bash/common-dev
+. "$SCRIPT_DIR/../bash/common-dev"
+
+dev_apply_system_config

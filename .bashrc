@@ -11,11 +11,11 @@
     # shellcheck source=bash/common
     . "$SCRIPT_DIR/bash/common"
 
-    ADD_TO_PATH=("$RS_ROOT_DIR" "$RS_ROOT_DIR/bash")
+    ADD_TO_PATH=("$ROOT_DIR" "$ROOT_DIR/bash")
 
-    [ "$IS_MACOS" -eq "1" ] && ADD_TO_PATH+=("$RS_ROOT_DIR/macos")
-    [ "$IS_LINUX" -eq "1" ] && ADD_TO_PATH+=("$RS_ROOT_DIR/linux")
-    [ "$IS_UBUNTU" -eq "1" ] && ADD_TO_PATH+=("$RS_ROOT_DIR/ubuntu")
+    [ "$IS_MACOS" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/macos")
+    [ "$IS_LINUX" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/linux")
+    [ "$IS_UBUNTU" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/ubuntu")
 
     ADD_TO_PATH+=("$HOME/.composer/vendor/bin")
     ADD_TO_PATH+=("$HOME/.config/composer/vendor/bin")

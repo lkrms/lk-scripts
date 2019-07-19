@@ -12,8 +12,8 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common-apt
 . "$SCRIPT_DIR/../bash/common-apt"
 
-# shellcheck source=../bash/common-php
-. "$SCRIPT_DIR/../bash/common-php"
+# shellcheck source=../bash/common-dev
+. "$SCRIPT_DIR/../bash/common-dev"
 
 assert_is_ubuntu
 assert_not_server
@@ -235,7 +235,7 @@ done
 
 # final tasks
 
-apply_system_config
+dev_apply_system_config
 
 if apt_package_installed "libgtk-3-dev"; then
 

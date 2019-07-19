@@ -17,7 +17,7 @@ DB_PATH="$(dirname "$DARWIN_USER_DIR")"/"$(basename "$DARWIN_USER_DIR")/com.appl
 
 [ -f "$DB_PATH" ] || die "File doesn't exist: $DB_PATH"
 
-DUMP_DIR="$RS_TEMP_DIR/notifications/$(date '+%s')"
+DUMP_DIR="$TEMP_DIR/notifications/$(date '+%s')"
 
 mkdir -p "$DUMP_DIR"
 
