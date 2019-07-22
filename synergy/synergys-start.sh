@@ -12,19 +12,25 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common-synergy
 . "$SCRIPT_DIR/../bash/common-synergy"
 
-if [ "$#" -ne "2" ]; then
+if [ "$#" -lt "2" ]; then
 
-    die "Usage: $(basename "$0") <my-host-name> <synergy-server>"
+    die "Usage: $(basename "$0") <my-host-name> </path/to/config/file> [ip.address.to.listen.on]"
 
 fi
 
-SYNERGY_COMMAND="$(synergy_find_executable synergyc)"
+SYNERGY_COMMAND="$(synergy_find_executable synergys)"
 
-synergy_get_log_files synergyc
+synergy_get_log_files synergys
 
 synergy_kill
 
-COMMAND_LINE=("$SYNERGY_COMMAND" -f --no-tray -d INFO -l "$LOG_FILE" -n "$1" "$2")
+COMMAND_LINE=("$SYNERGY_COMMAND" -f --no-tray -d INFO -l "$LOG_FILE" --enable-drag-drop -n "$1" -c "$2")
+
+if [ -n "${3:-}" ]; then
+
+    COMMAND_LINE+=(-a "$3")
+
+fi
 
 echo "[ $(date '+%+') ] Starting: ${COMMAND_LINE[*]}" >>"$LOG_FILE2"
 
