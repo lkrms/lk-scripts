@@ -114,6 +114,20 @@ function dev_apply_system_config() {
 
     fi
 
+    if command_exists sxhkd; then
+
+        mkdir -p "$HOME/.config/sxhkd"
+        mkdir -p "$HOME/.local/bin"
+        move_file_delete_link "$HOME/.config/sxhkd/sxhkdrc"
+        move_file_delete_link "$HOME/.local/bin/sxhkd-do-map.py"
+        ln -s "$ROOT_DIR/linux/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc"
+        ln -s "$ROOT_DIR/linux/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py"
+
+        systemctl --user enable "$ROOT_DIR/linux/sxhkd.service"
+        systemctl --user start sxhkd
+
+    fi
+
 }
 
 # Usage: php_do_apply_setting "/path/to/php.ini" "error_reporting" "E_ALL"

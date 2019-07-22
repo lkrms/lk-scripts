@@ -478,6 +478,24 @@ function download_urls() {
 
 }
 
+function move_file_delete_link() {
+
+    if [ -e "$1" ]; then
+
+        if [ -L "$1" ]; then
+
+            rm -f "$1"
+
+        else
+
+            mv -f "$1" "$1.bak"
+
+        fi
+
+    fi
+
+}
+
 COMMON_SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then COMMON_SCRIPT_PATH="$(realpath "$COMMON_SCRIPT_PATH")"; fi
 ROOT_DIR="$(cd "$(dirname "$COMMON_SCRIPT_PATH")/.." && pwd -P)"

@@ -76,7 +76,32 @@ apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_v
 apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "release o=vscode stable,l=vscode stable" "code code-*"
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "origin dl.yarnpkg.com" "yarn"
 
-apt_install_packages "essential utilities" "attr cifs-utils debsums fio hfsprogs hwinfo lftp libsecret-tools linux-generic-hwe-$DISTRIB_RELEASE linux-tools-generic mediainfo net-tools openssh-server ppa-purge pv s-nail screen syslinux-utils tlp tlp-rdw traceroute trickle vim whois xserver-xorg-hwe-$DISTRIB_RELEASE" N
+apt_install_packages "essential utilities" "\
+ attr\
+ cifs-utils\
+ debsums\
+ fio\
+ hfsprogs\
+ hwinfo\
+ ksh\
+ lftp\
+ libsecret-tools\
+ linux-tools-generic\
+ mediainfo\
+ net-tools\
+ openssh-server\
+ ppa-purge\
+ pv\
+ s-nail\
+ screen\
+ syslinux-utils\
+ tlp-rdw\
+ tlp\
+ traceroute\
+ trickle\
+ vim\
+ whois\
+ linux-generic-hwe-$DISTRIB_RELEASE xserver-xorg-hwe-$DISTRIB_RELEASE" N
 
 if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
 
@@ -85,10 +110,111 @@ if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
 fi
 
 apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" N
-apt_install_packages "desktop essentials" "abcde beets blueman bsd-mailx- caffeine code copyq dconf-editor eyed3 filezilla firefox flameshot fonts-symbola galculator gconf-editor geany ghostwriter gimp git-cola gnome-color-manager google-chrome-stable gparted guake handbrake-cli handbrake-gtk indicator-multiload inkscape keepassxc lame libdvd-pkg! libreoffice makemkv-bin makemkv-oss meld mkvtoolnix mkvtoolnix-gui owncloud-client qpdfview remmina scribus seahorse shellcheck skypeforlinux speedcrunch sublime-merge sublime-text synaptic synergy thunderbird tilix typora usb-creator-gtk vlc x11vnc xbindkeys xdotool youtube-dl"
+apt_install_packages "desktop essentials" "\
+ abcde\
+ beets\
+ blueman\
+ bsd-mailx-\
+ caffeine\
+ code\
+ copyq\
+ dconf-editor\
+ eyed3\
+ filezilla\
+ firefox\
+ flameshot\
+ fonts-symbola\
+ galculator\
+ gconf-editor\
+ geany\
+ ghostwriter\
+ gimp\
+ git-cola\
+ gnome-color-manager\
+ google-chrome-stable\
+ gparted\
+ guake\
+ handbrake-cli\
+ handbrake-gtk\
+ indicator-multiload\
+ inkscape\
+ keepassxc\
+ lame\
+ libdvd-pkg!\
+ libreoffice\
+ makemkv-bin\
+ makemkv-oss\
+ meld\
+ mkvtoolnix-gui\
+ mkvtoolnix\
+ owncloud-client\
+ qpdfview\
+ remmina\
+ scribus\
+ seahorse\
+ skypeforlinux\
+ speedcrunch\
+ sublime-text\
+ sxhkd\
+ synaptic\
+ synergy\
+ thunderbird\
+ tilix\
+ typora\
+ usb-creator-gtk\
+ vlc\
+ x11vnc\
+ xautomation\
+ xdotool\
+ youtube-dl\
+"
+
 apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
 apt_install_packages "photography" "geeqie rapid-photo-downloader"
-apt_install_packages "development" 'libapache2-mod-php*- '"build-essential cmake dbeaver-ce git nodejs php php-bcmath php-cli php-curl php-dev php-fpm php-gd php-gettext php-imagick php-imap php-json php-mbstring php-mcrypt? php-mysql php-pear php-soap php-xdebug php-xml php-xmlrpc python python-dateutil python-dev python-mysqldb python-pip python-requests python3 python3-dateutil python3-dev python3-mysqldb python3-pip python3-requests ruby yarn"
+apt_install_packages "development" "\
+ build-essential\
+ cmake\
+ dbeaver-ce\
+ git\
+ libapache2-mod-php*-\
+ nodejs\
+ php-bcmath\
+ php-cli\
+ php-curl\
+ php-dev\
+ php-fpm\
+ php-gd\
+ php-gettext\
+ php-imagick\
+ php-imap\
+ php-json\
+ php-mbstring\
+ php-mcrypt?\
+ php-mysql\
+ php-pear\
+ php-soap\
+ php-xdebug\
+ php-xml\
+ php-xmlrpc\
+ php\
+ python-dateutil\
+ python-dev\
+ python-mysqldb\
+ python-pip\
+ python-requests\
+ python\
+ python3-dateutil\
+ python3-dev\
+ python3-mysqldb\
+ python3-pip\
+ python3-requests\
+ python3\
+ ruby\
+ shellcheck\
+ sublime-merge\
+ yarn\
+"
+
 apt_install_packages "development services" 'libapache2-mod-php*- '"apache2 libapache2-mod-fastcgi? libapache2-mod-fcgid? mariadb-server mongodb-org"
 
 if apt_package_available powershell; then
