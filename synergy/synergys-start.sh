@@ -24,7 +24,7 @@ synergy_get_log_files synergys
 
 synergy_kill
 
-COMMAND_LINE=("$SYNERGY_COMMAND" -f --no-tray -d INFO -l "$LOG_FILE" --enable-drag-drop -n "$1" -c "$2")
+COMMAND_LINE=("$SYNERGY_COMMAND" -f --no-tray -d INFO --enable-drag-drop -n "$1" -c "$2")
 
 if [ -n "${3:-}" ]; then
 
@@ -35,7 +35,7 @@ fi
 echo "[ $(date '+%+') ] Starting: ${COMMAND_LINE[*]}" >>"$LOG_FILE2"
 
 set +e
-"${COMMAND_LINE[@]}" >>"$LOG_FILE2" 2>&1
+QT_BEARER_POLL_TIMEOUT=-1 "${COMMAND_LINE[@]}" >>"$LOG_FILE2" 2>&1
 RESULT="$?"
 set -e
 
