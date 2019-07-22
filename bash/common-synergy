@@ -1,0 +1,59 @@
+#!/bin/bash
+# shellcheck disable=SC2034
+
+function synergy_find_executable() {
+
+    which "$1" ||
+        PATH=".:/usr/bin:/usr/local/bin:/Applications/Synergy.app/Contents/MacOS" which "$1" ||
+        die "Error: unable to find $1 command"
+
+}
+
+function synergy_get_log_files() {
+
+    LOG_FILE="$LOG_DIR/$1.log"
+    LOG_FILE2="$LOG_DIR/$1.out.log"
+
+    if [ ! -e "$LOG_FILE" ] && ! touch "$LOG_FILE" 2>/dev/null || [ ! -w "$LOG_FILE" ]; then
+
+        LOG_FILE="$(mktemp "/tmp/$1.XXXXXXXX")" &&
+            LOG_FILE2="$(mktemp "/tmp/$1.out.XXXXXXXX")" ||
+            die "Error: unable to find a writable log file location"
+
+    fi
+
+}
+
+function synergy_kill() {
+
+    if pgrep -x 'synergy[cs]?' >/dev/null; then
+
+        if [ "$EUID" -eq "0" ]; then
+
+            pkill -x 'synergy[cs]?' || true
+
+        else
+
+            pkill -x -u "$USER" 'synergy[cs]?' || true
+
+            sleep 1
+
+            if pgrep -x 'synergy[cs]?' >/dev/null; then
+
+                sudo -n pkill -x 'synergy[cs]?' || true
+
+            fi
+
+        fi
+
+        sleep 1
+
+        if pgrep -x 'synergy[cs]?' >/dev/null; then
+
+            die "Error: synergy is already running"
+
+        fi
+
+    fi
+
+}

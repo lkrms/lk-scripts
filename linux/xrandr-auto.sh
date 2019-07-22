@@ -13,7 +13,7 @@ assert_command_exists xrandr
 assert_command_exists bc
 
 # if the primary output's actual DPI is above this, enable "Retina" mode
-HIDPI_THRESHOLD=120
+HIDPI_THRESHOLD=144
 
 # remove trailing whitespace
 XRANDR_OUTPUT="$(
@@ -124,6 +124,10 @@ for i in "${!OUTPUTS[@]}"; do
                 set -euo pipefail
                 echo "scale = 10; dpi = ${PIXELS[0]} / ( ${DIMENSIONS[0]} / 10 / 2.54 ); scale = 0; dpi / 1" | bc
             )"
+            PRIMARY_SIZE="$(
+                set -euo pipefail
+                echo "scale = 10; size = sqrt(${DIMENSIONS[0]} ^ 2 + ${DIMENSIONS[1]} ^ 2) / 10 / 2.54; scale = 1; size / 1" | bc
+            )"
 
         fi
 
@@ -138,7 +142,13 @@ for i in "${!OUTPUTS[@]}"; do
 
 done
 
-if [ "$ACTUAL_DPI" -gt "$HIDPI_THRESHOLD" ]; then
+if [ -t 1 ]; then
+
+    console_message "Actual DPI of largest screen ($PRIMARY_SIZE\"):" "$ACTUAL_DPI" "$GREEN"
+
+fi
+
+if [ "$ACTUAL_DPI" -ge "$HIDPI_THRESHOLD" ]; then
 
     SCALING_FACTOR=2
     DPI=192
@@ -250,5 +260,11 @@ if command_exists xkbcomp && [ -e "$CONFIG_DIR/xkbcomp" ]; then
         echo 'xkbcomp "'"$CONFIG_DIR/xkbcomp"'" "$DISPLAY"' >>"$XSESSIONRC"
 
     fi
+
+fi
+
+if [ "${1:-}" != "--autostart" ] && command_exists systemctl && systemctl --user --quiet is-active sxhkd; then
+
+    systemctl --user restart sxhkd
 
 fi

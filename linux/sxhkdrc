@@ -1,8 +1,8 @@
-super + {a-z,0-9}
-    sxhkd-do-map.py super+{a-z,0-9}
+super + {a-z,0-9,comma}
+    sxhkd-do-map.py super+{a-z,0-9,comma}
 
-super + shift + {a-z,0-9}
-    sxhkd-do-map.py super+shift+{a-z,0-9}
+super + shift + {a-z,0-9,comma}
+    sxhkd-do-map.py super+shift+{a-z,0-9,comma}
 
-alt + super + {a-z,0-9}
-    sxhkd-do-map.py alt+super+{a-z,0-9}
+alt + super + {a-z,0-9,comma}
+    sxhkd-do-map.py alt+super+{a-z,0-9,comma}
