@@ -239,3 +239,16 @@ if command_exists displaycal-apply-profiles; then
     displaycal-apply-profiles || true
 
 fi
+
+if command_exists xkbcomp && [ -e "$CONFIG_DIR/xkbcomp" ]; then
+
+    xkbcomp "$CONFIG_DIR/xkbcomp" "$DISPLAY"
+
+    if ! grep -Eq "$(sed_escape_search "$CONFIG_DIR/xkbcomp")" "$XSESSIONRC"; then
+
+        # shellcheck disable=SC2016
+        echo 'xkbcomp "'"$CONFIG_DIR/xkbcomp"'" "$DISPLAY"' >>"$XSESSIONRC"
+
+    fi
+
+fi
