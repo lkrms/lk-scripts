@@ -682,6 +682,16 @@ xkb_types "complete" {
         level_name[Level3]= "Alt Base";
         level_name[Level4]= "Alt Number";
     };
+    type "COMMAND_OPTION" {
+        modifiers= Control+Mod4+Alt;
+        map[Mod4]= Level2;
+        map[Alt]= Level3;
+        map[Control+Alt]= Level4;
+        level_name[Level1]= "Base";
+        level_name[Level2]= "Command";
+        level_name[Level3]= "Option";
+        level_name[Level4]= "Control Option";
+    };
 };
 
 xkb_compatibility "complete" {
@@ -1420,12 +1430,28 @@ xkb_symbols "pc+us+inet(evdev)+altwin(swap_alt_win)+compose(rctrl)" {
     };
     key <LNFD> {         [        Linefeed ] };
     key <HOME> {         [            Home ] };
-    key   <UP> {         [              Up ] };
+    key   <UP> {
+        type= "PC_SUPER_LEVEL2",
+        symbols[Group1]= [              Up,        NoSymbol ],
+        actions[Group1]= [ NoAction(), RedirectKey(key=<HOME>,mods= Control,clearMods= Mod4) ]
+    };
     key <PGUP> {         [           Prior ] };
-    key <LEFT> {         [            Left ] };
-    key <RGHT> {         [           Right ] };
+    key <LEFT> {
+        type= "COMMAND_OPTION",
+        symbols[Group1]= [            Left,        NoSymbol,        NoSymbol,            Left ],
+        actions[Group1]= [ NoAction(), RedirectKey(key=<HOME>,clearMods= Mod4), RedirectKey(key=<LEFT>,mods= Control,clearMods= Alt), NoAction() ]
+    };
+    key <RGHT> {
+        type= "COMMAND_OPTION",
+        symbols[Group1]= [           Right,        NoSymbol,        NoSymbol,           Right ],
+        actions[Group1]= [ NoAction(), RedirectKey(key=<END>,clearMods= Mod4), RedirectKey(key=<RGHT>,mods= Control,clearMods= Alt), NoAction() ]
+    };
     key  <END> {         [             End ] };
-    key <DOWN> {         [            Down ] };
+    key <DOWN> {
+        type= "PC_SUPER_LEVEL2",
+        symbols[Group1]= [            Down,        NoSymbol ],
+        actions[Group1]= [ NoAction(), RedirectKey(key=<END>,mods= Control,clearMods= Mod4) ]
+    };
     key <PGDN> {         [            Next ] };
     key  <INS> {         [          Insert ] };
     key <DELE> {         [          Delete ] };
@@ -1443,8 +1469,8 @@ xkb_symbols "pc+us+inet(evdev)+altwin(swap_alt_win)+compose(rctrl)" {
     key <I129> {         [      KP_Decimal,      KP_Decimal ] };
     key <HNGL> {         [          Hangul ] };
     key <HJCV> {         [    Hangul_Hanja ] };
-    key <LWIN> {         [           Alt_L,          Meta_L ] };
-    key <RWIN> {         [           Alt_R,          Meta_R ] };
+    key <LWIN> {         [           Alt_L ] };
+    key <RWIN> {         [           Alt_R ] };
     key <COMP> {         [            Menu ] };
     key <STOP> {         [          Cancel ] };
     key <AGAI> {         [            Redo ] };
@@ -1555,7 +1581,6 @@ xkb_symbols "pc+us+inet(evdev)+altwin(swap_alt_win)+compose(rctrl)" {
     modifier_map Mod1 { <LWIN> };
     modifier_map Mod1 { <RWIN> };
     modifier_map Mod5 { <MDSW> };
-    modifier_map Mod1 { <META> };
     modifier_map Mod4 { <SUPR> };
     modifier_map Mod4 { <HYPR> };
 };
