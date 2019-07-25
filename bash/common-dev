@@ -114,7 +114,7 @@ function dev_apply_system_config() {
 
     fi
 
-    if command_exists sxhkd; then
+    if command_exists sxhkd && command_exists systemctl; then
 
         mkdir -p "$HOME/.config/sxhkd"
         mkdir -p "$HOME/.local/bin"
@@ -123,8 +123,13 @@ function dev_apply_system_config() {
         ln -s "$ROOT_DIR/linux/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc"
         ln -s "$ROOT_DIR/linux/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py"
 
-        systemctl --user enable "$ROOT_DIR/linux/sxhkd.service"
-        systemctl --user start sxhkd
+        if systemctl --user list-units --full --all 2>/dev/null | grep -Eq '^sxhkd\.service[[:space:]]+'; then
+
+            systemctl --user disable --now "sxhkd.service" 2>/dev/null || true
+
+        fi
+
+        systemctl --user enable --now "$ROOT_DIR/linux/sxhkd.service"
 
     fi
 

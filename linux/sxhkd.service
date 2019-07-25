@@ -1,14 +1,16 @@
 [Unit]
 Description=Simple X hotkey daemon
 Documentation=man:sxhkd(1)
-PartOf=graphical-session.target
+PartOf=default.target
 
 [Service]
 Environment=SXHKD_SHELL=/bin/sh
+ExecStartPre=/bin/sleep 10
 ExecStart=/usr/bin/sxhkd
 ExecReload=/bin/kill -SIGUSR1 $MAINPID
-Restart=on-failure
+Restart=always
+RestartSec=10
 
 [Install]
-WantedBy=graphical-session.target
+WantedBy=default.target
 
