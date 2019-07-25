@@ -11,7 +11,7 @@
     # shellcheck source=bash/common
     . "$SCRIPT_DIR/bash/common"
 
-    ADD_TO_PATH=("$ROOT_DIR" "$ROOT_DIR/bash")
+    ADD_TO_PATH=("$ROOT_DIR" "$ROOT_DIR/bash" "$ROOT_DIR/synergy")
 
     [ "$IS_MACOS" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/macos")
     [ "$IS_LINUX" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/linux")

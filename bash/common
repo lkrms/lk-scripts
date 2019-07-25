@@ -14,6 +14,26 @@ trap 'error_trap "$?" "${BASH_SOURCE[0]}" "$LINENO"' ERR
 
 set -E
 
+function exit_trap() {
+
+    local f pid
+
+    for f in "${DELETE_ON_EXIT[@]}"; do
+
+        rm -f "$f" || true
+
+    done
+
+    for pid in "${KILL_ON_EXIT[@]}"; do
+
+        kill "$pid" || true
+
+    done
+
+}
+
+trap exit_trap EXIT
+
 SCRIPT_ARGS=("$@")
 
 function assert_is_macos() {
@@ -496,6 +516,39 @@ function move_file_delete_link() {
 
 }
 
+function create_temp_file() {
+
+    local TEMP_PATH
+
+    TEMP_PATH="$(mktemp "/tmp/$(basename "$0").$(date +'%s').XXXXXXXX")" ||
+        die "Error: unable to create temporary file"
+
+    DELETE_ON_EXIT+=("$TEMP_PATH")
+
+    echo "$TEMP_PATH"
+
+}
+
+function create_temp_fifo() {
+
+    local FIFO_PATH
+
+    FIFO_PATH="$(mktemp -u "/tmp/$(basename "$0").$(date +'%s').XXXXXXXX.fifo")" &&
+        mkfifo "$FIFO_PATH" ||
+        die "Error: unable to create temporary FIFO"
+
+    DELETE_ON_EXIT+=("$FIFO_PATH")
+
+    echo "$FIFO_PATH"
+
+}
+
+function flush_fifo() {
+
+    dd if="$1" iflag=nonblock of=/dev/null
+
+}
+
 COMMON_SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then COMMON_SCRIPT_PATH="$(realpath "$COMMON_SCRIPT_PATH")"; fi
 ROOT_DIR="$(cd "$(dirname "$COMMON_SCRIPT_PATH")/.." && pwd -P)"
@@ -503,6 +556,9 @@ CONFIG_DIR="$ROOT_DIR/config"
 CACHE_DIR="$ROOT_DIR/cache"
 LOG_DIR="$ROOT_DIR/log"
 TEMP_DIR="$ROOT_DIR/tmp"
+
+DELETE_ON_EXIT=()
+KILL_ON_EXIT=()
 
 mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOG_DIR" "$TEMP_DIR"
 
