@@ -219,6 +219,16 @@ xrandr "${RESET_OPTIONS[@]}" || true
 xrandr "${OPTIONS[@]}"
 
 # ok, xrandr is sorted -- look after everything else
+if command_exists gsettings; then
+
+    let XFT_DPI=1024*DPI
+
+    # TODO: update existing/default overrides rather than assuming elementary OS defaults
+    gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "{'Gtk/DialogsUseHeader': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/DecorationLayout': <'close:menu,maximize'>, 'Gdk/WindowScalingFactor': <$SCALING_FACTOR>, 'Xft/DPI': <$XFT_DPI>}" || true
+    gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
+
+fi
+
 if [ -e "$CONFIG_DIR/xkbcomp" ]; then
 
     xkbcomp "$CONFIG_DIR/xkbcomp" "$DISPLAY"
@@ -226,16 +236,6 @@ if [ -e "$CONFIG_DIR/xkbcomp" ]; then
 fi
 
 if [ "$IS_AUTOSTART" -eq "0" ]; then
-
-    if command_exists gsettings; then
-
-        let XFT_DPI=1024*DPI
-
-        # TODO: update existing/default overrides rather than assuming elementary OS defaults
-        gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "{'Gtk/DialogsUseHeader': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/DecorationLayout': <'close:menu,maximize'>, 'Gdk/WindowScalingFactor': <$SCALING_FACTOR>, 'Xft/DPI': <$XFT_DPI>}" || true
-        gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
-
-    fi
 
     if command_exists displaycal-apply-profiles; then
 
