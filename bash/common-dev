@@ -129,7 +129,7 @@ function dev_apply_system_config() {
 
         fi
 
-        systemctl --user enable --now "$ROOT_DIR/linux/sxhkd.service"
+        systemctl --user enable --now --no-block "$ROOT_DIR/linux/sxhkd.service"
 
     fi
 

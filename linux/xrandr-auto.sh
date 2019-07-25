@@ -12,6 +12,9 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 assert_command_exists xrandr
 assert_command_exists bc
 
+IS_AUTOSTART=1
+[ "${1:-}" = "--autostart" ] || IS_AUTOSTART=0
+
 # if the primary output's actual DPI is above this, enable "Retina" mode
 HIDPI_THRESHOLD=144
 
@@ -216,55 +219,34 @@ xrandr "${RESET_OPTIONS[@]}" || true
 xrandr "${OPTIONS[@]}"
 
 # ok, xrandr is sorted -- look after everything else
-let XFT_DPI=1024*DPI
-
-if command_exists gsettings; then
-
-    # TODO: update existing/default overrides rather than assuming elementary OS defaults
-    gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "{'Gtk/DialogsUseHeader': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/DecorationLayout': <'close:menu,maximize'>, 'Gdk/WindowScalingFactor': <$SCALING_FACTOR>, 'Xft/DPI': <$XFT_DPI>}" || true
-    gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
-
-fi
-
-XSESSIONRC="$HOME/.xsessionrc"
-
-if [ ! -e "$XSESSIONRC" ]; then
-
-    touch "$XSESSIONRC"
-
-fi
-
-if ! grep -q QT_AUTO_SCREEN_SCALE_FACTOR "$XSESSIONRC"; then
-
-    echo 'export QT_AUTO_SCREEN_SCALE_FACTOR=1' >>"$XSESSIONRC"
-
-fi
-
-RC_CONTENT=$(grep -Ev '^xrandr --dpi [0-9]+$' "$XSESSIONRC")
-echo "$RC_CONTENT" >"$XSESSIONRC"
-echo "xrandr --dpi $DPI" >>"$XSESSIONRC"
-
-if command_exists displaycal-apply-profiles; then
-
-    displaycal-apply-profiles || true
-
-fi
-
-if command_exists xkbcomp && [ -e "$CONFIG_DIR/xkbcomp" ]; then
+if [ -e "$CONFIG_DIR/xkbcomp" ]; then
 
     xkbcomp "$CONFIG_DIR/xkbcomp" "$DISPLAY"
 
-    if ! grep -Eq "$(sed_escape_search "$CONFIG_DIR/xkbcomp")" "$XSESSIONRC"; then
+fi
 
-        # shellcheck disable=SC2016
-        echo 'xkbcomp "'"$CONFIG_DIR/xkbcomp"'" "$DISPLAY"' >>"$XSESSIONRC"
+if [ "$IS_AUTOSTART" -eq "0" ]; then
+
+    if command_exists gsettings; then
+
+        let XFT_DPI=1024*DPI
+
+        # TODO: update existing/default overrides rather than assuming elementary OS defaults
+        gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "{'Gtk/DialogsUseHeader': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/DecorationLayout': <'close:menu,maximize'>, 'Gdk/WindowScalingFactor': <$SCALING_FACTOR>, 'Xft/DPI': <$XFT_DPI>}" || true
+        gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
 
     fi
 
-fi
+    if command_exists displaycal-apply-profiles; then
 
-if [ "${1:-}" != "--autostart" ] && command_exists systemctl && systemctl --user --quiet is-active sxhkd; then
+        displaycal-apply-profiles || true
 
-    systemctl --user restart sxhkd
+    fi
+
+    if command_exists systemctl && systemctl --user --quiet is-active sxhkd.service; then
+
+        systemctl --user restart --no-block sxhkd.service
+
+    fi
 
 fi
