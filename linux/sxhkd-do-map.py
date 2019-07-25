@@ -29,11 +29,13 @@ logging.info("window class: {0}".format(window_class))
 
 is_unknown = window_class == ""
 is_chrome = bool(re.search(r"^google-chrome\.Google-chrome$", window_class))
-is_vscode = bool(re.search(r"^code\.Code$", window_class))
+is_dbeaver = bool(re.search(r"^DBeaver\.DBeaver$", window_class))
 is_terminal = bool(
     re.search(r"^(io\.elementary\.terminal|tilix|guake)\.", window_class))
+is_vscode = bool(re.search(r"^code\.Code$", window_class))
 
 skip = is_unknown
+quit_alt_f4 = is_chrome or is_dbeaver
 
 args = sys.argv[1].split("+")
 
@@ -78,11 +80,20 @@ if not skip:
         # developer tools
         if is_command_option and not in_shift and original_key == "i":
             key_command = "ctrl+shift+j"
+            keyup_command = original_key
             done = True
 
         # bookmarks manager
         if is_command_option and not in_shift and original_key == "b":
             key_command = "ctrl+shift+o"
+            keyup_command = original_key
+            done = True
+
+    if quit_alt_f4:
+
+        if is_command and not in_shift and original_key == "q":
+            key_command = "alt+F4"
+            keyup_command = original_key
             done = True
 
     # Command+Shift+Z -> Ctrl+Y
