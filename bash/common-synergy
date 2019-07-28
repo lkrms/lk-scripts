@@ -57,3 +57,42 @@ function synergy_kill() {
     fi
 
 }
+
+function synergy_prepare_command_line() {
+
+    local d xa pid xc i
+
+    COMMAND_LINE=()
+
+    if [ "$IS_LINUX" -eq "1" ] && [ -z "${DISPLAY:-}" ] && [ "$EUID" -eq "0" ]; then
+
+        d="$(get_x_displays | sort | tail -n1)"
+
+        # use Xorg's command line to determine our XAUTHORITY path (alternatively, we could inspect /proc/XXXX/environ)
+        if [ -n "$d" ] && pid=($(pgrep -x Xorg)); then
+
+            # shellcheck disable=SC2009
+            if xc=($(ps "${pid[@]}" | grep -E '[[:space:]]+'"$d"'[[:space:]]+' | grep -E '[[:space:]]+-auth[[:space:]]+[^[:space:]]+')); then
+
+                for i in "${!xc[@]}"; do
+
+                    if [ "${xc[$i]}" = "-auth" ]; then
+
+                        let i+=1
+                        xa="${xc[$i]}"
+
+                        COMMAND_LINE+=(env "DISPLAY=$d" "XAUTHORITY=$xa")
+
+                        break
+
+                    fi
+
+                done
+
+            fi
+
+        fi
+
+    fi
+
+}

@@ -22,7 +22,9 @@ SYNERGY_COMMAND="$(synergy_find_executable synergyc)"
 
 synergy_get_log_files synergyc
 
-COMMAND_LINE=("$SYNERGY_COMMAND" --no-tray -d INFO -n "$1")
+synergy_prepare_command_line
+
+COMMAND_LINE+=("$SYNERGY_COMMAND" --no-tray -d INFO -n "$1")
 
 case "$(basename "$0")" in
 
