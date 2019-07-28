@@ -24,26 +24,18 @@ synergy_get_log_files synergyc
 
 COMMAND_LINE=("$SYNERGY_COMMAND" --no-tray -d INFO -n "$1")
 
-if [ "$EUID" -ne "0" ]; then
+case "$(basename "$0")" in
 
+*daemon*)
+    IS_DAEMON=1
+    ;;
+
+*)
     COMMAND_LINE+=(-f)
+    IS_DAEMON=0
+    ;;
 
-    if [ "$IS_LINUX" -eq "1" ] && [ -d "/etc/lightdm/lightdm.conf.d" ]; then
-
-        IFS= read -rd '' LIGHTDM_CONF <<EOF || true
-[SeatDefaults]
-greeter-setup-script="$SCRIPT_DIR/$(basename "$SCRIPT_PATH")" "$1" "$2"
-EOF
-
-        if [ ! -e "/etc/lightdm/lightdm.conf.d/synergy.conf" ] || ! diff -bq "/etc/lightdm/lightdm.conf.d/synergy.conf" <(echo "$LIGHTDM_CONF") >/dev/null; then
-
-            echo "$LIGHTDM_CONF" | sudo tee "/etc/lightdm/lightdm.conf.d/synergy.conf" >/dev/null
-
-        fi
-
-    fi
-
-fi
+esac
 
 COMMAND_LINE+=("$2")
 
@@ -56,9 +48,8 @@ while :; do
     RESULT=0
     "${COMMAND_LINE[@]}" >>"$LOG_FILE2" 2>&1 || RESULT="$?"
 
-    echo "[ $(date '+%c') ] Exited with code: $RESULT" >>"$LOG_FILE2"
-
-    if [ "$EUID" -ne "0" ] && [ "$IS_LINUX" -eq "1" ] && command_exists gdbus; then
+    # restart on unlock if running in the foreground without root privileges
+    if [ "$EUID" -ne "0" ] && [ "$IS_DAEMON" -eq "0" ] && [ "$IS_LINUX" -eq "1" ] && command_exists gdbus; then
 
         echo "[ $(date '+%c') ] Waiting for session unlock" >>"$LOG_FILE2"
 
