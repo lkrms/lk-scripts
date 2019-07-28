@@ -549,6 +549,22 @@ function flush_fifo() {
 
 }
 
+function get_x_displays() {
+
+    local X
+
+    if [ -d /tmp/.X11-unix ]; then
+
+        for X in /tmp/.X11-unix/X*; do
+
+            echo ":${X##*X}"
+
+        done
+
+    fi
+
+}
+
 COMMON_SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then COMMON_SCRIPT_PATH="$(realpath "$COMMON_SCRIPT_PATH")"; fi
 ROOT_DIR="$(cd "$(dirname "$COMMON_SCRIPT_PATH")/.." && pwd -P)"
