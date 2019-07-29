@@ -279,7 +279,9 @@ xrandr --dryrun "${RESET_OPTIONS[@]}" >/dev/null
 xrandr --dryrun "${OPTIONS[@]}" >/dev/null
 
 # apply configuration
+echo "xrandr ${RESET_OPTIONS[*]}"
 xrandr "${RESET_OPTIONS[@]}" || true
+echo "xrandr ${OPTIONS[*]}"
 xrandr "${OPTIONS[@]}"
 
 # ok, xrandr is sorted -- look after everything else
@@ -297,6 +299,13 @@ if command_exists gsettings; then
 fi
 
 "$SCRIPT_DIR/xkb-load.sh" "$@"
+
+# just in case Synergy is still using the old configuration
+if command_exists systemctl && systemctl --quiet is-active synergy.service; then
+
+    sudo -n systemctl restart --no-block synergy.service
+
+fi
 
 if [ "$IS_AUTOSTART" -eq "0" ]; then
 
