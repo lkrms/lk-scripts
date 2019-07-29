@@ -1,3 +1,7 @@
 /cache
 /log
 /tmp
+
+/config/*
+!/config/*-default
+!/config/*-example

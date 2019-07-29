@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Recommended:
+# - create ../config/xrandr
+# - add "/path/to/linux/xrandr-auto.sh --autostart" to your desktop environment's startup applications
+# - bind a keyboard shortcut (e.g. Ctrl+Alt+R) to "/path/to/linux/xrandr-auto.sh"
+
 set -euo pipefail
 
 SCRIPT_PATH="${BASH_SOURCE[0]}"
@@ -12,8 +17,8 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 assert_command_exists xrandr
 assert_command_exists bc
 
-IS_AUTOSTART=1
-[ "${1:-}" = "--autostart" ] || IS_AUTOSTART=0
+IS_AUTOSTART=0
+[ "${1:-}" = "--autostart" ] && IS_AUTOSTART=1 || true
 
 # if the primary output's actual DPI is above this, enable "Retina" mode
 HIDPI_THRESHOLD=144
@@ -31,7 +36,7 @@ XRANDR_OUTPUT="\\n${XRANDR_OUTPUT//$'\n'/\\n}\\n"
 OUTPUTS=($(
     set -euo pipefail
     echo "$XRANDR_OUTPUT" | grep -Po '(?<=\\n)([^[:space:]]+)(?= connected)'
-))
+)) || die "Error: no connected outputs"
 
 # and all output names (i.e. connected and disconnected)
 ALL_OUTPUTS=($(
@@ -39,12 +44,10 @@ ALL_OUTPUTS=($(
     echo "$XRANDR_OUTPUT" | grep -Po '(?<=\\n)([^[:space:]]+)(?= (connected|disconnected))'
 ))
 
-[ "${#OUTPUTS[@]}" -gt 0 ] || die "Error: no connected outputs"
-
 # each EDID is stored at the same index as its output name in OUTPUTS
 EDIDS=()
 
-# physical dimensions are stored here at the same index (e.g. "435 239 103965", or "<width> <height> <area>")
+# physical dimensions are stored here at the same index (e.g. "435 239 103965 19.5", or "<width> <height> <area> <diagonal inches>")
 SIZES=()
 
 # native resolutions are stored here at the same index (e.g. "1920 1080")
@@ -92,11 +95,15 @@ for i in "${!OUTPUTS[@]}"; do
     DIMENSIONS=($(
         set -euo pipefail
         echo "$OUTPUT_INFO_LINES" | head -n1 | grep -Po '\b[0-9]+(?=mm\b)'
-    ))
+    )) || DIMENSIONS=()
     if [ "${#DIMENSIONS[@]}" -eq 2 ]; then
 
         let AREA=DIMENSIONS[0]*DIMENSIONS[1]
         DIMENSIONS+=("$AREA")
+        DIMENSIONS+=("$(
+            set -euo pipefail
+            echo "scale = 10; size = sqrt(${DIMENSIONS[0]} ^ 2 + ${DIMENSIONS[1]} ^ 2) / 10 / 2.54; scale = 1; size / 1" | bc
+        )")
         SIZES+=("${DIMENSIONS[*]}")
 
         if [ "$AREA" -gt "$LARGEST_AREA" ]; then
@@ -108,7 +115,7 @@ for i in "${!OUTPUTS[@]}"; do
 
     else
 
-        SIZES+=("0 0 0")
+        SIZES+=("0 0 0 0")
 
     fi
 
@@ -116,21 +123,18 @@ for i in "${!OUTPUTS[@]}"; do
     PIXELS=($(
         set -euo pipefail
         echo "$OUTPUT_INFO_LINES" | grep '[[:space:]]+preferred$' | grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)'
-    ))
+    )) || PIXELS=()
     if [ "${#PIXELS[@]}" -eq 2 ]; then
 
         RESOLUTIONS+=("${PIXELS[*]}")
 
-        if [ "$PRIMARY_INDEX" -eq "$i" ] && [ "${#DIMENSIONS[@]}" -eq "3" ] && [ "${DIMENSIONS[0]}" -gt "0" ]; then
+        if [ "$PRIMARY_INDEX" -eq "$i" ] && [ "${#DIMENSIONS[@]}" -eq "4" ] && [ "${DIMENSIONS[0]}" -gt "0" ]; then
 
             ACTUAL_DPI="$(
                 set -euo pipefail
                 echo "scale = 10; dpi = ${PIXELS[0]} / ( ${DIMENSIONS[0]} / 10 / 2.54 ); scale = 0; dpi / 1" | bc
             )"
-            PRIMARY_SIZE="$(
-                set -euo pipefail
-                echo "scale = 10; size = sqrt(${DIMENSIONS[0]} ^ 2 + ${DIMENSIONS[1]} ^ 2) / 10 / 2.54; scale = 1; size / 1" | bc
-            )"
+            PRIMARY_SIZE="${DIMENSIONS[3]}"
 
         fi
 
@@ -147,7 +151,7 @@ done
 
 if [ -t 1 ]; then
 
-    console_message "Actual DPI of largest screen ($PRIMARY_SIZE\"):" "$ACTUAL_DPI" "$GREEN"
+    console_message "Actual DPI of largest screen (${PRIMARY_SIZE:-??}\"):" "$ACTUAL_DPI" "$GREEN"
 
 fi
 
@@ -171,6 +175,66 @@ if [ -e "$CONFIG_DIR/xrandr" ]; then
 
     # shellcheck source=../config/xrandr
     . "$CONFIG_DIR/xrandr" || die
+
+fi
+
+if [ ! -e "$CONFIG_DIR/xrandr" ] || [ "${1:-}" = "--suggest" ]; then
+
+    CONFIG_FILE="$CONFIG_DIR/xrandr-suggested"
+
+    echo -e '#!/bin/bash\n' >"$CONFIG_FILE"
+    echo -e '# This file has been automatically generated. Rename it to xrandr before making changes.\n' >>"$CONFIG_FILE"
+
+    for i in "${!OUTPUTS[@]}"; do
+
+        DIMENSIONS=(${SIZES[$i]})
+        RESOLUTION=(${RESOLUTIONS[$i]})
+
+        {
+            echo "# ${DIMENSIONS[3]}\", ${RESOLUTION[0]}x${RESOLUTION[1]}"
+            echo "EDID_DISPLAY_${i}=\"${EDIDS[$i]}\""
+            echo "EDID_DISPLAY_${i}_OPTIONS=()"
+            echo
+        } >>"$CONFIG_FILE"
+
+    done
+
+    cat <<EOF >>"$CONFIG_FILE"
+for i in \$(seq 0 ${#OUTPUTS[@]}); do
+    eval "EDID_DISPLAY_\${i}_ACTIVE=0"
+    if eval "EDID_DISPLAY_\${i}_INDEX=\\"\\\$(get_edid_index \\"\\\$EDID_DISPLAY_\${i}\\")\\""; then
+        eval "EDID_DISPLAY_\${i}_ACTIVE=1"
+    fi
+done
+
+# Here's an example to use as a starting point.
+# In addition to output-specific options, you can also modify: OPTIONS, PRIMARY_INDEX, SCALING_FACTOR, DPI
+#
+# # 4K connected?
+# if [ "\$EDID_DISPLAY_0_ACTIVE" -eq "1" ]; then
+#
+#     # "looks like 2560x1440"
+#     EDID_DISPLAY_0_OPTIONS+=(--mode 3840x2160 --scale-from 5120x2880)
+#
+#     # 1080p also connected?
+#     if [ "\$EDID_DISPLAY_1_ACTIVE" -eq "1" ]; then
+#
+#         # "looks like 1536x864" - i.e. use all of i915's (software-limited) 8192x8192 framebuffer
+#         EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 3072x1728 --pos 0x576)
+#         EDID_DISPLAY_0_OPTIONS+=(--pos 3072x0)
+#
+#     fi
+#
+# fi
+
+for i in \$(seq 0 ${#OUTPUTS[@]}); do
+    eval "EDID_DISPLAY_ACTIVE=\\"\\\$EDID_DISPLAY_\${i}_ACTIVE\\""
+    if [ "\$EDID_DISPLAY_ACTIVE" -eq "1" ]; then
+        eval "EDID_DISPLAY_INDEX=\\"\\\$EDID_DISPLAY_\${i}_INDEX\\""
+        eval "OPTIONS_\${EDID_DISPLAY_INDEX}+=(\\"\\\${EDID_DISPLAY_\${i}_OPTIONS[@]}\\")"
+    fi
+done
+EOF
 
 fi
 
@@ -223,29 +287,22 @@ if command_exists gsettings; then
 
     let XFT_DPI=1024*DPI
 
-    # TODO: update existing/default overrides rather than assuming elementary OS defaults
-    gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "{'Gtk/DialogsUseHeader': <0>, 'Gtk/EnablePrimaryPaste': <0>, 'Gtk/ShellShowsAppMenu': <0>, 'Gtk/DecorationLayout': <'close:menu,maximize'>, 'Gdk/WindowScalingFactor': <$SCALING_FACTOR>, 'Xft/DPI': <$XFT_DPI>}" || true
+    OVERRIDES="$(gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)"
+    OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Gdk/WindowScalingFactor' "$SCALING_FACTOR")"
+    OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Xft/DPI' "$XFT_DPI")"
+
+    gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
     gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
 
 fi
 
-if [ -e "$CONFIG_DIR/xkbcomp" ]; then
-
-    xkbcomp "$CONFIG_DIR/xkbcomp" "$DISPLAY"
-
-fi
+"$SCRIPT_DIR/xkb-load.sh" "$@"
 
 if [ "$IS_AUTOSTART" -eq "0" ]; then
 
     if command_exists displaycal-apply-profiles; then
 
         displaycal-apply-profiles || true
-
-    fi
-
-    if command_exists systemctl && systemctl --user --quiet is-active sxhkd.service; then
-
-        systemctl --user restart --no-block sxhkd.service
 
     fi
 
