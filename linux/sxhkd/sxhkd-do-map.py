@@ -32,10 +32,11 @@ is_chrome = bool(re.search(r"^google-chrome\.Google-chrome$", window_class))
 is_dbeaver = bool(re.search(r"^DBeaver\.DBeaver$", window_class))
 is_terminal = bool(
     re.search(r"^(io\.elementary\.terminal|tilix|guake)\.", window_class))
+is_todoist = bool(re.search(r"^todoist\.Todoist$", window_class))
 is_vscode = bool(re.search(r"^code\.Code$", window_class))
 
 skip = is_unknown
-quit_alt_f4 = is_chrome or is_dbeaver
+quit_alt_f4 = is_chrome or is_dbeaver or is_todoist
 
 args = sys.argv[1].split("+")
 
