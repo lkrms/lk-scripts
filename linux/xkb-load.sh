@@ -19,6 +19,8 @@ IS_AUTOSTART=0
 
 if command_exists xkbcomp && [ -e "$CONFIG_DIR/xkbcomp" ] && [ -n "$DISPLAY" ]; then
 
+    sleep 1
+
     xkbcomp "$CONFIG_DIR/xkbcomp" "$DISPLAY"
 
 fi

@@ -1,11 +1,11 @@
-super + {a-z,0-9,comma,Return}
-    sxhkd-do-map.py super+{a-z,0-9,comma,Return}
+super + {a-z,0-9,comma,minus,equal,Return}
+    sxhkd-do-map.py super+{a-z,0-9,comma,minus,equal,Return}
 
-super + shift + {a-z,0-9,comma,Return}
-    sxhkd-do-map.py super+shift+{a-z,0-9,comma,Return}
+super + shift + {a-z,0-9,comma,minus,equal,Return}
+    sxhkd-do-map.py super+shift+{a-z,0-9,comma,minus,equal,Return}
 
-alt + super + {a-z,0-9,comma,Return}
-    sxhkd-do-map.py alt+super+{a-z,0-9,comma,Return}
+alt + super + {a-z,0-9,comma,minus,equal,Return}
+    sxhkd-do-map.py alt+super+{a-z,0-9,comma,minus,equal,Return}
 
 super + button{1-5}
     sxhkd-do-map.py super+button{1-5}
