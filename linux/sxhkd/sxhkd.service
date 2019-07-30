@@ -1,7 +1,5 @@
 [Unit]
 Description=Simple X hotkey daemon
-Documentation=man:sxhkd(1)
-PartOf=default.target
 
 [Service]
 Environment=SXHKD_SHELL=/bin/sh

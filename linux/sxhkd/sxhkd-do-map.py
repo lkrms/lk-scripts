@@ -7,7 +7,7 @@ import subprocess
 import sys
 
 log_directory = os.path.normpath(os.path.dirname(
-    os.path.realpath(__file__)) + "/../log")
+    os.path.realpath(__file__)) + "/../../log")
 log_file = os.path.join(log_directory, "sxhkd-do-map.py.log")
 
 if not os.path.exists(log_directory):
