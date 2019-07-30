@@ -53,7 +53,7 @@ apt_register_ppa "caffeine-developers/ppa" "caffeine"
 apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
 apt_register_ppa "hluk/copyq" "copyq"
 apt_register_ppa "inkscape.dev/stable" "inkscape"
-apt_register_ppa "libreoffice/libreoffice-6-1" "libreoffice*" N N
+apt_register_ppa "libreoffice/ppa" "libreoffice*" N N
 apt_register_ppa "linrunner/tlp" "tlp tlp-rdw"
 apt_register_ppa "phoerious/keepassxc" "keepassxc"
 apt_register_ppa "recoll-backports/recoll-1.15-on" "recoll *-recoll"
@@ -236,14 +236,12 @@ apt_install_packages "VirtualBox" "virtualbox-6.0"
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
 apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.2-stable-8c010140/synergy_1.10.2.stable_b10%2B8c010140_ubuntu18_amd64.deb"
-apt_install_deb "https://code-industry.net/public/master-pdf-editor-5.4.30-qt5.amd64.deb"
+apt_install_deb "https://code-industry.net/public/master-pdf-editor-5.4.38-qt5.amd64.deb"
 apt_install_deb "https://displaycal.net/download/xUbuntu_${DISTRIB_RELEASE}/amd64/DisplayCAL.deb"
 apt_install_deb "https://github.com/autokey/autokey/releases/download/v0.95.7/autokey-common_0.95.7-0_all.deb"
 apt_install_deb "https://github.com/autokey/autokey/releases/download/v0.95.7/autokey-gtk_0.95.7-0_all.deb"
 apt_install_deb "https://github.com/careteditor/releases-beta/releases/download/4.0.0-rc23/caret-beta.deb"
-apt_install_deb "https://github.com/IsmaelMartinez/teams-for-linux/releases/download/v0.3.0/teams-for-linux_0.3.0_amd64.deb"
 apt_install_deb "https://github.com/KryDos/todoist-linux/releases/download/1.17/Todoist_1.17.0_amd64.deb"
-apt_install_deb "https://release.gitkraken.com/linux/gitkraken-amd64.deb"
 apt_install_deb "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
 
 apt_remove_packages apport deja-dup fonts-twemoji-svginot
@@ -314,7 +312,7 @@ fi
 SNAPS_INSTALLED=($(sudo snap list 2>/dev/null))
 SNAPS_INSTALL=()
 
-for s in caprine slack spotify twist; do
+for s in caprine slack spotify teams-for-linux twist; do
 
     array_search "$s" SNAPS_INSTALLED >/dev/null || SNAPS_INSTALL+=("$s")
 
