@@ -60,11 +60,16 @@ original_key = key
 
 is_alpha = re.search(r"^[a-z]$", key)
 is_num = re.search(r"^[0-9]$", key)
+is_click = re.search(r"^button[0-9]+$", key)
 is_command = in_super and not (in_ctrl or in_alt)
 is_command_option = in_super and in_alt and not in_ctrl
 
-key_command = ""
-keyup_command = ""
+keyup_pre_command = []
+key_command = []
+mouseup_pre_command = []
+click_key_command = []
+click_command = []
+clear_modifiers_manually = False
 done = False
 
 if not skip:
@@ -79,21 +84,28 @@ if not skip:
 
         # developer tools
         if is_command_option and not in_shift and original_key == "i":
-            key_command = "ctrl+shift+j"
-            keyup_command = original_key
+            keyup_pre_command = [original_key]
+            key_command = ["ctrl", "shift", "j"]
             done = True
 
         # bookmarks manager
         if is_command_option and not in_shift and original_key == "b":
-            key_command = "ctrl+shift+o"
-            keyup_command = original_key
+            keyup_pre_command = [original_key]
+            key_command = ["ctrl", "shift", "o"]
             done = True
+
+    if is_click:
+
+        click_command = [re.sub(r"^button", "", original_key)]
+        mouseup_pre_command = click_command
+        clear_modifiers_manually = True
+        key = ""
 
     if quit_alt_f4:
 
         if is_command and not in_shift and original_key == "q":
-            key_command = "alt+F4"
-            keyup_command = original_key
+            keyup_pre_command = [original_key]
+            key_command = ["alt", "F4"]
             done = True
 
     # Command+Shift+Z -> Ctrl+Y
@@ -102,24 +114,60 @@ if not skip:
         key = "y"
 
 if not done:
-    if out_ctrl:
-        key_command += "ctrl+"
-    if out_alt:
-        key_command += "alt+"
-    if out_super:
-        key_command += "super+"
-    if out_shift:
-        key_command += "shift+"
-    key_command += key
-    keyup_command += original_key
+    if out_ctrl and (not clear_modifiers_manually or not in_ctrl):
+        key_command.append("ctrl")
+    if out_alt and (not clear_modifiers_manually or not in_alt):
+        key_command.append("alt")
+    if out_super and (not clear_modifiers_manually or not in_super):
+        key_command.append("super")
+    if out_shift and (not clear_modifiers_manually or not in_shift):
+        key_command.append("shift")
+    if key:
+        keyup_pre_command.append(original_key)
+        key_command.append(key)
+    if click_command:
+        click_key_command = key_command
+        key_command = []
 
-command = [
-    "xdotool",
-    "keyup", "--delay", "0", keyup_command,
-    "key", "--delay", "0", "--clearmodifiers", key_command
-]
+modifiers = []
+command = ["xdotool"]
 
-if key_command != "":
+if keyup_pre_command:
+    command.extend(["keyup", "--delay", "0", "+".join(keyup_pre_command)])
+
+if mouseup_pre_command:
+    command.extend(["mouseup", "+".join(mouseup_pre_command)])
+
+if clear_modifiers_manually:
+    if in_ctrl and not out_ctrl:
+        modifiers.append("ctrl")
+    if in_alt and not out_alt:
+        modifiers.append("alt")
+    if in_super and not out_super:
+        modifiers.append("super")
+    if in_shift and not out_shift:
+        modifiers.append("shift")
+    command.extend(["keyup", "--delay", "0", "+".join(modifiers)])
+
+if key_command:
+    command.extend(["key", "--delay", "0"])
+    if not clear_modifiers_manually:
+        command.append("--clearmodifiers")
+    command.append("+".join(key_command))
+
+if click_key_command:
+    command.extend(["keydown", "--delay", "0", "+".join(click_key_command)])
+
+if click_command:
+    command.extend(["click", "--delay", "0", "+".join(click_command)])
+
+if click_key_command:
+    command.extend(["keyup", "--delay", "0", "+".join(click_key_command)])
+
+if clear_modifiers_manually:
+    command.extend(["keydown", "--delay", "0", "+".join(modifiers)])
+
+if len(command) > 1:
     subprocess.run(command, check=True)
 
 logging.info("xdotool command: {0}".format(command))

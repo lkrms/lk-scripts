@@ -6,3 +6,9 @@ super + shift + {a-z,0-9,comma,Return}
 
 alt + super + {a-z,0-9,comma,Return}
     sxhkd-do-map.py alt+super+{a-z,0-9,comma,Return}
+
+super + button{1-5}
+    sxhkd-do-map.py super+button{1-5}
+
+super + shift + button{1-5}
+    sxhkd-do-map.py super+button{1-5}
