@@ -56,6 +56,7 @@ apt_register_ppa "inkscape.dev/stable" "inkscape"
 apt_register_ppa "libreoffice/libreoffice-6-1" "libreoffice*" N N
 apt_register_ppa "linrunner/tlp" "tlp tlp-rdw"
 apt_register_ppa "phoerious/keepassxc" "keepassxc"
+apt_register_ppa "recoll-backports/recoll-1.15-on" "recoll *-recoll"
 apt_register_ppa "scribus/ppa" "scribus*"
 apt_register_ppa "stebbins/handbrake-releases" "handbrake-*"
 apt_register_ppa "wereturtle/ppa" "ghostwriter"
@@ -116,6 +117,7 @@ apt_install_packages "desktop essentials" "\
  blueman\
  bsd-mailx-\
  caffeine\
+ catfish\
  code\
  copyq\
  dconf-editor\
@@ -149,6 +151,7 @@ apt_install_packages "desktop essentials" "\
  mkvtoolnix\
  owncloud-client\
  qpdfview\
+ recoll\
  remmina\
  scribus\
  seahorse\
@@ -165,6 +168,7 @@ apt_install_packages "desktop essentials" "\
  vlc\
  x11vnc\
  xautomation\
+ xclip\
  xdotool\
  youtube-dl\
 "
