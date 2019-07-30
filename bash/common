@@ -500,17 +500,13 @@ function download_urls() {
 
 function move_file_delete_link() {
 
-    if [ -e "$1" ]; then
+    if [ -L "$1" ]; then
 
-        if [ -L "$1" ]; then
+        rm -f "$1"
 
-            rm -f "$1"
+    elif [ -e "$1" ]; then
 
-        else
-
-            mv -f "$1" "$1.bak"
-
-        fi
+        mv -f "$1" "$1.bak"
 
     fi
 
