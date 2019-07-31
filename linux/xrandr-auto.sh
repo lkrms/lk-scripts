@@ -4,6 +4,9 @@
 # - create ../config/xrandr
 # - add "/path/to/linux/xrandr-auto.sh --autostart" to your desktop environment's startup applications
 # - bind a keyboard shortcut (e.g. Ctrl+Alt+R) to "/path/to/linux/xrandr-auto.sh"
+# - create "/etc/lightdm/lightdm.conf.d/xrandr.conf" as:
+#     [SeatDefaults]
+#     display-setup-script=/path/to/linux/xrandr-auto.sh
 
 set -euo pipefail
 
@@ -64,7 +67,7 @@ ACTUAL_DPI=96
 SCALING_FACTOR=1
 DPI=96
 
-# general xrandr options should be added here
+# general xrandr options should be added to this array
 # output-specific options belong in OPTIONS_xxx, where xxx is the output name's index in OUTPUTS
 OPTIONS=()
 
@@ -149,11 +152,7 @@ for i in "${!OUTPUTS[@]}"; do
 
 done
 
-if [ -t 1 ]; then
-
-    console_message "Actual DPI of largest screen (${PRIMARY_SIZE:-??}\"):" "$ACTUAL_DPI" "$GREEN"
-
-fi
+echo "Actual DPI of largest screen (${PRIMARY_SIZE:-??}\"): $ACTUAL_DPI" >&2
 
 if [ "$ACTUAL_DPI" -ge "$HIDPI_THRESHOLD" ]; then
 
@@ -238,6 +237,17 @@ EOF
 
 fi
 
+echo "Scaling factor: $SCALING_FACTOR" >&2
+echo "Effective DPI: $DPI" >&2
+
+if [ "${1:-}" = "--dpi-only" ]; then
+
+    echo -e "\nxrandr --dpi $DPI\n" >&2
+    xrandr --dpi "$DPI"
+    exit
+
+fi
+
 array_search "--dpi" OPTIONS >/dev/null || OPTIONS+=(--dpi "$DPI")
 
 for i in "${!OUTPUTS[@]}"; do
@@ -279,13 +289,13 @@ xrandr --dryrun "${RESET_OPTIONS[@]}" >/dev/null
 xrandr --dryrun "${OPTIONS[@]}" >/dev/null
 
 # apply configuration
-echo "xrandr ${RESET_OPTIONS[*]}"
+echo -e "\nxrandr ${RESET_OPTIONS[*]}\n" >&2
 xrandr "${RESET_OPTIONS[@]}" || true
-echo "xrandr ${OPTIONS[*]}"
+echo -e "xrandr ${OPTIONS[*]}\n" >&2
 xrandr "${OPTIONS[@]}"
 
 # ok, xrandr is sorted -- look after everything else
-if command_exists gsettings; then
+if command_exists gsettings && [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
 
     let XFT_DPI=1024*DPI
 
@@ -293,26 +303,25 @@ if command_exists gsettings; then
     OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Gdk/WindowScalingFactor' "$SCALING_FACTOR")"
     OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Xft/DPI' "$XFT_DPI")"
 
+    echo -e "gsettings set org.gnome.settings-daemon.plugins.xsettings overrides \"$OVERRIDES\"\n" >&2
     gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
+    echo -e "gsettings set org.gnome.desktop.interface scaling-factor $SCALING_FACTOR\n" >&2
     gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
 
 fi
 
-"$SCRIPT_DIR/xkb-load.sh" "$@"
+if command_exists displaycal-apply-profiles; then
 
-# just in case Synergy is still using the old configuration
-if command_exists systemctl && systemctl --quiet is-active synergy.service; then
-
-    sudo -n systemctl restart --no-block synergy.service
-
-fi
-
-if [ "$IS_AUTOSTART" -eq "0" ]; then
-
-    if command_exists displaycal-apply-profiles; then
+    if [ "$IS_AUTOSTART" -eq "0" ] && [ "$EUID" -ne "0" ]; then
 
         displaycal-apply-profiles || true
+
+    else
+
+        echo "Skipped: displaycal-apply-profiles"
 
     fi
 
 fi
+
+"$SCRIPT_DIR/xkb-load.sh" "$@"

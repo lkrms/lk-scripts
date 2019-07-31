@@ -2,8 +2,7 @@
 
 # Recommended:
 # - create ../config/xkbcomp
-# - bind a keyboard shortcut (e.g. Ctrl+Alt+K) to "/path/to/linux/xkb-load.sh"
-# - rely on "/path/to/linux/xrandr-auto.sh --autostart" during startup
+# - rely on "/path/to/linux/xrandr-auto.sh" during startup and/or via keyboard shortcut
 
 set -euo pipefail
 
@@ -19,17 +18,15 @@ IS_AUTOSTART=0
 
 if command_exists xkbcomp && [ -e "$CONFIG_DIR/xkbcomp" ] && [ -n "$DISPLAY" ]; then
 
-    sleep 1
-
     xkbcomp "$CONFIG_DIR/xkbcomp" "$DISPLAY"
 
 fi
 
-if [ "$IS_AUTOSTART" -eq "0" ]; then
+if [ "$IS_AUTOSTART" -eq "0" ] && [ "$EUID" -ne "0" ]; then
 
     if command_exists systemctl && systemctl --user --quiet is-active sxhkd.service; then
 
-        systemctl --user restart --no-block sxhkd.service
+        systemctl --user reload sxhkd.service
 
     fi
 
