@@ -7,6 +7,7 @@ ExecStartPre=/bin/sleep 4
 ExecStart=/usr/bin/sxhkd
 ExecReload=/bin/kill -SIGUSR1 $MAINPID
 Restart=always
+RestartSec=10
 
 [Install]
 WantedBy=default.target

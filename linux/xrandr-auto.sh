@@ -295,18 +295,63 @@ echo -e "xrandr ${OPTIONS[*]}\n" >&2
 xrandr "${OPTIONS[@]}"
 
 # ok, xrandr is sorted -- look after everything else
-if command_exists gsettings && [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+if command_exists gsettings; then
 
-    let XFT_DPI=1024*DPI
+    (
+        set -euo pipefail
 
-    OVERRIDES="$(gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)"
-    OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Gdk/WindowScalingFactor' "$SCALING_FACTOR")"
-    OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Xft/DPI' "$XFT_DPI")"
+        SUDO_OR_NOT=()
+        DBUS_KILL_PID=
 
-    echo -e "gsettings set org.gnome.settings-daemon.plugins.xsettings overrides \"$OVERRIDES\"\n" >&2
-    gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
-    echo -e "gsettings set org.gnome.desktop.interface scaling-factor $SCALING_FACTOR\n" >&2
-    gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
+        if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+
+            if [ "$EUID" -eq "0" ] && user_exists "lightdm"; then
+
+                SUDO_OR_NOT=(sudo -u lightdm -HE)
+
+                DBUS_LAUNCH_CODE="$("${SUDO_OR_NOT[@]}" dbus-launch --sh-syntax)" || exit 0
+
+                # shellcheck disable=SC1090
+                . <(echo "$DBUS_LAUNCH_CODE")
+
+                DBUS_KILL_PID="$DBUS_SESSION_BUS_PID"
+
+                echo "D-Bus process started: $DBUS_SESSION_BUS_PID" >&2
+
+            else
+
+                exit
+
+            fi
+
+        fi
+
+        let XFT_DPI=1024*DPI
+
+        OVERRIDES="$("${SUDO_OR_NOT[@]}" gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)"
+        OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Gdk/WindowScalingFactor' "$SCALING_FACTOR")"
+        OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Xft/DPI' "$XFT_DPI")"
+
+        echo -e "${SUDO_OR_NOT[*]} gsettings set org.gnome.settings-daemon.plugins.xsettings overrides \"$OVERRIDES\"\n" >&2
+        "${SUDO_OR_NOT[@]}" gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
+        echo -e "${SUDO_OR_NOT[*]} gsettings set org.gnome.desktop.interface scaling-factor $SCALING_FACTOR\n" >&2
+        "${SUDO_OR_NOT[@]}" gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
+
+        if [ -n "$DBUS_KILL_PID" ]; then
+
+            if "${SUDO_OR_NOT[@]}" kill "$DBUS_KILL_PID"; then
+
+                echo "D-Bus process killed: $DBUS_KILL_PID" >&2
+
+            else
+
+                echo "Unable to kill D-Bus process: $DBUS_KILL_PID" >&2
+
+            fi
+
+        fi
+
+    )
 
 fi
 
@@ -318,7 +363,7 @@ if command_exists displaycal-apply-profiles; then
 
     else
 
-        echo "Skipped: displaycal-apply-profiles"
+        echo "Skipped: displaycal-apply-profiles" >&2
 
     fi
 

@@ -141,6 +141,12 @@ function function_exists() {
 
 }
 
+function user_exists() {
+
+    id "$1" >/dev/null 2>&1
+
+}
+
 function is_bool() {
 
     [[ "$1" =~ ^(true|false)$ ]]
