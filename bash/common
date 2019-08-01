@@ -34,7 +34,7 @@ function exit_trap() {
 
 trap exit_trap EXIT
 
-SCRIPT_ARGS=("$@")
+ORIGINAL_BASH_SUBSHELL="$BASH_SUBSHELL"
 
 function assert_is_macos() {
 
@@ -428,11 +428,34 @@ function url_decode() {
 
 }
 
-# results are returned in document order without de-duplication
+# Results are returned in document order without de-duplication.
+#
+# Usage: get_urls_from_url "http://url.to/page-with-urls" [regex to limit results...]
 function get_urls_from_url() {
 
+    local TEMP_FILE URLS PATTERN
+
+    TEMP_FILE="$(create_temp_file N)"
+
+    wget -qkO "$TEMP_FILE" "$1" || {
+        rm -f "$TEMP_FILE"
+        die
+    }
+
+    shift
+
     # from: https://daringfireball.net/2009/11/liberal_regex_for_matching_urls
-    wget -qO - "$1" | grep -Po '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))'
+    URLS="$(grep -Po '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))' "$TEMP_FILE")" || true
+
+    rm -f "$TEMP_FILE"
+
+    for PATTERN in "$@"; do
+
+        URLS="$(echo "$URLS" | grep -E "$PATTERN")" || true
+
+    done
+
+    echo "$URLS"
 
 }
 
@@ -518,6 +541,7 @@ function move_file_delete_link() {
 
 }
 
+# Usage: create_temp_file [queue for deletion? (Y/n)]
 function create_temp_file() {
 
     local TEMP_PATH
@@ -525,12 +549,23 @@ function create_temp_file() {
     TEMP_PATH="$(mktemp "/tmp/$(basename "$0").$(date +'%s').XXXXXXXX")" ||
         die "Error: unable to create temporary file"
 
-    DELETE_ON_EXIT+=("$TEMP_PATH")
+    if [ "${1:-Y}" = "Y" ]; then
+
+        DELETE_ON_EXIT+=("$TEMP_PATH")
+
+        if [ "$ORIGINAL_BASH_SUBSHELL" -ne "$BASH_SUBSHELL" ]; then
+
+            echoc "WARNING: queuing files for deletion doesn't work in subshells" "$BOLD" >&2
+
+        fi
+
+    fi
 
     echo "$TEMP_PATH"
 
 }
 
+# Usage: create_temp_file [queue for deletion? (Y/n)]
 function create_temp_fifo() {
 
     local FIFO_PATH
@@ -539,7 +574,17 @@ function create_temp_fifo() {
         mkfifo "$FIFO_PATH" ||
         die "Error: unable to create temporary FIFO"
 
-    DELETE_ON_EXIT+=("$FIFO_PATH")
+    if [ "${1:-Y}" = "Y" ]; then
+
+        DELETE_ON_EXIT+=("$FIFO_PATH")
+
+        if [ "$ORIGINAL_BASH_SUBSHELL" -ne "$BASH_SUBSHELL" ]; then
+
+            echoc "WARNING: queuing files for deletion doesn't work in subshells" "$BOLD" >&2
+
+        fi
+
+    fi
 
     echo "$FIFO_PATH"
 
@@ -574,6 +619,8 @@ CONFIG_DIR="$ROOT_DIR/config"
 CACHE_DIR="$ROOT_DIR/cache"
 LOG_DIR="$ROOT_DIR/log"
 TEMP_DIR="$ROOT_DIR/tmp"
+
+SUBSHELL_SCRIPT_PATH="$ROOT_DIR/bash/common-subshell"
 
 DELETE_ON_EXIT=()
 KILL_ON_EXIT=()

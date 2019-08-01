@@ -1,0 +1,40 @@
+#!/bin/bash
+# shellcheck disable=SC2034
+
+set -euo pipefail
+
+function error_trap() {
+
+    echo "Error: $(basename "$0") failed with exit code $1 in $2 at line $3" >&2
+    exit "$1"
+
+}
+
+trap 'error_trap "$?" "${BASH_SOURCE[0]}" "$LINENO"' ERR
+
+set -E
+
+function exit_trap() {
+
+    local f pid
+
+    for f in "${DELETE_ON_EXIT[@]}"; do
+
+        rm -f "$f" || true
+
+    done
+
+    for pid in "${KILL_ON_EXIT[@]}"; do
+
+        kill "$pid" || true
+
+    done
+
+}
+
+trap exit_trap EXIT
+
+ORIGINAL_BASH_SUBSHELL="$BASH_SUBSHELL"
+
+DELETE_ON_EXIT=()
+KILL_ON_EXIT=()

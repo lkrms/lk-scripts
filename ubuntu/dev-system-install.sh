@@ -110,7 +110,16 @@ if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
 
 fi
 
-apt_install_packages "performance monitoring" "atop iotop nethogs powertop sysstat" N
+apt_install_packages "performance monitoring" "\
+ atop\
+ auditd\
+ glances\
+ iotop\
+ nethogs\
+ powertop\
+ sysstat\
+" N
+
 apt_install_packages "desktop essentials" "\
  abcde\
  beets\
@@ -121,10 +130,11 @@ apt_install_packages "desktop essentials" "\
  code\
  copyq\
  dconf-editor\
+ deepin-notifications-\
+ deepin-screenshot\
  eyed3\
  filezilla\
  firefox\
- flameshot\
  fonts-symbola\
  galculator\
  gconf-editor\
@@ -163,6 +173,7 @@ apt_install_packages "desktop essentials" "\
  synergy\
  thunderbird\
  tilix\
+ transmission\
  typora\
  usb-creator-gtk\
  vlc\
@@ -236,13 +247,55 @@ apt_install_packages "VirtualBox" "virtualbox-6.0"
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
 apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.2-stable-8c010140/synergy_1.10.2.stable_b10%2B8c010140_ubuntu18_amd64.deb"
-apt_install_deb "https://code-industry.net/public/master-pdf-editor-5.4.38-qt5.amd64.deb"
 apt_install_deb "https://displaycal.net/download/xUbuntu_${DISTRIB_RELEASE}/amd64/DisplayCAL.deb"
-apt_install_deb "https://github.com/autokey/autokey/releases/download/v0.95.7/autokey-common_0.95.7-0_all.deb"
-apt_install_deb "https://github.com/autokey/autokey/releases/download/v0.95.7/autokey-gtk_0.95.7-0_all.deb"
-apt_install_deb "https://github.com/careteditor/releases-beta/releases/download/4.0.0-rc23/caret-beta.deb"
-apt_install_deb "https://github.com/KryDos/todoist-linux/releases/download/1.17/Todoist_1.17.0_amd64.deb"
 apt_install_deb "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
+
+DEB_URLS=()
+IFS=$'\n'
+
+# AutoKey
+DEB_URLS+=($(
+    # shellcheck source=../bash/common-subshell
+    . "$SUBSHELL_SCRIPT_PATH" || exit
+    get_urls_from_url "https://github.com/autokey/autokey/releases" 'autokey-(common|gtk).*\.deb$' | head -n2
+))
+
+# Caret Beta
+DEB_URLS+=("$(
+    # shellcheck source=../bash/common-subshell
+    . "$SUBSHELL_SCRIPT_PATH" || exit
+    get_urls_from_url "https://github.com/careteditor/releases-beta/releases" '\.deb$' | head -n1
+)")
+
+# Master PDF Editor
+DEB_URLS+=("$(
+    # shellcheck source=../bash/common-subshell
+    . "$SUBSHELL_SCRIPT_PATH" || exit
+    get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1
+)")
+
+# stretchly
+DEB_URLS+=("$(
+    # shellcheck source=../bash/common-subshell
+    . "$SUBSHELL_SCRIPT_PATH" || exit
+    get_urls_from_url "https://github.com/hovancik/stretchly/releases" '_amd64\.deb$' | head -n1
+)")
+
+# Todoist
+DEB_URLS+=("$(
+    # shellcheck source=../bash/common-subshell
+    . "$SUBSHELL_SCRIPT_PATH" || exit
+    get_urls_from_url "https://github.com/KryDos/todoist-linux/releases" '\.deb$' | head -n1
+)")
+
+unset IFS
+
+for DEB_URL in "${DEB_URLS[@]}"; do
+
+    apt_install_deb "$DEB_URL"
+    console_message "Scraped deb package URL queued for download:" "$DEB_URL" "$YELLOW" "$BOLD"
+
+done
 
 apt_remove_packages apport deja-dup fonts-twemoji-svginot
 
