@@ -141,6 +141,12 @@ function function_exists() {
 
 }
 
+function variable_exists() {
+
+    declare -p "$1" >/dev/null 2>&1
+
+}
+
 function user_exists() {
 
     id "$1" >/dev/null 2>&1
@@ -473,7 +479,17 @@ function download_urls() {
         if [ "$DOWNLOAD_FAILED" -eq "1" ]; then
 
             console_message "Unable to download ($(echo "$HEADERS" | head -n1)):" "$PRETTY_URL" "$BOLD" "$RED" >&2
-            die
+
+            if [ -n "${DOWNLOAD_URLS_SKIP_REGEX:-}" ] && [[ "$(echo "$HEADERS" | head -n1)" =~ $DOWNLOAD_URLS_SKIP_REGEX ]]; then
+
+                DOWNLOAD_FAILED=0
+                continue
+
+            else
+
+                die
+
+            fi
 
         fi
 

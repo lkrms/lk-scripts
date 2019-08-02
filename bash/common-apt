@@ -24,12 +24,19 @@ function apt_require_package() {
 
 function apt_refresh_packages() {
 
-    APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\n' -W)" || die
-    APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames)" || die
-    APT_GUI_PACKAGES="$(
-        set -euo pipefail
-        apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances libwayland-client0 libwayland-server0 libx11-6 x11-common | grep -v " " | sort | uniq
-    )" || die
+    APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\n' -W | sort | uniq)" || die
+    APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames | sort | uniq)" || die
+
+    if [ "$APT_GUI_PACKAGES_AUTO" -eq "1" ] || ! variable_exists APT_GUI_PACKAGES; then
+
+        APT_GUI_PACKAGES="$(
+            # shellcheck source=../bash/common-subshell
+            . "$SUBSHELL_SCRIPT_PATH" || exit
+            apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances libwayland-client0 libwayland-server0 libx11-6 x11-common | grep -v " " | sort | uniq
+        )" || die
+        APT_GUI_PACKAGES_AUTO=1
+
+    fi
 
 }
 
@@ -701,6 +708,10 @@ function do_apt_install_deb() {
 
     console_message "Downloading $# deb $(single_or_plural "$#" package packages)..." "" "$CYAN"
 
+    # allow "429 Too Many Requests"
+    # shellcheck disable=SC2034
+    DOWNLOAD_URLS_SKIP_REGEX='^\s*HTTP/[0-9.]+\s+429\b'
+
     PATHS="$(
         set -euo pipefail
         download_urls "$@"
@@ -886,6 +897,7 @@ function apt_get_new_configuration_files() {
 }
 
 APT_CACHE_DIRTY=1
+APT_GUI_PACKAGES_AUTO=0
 APT_DEB_PATH="$CACHE_DIR/deb"
 APT_GET_OPTIONS=(-o "Acquire::ForceIPv4=true" -y)
 APT_PPA_REGISTRY=()

@@ -19,6 +19,72 @@ assert_is_ubuntu
 assert_not_server
 assert_not_root
 
+APT_GUI_PACKAGES="\
+autokey-common
+autokey-gtk
+blueman
+caffeine
+catfish
+code
+com.github.cassidyjames.ideogram
+copyq
+dbeaver-ce
+dconf-editor
+deepin-screenshot
+displaycal
+filezilla
+firefox
+galculator
+gconf-editor
+geany
+geeqie
+ghostwriter
+gimp
+git-cola
+gnome-color-manager
+gnome-tweaks
+google-chrome-stable
+gparted
+guake
+handbrake-gtk
+indicator-multiload
+inkscape
+keepassxc
+libgtk-3-dev
+libreoffice
+makemkv-bin
+makemkv-oss
+master-pdf-editor
+meld
+mkvtoolnix-gui
+owncloud-client
+qpdfview
+rapid-photo-downloader
+recoll
+remmina
+rescuetime
+scribus
+seahorse
+skypeforlinux
+speedcrunch
+stretchly
+sublime-merge
+sublime-text
+synaptic
+synergy
+thunderbird
+tilix
+todoist
+transmission
+usb-creator-gtk
+vlc
+wingpanel-indicator-ayatana
+x11vnc
+xautomation
+xclip
+xdotool
+"
+
 offer_sudo_password_bypass
 
 # install prequisites and packages that may be needed to bootstrap others
@@ -102,7 +168,7 @@ apt_install_packages "essential utilities" "\
  trickle\
  vim\
  whois\
- linux-generic-hwe-$DISTRIB_RELEASE xserver-xorg-hwe-$DISTRIB_RELEASE" N
+" N
 
 if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
 
@@ -281,6 +347,13 @@ DEB_URLS+=("$(
     get_urls_from_url "https://github.com/hovancik/stretchly/releases" '_amd64\.deb$' | head -n1
 )")
 
+# Teams for Linux
+DEB_URLS+=("$(
+    # shellcheck source=../bash/common-subshell
+    . "$SUBSHELL_SCRIPT_PATH" || exit
+    get_urls_from_url "https://github.com/IsmaelMartinez/teams-for-linux/releases" '_amd64\.deb$' | head -n1
+)")
+
 # Todoist
 DEB_URLS+=("$(
     # shellcheck source=../bash/common-subshell
@@ -293,7 +366,7 @@ unset IFS
 for DEB_URL in "${DEB_URLS[@]}"; do
 
     apt_install_deb "$DEB_URL"
-    console_message "Scraped deb package URL queued for download:" "$DEB_URL" "$YELLOW" "$BOLD"
+    console_message "Scraped deb package URL queued for download:" "$DEB_URL" "$BOLD" "$YELLOW"
 
 done
 
@@ -303,7 +376,7 @@ if [ "$IS_ELEMENTARY_OS" -eq "1" ] && [ "$(lsb_release -sc)" = "juno" ]; then
 
     apt_install_packages "elementary OS extras" "com.github.cassidyjames.ideogram gnome-tweaks libgtk-3-dev"
 
-    if apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Install workaround for removal of system tray indicators?" Y Y; then
+    if apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Restore elementary OS system tray indicators?" Y Y; then
 
         # because too many apps don't play by the rules (see: https://www.reddit.com/r/elementaryos/comments/aghyiq/system_tray/)
         mkdir -p "$HOME/.config/autostart"
@@ -338,20 +411,20 @@ EOF
     (
         set -euo pipefail
 
-        LIGHTDM_HOME=~lightdm
-
-        SUDO_EXTRA=(-u lightdm -H "DISPLAY=" "XAUTHORITY=\"$LIGHTDM_HOME/.Xauthority\"")
+        SUDO_EXTRA=(-u lightdm -H env -i)
 
         # shellcheck disable=SC1090
         . <(sudo "${SUDO_EXTRA[@]}" dbus-launch --sh-syntax)
 
-        SLEEP_INACTIVE_AC_TIMEOUT="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 2>/dev/null)"
-        SLEEP_INACTIVE_AC_TYPE="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type 2>/dev/null)"
+        SUDO_EXTRA+=("DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS")
 
-        if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" ] && [ "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked?" Y Y; then
+        SLEEP_INACTIVE_AC_TIMEOUT="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout)"
+        SLEEP_INACTIVE_AC_TYPE="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type)"
 
-            sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 >/dev/null 2>&1 &&
-                sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing >/dev/null 2>&1 ||
+        if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" ] && [ "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked and using AC power?" Y Y; then
+
+            sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 &&
+                sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing ||
                 console_message "Unable to apply power settings for ${BOLD}lightdm${RESET} user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" "$BOLD" "$RED" >&2
 
         fi
@@ -365,7 +438,7 @@ fi
 SNAPS_INSTALLED=($(sudo snap list 2>/dev/null))
 SNAPS_INSTALL=()
 
-for s in caprine slack spotify teams-for-linux twist; do
+for s in caprine slack spotify twist; do
 
     array_search "$s" SNAPS_INSTALLED >/dev/null || SNAPS_INSTALL+=("$s")
 
@@ -443,7 +516,35 @@ if apt_package_installed "docker-ce"; then
 
 fi
 
+# workaround for bugs introduced in libx11-6 2:1.6.4-3ubuntu0.2
+HOLD_PACKAGES=(libx11-6 libx11-data libx11-dev libx11-doc libx11-xcb-dev libx11-xcb1)
+
+if dpkg-query -f '${Version}\n' -W "${HOLD_PACKAGES[@]}" | grep -Eq "$(sed_escape_search "2:1.6.4-3ubuntu0.2")"; then
+
+    VERSIONED_HOLD_PACKAGES=()
+
+    for p in "${HOLD_PACKAGES[@]}"; do
+
+        VERSIONED_HOLD_PACKAGES+=("$p=2:1.6.4-3ubuntu0.1")
+
+    done
+
+    console_message "Downgrading from ${BOLD}2:1.6.4-3ubuntu0.2${RESET} to ${BOLD}2:1.6.4-3ubuntu0.1${RESET} and marking as held:" "${HOLD_PACKAGES[*]}" "$BOLD" "$RED"
+
+    sudo apt-get "${APT_GET_OPTIONS[@]}" --allow-downgrades install "${VERSIONED_HOLD_PACKAGES[@]}"
+
+    sudo apt-mark hold "${HOLD_PACKAGES[@]}"
+
+fi
+
 ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | sort | uniq))
 console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "" "$BLUE"
 COLUMNS="$(tput cols)"
 apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")"
+
+if apt_package_available "linux-generic-hwe-$DISTRIB_RELEASE" && apt_package_available "xserver-xorg-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "xserver-xorg-hwe-$DISTRIB_RELEASE"; then
+
+    echo
+    console_message "To use the Ubuntu LTS enablement stack, but only for X server, run:" "sudo apt-get install linux-generic-hwe-${DISTRIB_RELEASE}- xserver-xorg-hwe-$DISTRIB_RELEASE" "$BOLD" "$CYAN"
+
+fi
