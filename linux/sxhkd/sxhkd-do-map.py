@@ -27,7 +27,12 @@ window_class = ".".join([c.strip('"') for c in subprocess.run(['xprop', '-id', w
 
 logging.info("window class: {0}".format(window_class))
 
-is_unknown = window_class == ""
+window_name = subprocess.run(['xprop', '-id', window_id, '8u',
+                              '\n$0', 'WM_NAME'], stdout=subprocess.PIPE, check=True).stdout.decode().split("\n")[1].strip('"')
+
+logging.info("window name: {0}".format(window_name))
+
+is_unknown = window_class == "" and window_name == ""
 is_chrome = bool(re.search(r"^google-chrome\.Google-chrome$", window_class))
 is_dbeaver = bool(re.search(r"^DBeaver\.DBeaver$", window_class))
 is_terminal = bool(

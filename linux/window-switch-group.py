@@ -3,7 +3,6 @@
 
 from subprocess import Popen, PIPE, call
 import logging
-import logging.handlers
 import sys
 import os
 
@@ -23,23 +22,17 @@ import os
 # logging will be placed into
 #   log/window-switch-group.py.log
 
-LOG_FORMAT = '%(asctime)s %(levelname)s (%(pathname)s:%(lineno)d): %(message)s'
-log_directory = os.path.join(os.path.dirname(
-    os.path.dirname(os.path.abspath(__file__))), 'log')
+log_directory = os.path.normpath(os.path.dirname(
+    os.path.realpath(__file__)) + '/../log')
+log_file = os.path.join(log_directory, 'window-switch-group.py.log')
+
 if not os.path.exists(log_directory):
     os.makedirs(log_directory)
-fh = logging.handlers.RotatingFileHandler(
-    os.path.join(log_directory, 'window-switch-group.py.log'),
-    maxBytes=5 * 1024 * 1024,  # 5 MB
-    backupCount=1)
-fh.setFormatter(logging.Formatter(LOG_FORMAT))
+logging.basicConfig(
+    filename=log_file, format='%(relativeCreated)s %(levelname)s (%(pathname)s:%(lineno)d): %(message)s', level=logging.DEBUG)
 
-_logger = logging.getLogger('window-switch-group.py')
-_logger.setLevel(logging.DEBUG)
-_logger.addHandler(fh)
-
-_logger.info('Args: {0}'.format(sys.argv))
-_logger.info('looking for windows')
+logging.info('Args: {0}'.format(sys.argv))
+logging.info('looking for windows')
 
 if 'group' in sys.argv:
     method = 'group'
@@ -69,11 +62,11 @@ try:
                 desktop=int(win[1]),
                 _class='.'.join(_class[(len(_class) / 2):])
             ))
-    _logger.info('windows found: {0}'.format(windows))
+    logging.info('windows found: {0}'.format(windows))
 
     current_window_id = int(
         Popen("xdotool getactivewindow", shell=True, stdout=PIPE).stdout.read().strip())
-    _logger.info('current_window_id: {0}'.format(current_window_id))
+    logging.info('current_window_id: {0}'.format(current_window_id))
     current_window_class = next(
         (x['_class'] for x in windows if x['id'] == current_window_id), None)
     current_window_desktop = next(
@@ -82,14 +75,14 @@ try:
     if current_window_class and method == 'group':
         class_windows = [x for x in windows if x['_class'] ==
                          current_window_class and x['desktop'] == current_window_desktop]
-        _logger.info('Class windows: {0}'.format(class_windows))
+        logging.info('Class windows: {0}'.format(class_windows))
         if class_windows:
             if direction == '-f':
                 index = 0
                 for x in xrange(len(class_windows)):
                     if class_windows[x]['id'] == current_window_id:
                         index = x
-                        _logger.info('Found window index: {0}'.format(index))
+                        logging.info('Found window index: {0}'.format(index))
                         break
                 if index + 1 >= len(class_windows):
                     index = 0
@@ -100,16 +93,16 @@ try:
                 for x in xrange(len(class_windows) - 1, -1, -1):
                     if class_windows[x]['id'] == current_window_id:
                         index = x
-                        _logger.info('Found window index: {0}'.format(index))
+                        logging.info('Found window index: {0}'.format(index))
                         break
                 if index <= 0:
                     index = len(class_windows) - 1
                 else:
                     index = index - 1
-            _logger.info('Calling class window index {0}'.format(index))
+            logging.info('Calling class window index {0}'.format(index))
             call(['wmctrl', '-i', '-a', str(class_windows[index]['id'])])
         else:
-            _logger.info('class_windows not found')
+            logging.info('class_windows not found')
     elif method == 'window':
         desktop_windows = [
             x for x in windows if x['desktop'] == current_window_desktop]
@@ -119,7 +112,7 @@ try:
                 for x in xrange(len(desktop_windows)):
                     if desktop_windows[x]['id'] == current_window_id:
                         index = x
-                        _logger.info('Found window index: {0}'.format(index))
+                        logging.info('Found window index: {0}'.format(index))
                         break
                 if index + 1 >= len(desktop_windows):
                     index = 0
@@ -130,18 +123,18 @@ try:
                 for x in xrange(len(desktop_windows) - 1, -1, -1):
                     if desktop_windows[x]['id'] == current_window_id:
                         index = x
-                        _logger.info('Found window index: {0}'.format(index))
+                        logging.info('Found window index: {0}'.format(index))
                         break
                 if index <= 0:
                     index = len(desktop_windows) - 1
                 else:
                     index = index - 1
-            _logger.info('Calling window {0}'.format(desktop_windows[index]))
+            logging.info('Calling window {0}'.format(desktop_windows[index]))
             call(['wmctrl', '-i', '-a', str(desktop_windows[index]['id'])])
         else:
-            _logger.info('windows not found')
+            logging.info('windows not found')
     else:
-        _logger.info('current_window_class not found')
+        logging.info('current_window_class not found')
 
 except Exception as e:
-    _logger.exception("window-switch-group.py blew up")
+    logging.exception("window-switch-group.py blew up")
