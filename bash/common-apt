@@ -24,7 +24,7 @@ function apt_require_package() {
 
 function apt_refresh_packages() {
 
-    APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\n' -W | sort | uniq)" || die
+    APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | grep -Po '^.*(?=\tinstalled$)' | sort | uniq)" || die
     APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames | sort | uniq)" || die
 
     if [ "$APT_GUI_PACKAGES_AUTO" -eq "1" ] || ! variable_exists APT_GUI_PACKAGES; then
@@ -321,9 +321,6 @@ EOF
 
     else
 
-        # because keys change sometimes
-        apt_add_key_from_url "$2"
-
         if [ -n "$PREFERENCES" ]; then
 
             echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/$1.pref" >/dev/null || die
@@ -543,8 +540,8 @@ function apt_install_packages() {
             apt_make_cache_clean
             INSTALL_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" N))
             SILENT_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" Y))
-            PRETTY_QUEUE=($(apt_pretty_packages "$(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}")" Y "$GREEN"))
-            console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "${PRETTY_QUEUE[*]}" "$GREEN"
+            PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}"))
+            console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y "$GREEN")" "$GREEN"
 
             for q in INSTALL SILENT; do
 
@@ -802,7 +799,7 @@ function apt_process_queue() {
 
     local q QUEUE INSTALL_QUEUE SILENT_QUEUE PRETTY_QUEUE SUDO_EXTRA=()
 
-    if [ "${#APT_INSTALL_QUEUE[@]}" -gt "0" ]; then
+    if [ "${#APT_INSTALL_QUEUE[@]}" -gt "0" ] || [ "${#APT_REMOVE_QUEUE[@]}" -gt "0" ]; then
 
         QUEUE=($(printf '%s\n' "${APT_PPA_QUEUE[@]}" "${APT_REPO_QUEUE[@]}" | sort | uniq))
 
@@ -822,8 +819,8 @@ function apt_process_queue() {
         apt_make_cache_clean
         INSTALL_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "${APT_REMOVE_QUEUE[*]}" "${APT_SILENCED[*]}" N))
         SILENT_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "" "${APT_SILENCED[*]}" Y))
-        PRETTY_QUEUE=($(apt_pretty_packages "$(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}")" Y "$GREEN"))
-        console_message "Applying ${#PRETTY_QUEUE[@]} package $(single_or_plural ${#PRETTY_QUEUE[@]} change changes):" "${PRETTY_QUEUE[*]}" "$GREEN"
+        PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}"))
+        console_message "Applying ${#PRETTY_QUEUE[@]} package $(single_or_plural ${#PRETTY_QUEUE[@]} change changes):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y "$GREEN")" "$GREEN"
 
         for q in INSTALL SILENT; do
 
@@ -867,11 +864,12 @@ function apt_force_install_packages() {
 
 function apt_upgrade_all() {
 
+    APT_CACHE_DIRTY=1
     apt_make_cache_clean
 
     console_message "Installing all available package updates..." "" "$GREEN"
 
-    sudo apt-get "${APT_GET_OPTIONS[@]}" dist-upgrade && APT_CACHE_DIRTY=1 || die
+    sudo apt-get "${APT_GET_OPTIONS[@]}" dist-upgrade && apt_refresh_packages || die
 
 }
 
