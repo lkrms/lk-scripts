@@ -5,8 +5,8 @@
 
 function synergy_find_executable() {
 
-    command -v "$1" >/dev/null 2>&1 ||
-        PATH=".:/usr/bin:/usr/local/bin:/Applications/Synergy.app/Contents/MacOS" command -v "$1" >/dev/null 2>&1 ||
+    command -v "$1" ||
+        PATH=".:/usr/bin:/usr/local/bin:/Applications/Synergy.app/Contents/MacOS" command -v "$1" ||
         die "Error: unable to find $1 command"
 
 }
@@ -71,14 +71,14 @@ function synergy_prepare_command_line() {
         # use Xorg's command line to determine our XAUTHORITY path (alternatively, we could inspect /proc/XXXX/environ)
         if [ -n "$d" ] && pid=($(pgrep -x Xorg)); then
 
-            # shellcheck disable=SC2009
+            # shellcheck disable=SC2009,SC2207
             if xc=($(ps "${pid[@]}" | grep -E '[[:space:]]+'"$d"'[[:space:]]+' | grep -E '[[:space:]]+-auth[[:space:]]+[^[:space:]]+')); then
 
                 for i in "${!xc[@]}"; do
 
                     if [ "${xc[$i]}" = "-auth" ]; then
 
-                        let i+=1
+                        ((i += 1))
                         xa="${xc[$i]}"
 
                         COMMAND_LINE+=(env "DISPLAY=$d" "XAUTHORITY=$xa")

@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2207
 
 set -euo pipefail
 
@@ -10,6 +11,10 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 . "$SCRIPT_DIR/../bash/common"
 
 assert_is_macos
+assert_command_exists brew
+
+# necessary to prevent errors when substituting empty arrays ("${EMPTY_ARRAY[@]}" throws an "unbound variable" error on macOS)
+set +u
 
 USAGE="Usage: $(basename "$0") [/path/to/formula_list_file...] [formula...]"
 
@@ -41,7 +46,7 @@ for f in "${LIST_FILES[@]}"; do
 
     PACKAGES=($(
         set -euo pipefail
-        cat "$f" | sort | uniq
+        sort <"$f" | uniq
     ))
 
     BAD_PACKAGES=($(comm -23 <(printf '%s\n' "${PACKAGES[@]}") <(printf '%s\n' "${AVAILABLE_PACKAGES[@]}")))
@@ -50,10 +55,12 @@ for f in "${LIST_FILES[@]}"; do
 
         console_message "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae) found in $f:" "${BAD_PACKAGES[*]}" "$BOLD" "$RED" >&2
 
-        [ "$f" = "$MAIN_LIST_FILE" ] && {
+        if [ "$f" = "$MAIN_LIST_FILE" ]; then
+
             SAFE_PACKAGES+=($(comm -12 <(printf '%s\n' "${PACKAGES[@]}") <(printf '%s\n' "${AVAILABLE_PACKAGES[@]}")))
             continue
-        }
+
+        fi
 
         die "$USAGE"
 

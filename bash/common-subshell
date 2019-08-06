@@ -16,17 +16,17 @@ set -E
 
 function exit_trap() {
 
-    local f pid
+    local i
 
-    for f in "${DELETE_ON_EXIT[@]}"; do
+    for i in "${!DELETE_ON_EXIT[@]}"; do
 
-        rm -f "$f" || true
+        rm -f "${DELETE_ON_EXIT[$i]}" || true
 
     done
 
-    for pid in "${KILL_ON_EXIT[@]}"; do
+    for i in "${!KILL_ON_EXIT[@]}"; do
 
-        kill "$pid" || true
+        kill "${KILL_ON_EXIT[$i]}" || true
 
     done
 

@@ -48,11 +48,15 @@ for i in "${!LOCAL_PATHS[@]}"; do
 
     fi
 
+    # disable globbing
     set -f
+    # shellcheck disable=SC2206
     FIND_EXTRA=(${CONDITIONS[$i]})
     set +f
 
     pushd "$LOCAL_PATH" >/dev/null
+
+    set +u
 
     while IFS= read -rd $'\0' FILENAME; do
 
@@ -77,6 +81,8 @@ for i in "${!LOCAL_PATHS[@]}"; do
         fi
 
     done < <(find . -type f "${FIND_EXTRA[@]}" -print0 | sort -z)
+
+    set -u
 
     popd >/dev/null
 

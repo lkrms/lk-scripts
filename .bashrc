@@ -23,7 +23,7 @@
 
     for KEY in "${!ADD_TO_PATH[@]}"; do
 
-        if [ ! -d "${ADD_TO_PATH[$KEY]}" ]; then
+        if [[ ":$PATH:" == *":${ADD_TO_PATH[$KEY]}:"* ]] || [ ! -d "${ADD_TO_PATH[$KEY]}" ]; then
 
             unset "ADD_TO_PATH[$KEY]"
 
@@ -32,7 +32,11 @@
     done
 
     # shellcheck disable=SC2016
-    echo 'export PATH="$PATH:'"$(array_join_by ":" "${ADD_TO_PATH[@]}")"'"'
+    if [ "${#ADD_TO_PATH[@]}" -gt "0" ]; then
+
+        echo 'export PATH="$PATH:'"$(array_join_by ":" "${ADD_TO_PATH[@]}")"'"'
+
+    fi
 
     command_exists gtk-launch && echo 'alias gtk-debug="GTK_DEBUG=interactive "'
 

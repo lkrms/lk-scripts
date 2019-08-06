@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2206,SC2207
 
 # Recommended:
 # - create ../config/xrandr
@@ -101,7 +102,7 @@ for i in "${!OUTPUTS[@]}"; do
     )) || DIMENSIONS=()
     if [ "${#DIMENSIONS[@]}" -eq 2 ]; then
 
-        let AREA=DIMENSIONS[0]*DIMENSIONS[1]
+        ((AREA = DIMENSIONS[0] * DIMENSIONS[1]))
         DIMENSIONS+=("$AREA")
         DIMENSIONS+=("$(
             set -euo pipefail
@@ -254,7 +255,9 @@ for i in "${!OUTPUTS[@]}"; do
 
     OPTIONS+=(--output "${OUTPUTS[$i]}")
 
+    set +u
     eval "OUTPUT_OPTIONS=(\"\${OPTIONS_${i}[@]}\")"
+    set -u
 
     array_search "--mode" OUTPUT_OPTIONS >/dev/null || OUTPUT_OPTIONS+=(--preferred)
 
@@ -298,7 +301,10 @@ xrandr "${OPTIONS[@]}"
 if command_exists gsettings; then
 
     (
-        set -euo pipefail
+        # shellcheck source=../bash/common-subshell
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+
+        set +u
 
         SUDO_OR_NOT=()
         DBUS_KILL_PID=
@@ -326,7 +332,7 @@ if command_exists gsettings; then
 
         fi
 
-        let XFT_DPI=1024*DPI
+        ((XFT_DPI = 1024 * DPI))
 
         OVERRIDES="$("${SUDO_OR_NOT[@]}" gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)"
         OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Gdk/WindowScalingFactor' "$SCALING_FACTOR")"

@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2206,SC2207
 
 set -euo pipefail
 
@@ -481,10 +482,10 @@ fi
 console_message "Installing all available snap updates..." "" "$GREEN"
 sudo snap refresh
 
-for s in "${SNAPS_INSTALL[@]}"; do
+for i in "${!SNAPS_INSTALL[@]}"; do
 
     # tolerate errors because snap can be temperamental
-    sudo snap install --classic "$s" || true
+    sudo snap install "${SNAPS_INSTALL[$i]}" || true
 
 done
 
@@ -567,7 +568,7 @@ elif apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE"; then
 
         apt_remove_packages "linux-generic-hwe-$DISTRIB_RELEASE" "linux-image-generic-hwe-$DISTRIB_RELEASE" "linux-headers-generic-hwe-18.04-$DISTRIB_RELEASE"
 
-        apt_install_packages "kernel" "linux-generic" N N
+        apt_install_packages "kernel" "linux-generic" N
 
         apt_process_queue
 

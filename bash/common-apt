@@ -422,7 +422,7 @@ function apt_get_package_list() {
 
 }
 
-# Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override (Y/N)] [queue only (Y/N)]
+# Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override (Y/n)] [queue only (Y/n)]
 function apt_install_packages() {
 
     local UI="${3:-Y}" QUEUE_ONLY="${4:-Y}" INSTALLED=() INSTALL=() IGNORED=() SUPPRESSED=() SILENCED=() IGNORE SUPPRESS SILENCE PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX OPTIONS QUEUE PROMPT_EXTRA="" INSTALL_QUEUE SILENT_QUEUE PRETTY_QUEUE SUDO_EXTRA=() p q

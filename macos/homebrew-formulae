@@ -1,4 +1,5 @@
 ant
+argyll-cms
 autoconf
 cmake
 composer
@@ -14,6 +15,7 @@ mas
 media-info
 msmtp
 ocrmypdf
+openconnect
 pandoc
 php-cs-fixer
 php@7.2

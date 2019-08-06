@@ -28,7 +28,7 @@ function git_add_global_setting() {
 
     if [ "${3:-N}" = "Y" ] || ! git config --global "$1" >/dev/null 2>&1; then
 
-        local EXTRA=()
+        local EXTRA=(--global)
 
         if is_bool "$1"; then
 
@@ -40,7 +40,7 @@ function git_add_global_setting() {
 
         fi
 
-        git config --global "${EXTRA[@]}" "$1" "$2"
+        git config "${EXTRA[@]}" "$1" "$2"
 
     fi
 
@@ -53,9 +53,14 @@ function dev_apply_system_config() {
         if [ -e "$CONFIG_DIR/gitignore" ]; then
 
             # shellcheck disable=SC2088
-            git_add_global_setting core.excludesFile "~/.gitignore"
             file_to_array "$CONFIG_DIR/gitignore" '^[[:space:]]*$' '^#'
-            git_add_global_ignore "${FILE_TO_ARRAY[@]}"
+
+            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
+
+                git_add_global_setting core.excludesFile "~/.gitignore"
+                git_add_global_ignore "${FILE_TO_ARRAY[@]}"
+
+            fi
 
         fi
 
@@ -146,6 +151,8 @@ function php_do_apply_setting() {
 
     [ -w "$INI_FILE" ] || PREFIX+=(sudo)
 
+    set +u
+
     [ -f "${INI_FILE}.original" ] || "${PREFIX[@]}" cp -p "$INI_FILE" "${INI_FILE}.original" || die
 
     SEARCH="$(sed_escape_search "$SETTINGNAME")"
@@ -154,18 +161,20 @@ function php_do_apply_setting() {
     if grep -Eq '^\s*'"${SEARCH}"'\s*=' "$INI_FILE"; then
 
         # we have a defined setting to replace
-        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE"
+        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE" || die
 
     elif grep -Eq '^\s*;\s*'"${SEARCH}"'\s*=' "$INI_FILE"; then
 
         # we have a commented-out setting to replace
-        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*;\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE"
+        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*;\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE" || die
 
     else
 
-        echo -e "\n$SETTINGNAME = $SETTINGVALUE" | "${PREFIX[@]}" tee -a "$INI_FILE" >/dev/null
+        echo -e "\n$SETTINGNAME = $SETTINGVALUE" | "${PREFIX[@]}" tee -a "$INI_FILE" >/dev/null || die
 
     fi
+
+    set -u
 
 }
 
@@ -180,6 +189,8 @@ function php_do_enable_extension() {
 
     [ -w "$INI_FILE" ] || PREFIX+=(sudo)
 
+    set +u
+
     [ -f "${INI_FILE}.original" ] || "${PREFIX[@]}" cp -p "$INI_FILE" "${INI_FILE}.original" || die
 
     SEARCHNAME="$(sed_escape_search "$SETTINGNAME")"
@@ -190,18 +201,20 @@ function php_do_enable_extension() {
     if grep -Eq '^\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$' "$INI_FILE"; then
 
         # we have a defined setting to replace
-        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE"
+        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE" || die
 
     elif grep -Eq '^\s*;\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$' "$INI_FILE"; then
 
         # we have a commented-out setting to replace
-        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*;\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE"
+        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*;\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE" || die
 
     else
 
-        echo -e "\n$SETTINGNAME = $SETTINGVALUE" | "${PREFIX[@]}" tee -a "$INI_FILE" >/dev/null
+        echo -e "\n$SETTINGNAME = $SETTINGVALUE" | "${PREFIX[@]}" tee -a "$INI_FILE" >/dev/null || die
 
     fi
+
+    set -u
 
 }
 

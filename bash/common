@@ -16,17 +16,17 @@ set -E
 
 function exit_trap() {
 
-    local f pid
+    local i
 
-    for f in "${DELETE_ON_EXIT[@]}"; do
+    for i in "${!DELETE_ON_EXIT[@]}"; do
 
-        rm -f "$f" || true
+        rm -f "${DELETE_ON_EXIT[$i]}" || true
 
     done
 
-    for pid in "${KILL_ON_EXIT[@]}"; do
+    for i in "${!KILL_ON_EXIT[@]}"; do
 
-        kill "$pid" || true
+        kill "${KILL_ON_EXIT[$i]}" || true
 
     done
 
@@ -424,7 +424,7 @@ function sed_escape_replace() {
 
 function date_get_log() {
 
-    date +'%R'
+    date -R
 
 }
 
@@ -480,7 +480,7 @@ function get_urls_from_url() {
 # files are downloaded to the current directory, and local filenames are output
 function download_urls() {
 
-    local DOWNLOAD_FAILED=0 URL PRETTY_URL HEADERS HEADER HEADER_PARTS IFS FILENAME
+    local i DOWNLOAD_FAILED=0 URL PRETTY_URL HEADERS HEADER HEADER_PARTS IFS FILENAME
 
     for URL in "$@"; do
 
@@ -514,7 +514,9 @@ function download_urls() {
             HEADER_PARTS=($HEADER)
             unset IFS
 
-            for HEADER in "${HEADER_PARTS[@]}"; do
+            for i in "${!HEADER_PARTS[@]}"; do
+
+                HEADER="${HEADER_PARTS[$i]}"
 
                 if FILENAME="$(
                     set -euo pipefail
