@@ -128,7 +128,7 @@ function dev_apply_system_config() {
         ln -s "$ROOT_DIR/linux/sxhkd/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc"
         ln -s "$ROOT_DIR/linux/sxhkd/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py"
 
-        if systemctl --user list-units --full --all 2>/dev/null | grep -Eq '^sxhkd\.service[[:space:]]+'; then
+        if systemctl --user list-units --full --all 2>/dev/null | grep -Eq '\bsxhkd\.service\b'; then
 
             systemctl --user disable --now "sxhkd.service" 2>/dev/null || true
 

@@ -268,12 +268,6 @@ EOF
 
 }
 
-function apt_add_key_from_url() {
-
-    wget -qO - "$1" | sudo apt-key add - >/dev/null 2>&1 || die "Error: unable to add GPG key from $1"
-
-}
-
 # Usage: apt_register_repository my-repo-identifier "https://gpg.key.url" "content for my-repo-identifier.list" "value for Pin field in apt preferences" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? (Y/n)]
 function apt_register_repository() {
 
@@ -627,7 +621,7 @@ function apt_add_ppa() {
 
 function apt_add_repo() {
 
-    local repo i KEY_URL ENTRY
+    local repo i KEY_URL KEY_ID ENTRY
 
     for repo in $(printf '%s\n' "$@" | sort | uniq); do
 
@@ -641,7 +635,19 @@ function apt_add_repo() {
 
         echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || die
 
-        apt_add_key_from_url "$KEY_URL"
+        if is_url "$KEY_URL"; then
+
+            wget -qO - "$KEY_URL" | sudo apt-key add - >/dev/null 2>&1 || die "Error: unable to add GPG key from $KEY_URL"
+
+        else
+
+            for KEY_ID in $KEY_URL; do
+
+                sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$KEY_ID" >/dev/null 2>&1 || die "Error: unable to add GPG key $KEY_ID from Ubuntu keyserver"
+
+            done
+
+        fi
 
         if [ -n "$PREFERENCES" ]; then
 

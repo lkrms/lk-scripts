@@ -20,8 +20,6 @@ assert_is_ubuntu
 assert_not_server
 assert_not_root
 
-apt_mark_cache_clean
-
 APT_GUI_PACKAGES="\
 autokey-common
 autokey-gtk
@@ -90,6 +88,8 @@ xdotool
 
 offer_sudo_password_bypass
 
+apt_mark_cache_clean
+
 # install prequisites and packages that may be needed to bootstrap others
 apt_force_install_packages "apt-transport-https aptitude debconf-utils distro-info dmidecode lsb-core snapd software-properties-common trash-cli whiptail"
 
@@ -140,6 +140,7 @@ apt_register_repository mongodb-org-4.0 "https://www.mongodb.org/static/pgp/serv
 apt_register_repository nodesource "https://deb.nodesource.com/gpgkey/nodesource.gpg.key" "deb https://deb.nodesource.com/node_8.x $DISTRIB_CODENAME main" "origin deb.nodesource.com" "nodejs"
 apt_register_repository owncloud-client "https://download.opensuse.org/repositories/isv:ownCloud:desktop/Ubuntu_$DISTRIB_RELEASE/Release.key" "deb http://download.opensuse.org/repositories/isv:/ownCloud:/desktop/Ubuntu_$DISTRIB_RELEASE/ /" "release l=isv:ownCloud:desktop" "owncloud-client" N N
 apt_register_repository skype-stable "https://repo.skype.com/data/SKYPE-GPG-KEY" "deb [arch=amd64] https://repo.skype.com/deb stable main" "origin repo.skype.com" "skypeforlinux"
+apt_register_repository spotify "931FF8E79F0876134EDDBDCCA87FF9DF48BF1C90 2EBF997C15BDA244B6EBF5D84773BD5E130D1D45" "deb http://repository.spotify.com stable non-free" "origin repository.spotify.com" "spotify-client"
 apt_register_repository sublime-text "https://download.sublimetext.com/sublimehq-pub.gpg" "deb https://download.sublimetext.com/ apt/stable/" "origin download.sublimetext.com" "sublime-*"
 apt_register_repository typora "https://typora.io/linux/public-key.asc" "deb https://typora.io/linux ./" "origin typora.io" "typora"
 apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_vbox_2016.asc" "deb [arch=amd64] https://download.virtualbox.org/virtualbox/debian $DISTRIB_CODENAME contrib" "origin download.virtualbox.org" "virtualbox-*"
@@ -234,6 +235,7 @@ apt_install_packages "desktop essentials" "\
  remmina\
  scribus\
  seahorse\
+ spotify-client\
  skypeforlinux\
  speedcrunch\
  sublime-text\
@@ -329,6 +331,13 @@ DEB_URLS+=($(
     get_urls_from_url "https://github.com/autokey/autokey/releases" 'autokey-(common|gtk).*\.deb$' | head -n2
 ))
 
+# Caprine
+DEB_URLS+=("$(
+    # shellcheck source=../bash/common-subshell
+    . "$SUBSHELL_SCRIPT_PATH" || exit
+    get_urls_from_url "https://github.com/sindresorhus/caprine/releases" '_amd64\.deb$' | head -n1
+)")
+
 # Caret Beta
 DEB_URLS+=("$(
     # shellcheck source=../bash/common-subshell
@@ -341,6 +350,13 @@ DEB_URLS+=("$(
     # shellcheck source=../bash/common-subshell
     . "$SUBSHELL_SCRIPT_PATH" || exit
     get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1
+)")
+
+# Slack
+DEB_URLS+=("$(
+    # shellcheck source=../bash/common-subshell
+    . "$SUBSHELL_SCRIPT_PATH" || exit
+    get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1
 )")
 
 # stretchly
@@ -441,7 +457,7 @@ fi
 SNAPS_INSTALLED=($(sudo snap list 2>/dev/null))
 SNAPS_INSTALL=()
 
-for s in caprine slack spotify twist; do
+for s in twist; do
 
     array_search "$s" SNAPS_INSTALLED >/dev/null || SNAPS_INSTALL+=("$s")
 
@@ -612,9 +628,7 @@ if [ "${#CURRENT_KERNEL[@]}" -eq "1" ] && apt_package_installed "${CURRENT_KERNE
 linux-base linux-base/removing-running-kernel boolean false
 EOF
 
-            apt_remove_packages "${OTHER_KERNEL_PACKAGES[@]}"
-
-            apt_process_queue
+            sudo DEBIAN_FRONTEND=noninteractive apt-get "${APT_GET_OPTIONS[@]}" remove "${OTHER_KERNEL_PACKAGES[@]}"
 
         fi
 

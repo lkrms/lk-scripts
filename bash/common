@@ -165,6 +165,12 @@ function is_int() {
 
 }
 
+function is_url() {
+
+    echo "$1" | grep -Pq '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))'
+
+}
+
 # Usage: echoc "My coloured message" "$BOLD" "$BLUE"
 function echoc() {
 
