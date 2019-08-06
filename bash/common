@@ -422,9 +422,21 @@ function sed_escape_replace() {
 
 }
 
-function get_yyyymmddhhmmss() {
+function date_get_log() {
+
+    date +'%R'
+
+}
+
+function date_get_ymdhms() {
 
     date +'%Y%m%d%H%M%S'
+
+}
+
+function date_get_timestamp() {
+
+    date +'%s'
 
 }
 
@@ -562,7 +574,7 @@ function create_temp_file() {
 
     local TEMP_PATH
 
-    TEMP_PATH="$(mktemp "/tmp/$(basename "$0").$(date +'%s').XXXXXXXX")" ||
+    TEMP_PATH="$(mktemp "/tmp/$(basename "$0").$(date_get_timestamp).XXXXXXXX")" ||
         die "Error: unable to create temporary file"
 
     if [ "${1:-Y}" = "Y" ]; then
@@ -586,7 +598,7 @@ function create_temp_fifo() {
 
     local FIFO_PATH
 
-    FIFO_PATH="$(mktemp -u "/tmp/$(basename "$0").$(date +'%s').XXXXXXXX.fifo")" &&
+    FIFO_PATH="$(mktemp -u "/tmp/$(basename "$0").$(date_get_timestamp).XXXXXXXX.fifo")" &&
         mkfifo "$FIFO_PATH" ||
         die "Error: unable to create temporary FIFO"
 
