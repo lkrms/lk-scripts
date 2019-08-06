@@ -20,11 +20,13 @@ fi
 
 SYNERGY_COMMAND="$(synergy_find_executable synergys)"
 
-synergy_get_log_files synergys
+synergy_get_log_file synergys
 
-synergy_kill
+synergy_prepare_command_line
 
-COMMAND_LINE=("$SYNERGY_COMMAND" -f --no-tray -d INFO --enable-drag-drop -n "$1" -c "$2")
+COMMAND_LINE+=("$SYNERGY_COMMAND" --no-tray -d INFO --enable-drag-drop -n "$1" -c "$2")
+
+synergy_daemon_check
 
 if [ -n "${3:-}" ]; then
 
@@ -32,12 +34,4 @@ if [ -n "${3:-}" ]; then
 
 fi
 
-echo "[ $(date '+%+') ] Starting: ${COMMAND_LINE[*]}" >>"$LOG_FILE2"
-
-set +e
-QT_BEARER_POLL_TIMEOUT=-1 "${COMMAND_LINE[@]}" >>"$LOG_FILE2" 2>&1
-RESULT="$?"
-set -e
-
-echo "[ $(date '+%+') ] Exited with code: $RESULT" >>"$LOG_FILE2"
-exit $RESULT
+synergy_loop

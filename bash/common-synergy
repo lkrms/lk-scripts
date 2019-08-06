@@ -1,23 +1,23 @@
 #!/bin/bash
 # shellcheck disable=SC2034
 
+[ "${QT_BEARER_POLL_TIMEOUT:-}" = "-1" ] || export QT_BEARER_POLL_TIMEOUT=-1
+
 function synergy_find_executable() {
 
-    which "$1" ||
-        PATH=".:/usr/bin:/usr/local/bin:/Applications/Synergy.app/Contents/MacOS" which "$1" ||
+    command -v "$1" >/dev/null 2>&1 ||
+        PATH=".:/usr/bin:/usr/local/bin:/Applications/Synergy.app/Contents/MacOS" command -v "$1" >/dev/null 2>&1 ||
         die "Error: unable to find $1 command"
 
 }
 
-function synergy_get_log_files() {
+function synergy_get_log_file() {
 
     LOG_FILE="$LOG_DIR/$1.log"
-    LOG_FILE2="$LOG_DIR/$1.out.log"
 
     if [ ! -e "$LOG_FILE" ] && ! touch "$LOG_FILE" 2>/dev/null || [ ! -w "$LOG_FILE" ]; then
 
-        LOG_FILE="$(mktemp "/tmp/$1.XXXXXXXX")" &&
-            LOG_FILE2="$(mktemp "/tmp/$1.out.XXXXXXXX")" ||
+        LOG_FILE="$(mktemp "/tmp/$1.XXXXXXXX")" ||
             die "Error: unable to find a writable log file location"
 
     fi
@@ -94,5 +94,69 @@ function synergy_prepare_command_line() {
         fi
 
     fi
+
+}
+
+function synergy_daemon_check() {
+
+    case "$(basename "$0")" in
+
+    *daemon*)
+        IS_DAEMON=1
+        ;;
+
+    *)
+        COMMAND_LINE+=(-f)
+        IS_DAEMON=0
+        ;;
+
+    esac
+
+}
+
+function synergy_loop() {
+
+    while :; do
+
+        synergy_kill
+
+        echo "$(date_get_log) Starting: ${COMMAND_LINE[*]}" >>"$LOG_FILE"
+
+        RESULT=0
+        "${COMMAND_LINE[@]}" >>"$LOG_FILE" 2>&1 || RESULT="$?"
+
+        echo "$(date_get_log) Exited with code: $RESULT" >>"$LOG_FILE"
+
+        # restart on unlock if running in the foreground without root privileges
+        if [ "$EUID" -ne "0" ] && [ "$IS_DAEMON" -eq "0" ] && [ "$IS_LINUX" -eq "1" ] && command_exists gdbus; then
+
+            echo "$(date_get_log) Waiting for session unlock" >>"$LOG_FILE"
+
+            while IFS= read -r LINE; do
+
+                if [[ "$LINE" == *org.freedesktop.login1.Session.Unlock* ]]; then
+
+                    break
+
+                fi
+
+            done < <(gdbus monitor --system --dest org.freedesktop.login1 --object-path "/org/freedesktop/login1/session/$XDG_SESSION_ID")
+
+            # gdbus will keep running forever otherwise (not even SIGPIPE kills it)
+            if SUBSHELL_PID="$(pgrep -P $$)"; then
+
+                pkill -xP "$SUBSHELL_PID" gdbus || true
+
+            fi
+
+            echo "$(date_get_log) Session unlock detected; restarting" >>"$LOG_FILE"
+
+        else
+
+            exit "$RESULT"
+
+        fi
+
+    done
 
 }
