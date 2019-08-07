@@ -384,6 +384,10 @@ fi
 
 "$SCRIPT_DIR/xkb-load.sh" "$@"
 
-mkdir -p "$HOME/.local/bin"
-move_file_delete_link "$HOME/.local/bin/xrandr-auto.sh"
-ln -s "$ROOT_DIR/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh"
+if [ "$EUID" -ne "0" ]; then
+
+    mkdir -p "$HOME/.local/bin"
+    move_file_delete_link "$HOME/.local/bin/xrandr-auto.sh"
+    ln -s "$ROOT_DIR/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh"
+
+fi
