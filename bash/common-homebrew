@@ -1,0 +1,126 @@
+#!/bin/bash
+# shellcheck disable=SC2206,SC2207
+
+if ! command_exists brew; then
+
+    ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || die
+
+fi
+
+function brew_refresh() {
+
+    BREW_INSTALLED_FORMULAE="$(brew list)" || die
+    BREW_AVAILABLE_FORMULAE="$(brew search)" || die
+    BREW_INSTALLED_CASKS="$(brew cask list)" || die
+    BREW_AVAILABLE_CASKS="$(brew search --casks)" || die
+
+}
+
+function brew_formula_installed() {
+
+    brew_make_cache_clean
+    echo "$BREW_INSTALLED_FORMULAE" | grep -E '^'"$1"'$' >/dev/null 2>&1
+
+}
+
+function brew_formula_available() {
+
+    brew_make_cache_clean
+    echo "$BREW_AVAILABLE_FORMULAE" | grep -E '^'"$1"'$' >/dev/null 2>&1
+
+}
+
+function brew_mark_cache_clean() {
+
+    [ "$BREW_CACHE_DIRTY" -ne "0" ] && brew_refresh && BREW_CACHE_DIRTY=0
+
+}
+
+function brew_make_cache_clean() {
+
+    if [ "$BREW_CACHE_DIRTY" -ne "0" ]; then
+
+        console_message "Updating lists..." "" "$CYAN"
+
+        brew update && brew_refresh && BREW_CACHE_DIRTY=0 || die
+
+    fi
+
+}
+
+function brew_remove_installed_formulae() {
+
+    local i KEYS VALUE
+
+    eval KEYS='"${!'"$1"'[@]}"'
+
+    for i in $KEYS; do
+
+        eval VALUE='"${'"$1"'[$i]}"'
+
+        if brew_formula_installed "$VALUE"; then
+
+            unset "$1[$i]"
+
+        fi
+
+    done
+
+}
+
+# Usage: brew_install_formulae "Description of this group of formulae" "formula1 formula2 ..." [allow user override? (Y/n)]
+function brew_install_formulae() {
+
+    local REQUESTED=($2) UI="${3:-Y}"
+
+    brew_make_cache_clean
+
+    console_message "Checking $1..." "" "$CYAN"
+
+    BREW_INSTALL_FORMULAE=($2)
+
+    brew_remove_installed_formulae BREW_INSTALL_FORMULAE
+
+    if [ "${#BREW_INSTALL_FORMULAE[@]}" -gt "0" ]; then
+
+        BREW_INSTALLED+=($(comm -13 <(printf '%s\n' "${BREW_INSTALL_FORMULAE[@]}" | sort | uniq) <(printf '%s\n' "${REQUESTED[@]}" | sort | uniq)))
+
+        if [ "$UI" = "Y" ]; then
+
+            console_message "Missing $1 $(single_or_plural "${#BREW_INSTALL_FORMULAE[@]}" formula formulae):" "${BREW_INSTALL_FORMULAE[*]}" "$BOLD" "$MAGENTA"
+
+            get_confirmation "Add the $1 $(single_or_plural "${#BREW_INSTALL_FORMULAE[@]}" formula formulae) listed above?" Y Y || return 0
+
+        fi
+
+        BREW_FORMULAE_QUEUE+=("${BREW_INSTALL_FORMULAE[@]}")
+
+    else
+
+        BREW_INSTALLED+=($(printf '%s\n' "${REQUESTED[@]}" | sort | uniq))
+
+    fi
+
+}
+
+function brew_process_queue() {
+
+    if [ "${#BREW_FORMULAE_QUEUE[@]}" -gt "0" ]; then
+
+        console_message "Installing ${#BREW_FORMULAE_QUEUE[@]} $(single_or_plural "${#BREW_FORMULAE_QUEUE[@]}" formula formulae):" "${BREW_FORMULAE_QUEUE[*]}" "$GREEN"
+
+        brew install "${BREW_FORMULAE_QUEUE[@]}" && {
+            BREW_INSTALLED+=("${BREW_FORMULAE_QUEUE[@]}")
+            BREW_JUST_INSTALLED+=("${BREW_FORMULAE_QUEUE[@]}")
+        } || die
+
+    fi
+
+    BREW_FORMULAE_QUEUE=()
+
+}
+
+BREW_CACHE_DIRTY=1
+BREW_FORMULAE_QUEUE=()
+BREW_INSTALLED=()
+BREW_JUST_INSTALLED=()

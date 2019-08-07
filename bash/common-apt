@@ -344,7 +344,7 @@ function apt_make_cache_clean() {
 
 }
 
-# Usage: apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "${REMOVE[*]}" "${SILENCED[*]}" [return silent? (Y/N)]
+# Usage: apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "${REMOVE[*]}" "${SILENCED[*]}" [return silent? (y/N)]
 function apt_get_package_list() {
 
     local p q IGNORED=" $2 " SUPPRESSED=($3) REMOVE=($4) SILENCED=" $5 " RETURN_SILENT="${6:-N}" LIST=() BAD_LIST=()
@@ -416,7 +416,7 @@ function apt_get_package_list() {
 
 }
 
-# Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override (Y/n)] [queue only (Y/n)]
+# Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override? (Y/n)] [queue only? (Y/n)]
 function apt_install_packages() {
 
     local UI="${3:-Y}" QUEUE_ONLY="${4:-Y}" INSTALLED=() INSTALL=() IGNORED=() SUPPRESSED=() SILENCED=() IGNORE SUPPRESS SILENCE PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX OPTIONS QUEUE PROMPT_EXTRA="" INSTALL_QUEUE SILENT_QUEUE PRETTY_QUEUE SUDO_EXTRA=() p q
@@ -685,7 +685,7 @@ function apt_add_repo() {
 
 }
 
-# Usage: apt_install_deb "http://url.to/package.deb" [queue only (Y/n)]
+# Usage: apt_install_deb "http://url.to/package.deb" [queue only? (Y/n)]
 function apt_install_deb() {
 
     command_exists wget || apt_force_install_packages "wget"
