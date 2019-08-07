@@ -348,21 +348,21 @@ IFS=$'\n'
 DEB_URLS+=($(
     # shellcheck source=../bash/common-subshell
     . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://github.com/autokey/autokey/releases" 'autokey-(common|gtk).*\.deb$' | head -n2
+    get_urls_from_url "https://api.github.com/repos/autokey/autokey/releases/latest" 'autokey-(common|gtk).*\.deb$' | head -n2
 ))
 
 # Caprine
 DEB_URLS+=("$(
     # shellcheck source=../bash/common-subshell
     . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://github.com/sindresorhus/caprine/releases" '_amd64\.deb$' | head -n1
+    get_urls_from_url "https://api.github.com/repos/sindresorhus/caprine/releases/latest" '_amd64\.deb$' | head -n1
 )")
 
 # Caret Beta
 DEB_URLS+=("$(
     # shellcheck source=../bash/common-subshell
     . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://github.com/careteditor/releases-beta/releases" '\.deb$' | head -n1
+    get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1
 )")
 
 # Master PDF Editor
@@ -383,21 +383,21 @@ DEB_URLS+=("$(
 DEB_URLS+=("$(
     # shellcheck source=../bash/common-subshell
     . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://github.com/hovancik/stretchly/releases" '_amd64\.deb$' | head -n1
+    get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1
 )")
 
 # Teams for Linux
 DEB_URLS+=("$(
     # shellcheck source=../bash/common-subshell
     . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://github.com/IsmaelMartinez/teams-for-linux/releases" '_amd64\.deb$' | head -n1
+    get_urls_from_url "https://api.github.com/repos/IsmaelMartinez/teams-for-linux/releases/latest" '_amd64\.deb$' | head -n1
 )")
 
 # Todoist
 DEB_URLS+=("$(
     # shellcheck source=../bash/common-subshell
     . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://github.com/KryDos/todoist-linux/releases" '\.deb$' | head -n1
+    get_urls_from_url "https://api.github.com/repos/KryDos/todoist-linux/releases/latest" '\.deb$' | head -n1
 )")
 
 unset IFS
