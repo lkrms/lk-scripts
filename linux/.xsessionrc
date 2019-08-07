@@ -1,5 +1,3 @@
-export QT_AUTO_SCREEN_SCALE_FACTOR=0
-export QT_SCALE_FACTOR="$(xrandr-auto.sh --get-scaling-factor 2>/dev/null)"
-export QT_BEARER_POLL_TIMEOUT=-1
+. <(xrandr-auto.sh --get-qt-exports)
 
-xrandr-auto.sh --dpi-only
+export QT_BEARER_POLL_TIMEOUT=-1

@@ -249,9 +249,15 @@ if [ "${1:-}" = "--dpi-only" ]; then
 
 fi
 
-if [ "${1:-}" = "--get-scaling-factor" ]; then
+if [ "${1:-}" = "--get-qt-exports" ]; then
 
-    echo "$SCALING_FACTOR"
+    ((QT_FONT_DPI = DPI / SCALING_FACTOR))
+
+    echo "export QT_AUTO_SCREEN_SCALE_FACTOR=0"
+    echo "export QT_SCALE_FACTOR=$SCALING_FACTOR"
+    echo "export QT_FONT_DPI=$QT_FONT_DPI"
+
+    xrandr --dpi "$DPI" >/dev/null
     exit
 
 fi
