@@ -33,7 +33,6 @@ dbeaver-ce
 dconf-editor
 deepin-screenshot
 displaycal
-filezilla
 firefox
 galculator
 gconf-editor
