@@ -48,15 +48,17 @@ function git_add_global_setting() {
 
 function dev_apply_system_config() {
 
+    dir_make_and_own "/usr/local/bin"
+
     if command_exists git; then
 
         if [ -e "$CONFIG_DIR/gitignore" ]; then
 
-            # shellcheck disable=SC2088
             file_to_array "$CONFIG_DIR/gitignore" '^[[:space:]]*$' '^#'
 
             if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
+                # shellcheck disable=SC2088
                 git_add_global_setting core.excludesFile "~/.gitignore"
                 git_add_global_ignore "${FILE_TO_ARRAY[@]}"
 
@@ -79,6 +81,7 @@ function dev_apply_system_config() {
 
     fi
 
+    # TODO: abstract the Composer script below and use it for pip, pip3, and npm
     if command_exists pip; then
 
         sudo -H pip install ps_mem
@@ -91,7 +94,7 @@ function dev_apply_system_config() {
 
     fi
 
-    if command_exists php && function_exists php_apply_developer_settings; then
+    if command_exists php; then
 
         local INI_ROOT
 
@@ -101,21 +104,69 @@ function dev_apply_system_config() {
 
         done
 
-    fi
+        dir_make_and_own "/usr/local/lib/composer"
 
-    if command_exists php && ! command_exists composer && [ ! -e /usr/local/bin/composer ] && [ -d /usr/local ]; then
+        mkdir -p "$LOCAL_DIR/composer"
 
-        {
-            sudo mkdir -p /usr/local/bin &&
-                "$ROOT_DIR/bash/composer-install.sh" &&
-                sudo mv "composer.phar" /usr/local/bin/composer
-        } || console_message "Unable to install Composer" "" "$BOLD" "$RED" >&2
+        pushd "$LOCAL_DIR/composer" >/dev/null
 
-    fi
+        if [ ! -e "composer.phar" ]; then
 
-    if command_exists composer; then
+            "$ROOT_DIR/bash/composer-install.sh" || die
 
-        composer global require "friendsofphp/php-cs-fixer"
+        else
+
+            ./composer.phar self-update
+
+        fi
+
+        if [ ! -e "composer.json" ]; then
+
+            cat <<EOF >"composer.json"
+{
+    "config": {
+        "vendor-dir": "/usr/local/lib/composer",
+        "bin-dir": "/usr/local/bin"
+    }
+}
+EOF
+
+        fi
+
+        console_message "Checking Composer packages..." "" "$CYAN"
+
+        COMPOSER_REQUIRED=("composer/composer")
+
+        if [ -e "$CONFIG_DIR/composer-packages" ]; then
+
+            file_to_array "$CONFIG_DIR/composer-packages" '^[[:space:]]*$' '^#'
+
+            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
+
+                COMPOSER_REQUIRED+=("${FILE_TO_ARRAY[@]}")
+
+            fi
+
+        fi
+
+        COMPOSER_REQUIRED=($(printf '%s\n' "${COMPOSER_REQUIRED[@]}" | sort | uniq))
+        COMPOSER_INSTALLED=($(./composer.phar show -ND | sort | uniq))
+
+        if [ "${#COMPOSER_INSTALLED[@]}" -gt "0" ]; then
+
+            COMPOSER_REQUIRED=($(comm -23 <(printf '%s\n' "${COMPOSER_REQUIRED[@]}") <(printf '%s\n' "${COMPOSER_INSTALLED[@]}")))
+
+        fi
+
+        if [ "${#COMPOSER_REQUIRED[@]}" -gt "0" ]; then
+
+            console_message "Installing Composer packages:" "${COMPOSER_REQUIRED[*]}" "$GREEN"
+
+            ./composer.phar require "${COMPOSER_REQUIRED[@]}"
+
+        fi
+
+        popd >/dev/null
 
     fi
 

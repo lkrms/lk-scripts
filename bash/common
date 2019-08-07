@@ -648,11 +648,18 @@ function get_x_displays() {
 
 }
 
+function dir_make_and_own() {
+
+    { [ -d "$1" ] || sudo mkdir -p "$1"; } && sudo chown "$(id -un):$(id -gn)" "$1"
+
+}
+
 COMMON_SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then COMMON_SCRIPT_PATH="$(realpath "$COMMON_SCRIPT_PATH")"; fi
 ROOT_DIR="$(cd "$(dirname "$COMMON_SCRIPT_PATH")/.." && pwd -P)"
 CONFIG_DIR="$ROOT_DIR/config"
 CACHE_DIR="$ROOT_DIR/cache"
+LOCAL_DIR="$ROOT_DIR/local"
 LOG_DIR="$ROOT_DIR/log"
 TEMP_DIR="$ROOT_DIR/tmp"
 
@@ -661,7 +668,7 @@ SUBSHELL_SCRIPT_PATH="$ROOT_DIR/bash/common-subshell"
 DELETE_ON_EXIT=()
 KILL_ON_EXIT=()
 
-mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOG_DIR" "$TEMP_DIR"
+mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOCAL_DIR" "$LOG_DIR" "$TEMP_DIR"
 
 if [ -t 1 ]; then
 

@@ -159,6 +159,7 @@ apt_install_packages "essential utilities" "\
  libsecret-tools\
  linux-tools-generic\
  mediainfo\
+ msmtp\
  net-tools\
  openssh-server\
  ppa-purge\
@@ -184,7 +185,9 @@ apt_install_packages "performance monitoring" "\
  atop\
  auditd\
  glances\
+ intel-gpu-tools\
  iotop\
+ lm-sensors\
  nethogs\
  powertop\
  sysstat\
@@ -235,9 +238,9 @@ apt_install_packages "desktop essentials" "\
  remmina\
  scribus\
  seahorse\
- spotify-client\
  skypeforlinux\
  speedcrunch\
+ spotify-client\
  sublime-text\
  sxhkd\
  synaptic\
@@ -255,8 +258,18 @@ apt_install_packages "desktop essentials" "\
  youtube-dl\
 "
 
-apt_install_packages "PDF tools" "ghostscript pandoc texlive texlive-luatex"
-apt_install_packages "photography" "geeqie rapid-photo-downloader"
+apt_install_packages "PDF tools" "\
+ ghostscript\
+ pandoc\
+ texlive\
+ texlive-luatex\
+"
+
+apt_install_packages "photography" "\
+ geeqie\
+ rapid-photo-downloader\
+"
+
 apt_install_packages "development" "\
  build-essential\
  cmake\
@@ -264,6 +277,7 @@ apt_install_packages "development" "\
  git\
  libapache2-mod-php*-\
  nodejs\
+ php\
  php-bcmath\
  php-cli\
  php-curl\
@@ -282,26 +296,32 @@ apt_install_packages "development" "\
  php-xdebug\
  php-xml\
  php-xmlrpc\
- php\
+ python\
  python-dateutil\
  python-dev\
  python-mysqldb\
  python-pip\
  python-requests\
- python\
+ python3\
  python3-dateutil\
  python3-dev\
  python3-mysqldb\
  python3-pip\
  python3-requests\
- python3\
  ruby\
  shellcheck\
  sublime-merge\
  yarn\
 "
 
-apt_install_packages "development services" 'libapache2-mod-php*- '"apache2 libapache2-mod-fastcgi? libapache2-mod-fcgid? mariadb-server mongodb-org"
+apt_install_packages "development services" "\
+ apache2\
+ libapache2-mod-fastcgi?\
+ libapache2-mod-fcgid?\
+ libapache2-mod-php*-\
+ mariadb-server\
+ mongodb-org\
+"
 
 if apt_package_available powershell; then
 
@@ -495,9 +515,6 @@ fi
 
 # non-apt installations
 
-console_message "Installing all available snap updates..." "" "$GREEN"
-sudo snap refresh
-
 for i in "${!SNAPS_INSTALL[@]}"; do
 
     # tolerate errors because snap can be temperamental
@@ -566,6 +583,9 @@ if [ "${#HOLD_PACKAGES[@]}" -gt "0" ] && dpkg-query -f '${Version}\n' -W "${HOLD
 fi
 
 apt_upgrade_all
+
+console_message "Installing all available snap updates..." "" "$GREEN"
+sudo snap refresh
 
 ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | sort | uniq))
 console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "" "$BLUE"
