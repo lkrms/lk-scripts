@@ -249,6 +249,13 @@ if [ "${1:-}" = "--dpi-only" ]; then
 
 fi
 
+if [ "${1:-}" = "--get-scaling-factor" ]; then
+
+    echo "$SCALING_FACTOR"
+    exit
+
+fi
+
 array_search "--dpi" OPTIONS >/dev/null || OPTIONS+=(--dpi "$DPI")
 
 for i in "${!OUTPUTS[@]}"; do
@@ -376,3 +383,7 @@ if command_exists displaycal-apply-profiles; then
 fi
 
 "$SCRIPT_DIR/xkb-load.sh" "$@"
+
+mkdir -p "$HOME/.local/bin"
+move_file_delete_link "$HOME/.local/bin/xrandr-auto.sh"
+ln -s "$ROOT_DIR/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh"
