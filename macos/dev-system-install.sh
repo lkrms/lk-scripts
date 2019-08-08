@@ -21,7 +21,11 @@ offer_sudo_password_bypass
 # shellcheck source=../bash/common-homebrew
 . "$SCRIPT_DIR/../bash/common-homebrew"
 
+# don't force a "brew update" -- Homebrew does this often enough automatically
 brew_mark_cache_clean
+
+# add any missing taps
+brew_check_taps
 
 # python3: so that we can use pip3 below
 brew_install_formulae "essentials" "\
