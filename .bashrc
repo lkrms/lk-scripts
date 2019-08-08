@@ -38,6 +38,8 @@
 
     fi
 
+    echo "export LINAC_ROOT_DIR=\"$ROOT_DIR\""
+
     command_exists gtk-launch && echo 'alias gtk-debug="GTK_DEBUG=interactive "'
 
 )
