@@ -1,4 +1,4 @@
-# Platform-independent bash scripts and libraries
+# Platform-independent Bash scripts and libraries
 
 ## Using common
 
@@ -21,3 +21,4 @@ If this seems unnecessarily complex, consider that:
 - `realpath` isn't platform-independent, `pwd -P` is only useful for directories, and `readlink` isn't recursive
 - `pwd -P` resolves symbolic links between directories
 
+Long story short: **don't symlink to your scripts unless `realpath` is available.**

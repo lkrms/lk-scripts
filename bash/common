@@ -46,6 +46,16 @@ function assert_is_macos() {
 
 }
 
+function assert_is_windows() {
+
+    if [ "$IS_WSL" -ne "1" ]; then
+
+        die "Error: $(basename "$0") is not supported on this platform (Windows required)"
+
+    fi
+
+}
+
 function assert_is_linux() {
 
     if [ "$IS_LINUX" -ne "1" ]; then
@@ -650,7 +660,66 @@ function get_x_displays() {
 
 function dir_make_and_own() {
 
+    assert_not_root
+
     { [ -d "$1" ] || sudo mkdir -p "$1"; } && sudo chown "$(id -un):$(id -gn)" "$1"
+
+}
+
+function windows_running_as_administrator() {
+
+    assert_command_exists whoami.exe
+
+    whoami.exe /groups | grep '\bS-1-5-32-544\b.*\bEnabled group\b' >/dev/null
+
+}
+
+function link_settings() {
+
+    local i TO
+
+    assert_command_exists realpath
+
+    APP_NAME="${APP_NAME:-app}"
+
+    if [ -n "${RUNNING_CHECK:-}" ]; then
+
+        if eval "$RUNNING_CHECK"; then
+
+            die "Error: $APP_NAME is currently running"
+
+        fi
+
+    fi
+
+    if [ -n "${DIRECTORY_CHECK:-}" ]; then
+
+        if [ ! -d "$DIRECTORY_CHECK" ]; then
+
+            die "Error: $DIRECTORY_CHECK doesn't exist (have you run $APP_NAME yet?)"
+
+        fi
+
+    fi
+
+    if [ "$IS_WSL" -eq "1" ] && ! windows_running_as_administrator; then
+
+        die "Error: for symbolic links to work, $(basename "$0") must be run as administrator"
+
+    fi
+
+    for i in "${!LINK_FROM[@]}"; do
+
+        [ -e "${LINK_TO[$i]}" ] || {
+            console_message "Missing file:" "${LINK_TO[$i]}" "$BOLD" "$RED"
+            continue
+        }
+
+        TO="$(realpath "${LINK_TO[$i]}")" || die
+        move_file_delete_link "${LINK_FROM[$i]}" || die
+        ln -sv "$TO" "${LINK_FROM[$i]}"
+
+    done
 
 }
 
