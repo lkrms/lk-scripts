@@ -289,6 +289,8 @@ apt_install_packages "development" "\
  php-json\
  php-mbstring\
  php-mcrypt?\
+ php-memcache\
+ php-memcached\
  php-mysql\
  php-pear\
  php-soap\
