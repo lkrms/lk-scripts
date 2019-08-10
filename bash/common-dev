@@ -81,22 +81,92 @@ function dev_apply_system_config() {
 
     fi
 
-    # TODO: abstract the Composer script below and use it for pip, pip3, and npm
+    local SUDO_OR_NOT=
+
+    # on macOS, global pip and npm management doesn't require sudo (courtesy of Homebrew)
+    if [ "$IS_MACOS" -ne "1" ]; then
+
+        SUDO_OR_NOT="sudo -H "
+
+    fi
+
     if command_exists pip; then
 
-        sudo -H pip install ps_mem
+        local PIP_REQUIRED=()
+
+        if [ -e "$CONFIG_DIR/pip-packages" ]; then
+
+            file_to_array "$CONFIG_DIR/pip-packages" '^[[:space:]]*$' '^#'
+
+            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
+
+                PIP_REQUIRED+=("${FILE_TO_ARRAY[@]}")
+
+            fi
+
+        fi
+
+        if [ "${#PIP_REQUIRED[@]}" -gt "0" ]; then
+
+            install_or_queue "pip" "${PIP_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "${SUDO_OR_NOT}pip install"
+
+        fi
+
+    fi
+
+    if command_exists pip3; then
+
+        local PIP3_REQUIRED=()
+
+        if [ -e "$CONFIG_DIR/pip3-packages" ]; then
+
+            file_to_array "$CONFIG_DIR/pip3-packages" '^[[:space:]]*$' '^#'
+
+            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
+
+                PIP3_REQUIRED+=("${FILE_TO_ARRAY[@]}")
+
+            fi
+
+        fi
+
+        if [ "${#PIP3_REQUIRED[@]}" -gt "0" ]; then
+
+            install_or_queue "pip3" "${PIP3_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip3 list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "${SUDO_OR_NOT}pip3 install"
+
+        fi
 
     fi
 
     if command_exists npm; then
 
-        sudo npm install -g eslint
+        local NPM_REQUIRED=()
+
+        [ "$IS_MACOS" -eq "1" ] && NPM_REQUIRED+=(yarn) || true
+
+        if [ -e "$CONFIG_DIR/npm-packages" ]; then
+
+            file_to_array "$CONFIG_DIR/npm-packages" '^[[:space:]]*$' '^#'
+
+            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
+
+                NPM_REQUIRED+=("${FILE_TO_ARRAY[@]}")
+
+            fi
+
+        fi
+
+        if [ "${#NPM_REQUIRED[@]}" -gt "0" ]; then
+
+            install_or_queue "npm" "${NPM_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}npm list -g --depth=0 --parseable | tail -n +2 | gnu_grep -Po '(?<=/)[^/]*$'" "" "${SUDO_OR_NOT}npm install -g"
+
+        fi
 
     fi
 
     if command_exists php; then
 
-        local INI_ROOT
+        local INI_ROOT COMPOSER_REQUIRED
 
         for INI_ROOT in /etc/php /usr/local/etc/php; do
 
@@ -108,15 +178,11 @@ function dev_apply_system_config() {
 
         mkdir -p "$LOCAL_DIR/composer"
 
-        pushd "$LOCAL_DIR/composer" >/dev/null
+        pushd "$LOCAL_DIR/composer" >/dev/null || die
 
         if [ ! -e "composer.phar" ]; then
 
             "$ROOT_DIR/bash/composer-install.sh" || die
-
-        else
-
-            ./composer.phar self-update
 
         fi
 
@@ -133,8 +199,6 @@ EOF
 
         fi
 
-        console_message "Checking Composer packages..." "" "$CYAN"
-
         COMPOSER_REQUIRED=("composer/composer")
 
         if [ -e "$CONFIG_DIR/composer-packages" ]; then
@@ -149,24 +213,9 @@ EOF
 
         fi
 
-        COMPOSER_REQUIRED=($(printf '%s\n' "${COMPOSER_REQUIRED[@]}" | sort | uniq))
-        COMPOSER_INSTALLED=($(./composer.phar show -ND | sort | uniq))
+        install_or_queue "composer" "${COMPOSER_REQUIRED[*]}" Y package packages "./composer.phar show -ND" "./composer.phar show -aN" "./composer.phar require"
 
-        if [ "${#COMPOSER_INSTALLED[@]}" -gt "0" ]; then
-
-            COMPOSER_REQUIRED=($(comm -23 <(printf '%s\n' "${COMPOSER_REQUIRED[@]}") <(printf '%s\n' "${COMPOSER_INSTALLED[@]}")))
-
-        fi
-
-        if [ "${#COMPOSER_REQUIRED[@]}" -gt "0" ]; then
-
-            console_message "Installing Composer packages:" "${COMPOSER_REQUIRED[*]}" "$GREEN"
-
-            ./composer.phar require "${COMPOSER_REQUIRED[@]}"
-
-        fi
-
-        popd >/dev/null
+        popd >/dev/null || die
 
     fi
 
@@ -321,5 +370,14 @@ function php_apply_developer_settings() {
     # enable debugging
     php_apply_setting "$1" xdebug.remote_enable 1
     php_apply_setting "$1" xdebug.remote_autostart 1
+
+    if [ "$IS_MACOS" -eq "1" ]; then
+
+        # support MariaDB via Homebrew
+        php_apply_setting "$1" pdo_mysql.default_socket /tmp/mysql.sock
+        php_apply_setting "$1" mysql.default_socket /tmp/mysql.sock
+        php_apply_setting "$1" mysqli.default_socket /tmp/mysql.sock
+
+    fi
 
 }

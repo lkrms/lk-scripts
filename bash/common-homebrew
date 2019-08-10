@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2206,SC2207
+# shellcheck disable=SC2034,SC2206,SC2207
 
 if ! command_exists brew; then
 
@@ -45,6 +45,42 @@ function brew_formula_installed() {
 
 }
 
+function brew_formula_just_installed() {
+
+    if [ "${#BREW_JUST_INSTALLED[@]}" -gt "0" ]; then
+
+        printf '%s\n' "${BREW_JUST_INSTALLED[@]}" | grep -E '^'"$1"'$' >/dev/null 2>&1
+
+    else
+
+        false
+
+    fi
+
+}
+
+function brew_formula_installed_or_queued() {
+
+    if ! brew_formula_installed "$1"; then
+
+        if [ "${#BREW_FORMULA_QUEUE[@]}" -gt "0" ]; then
+
+            printf '%s\n' "${BREW_FORMULA_QUEUE[@]}" | grep -E '^'"$1"'$' >/dev/null 2>&1
+
+        else
+
+            false
+
+        fi
+
+    else
+
+        true
+
+    fi
+
+}
+
 function brew_formula_available() {
 
     brew_make_cache_clean
@@ -70,60 +106,50 @@ function brew_make_cache_clean() {
 
 }
 
-# Usage: brew_install_formulae "Description of this group of formulae" "formula1 formula2 ..." [allow user override? (Y/n)]
-function brew_install_formulae() {
-
-    local REQUESTED=($2) UI="${3:-Y}" INSTALL UNAVAILABLE
+# Usage: brew_queue_formulae "Description of this group of formulae" "formula1 formula2 ..." [allow user override? (Y/n)]
+function brew_queue_formulae() {
 
     brew_make_cache_clean
 
-    console_message "Checking $1..." "" "$CYAN"
+    install_or_queue "$1" "$2" "${3:-Y}" formula formulae BREW_INSTALLED_FORMULAE BREW_AVAILABLE_FORMULAE BREW_FORMULA_QUEUE BREW_INSTALLED
 
-    INSTALL=($(comm -23 <(printf '%s\n' "${REQUESTED[@]}" | sort | uniq) <(printf '%s\n' "${BREW_INSTALLED_FORMULAE[@]}")))
-    BREW_INSTALLED+=($(comm -12 <(printf '%s\n' "${REQUESTED[@]}" | sort | uniq) <(printf '%s\n' "${BREW_INSTALLED_FORMULAE[@]}")))
+}
 
-    if [ "${#INSTALL[@]}" -gt "0" ]; then
+# Usage: brew_queue_casks "Description of this group of casks" "cask1 cask2 ..." [allow user override? (Y/n)]
+function brew_queue_casks() {
 
-        UNAVAILABLE=($(comm -23 <(printf '%s\n' "${INSTALL[@]}" | sort | uniq) <(printf '%s\n' "${BREW_AVAILABLE_FORMULAE[@]}")))
+    brew_make_cache_clean
 
-        if [ "${#UNAVAILABLE[@]}" -gt "0" ]; then
-
-            console_message "${#UNAVAILABLE[@]} $(single_or_plural "${#UNAVAILABLE[@]}" formula formulae) unavailable for installation:" "${UNAVAILABLE[*]}" "$BOLD" "$RED"
-
-            INSTALL=($(comm -12 <(printf '%s\n' "${INSTALL[@]}" | sort | uniq) <(printf '%s\n' "${BREW_AVAILABLE_FORMULAE[@]}")))
-
-            [ "${#INSTALL[@]}" -gt "0" ] || return 0
-
-        fi
-
-        if [ "$UI" = "Y" ]; then
-
-            console_message "Missing $1 $(single_or_plural "${#INSTALL[@]}" formula formulae):" "${INSTALL[*]}" "$BOLD" "$MAGENTA"
-
-            get_confirmation "Add the $1 $(single_or_plural "${#INSTALL[@]}" formula formulae) listed above?" Y Y || return 0
-
-        fi
-
-        BREW_FORMULAE_QUEUE+=("${INSTALL[@]}")
-
-    fi
+    install_or_queue "$1" "$2" "${3:-Y}" cask casks BREW_INSTALLED_CASKS BREW_AVAILABLE_CASKS BREW_CASK_QUEUE BREW_INSTALLED
 
 }
 
 function brew_process_queue() {
 
-    if [ "${#BREW_FORMULAE_QUEUE[@]}" -gt "0" ]; then
+    if [ "${#BREW_FORMULA_QUEUE[@]}" -gt "0" ]; then
 
-        console_message "Installing ${#BREW_FORMULAE_QUEUE[@]} $(single_or_plural "${#BREW_FORMULAE_QUEUE[@]}" formula formulae):" "${BREW_FORMULAE_QUEUE[*]}" "$GREEN"
+        console_message "Installing ${#BREW_FORMULA_QUEUE[@]} $(single_or_plural "${#BREW_FORMULA_QUEUE[@]}" formula formulae):" "${BREW_FORMULA_QUEUE[*]}" "$GREEN"
 
-        brew install "${BREW_FORMULAE_QUEUE[@]}" && {
-            BREW_INSTALLED+=("${BREW_FORMULAE_QUEUE[@]}")
-            BREW_JUST_INSTALLED+=("${BREW_FORMULAE_QUEUE[@]}")
+        brew install "${BREW_FORMULA_QUEUE[@]}" && {
+            BREW_INSTALLED+=("${BREW_FORMULA_QUEUE[@]}")
+            BREW_JUST_INSTALLED+=("${BREW_FORMULA_QUEUE[@]}")
         } || die
 
     fi
 
-    BREW_FORMULAE_QUEUE=()
+    if [ "${#BREW_CASK_QUEUE[@]}" -gt "0" ]; then
+
+        console_message "Installing ${#BREW_CASK_QUEUE[@]} $(single_or_plural "${#BREW_CASK_QUEUE[@]}" cask casks):" "${BREW_CASK_QUEUE[*]}" "$GREEN"
+
+        brew cask install --no-quarantine --force "${BREW_CASK_QUEUE[@]}" && {
+            BREW_INSTALLED+=("${BREW_CASK_QUEUE[@]}")
+            BREW_JUST_INSTALLED+=("${BREW_CASK_QUEUE[@]}")
+        } || die
+
+    fi
+
+    BREW_FORMULA_QUEUE=()
+    BREW_CASK_QUEUE=()
     brew_refresh
 
 }
@@ -135,6 +161,7 @@ BREW_TAPS=(
 )
 
 BREW_CACHE_DIRTY=1
-BREW_FORMULAE_QUEUE=()
+BREW_FORMULA_QUEUE=()
+BREW_CASK_QUEUE=()
 BREW_INSTALLED=()
 BREW_JUST_INSTALLED=()

@@ -1,13 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2206,SC2207
-
-# Recommended:
-# - create ../config/xrandr
-# - add "/path/to/linux/xrandr-auto.sh --autostart" to your desktop environment's startup applications
-# - bind a keyboard shortcut (e.g. Ctrl+Alt+R) to "/path/to/linux/xrandr-auto.sh"
-# - create "/etc/lightdm/lightdm.conf.d/xrandr.conf" as:
-#     [SeatDefaults]
-#     display-setup-script=/path/to/linux/xrandr-auto.sh
+# shellcheck disable=SC1090,SC2206,SC2207
 
 set -euo pipefail
 
@@ -21,30 +13,29 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 assert_command_exists xrandr
 assert_command_exists bc
 
-IS_AUTOSTART=0
-[ "${1:-}" = "--autostart" ] && IS_AUTOSTART=1 || true
+has_argument "--autostart" && IS_AUTOSTART=1 || IS_AUTOSTART=0
 
 # if the primary output's actual DPI is above this, enable "Retina" mode
 HIDPI_THRESHOLD=144
 
-# remove trailing whitespace
+# get current state with trailing whitespace removed
 XRANDR_OUTPUT="$(
-    set -euo pipefail
+    . "$SUBSHELL_SCRIPT_PATH" || exit
     xrandr --verbose | sed -E 's/[[:space:]]+$//'
-)"
+)" || die "Error: unable to retrieve current RandR state"
 
 # convert to single line for upcoming greps
 XRANDR_OUTPUT="\\n${XRANDR_OUTPUT//$'\n'/\\n}\\n"
 
 # extract connected output names
 OUTPUTS=($(
-    set -euo pipefail
+    . "$SUBSHELL_SCRIPT_PATH" || exit
     echo "$XRANDR_OUTPUT" | grep -Po '(?<=\\n)([^[:space:]]+)(?= connected)'
 )) || die "Error: no connected outputs"
 
 # and all output names (i.e. connected and disconnected)
 ALL_OUTPUTS=($(
-    set -euo pipefail
+    . "$SUBSHELL_SCRIPT_PATH" || exit
     echo "$XRANDR_OUTPUT" | grep -Po '(?<=\\n)([^[:space:]]+)(?= (connected|disconnected))'
 ))
 
@@ -78,7 +69,7 @@ for i in "${!OUTPUTS[@]}"; do
 
     # extract everything related to this output
     OUTPUT_INFO="$(
-        set -euo pipefail
+        . "$SUBSHELL_SCRIPT_PATH" || exit
         echo "$XRANDR_OUTPUT" | grep -Po '(?<=\\n)'"${OUTPUTS[$i]}"' connected.*?(?=\\n[^[:space:]])'
     )"
 
@@ -89,7 +80,7 @@ for i in "${!OUTPUTS[@]}"; do
 
     # extract EDID
     EDID="$(
-        set -euo pipefail
+        . "$SUBSHELL_SCRIPT_PATH" || exit
         echo "$OUTPUT_INFO" | grep -Po '(?<=EDID:\\n)(\t{2}[0-9a-fA-F]+\\n)+'
     )"
     EDID="${EDID//[^0-9a-fA-F]/}"
@@ -97,15 +88,16 @@ for i in "${!OUTPUTS[@]}"; do
 
     # extract dimensions
     DIMENSIONS=($(
-        set -euo pipefail
+        . "$SUBSHELL_SCRIPT_PATH" || exit
         echo "$OUTPUT_INFO_LINES" | head -n1 | grep -Po '\b[0-9]+(?=mm\b)'
     )) || DIMENSIONS=()
+
     if [ "${#DIMENSIONS[@]}" -eq 2 ]; then
 
         ((AREA = DIMENSIONS[0] * DIMENSIONS[1]))
         DIMENSIONS+=("$AREA")
         DIMENSIONS+=("$(
-            set -euo pipefail
+            . "$SUBSHELL_SCRIPT_PATH" || exit
             echo "scale = 10; size = sqrt(${DIMENSIONS[0]} ^ 2 + ${DIMENSIONS[1]} ^ 2) / 10 / 2.54; scale = 1; size / 1" | bc
         )")
         SIZES+=("${DIMENSIONS[*]}")
@@ -125,9 +117,10 @@ for i in "${!OUTPUTS[@]}"; do
 
     # extract preferred (native) resolution
     PIXELS=($(
-        set -euo pipefail
+        . "$SUBSHELL_SCRIPT_PATH" || exit
         echo "$OUTPUT_INFO_LINES" | grep '[[:space:]]+preferred$' | grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)'
     )) || PIXELS=()
+
     if [ "${#PIXELS[@]}" -eq 2 ]; then
 
         RESOLUTIONS+=("${PIXELS[*]}")
@@ -135,7 +128,7 @@ for i in "${!OUTPUTS[@]}"; do
         if [ "$PRIMARY_INDEX" -eq "$i" ] && [ "${#DIMENSIONS[@]}" -eq "4" ] && [ "${DIMENSIONS[0]}" -gt "0" ]; then
 
             ACTUAL_DPI="$(
-                set -euo pipefail
+                . "$SUBSHELL_SCRIPT_PATH" || exit
                 echo "scale = 10; dpi = ${PIXELS[0]} / ( ${DIMENSIONS[0]} / 10 / 2.54 ); scale = 0; dpi / 1" | bc
             )"
             PRIMARY_SIZE="${DIMENSIONS[3]}"
@@ -170,20 +163,12 @@ function get_edid_index() {
 
 }
 
-# customise OPTIONS, OPTIONS_xxx, PRIMARY_INDEX, SCALING_FACTOR and DPI here
-if [ -e "$CONFIG_DIR/xrandr" ]; then
-
-    # shellcheck source=../config/xrandr
-    . "$CONFIG_DIR/xrandr" || die
-
-fi
-
-if [ ! -e "$CONFIG_DIR/xrandr" ] || [ "${1:-}" = "--suggest" ]; then
+if [ ! -e "$CONFIG_DIR/xrandr" ] || has_argument "--suggest"; then
 
     CONFIG_FILE="$CONFIG_DIR/xrandr-suggested"
 
     echo -e '#!/bin/bash\n' >"$CONFIG_FILE"
-    echo -e '# This file has been automatically generated. Rename it to xrandr before making changes.\n' >>"$CONFIG_FILE"
+    echo -e '# This file has been automatically generated. Rename it to "xrandr" before making changes.\n' >>"$CONFIG_FILE"
 
     for i in "${!OUTPUTS[@]}"; do
 
@@ -236,20 +221,22 @@ for i in \$(seq 0 ${#OUTPUTS[@]}); do
 done
 EOF
 
+    has_argument "--suggest" && exit || true
+
+fi
+
+# OPTIONS, OPTIONS_xxx, PRIMARY_INDEX, SCALING_FACTOR and DPI may be changed here
+if [ -e "$CONFIG_DIR/xrandr" ]; then
+
+    # shellcheck disable=SC1090
+    . "$CONFIG_DIR/xrandr" || die
+
 fi
 
 echo "Scaling factor: $SCALING_FACTOR" >&2
 echo "Effective DPI: $DPI" >&2
 
-if [ "${1:-}" = "--dpi-only" ]; then
-
-    echo -e "\nxrandr --dpi $DPI\n" >&2
-    xrandr --dpi "$DPI"
-    exit
-
-fi
-
-if [ "${1:-}" = "--get-qt-exports" ]; then
+if has_argument "--get-qt-exports"; then
 
     ((QT_FONT_DPI = DPI / SCALING_FACTOR))
 
@@ -257,7 +244,24 @@ if [ "${1:-}" = "--get-qt-exports" ]; then
     echo "export QT_SCALE_FACTOR=$SCALING_FACTOR"
     echo "export QT_FONT_DPI=$QT_FONT_DPI"
 
-    xrandr --dpi "$DPI" >/dev/null
+    has_argument "--dpi-only" || exit 0
+
+fi
+
+if has_argument "--dpi-only"; then
+
+    echo -e "\nxrandr --dpi $DPI\n" >&2
+
+    if ! has_argument "--get-qt-exports"; then
+
+        xrandr --dpi "$DPI"
+
+    else
+
+        xrandr --dpi "$DPI" >/dev/null
+
+    fi
+
     exit
 
 fi
@@ -268,17 +272,28 @@ for i in "${!OUTPUTS[@]}"; do
 
     OPTIONS+=(--output "${OUTPUTS[$i]}")
 
-    set +u
-    eval "OUTPUT_OPTIONS=(\"\${OPTIONS_${i}[@]}\")"
-    set -u
+    eval "OPTIONS_COUNT=(\"\${#OPTIONS_${i}[@]}\")"
 
-    array_search "--mode" OUTPUT_OPTIONS >/dev/null || OUTPUT_OPTIONS+=(--preferred)
+    if [ "$OPTIONS_COUNT" -gt "0" ]; then
 
-    array_search "--primary" OPTIONS >/dev/null || [ "$PRIMARY_INDEX" -ne "$i" ] || OUTPUT_OPTIONS+=(--primary)
+        eval "OUTPUT_OPTIONS=(\"\${OPTIONS_${i}[@]}\")"
+        OPTIONS+=("${OUTPUT_OPTIONS[@]}")
 
-    array_search "Broadcast RGB" OUTPUT_OPTIONS >/dev/null || OUTPUT_OPTIONS+=(--set "Broadcast RGB" "Full")
+    else
 
-    OPTIONS+=("${OUTPUT_OPTIONS[@]}")
+        OUTPUT_OPTIONS=()
+
+    fi
+
+    if ! array_search "--off" OUTPUT_OPTIONS >/dev/null; then
+
+        array_search "--mode" OUTPUT_OPTIONS >/dev/null || OPTIONS+=(--preferred)
+
+        array_search "--primary" OPTIONS >/dev/null || [ "$PRIMARY_INDEX" -ne "$i" ] || OPTIONS+=(--primary)
+
+        array_search "Broadcast RGB" OUTPUT_OPTIONS >/dev/null || OPTIONS+=(--set "Broadcast RGB" "Full")
+
+    fi
 
 done
 
@@ -314,57 +329,74 @@ xrandr "${OPTIONS[@]}"
 if command_exists gsettings; then
 
     (
-        # shellcheck source=../bash/common-subshell
         . "$SUBSHELL_SCRIPT_PATH" || exit
 
-        set +u
+        function sudo_or_not() {
 
-        SUDO_OR_NOT=()
-        DBUS_KILL_PID=
+            if [ "${#SUDO_OR_NOT[@]}" -gt "0" ]; then
 
-        if [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
-
-            if [ "$EUID" -eq "0" ] && user_exists "lightdm"; then
-
-                SUDO_OR_NOT=(sudo -u lightdm -HE)
-
-                DBUS_LAUNCH_CODE="$("${SUDO_OR_NOT[@]}" dbus-launch --sh-syntax)" || exit 0
-
-                # shellcheck disable=SC1090
-                . <(echo "$DBUS_LAUNCH_CODE")
-
-                DBUS_KILL_PID="$DBUS_SESSION_BUS_PID"
-
-                echo "D-Bus process started: $DBUS_SESSION_BUS_PID" >&2
+                "${SUDO_OR_NOT[@]}" "$@"
 
             else
 
-                exit
+                "$@"
 
             fi
 
+        }
+
+        function gsettings_apply() {
+
+            local SUDO_OR_NOT_STRING=
+
+            if [ "${#SUDO_OR_NOT[@]}" -gt "0" ]; then
+
+                SUDO_OR_NOT_STRING="${SUDO_OR_NOT[*]} "
+
+            fi
+
+            ((XFT_DPI = 1024 * DPI))
+
+            OVERRIDES="$(sudo_or_not gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)"
+            OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Gdk/WindowScalingFactor' "$SCALING_FACTOR")"
+            OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Xft/DPI' "$XFT_DPI")"
+
+            echo -e "${SUDO_OR_NOT_STRING}gsettings set org.gnome.settings-daemon.plugins.xsettings overrides \"$OVERRIDES\"\n" >&2
+            sudo_or_not gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
+            echo -e "${SUDO_OR_NOT_STRING}gsettings set org.gnome.desktop.interface scaling-factor $SCALING_FACTOR\n" >&2
+            sudo_or_not gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
+
+        }
+
+        SUDO_OR_NOT=()
+
+        if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+
+            gsettings_apply
+
         fi
 
-        ((XFT_DPI = 1024 * DPI))
+        # attempt to apply the same settings to LightDM
+        if user_exists "lightdm"; then
 
-        OVERRIDES="$("${SUDO_OR_NOT[@]}" gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)"
-        OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Gdk/WindowScalingFactor' "$SCALING_FACTOR")"
-        OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Xft/DPI' "$XFT_DPI")"
+            SUDO_OR_NOT=(sudo -nu lightdm -HE)
 
-        echo -e "${SUDO_OR_NOT[*]} gsettings set org.gnome.settings-daemon.plugins.xsettings overrides \"$OVERRIDES\"\n" >&2
-        "${SUDO_OR_NOT[@]}" gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
-        echo -e "${SUDO_OR_NOT[*]} gsettings set org.gnome.desktop.interface scaling-factor $SCALING_FACTOR\n" >&2
-        "${SUDO_OR_NOT[@]}" gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
+            DBUS_LAUNCH_CODE="$(sudo_or_not dbus-launch --sh-syntax)" || exit 0
 
-        if [ -n "$DBUS_KILL_PID" ]; then
+            # shellcheck disable=SC1091
+            . /dev/stdin <<<"$DBUS_LAUNCH_CODE"
 
-            if "${SUDO_OR_NOT[@]}" kill "$DBUS_KILL_PID"; then
+            echo "D-Bus process started: $DBUS_SESSION_BUS_PID" >&2
 
-                echo "D-Bus process killed: $DBUS_KILL_PID" >&2
+            gsettings_apply
+
+            if sudo_or_not kill "$DBUS_SESSION_BUS_PID"; then
+
+                echo "D-Bus process killed: $DBUS_SESSION_BUS_PID" >&2
 
             else
 
-                echo "Unable to kill D-Bus process: $DBUS_KILL_PID" >&2
+                echo "Unable to kill D-Bus process: $DBUS_SESSION_BUS_PID" >&2
 
             fi
 
@@ -388,9 +420,9 @@ if command_exists displaycal-apply-profiles; then
 
 fi
 
-"$SCRIPT_DIR/xkb-load.sh" "$@"
-
 if [ "$EUID" -ne "0" ]; then
+
+    "$SCRIPT_DIR/xkb-load.sh" "$@"
 
     mkdir -p "$HOME/.local/bin"
     move_file_delete_link "$HOME/.local/bin/xrandr-auto.sh"

@@ -27,40 +27,152 @@ brew_mark_cache_clean
 # add any missing taps
 brew_check_taps
 
-# python3: so that we can use pip3 below
-brew_install_formulae "essentials" "\
+brew_queue_formulae "prerequisites" "\
  coreutils\
+ grep\
  lftp\
  msmtp\
+ node@8\
  pv\
  python\
+ python@2\
  rsync\
  s-nail\
  telnet\
  wget\
 " N
 
-brew_install_formulae "desktop essentials" "\
+brew_process_queue
+
+if brew_formula_just_installed 'node@8' || ! command_exists npm; then
+
+    brew link --force node@8
+
+fi
+
+brew_queue_formulae "essentials" "\
  exiftool\
  imagemagick\
  openconnect\
  youtube-dl\
 "
 
+brew_queue_casks "desktop essentials" "\
+ acorn\
+ balenaetcher\
+ copyq\
+ firefox\
+ geekbench\
+ google-chrome\
+ handbrake\
+ iterm2\
+ karabiner-elements\
+ keepassxc\
+ keepingyouawake\
+ libreoffice\
+ makemkv\
+ mkvtoolnix\
+ owncloud\
+ pencil\
+ scribus\
+ skype\
+ stretchly\
+ subler\
+ sublime-text\
+ synergy\
+ the-unarchiver\
+ transmission\
+ typora\
+ vlc\
+"
+
+brew_queue_casks "proprietary essentials" "\
+ anylist\
+ caprine\
+ microsoft-teams\
+ rescuetime\
+ slack\
+ sonos\
+ spotify\
+ twist\
+"
+
+brew_queue_casks "Microsoft Office" "microsoft-office"
+
 # ghostscript: PDF/PostScript processor
 # pandoc: text conversion tool (e.g. Markdown to PDF)
 # poppler: PDF tools like pdfimages
-brew_install_formulae "PDF tools" "\
+brew_queue_formulae "PDF tools" "\
  ghostscript\
  pandoc\
  poppler\
 "
 
-brew_install_formulae "OCR tools" "\
+if brew_formula_installed_or_queued "pandoc"; then
+
+    brew_queue_casks "PDF tools" "\
+ basictex\
+" N
+
+fi
+
+brew_queue_formulae "OCR tools" "\
  ocrmypdf\
- tesseract-lang\
  tesseract\
+ tesseract-lang\
+"
+
+brew_queue_casks "photography" "\
+ adobe-dng-converter\
+ displaycal\
+ imageoptim\
+"
+
+brew_queue_formulae "development" "\
+ ant\
+ autoconf\
+ cmake\
+ gradle\
+ php@7.2\
+ pkg-config\
+"
+
+# TODO: remove composer
+
+brew_queue_casks "development" "\
+ android-studio\
+ db-browser-for-sqlite\
+ dbeaver-community\
+ hex-fiend\
+ lingon-x\
+ postman\
+ sequel-pro\
+ sourcetree\
+ sublime-merge\
+ visual-studio-code\
+"
+
+brew_queue_formulae "development services" "\
+ mariadb\
+ mongodb\
+"
+
+brew_queue_casks "PowerShell" "powershell"
+
+brew_queue_casks "VirtualBox" "\
+ virtualbox\
+ virtualbox-extension-pack\
+"
+
+brew_queue_casks "Brother P-touch Editor" "\
+ brother-p-touch-editor\
+ brother-p-touch-update-software\
 "
 
 brew_process_queue
 
+# TODO:
+# sudo tlmgr update --self && sudo tlmgr install collection-fontsrecommended || die
+# luaotfload-tool --update || die
+
+dev_apply_system_config

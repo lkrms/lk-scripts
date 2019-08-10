@@ -1,3 +1,7 @@
-. <(xrandr-auto.sh --get-qt-exports)
+#!/bin/bash
 
+# shellcheck disable=SC1091
+. /dev/stdin <<<"$(xrandr-auto.sh --get-qt-exports --dpi-only)"
+
+# see https://github.com/symless/synergy-core/issues/4132
 export QT_BEARER_POLL_TIMEOUT=-1

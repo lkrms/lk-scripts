@@ -1,7 +1,7 @@
 #!/bin/bash
 
-# shellcheck disable=SC1090
-. <(
+# shellcheck disable=SC1091
+. /dev/stdin <<<"$(
     set -euo pipefail
 
     SCRIPT_PATH="${BASH_SOURCE[0]}"
@@ -17,9 +17,9 @@
     [ "$IS_LINUX" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/linux")
     [ "$IS_UBUNTU" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/ubuntu")
 
+    ADD_TO_PATH+=("$HOME/.local/bin")
     ADD_TO_PATH+=("$HOME/.composer/vendor/bin")
     ADD_TO_PATH+=("$HOME/.config/composer/vendor/bin")
-    ADD_TO_PATH+=("$HOME/.local/bin")
 
     for KEY in "${!ADD_TO_PATH[@]}"; do
 
@@ -42,4 +42,4 @@
 
     command_exists gtk-launch && echo 'alias gtk-debug="GTK_DEBUG=interactive "'
 
-)
+)"
