@@ -271,6 +271,7 @@ function get_confirmation() {
 
     *)
         PROMPT+=("[y/n]")
+        DEFAULT=
         ;;
 
     esac
@@ -305,17 +306,27 @@ function file_to_array() {
 
     FILE_TO_ARRAY=()
 
-    while IFS= read -r LINE || [ -n "$LINE" ]; do
+    if [ ! -e "$FILENAME" ]; then
 
-        for PATTERN in "$@"; do
+        FILENAME="${FILENAME}-default"
 
-            [[ "$LINE" =~ $PATTERN ]] && continue 2 || true
+    fi
 
-        done
+    if [ -e "$FILENAME" ]; then
 
-        FILE_TO_ARRAY+=("$LINE")
+        while IFS= read -r LINE || [ -n "$LINE" ]; do
 
-    done <"$FILENAME"
+            for PATTERN in "$@"; do
+
+                [[ "$LINE" =~ $PATTERN ]] && continue 2 || true
+
+            done
+
+            FILE_TO_ARRAY+=("$LINE")
+
+        done <"$FILENAME"
+
+    fi
 
 }
 
@@ -771,6 +782,8 @@ function install_or_queue() {
 
     local REQUESTED=($2) UI="$3" SINGLE="$4" PLURAL="$5" ITEMS_INSTALLED ITEMS_AVAILABLE INSTALL_TARGET="$8" ALREADY_INSTALLED_TARGET="${9:-}"
 
+    console_message "Checking ${BOLD}${1}${RESET} $PLURAL" "" "$CYAN"
+
     local i=6 j k
     for j in ITEMS_INSTALLED ITEMS_AVAILABLE; do
 
@@ -798,8 +811,6 @@ function install_or_queue() {
     done
 
     local INSTALL UNAVAILABLE ALREADY_INSTALLED
-
-    console_message "Checking $1..." "" "$CYAN"
 
     INSTALL=($(comm -23 <(printf '%s\n' "${REQUESTED[@]}" | sort | uniq) <([ "${#ITEMS_INSTALLED[@]}" -gt "0" ] && printf '%s\n' "${ITEMS_INSTALLED[@]}" || true)))
     ALREADY_INSTALLED=($(comm -12 <(printf '%s\n' "${REQUESTED[@]}" | sort | uniq) <([ "${#ITEMS_INSTALLED[@]}" -gt "0" ] && printf '%s\n' "${ITEMS_INSTALLED[@]}" || true)))
@@ -947,7 +958,6 @@ Darwin)
 
     IS_MACOS=1
     PLATFORM=mac
-
     ;;
 
 Linux)
@@ -1015,7 +1025,6 @@ EOF
 *)
 
     die "Error: unknown platform"
-
     ;;
 
 esac

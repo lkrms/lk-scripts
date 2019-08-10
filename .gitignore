@@ -4,5 +4,6 @@
 /tmp
 
 /config/*
+!/config/README.md
 !/config/*-default
 !/config/*-example

@@ -42,7 +42,7 @@ IGNORE_DND=N
 
 ARGUMENTS=()
 
-[[ "$ACTIVE_ONLY" =~ ^[yY]$ ]] && "$SCRIPT_DIR/is-user-session-active.py" || exit
+[[ "$ACTIVE_ONLY" =~ ^[yY]$ ]] && "$SCRIPT_DIR/user-session-is-active.py" || exit
 
 [ -n "$TITLE" ] && ARGUMENTS+=(-title "$TITLE")
 [ -n "$SUBTITLE" ] && ARGUMENTS+=(-subtitle "$SUBTITLE")

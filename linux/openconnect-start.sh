@@ -84,5 +84,11 @@ fi
 if [ -t 1 ]; then
 
     echo "openconnect($!) started: ${LOG_FILE}"
+    echo
+    echoc "After 5 seconds, ${LOG_FILE} will be tailed. Terminate with Ctrl-C. Your connection will continue in the background." "$BOLD" "$YELLOW"
+
+    sleep 5
+
+    tail -n +1 -f "${LOG_FILE}"
 
 fi

@@ -12,4 +12,6 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common-dev
 . "$SCRIPT_DIR/../bash/common-dev"
 
+assert_not_root
+
 dev_apply_system_config
