@@ -52,17 +52,13 @@ function dev_apply_system_config() {
 
     if command_exists git; then
 
-        if [ -e "$CONFIG_DIR/gitignore" ]; then
+        file_to_array "$CONFIG_DIR/gitignore" '^[[:space:]]*$' '^#'
 
-            file_to_array "$CONFIG_DIR/gitignore" '^[[:space:]]*$' '^#'
+        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-                # shellcheck disable=SC2088
-                git_add_global_setting core.excludesFile "~/.gitignore"
-                git_add_global_ignore "${FILE_TO_ARRAY[@]}"
-
-            fi
+            # shellcheck disable=SC2088
+            git_add_global_setting core.excludesFile "~/.gitignore"
+            git_add_global_ignore "${FILE_TO_ARRAY[@]}"
 
         fi
 
@@ -94,15 +90,11 @@ function dev_apply_system_config() {
 
         local PIP_REQUIRED=()
 
-        if [ -e "$CONFIG_DIR/pip-packages" ]; then
+        file_to_array "$CONFIG_DIR/pip-packages" '^[[:space:]]*$' '^#'
 
-            file_to_array "$CONFIG_DIR/pip-packages" '^[[:space:]]*$' '^#'
+        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-                PIP_REQUIRED+=("${FILE_TO_ARRAY[@]}")
-
-            fi
+            PIP_REQUIRED+=("${FILE_TO_ARRAY[@]}")
 
         fi
 
@@ -118,15 +110,11 @@ function dev_apply_system_config() {
 
         local PIP3_REQUIRED=()
 
-        if [ -e "$CONFIG_DIR/pip3-packages" ]; then
+        file_to_array "$CONFIG_DIR/pip3-packages" '^[[:space:]]*$' '^#'
 
-            file_to_array "$CONFIG_DIR/pip3-packages" '^[[:space:]]*$' '^#'
+        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-                PIP3_REQUIRED+=("${FILE_TO_ARRAY[@]}")
-
-            fi
+            PIP3_REQUIRED+=("${FILE_TO_ARRAY[@]}")
 
         fi
 
@@ -144,15 +132,11 @@ function dev_apply_system_config() {
 
         [ "$IS_MACOS" -eq "1" ] && NPM_REQUIRED+=(yarn) || true
 
-        if [ -e "$CONFIG_DIR/npm-packages" ]; then
+        file_to_array "$CONFIG_DIR/npm-packages" '^[[:space:]]*$' '^#'
 
-            file_to_array "$CONFIG_DIR/npm-packages" '^[[:space:]]*$' '^#'
+        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-                NPM_REQUIRED+=("${FILE_TO_ARRAY[@]}")
-
-            fi
+            NPM_REQUIRED+=("${FILE_TO_ARRAY[@]}")
 
         fi
 
@@ -201,15 +185,11 @@ EOF
 
         COMPOSER_REQUIRED=("composer/composer")
 
-        if [ -e "$CONFIG_DIR/composer-packages" ]; then
+        file_to_array "$CONFIG_DIR/composer-packages" '^[[:space:]]*$' '^#'
 
-            file_to_array "$CONFIG_DIR/composer-packages" '^[[:space:]]*$' '^#'
+        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-                COMPOSER_REQUIRED+=("${FILE_TO_ARRAY[@]}")
-
-            fi
+            COMPOSER_REQUIRED+=("${FILE_TO_ARRAY[@]}")
 
         fi
 
