@@ -379,24 +379,44 @@ if command_exists gsettings; then
         # attempt to apply the same settings to LightDM
         if user_exists "lightdm"; then
 
-            SUDO_OR_NOT=(sudo -nu lightdm -HE)
+            SUDO_OR_NOT=(sudo -nu lightdm -H)
 
-            DBUS_LAUNCH_CODE="$(sudo_or_not dbus-launch --sh-syntax)" || exit 0
+            if is_root; then
 
-            # shellcheck disable=SC1091
-            . /dev/stdin <<<"$DBUS_LAUNCH_CODE"
-
-            echo "D-Bus process started: $DBUS_SESSION_BUS_PID" >&2
-
-            gsettings_apply
-
-            if sudo_or_not kill "$DBUS_SESSION_BUS_PID"; then
-
-                echo "D-Bus process killed: $DBUS_SESSION_BUS_PID" >&2
+                SUDO_OR_NOT+=(-E)
 
             else
 
-                echo "Unable to kill D-Bus process: $DBUS_SESSION_BUS_PID" >&2
+                SUDO_OR_NOT+=(env -i)
+
+            fi
+
+            if ! is_root || [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+
+                DBUS_LAUNCH_CODE="$(sudo_or_not dbus-launch --sh-syntax)" || exit 0
+
+                # shellcheck disable=SC1091
+                . /dev/stdin <<<"$DBUS_LAUNCH_CODE"
+
+                is_root || SUDO_OR_NOT+=("DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS")
+
+                echo "D-Bus process started: $DBUS_SESSION_BUS_PID" >&2
+
+            fi
+
+            gsettings_apply
+
+            if [ -n "${DBUS_SESSION_BUS_PID:-}" ]; then
+
+                if sudo_or_not kill "$DBUS_SESSION_BUS_PID"; then
+
+                    echo "D-Bus process killed: $DBUS_SESSION_BUS_PID" >&2
+
+                else
+
+                    echo "Unable to kill D-Bus process: $DBUS_SESSION_BUS_PID" >&2
+
+                fi
 
             fi
 

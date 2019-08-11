@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2206,SC2207
+# shellcheck disable=SC1090,SC2206,SC2207
 
 set -euo pipefail
 
@@ -449,12 +449,14 @@ EOF
 
     # use a subshell to protect existing D-Bus environment variables
     (
-        set -euo pipefail
+        . "$SUBSHELL_SCRIPT_PATH" || exit
 
-        SUDO_EXTRA=(-u lightdm -H env -i)
+        SUDO_EXTRA=(-nu lightdm -H env -i)
 
-        # shellcheck disable=SC1090
-        . <(sudo "${SUDO_EXTRA[@]}" dbus-launch --sh-syntax)
+        DBUS_LAUNCH_CODE="$(sudo "${SUDO_EXTRA[@]}" dbus-launch --sh-syntax)"
+
+        # shellcheck disable=SC1091
+        . /dev/stdin <<<"$DBUS_LAUNCH_CODE"
 
         SUDO_EXTRA+=("DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS")
 

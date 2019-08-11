@@ -163,6 +163,12 @@ function assert_function_exists() {
 
 }
 
+function is_root() {
+
+    [ "$EUID" -eq "0" ]
+
+}
+
 function command_exists() {
 
     command -v "$1" >/dev/null 2>&1
