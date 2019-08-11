@@ -777,6 +777,7 @@ function link_settings() {
 
         TO="$(realpath "${LINK_TO[$i]}")" || die
         move_file_delete_link "${LINK_FROM[$i]}" || die
+        mkdir -p "$(dirname "${LINK_FROM[$i]}")"
         ln -sv "$TO" "${LINK_FROM[$i]}"
 
     done

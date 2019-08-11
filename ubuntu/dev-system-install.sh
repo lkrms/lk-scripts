@@ -74,7 +74,6 @@ synaptic
 synergy
 thunderbird
 tilix
-todoist
 transmission
 usb-creator-gtk
 vlc
@@ -392,13 +391,6 @@ DEB_URLS+=("$(
     # shellcheck source=../bash/common-subshell
     . "$SUBSHELL_SCRIPT_PATH" || exit
     get_urls_from_url "https://api.github.com/repos/IsmaelMartinez/teams-for-linux/releases/latest" '_amd64\.deb$' | head -n1
-)")
-
-# Todoist
-DEB_URLS+=("$(
-    # shellcheck source=../bash/common-subshell
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://api.github.com/repos/KryDos/todoist-linux/releases/latest" '\.deb$' | head -n1
 )")
 
 unset IFS
