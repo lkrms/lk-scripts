@@ -428,7 +428,7 @@ fi
 
 if command_exists displaycal-apply-profiles; then
 
-    if [ "$IS_AUTOSTART" -eq "0" ] && [ "$EUID" -ne "0" ]; then
+    if [ "$IS_AUTOSTART" -eq "0" ] && ! is_root; then
 
         displaycal-apply-profiles || true
 
@@ -440,9 +440,10 @@ if command_exists displaycal-apply-profiles; then
 
 fi
 
-if [ "$EUID" -ne "0" ]; then
+if ! is_root; then
 
     "$SCRIPT_DIR/xkb-load.sh" "$@"
+    "$SCRIPT_DIR/xinput-load.sh" "$@"
 
     mkdir -p "$HOME/.local/bin"
     move_file_delete_link "$HOME/.local/bin/xrandr-auto.sh"

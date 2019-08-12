@@ -125,7 +125,7 @@ function assert_is_ubuntu_lts() {
 
 function assert_root() {
 
-    if [ "$EUID" -ne "0" ]; then
+    if ! is_root; then
 
         die "Error: $(basename "$0") must be run as the superuser"
 
@@ -135,7 +135,7 @@ function assert_root() {
 
 function assert_not_root() {
 
-    if [ "$EUID" -eq "0" ]; then
+    if is_root; then
 
         die "Error: $(basename "$0") can't be run as the superuser"
 

@@ -28,7 +28,7 @@ function synergy_kill() {
 
     if pgrep -x 'synergy[cs]?' >/dev/null; then
 
-        if [ "$EUID" -eq "0" ]; then
+        if is_root; then
 
             pkill -x 'synergy[cs]?' || true
 
@@ -64,7 +64,7 @@ function synergy_prepare_command_line() {
 
     COMMAND_LINE=()
 
-    if [ "$IS_LINUX" -eq "1" ] && [ -z "${DISPLAY:-}" ] && [ "$EUID" -eq "0" ]; then
+    if [ "$IS_LINUX" -eq "1" ] && [ -z "${DISPLAY:-}" ] && is_root; then
 
         d="$(get_x_displays | sort | tail -n1)"
 
@@ -128,7 +128,7 @@ function synergy_loop() {
         echo "$(date_get_log) Exited with code: $RESULT" >>"$LOG_FILE"
 
         # restart on unlock if running in the foreground without root privileges
-        if [ "$EUID" -ne "0" ] && [ "$IS_DAEMON" -eq "0" ] && [ "$IS_LINUX" -eq "1" ] && command_exists gdbus; then
+        if ! is_root && [ "$IS_DAEMON" -eq "0" ] && [ "$IS_LINUX" -eq "1" ] && command_exists gdbus; then
 
             echo "$(date_get_log) Waiting for session unlock" >>"$LOG_FILE"
 
