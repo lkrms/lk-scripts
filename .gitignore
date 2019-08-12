@@ -4,6 +4,7 @@
 /tmp
 
 /config/*
-!/config/README.md
+!/config/xkb
 !/config/*-default
 !/config/*-example
+!/config/README.md

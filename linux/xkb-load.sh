@@ -18,9 +18,11 @@ assert_command_exists xkbcomp
 
 has_argument "--autostart" && IS_AUTOSTART=1 || IS_AUTOSTART=0
 
+sleep 1
+
 if [ -e "$CONFIG_DIR/xkbcomp" ] && [ -n "$DISPLAY" ]; then
 
-    xkbcomp "$CONFIG_DIR/xkbcomp" "$DISPLAY"
+    xkbcomp -I"$CONFIG_DIR/xkb" "$CONFIG_DIR/xkbcomp" "$DISPLAY"
 
 fi
 

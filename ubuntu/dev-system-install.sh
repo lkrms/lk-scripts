@@ -398,7 +398,7 @@ unset IFS
 for DEB_URL in "${DEB_URLS[@]}"; do
 
     apt_install_deb "$DEB_URL"
-    console_message "Scraped deb package URL queued for download:" "$DEB_URL" "$BOLD" "$YELLOW"
+    console_message "Queued for download:" "${NO_WRAP}${DEB_URL}${WRAP}" "$BOLD" "$YELLOW"
 
 done
 
