@@ -13,16 +13,18 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
 
-IS_AUTOSTART=0
-[ "${1:-}" = "--autostart" ] && IS_AUTOSTART=1 || true
+assert_not_root
+assert_command_exists xkbcomp
 
-if command_exists xkbcomp && [ -e "$CONFIG_DIR/xkbcomp" ] && [ -n "$DISPLAY" ]; then
+has_argument "--autostart" && IS_AUTOSTART=1 || IS_AUTOSTART=0
+
+if [ -e "$CONFIG_DIR/xkbcomp" ] && [ -n "$DISPLAY" ]; then
 
     xkbcomp "$CONFIG_DIR/xkbcomp" "$DISPLAY"
 
 fi
 
-if [ "$IS_AUTOSTART" -eq "0" ] && [ "$EUID" -ne "0" ]; then
+if [ "$IS_AUTOSTART" -eq "0" ]; then
 
     if command_exists systemctl && systemctl --user --quiet is-active sxhkd.service; then
 
