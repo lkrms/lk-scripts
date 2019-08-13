@@ -357,7 +357,7 @@ if command_exists gsettings; then
 
             ((XFT_DPI = 1024 * DPI))
 
-            OVERRIDES="$(sudo_or_not gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)"
+            OVERRIDES="$(sudo_or_not gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)" || return
             OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Gdk/WindowScalingFactor' "$SCALING_FACTOR")"
             OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Xft/DPI' "$XFT_DPI")"
 
@@ -372,7 +372,7 @@ if command_exists gsettings; then
 
         if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
 
-            gsettings_apply
+            gsettings_apply || exit 0
 
         fi
 
@@ -404,7 +404,7 @@ if command_exists gsettings; then
 
             fi
 
-            gsettings_apply
+            gsettings_apply || true
 
             if [ -n "${DBUS_SESSION_BUS_PID:-}" ]; then
 

@@ -1,11 +1,11 @@
 default partial alphanumeric_keys modifier_keys
 xkb_symbols "all" {
-    include "macos(swap_alt_win)"
+    include "macos(swap_alt_win_no_meta)"
     include "macos(arrow_keys)"
 };
 
 partial modifier_keys
-xkb_symbols "swap_alt_win" {
+xkb_symbols "swap_alt_win_no_meta" {
     key <LALT> {
         type[Group1]= "ONE_LEVEL",
         symbols[Group1]= [         Super_L ]
@@ -27,13 +27,13 @@ xkb_symbols "arrow_keys" {
     };
     key <LEFT> {
         type[Group1]= "COMMAND_OPTION",
-        symbols[Group1]= [            Left,        NoSymbol,        NoSymbol,            Left ],
-        actions[Group1]= [ NoAction(), RedirectKey(key=<HOME>,clearMods= Mod4), RedirectKey(key=<LEFT>,mods= Control,clearMods= Alt), NoAction() ]
+        symbols[Group1]= [            Left,        NoSymbol,        NoSymbol,            Left,            Left ],
+        actions[Group1]= [ NoAction(), RedirectKey(key=<HOME>,clearMods= Mod4), RedirectKey(key=<LEFT>,mods= Control,clearMods= Alt), NoAction(), NoAction() ]
     };
     key <RGHT> {
         type[Group1]= "COMMAND_OPTION",
-        symbols[Group1]= [           Right,        NoSymbol,        NoSymbol,           Right ],
-        actions[Group1]= [ NoAction(), RedirectKey(key=<END>,clearMods= Mod4), RedirectKey(key=<RGHT>,mods= Control,clearMods= Alt), NoAction() ]
+        symbols[Group1]= [           Right,        NoSymbol,        NoSymbol,           Right,           Right ],
+        actions[Group1]= [ NoAction(), RedirectKey(key=<END>,clearMods= Mod4), RedirectKey(key=<RGHT>,mods= Control,clearMods= Alt), NoAction(), NoAction() ]
     };
     key <DOWN> {
         type[Group1]= "PC_SUPER_LEVEL2",
