@@ -443,9 +443,7 @@ function offer_sudo_password_bypass() {
 
         if get_confirmation "Allow user ${BOLD}${USERNAME}${RESET} to skip future password prompts?" Y Y; then
 
-            sudo tee "$FILENAME" >/dev/null <<EOF && sudo chmod 0440 "$FILENAME" || die
-${USERNAME} ALL=(ALL) NOPASSWD:ALL
-EOF
+            sudo tee "$FILENAME" >/dev/null <<<"${USERNAME} ALL=(ALL) NOPASSWD:ALL" && sudo chmod 0440 "$FILENAME" || die
 
         else
 
