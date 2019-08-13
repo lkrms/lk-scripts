@@ -185,7 +185,7 @@ if [ ! -e "$CONFIG_DIR/xrandr" ] || has_argument "--suggest"; then
     done
 
     cat <<EOF >>"$CONFIG_FILE"
-for i in \$(seq 0 ${#OUTPUTS[@]}); do
+for i in \$(seq 0 $i); do
     eval "EDID_DISPLAY_\${i}_ACTIVE=0"
     if eval "EDID_DISPLAY_\${i}_INDEX=\\"\\\$(get_edid_index \\"\\\$EDID_DISPLAY_\${i}\\")\\""; then
         eval "EDID_DISPLAY_\${i}_ACTIVE=1"
@@ -212,7 +212,7 @@ done
 #
 # fi
 
-for i in \$(seq 0 ${#OUTPUTS[@]}); do
+for i in \$(seq 0 $i); do
     eval "EDID_DISPLAY_ACTIVE=\\"\\\$EDID_DISPLAY_\${i}_ACTIVE\\""
     if [ "\$EDID_DISPLAY_ACTIVE" -eq "1" ]; then
         eval "EDID_DISPLAY_INDEX=\\"\\\$EDID_DISPLAY_\${i}_INDEX\\""
