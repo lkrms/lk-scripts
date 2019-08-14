@@ -130,6 +130,8 @@ function dev_apply_system_config() {
 
         function npm_install() {
 
+            [ -e "/usr/bin/python2" ] && eval "${SUDO_OR_NOT}npm config -g set python /usr/bin/python2" || true
+
             local PACKAGE
 
             for PACKAGE in "$@"; do

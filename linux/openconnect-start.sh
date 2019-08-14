@@ -73,17 +73,17 @@ LOG_FILE="$LOG_DIR/openconnect-$(date_get_ymdhms).log"
 
 if [ -n "$VPN_PASSWORD" ]; then
 
-    echo "$VPN_PASSWORD" | sudo bash -c "${OPENCONNECT_OPTIONS[*]} >$LOG_FILE 2>&1" &
+    echo "$VPN_PASSWORD" | sudo -b bash -c "${OPENCONNECT_OPTIONS[*]} >$LOG_FILE 2>&1"
 
 else
 
-    sudo bash -c "${OPENCONNECT_OPTIONS[*]} >$LOG_FILE 2>&1" &
+    sudo -b bash -c "${OPENCONNECT_OPTIONS[*]} >$LOG_FILE 2>&1"
 
 fi
 
 if [ -t 1 ]; then
 
-    echo "openconnect($!) started: ${LOG_FILE}"
+    echo "openconnect started: ${LOG_FILE}"
     echo
     echoc "After 5 seconds, ${LOG_FILE} will be tailed. Terminate with Ctrl-C. Your connection will continue in the background." "$BOLD" "$YELLOW"
 
