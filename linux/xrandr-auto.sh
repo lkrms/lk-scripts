@@ -58,6 +58,7 @@ PRIMARY_INDEX=0
 ACTUAL_DPI=96
 SCALING_FACTOR=1
 DPI=96
+DPI_MULTIPLIER=1
 
 # general xrandr options should be added to this array
 # output-specific options belong in OPTIONS_xxx, where xxx is the output name's index in OUTPUTS
@@ -193,7 +194,7 @@ for i in \$(seq 0 $i); do
 done
 
 # Here's an example to use as a starting point.
-# In addition to output-specific options, you can also modify: OPTIONS, PRIMARY_INDEX, SCALING_FACTOR, DPI
+# In addition to output-specific options, you can also modify: OPTIONS, PRIMARY_INDEX, SCALING_FACTOR, DPI, DPI_MULTIPLIER
 #
 # # 4K connected?
 # if [ "\$EDID_DISPLAY_0_ACTIVE" -eq "1" ]; then
@@ -225,13 +226,15 @@ EOF
 
 fi
 
-# OPTIONS, OPTIONS_xxx, PRIMARY_INDEX, SCALING_FACTOR and DPI may be changed here
+# OPTIONS, OPTIONS_xxx, PRIMARY_INDEX, SCALING_FACTOR, DPI and DPI_MULTIPLIER may be changed here
 if [ -e "$CONFIG_DIR/xrandr" ]; then
 
     # shellcheck disable=SC1090
     . "$CONFIG_DIR/xrandr" || die
 
 fi
+
+DPI="$(echo "scale = 10; dpi = $DPI * $DPI_MULTIPLIER; scale = 0; dpi / 1" | bc)"
 
 echo "Scaling factor: $SCALING_FACTOR" >&2
 echo "Effective DPI: $DPI" >&2
@@ -326,7 +329,9 @@ echo -e "xrandr ${OPTIONS[*]}\n" >&2
 xrandr "${OPTIONS[@]}"
 
 # ok, xrandr is sorted -- look after everything else
-if command_exists gsettings; then
+case "${XDG_CURRENT_DESKTOP:-}" in
+
+*GNOME)
 
     (
         . "$SUBSHELL_SCRIPT_PATH" || exit
@@ -365,6 +370,8 @@ if command_exists gsettings; then
             sudo_or_not gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
             echo -e "${SUDO_OR_NOT_STRING}gsettings set org.gnome.desktop.interface scaling-factor $SCALING_FACTOR\n" >&2
             sudo_or_not gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
+            echo -e "${SUDO_OR_NOT_STRING}gsettings set org.gnome.desktop.interface text-scaling-factor $DPI_MULTIPLIER\n" >&2
+            sudo_or_not gsettings set org.gnome.desktop.interface text-scaling-factor "$DPI_MULTIPLIER" || true
 
         }
 
@@ -424,7 +431,9 @@ if command_exists gsettings; then
 
     )
 
-fi
+    ;;
+
+esac
 
 if command_exists displaycal-apply-profiles; then
 

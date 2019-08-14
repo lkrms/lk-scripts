@@ -15,22 +15,73 @@ for i in $(seq 0 1); do
     fi
 done
 
-# 4K connected?
-if [ "$EDID_DISPLAY_0_ACTIVE" -eq "1" ]; then
+case "${XDG_CURRENT_DESKTOP:-}" in
 
-    # "looks like 2560x1440"
-    EDID_DISPLAY_0_OPTIONS+=(--mode 3840x2160 --scale-from 5120x2880)
+# Approach #1
+# - best with Gnome and Pantheon
+# - similar to Apple's display scaling
+# - significantly impacts system performance
+#
+# 1. Pixel double everything (e.g. "gsettings set org.gnome.desktop.interface scaling-factor 2")
+# 2. Use a framebuffer larger than your output resolution
+# 3. Have xrandr scale it down
+#
+# Here, we achieve 1.5x scaling despite Gnome's scaling-factor limitations
 
-    # 1080p also connected?
-    if [ "$EDID_DISPLAY_1_ACTIVE" -eq "1" ]; then
+*GNOME)
 
-        # "looks like 1536x864" - i.e. use all of i915's (software-limited) 8192x8192 framebuffer
-        EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 3072x1728 --pos 0x576)
-        EDID_DISPLAY_0_OPTIONS+=(--pos 3072x0)
+    # 4K connected?
+    if [ "$EDID_DISPLAY_0_ACTIVE" -eq "1" ]; then
+
+        # "looks like 2560x1440"
+        EDID_DISPLAY_0_OPTIONS+=(--mode 3840x2160 --scale-from 5120x2880)
+
+        # 1080p also connected?
+        if [ "$EDID_DISPLAY_1_ACTIVE" -eq "1" ]; then
+
+            # "looks like 1536x864" - i.e. use all of i915's (software-limited) 8192x8192 framebuffer
+            EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 3072x1728 --pos 0x576)
+            EDID_DISPLAY_0_OPTIONS+=(--pos 3072x0)
+
+        fi
 
     fi
 
-fi
+    ;;
+
+# Approach #2
+# - best with XFCE
+# - similar to Windows' display scaling
+# - only impacts system performance if scaling is applied to LoDPI outputs
+#
+# 1. Use DPI settings to achieve the desired output appearance
+# 2. Use pixel doubling where necessary (e.g. "export QT_SCALE_FACTOR=2")
+# 3. Correct for pixel doubling with text scaling (e.g. "export QT_FONT_DPI=72", where 72 is half of the DPI applied in step 1)
+#
+# DPI_MULTIPLIER is applied to the usual "Retina" DPI of 192 (or 96 if no "Retina" display is connected)
+
+*)
+
+    # 4K connected?
+    if [ "$EDID_DISPLAY_0_ACTIVE" -eq "1" ]; then
+
+        EDID_DISPLAY_0_OPTIONS+=(--mode 3840x2160 --scale-from 3840x2160)
+        DPI_MULTIPLIER=0.75
+
+        # 1080p also connected?
+        if [ "$EDID_DISPLAY_1_ACTIVE" -eq "1" ]; then
+
+            # "looks like 1920x1080" - i.e. scale this output to appear normal despite 1.5x scaling
+            EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 2560x1440 --pos 0x360)
+            EDID_DISPLAY_0_OPTIONS+=(--pos 2560x0)
+
+        fi
+
+    fi
+
+    ;;
+
+esac
 
 for i in $(seq 0 1); do
     eval "EDID_DISPLAY_ACTIVE=\"\$EDID_DISPLAY_${i}_ACTIVE\""

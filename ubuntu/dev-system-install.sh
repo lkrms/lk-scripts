@@ -23,6 +23,7 @@ assert_not_root
 APT_GUI_PACKAGES="\
 autokey-common
 autokey-gtk
+awf
 blueman
 caffeine
 catfish
@@ -117,6 +118,7 @@ EOF
 
 # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
 apt_register_ppa "caffeine-developers/ppa" "caffeine"
+apt_register_ppa "flexiondotorg/awf" "awf"
 apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
 apt_register_ppa "hluk/copyq" "copyq"
 apt_register_ppa "inkscape.dev/stable" "inkscape"
@@ -193,6 +195,7 @@ apt_install_packages "performance monitoring" "\
 
 apt_install_packages "desktop essentials" "\
  abcde\
+ awf\
  beets\
  blueman\
  bsd-mailx-\

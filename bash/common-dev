@@ -128,6 +128,18 @@ function dev_apply_system_config() {
 
     if command_exists npm; then
 
+        function npm_install() {
+
+            local PACKAGE
+
+            for PACKAGE in "$@"; do
+
+                eval "${SUDO_OR_NOT}npm install -g" "$PACKAGE" || eval "${SUDO_OR_NOT}npm install -g --unsafe-perm" "$PACKAGE"
+
+            done
+
+        }
+
         local NPM_REQUIRED=()
 
         [ "$IS_MACOS" -eq "1" ] && NPM_REQUIRED+=(yarn) || true
@@ -142,7 +154,7 @@ function dev_apply_system_config() {
 
         if [ "${#NPM_REQUIRED[@]}" -gt "0" ]; then
 
-            install_or_queue "npm" "${NPM_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}npm list -g --depth=0 --parseable | tail -n +2 | gnu_grep -Po '(?<=/)[^/]*$'" "" "${SUDO_OR_NOT}npm install -g"
+            install_or_queue "npm" "${NPM_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}npm list -g --depth=0 --parseable | tail -n +2 | gnu_grep -Po '(?<=/)[^/]*$'" "" "npm_install"
 
         fi
 
