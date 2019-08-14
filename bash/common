@@ -60,106 +60,108 @@ function gnu_grep() {
 
 }
 
+function gnu_sed() {
+
+    gnu_command sed "$@"
+
+}
+
 function assert_is_macos() {
 
-    if [ "$IS_MACOS" -ne "1" ]; then
+    is_macos || die "Error: $(basename "$0") is not supported on this platform (macOS required)"
 
-        die "Error: $(basename "$0") is not supported on this platform (macOS required)"
+}
 
-    fi
+function is_macos() {
+
+    [ "$IS_MACOS" -eq "1" ]
 
 }
 
 function assert_is_windows() {
 
-    if [ "$IS_WSL" -ne "1" ]; then
+    is_windows || die "Error: $(basename "$0") is not supported on this platform (Windows required)"
 
-        die "Error: $(basename "$0") is not supported on this platform (Windows required)"
+}
 
-    fi
+function is_windows() {
+
+    [ "$IS_WSL" -eq "1" ]
 
 }
 
 function assert_is_linux() {
 
-    if [ "$IS_LINUX" -ne "1" ]; then
+    is_linux || die "Error: $(basename "$0") is not supported on this platform (Linux required)"
 
-        die "Error: $(basename "$0") is not supported on this platform (Linux required)"
+}
 
-    fi
+function is_linux() {
+
+    [ "$IS_LINUX" -eq "1" ]
 
 }
 
 function assert_is_ubuntu() {
 
-    if [ "$IS_UBUNTU" -ne "1" ]; then
-
-        die "Error: $(basename "$0") is not supported on this platform (Ubuntu required)"
-
-    fi
+    is_ubuntu || die "Error: $(basename "$0") is not supported on this platform (Ubuntu required)"
 
 }
 
-function assert_not_server() {
+function is_ubuntu() {
 
-    if [ "$IS_SERVER" -eq "1" ]; then
+    [ "$IS_UBUNTU" -eq "1" ]
 
-        die "Error: $(basename "$0") requires a desktop environment"
+}
 
-    fi
+function assert_has_gui() {
+
+    has_gui || die "Error: $(basename "$0") requires a desktop environment"
+
+}
+
+function has_gui() {
+
+    [ "$HAS_GUI" -eq "1" ]
 
 }
 
 function assert_is_ubuntu_lts() {
 
+    is_ubuntu_lts || die "Error: $(basename "$0") is only supported on LTS releases of Ubuntu"
+
+}
+
+function is_ubuntu_lts() {
+
     assert_is_ubuntu
     assert_command_exists ubuntu-distro-info
 
-    if ! ubuntu-distro-info --supported-esm | grep "^${DISTRIB_CODENAME}\$" >/dev/null 2>&1; then
-
-        die "Error: $(basename "$0") is only supported on LTS releases of Ubuntu"
-
-    fi
+    ubuntu-distro-info --supported-esm | grep "^${DISTRIB_CODENAME}\$" >/dev/null 2>&1
 
 }
 
 function assert_root() {
 
-    if ! is_root; then
-
-        die "Error: $(basename "$0") must be run as the superuser"
-
-    fi
+    is_root || die "Error: $(basename "$0") must be run as the superuser"
 
 }
 
 function assert_not_root() {
 
-    if is_root; then
-
-        die "Error: $(basename "$0") can't be run as the superuser"
-
-    fi
+    ! is_root || die "Error: $(basename "$0") can't be run as the superuser"
 
 }
 
 function assert_command_exists() {
 
-    if ! command_exists "$1"; then
-
-        die "Error: $(basename "$0") requires $1"
-
-    fi
+    command_exists "$1" || die "Error: $(basename "$0") requires $1"
 
 }
 
 function assert_function_exists() {
 
-    if ! function_exists "$1"; then
-
-        die "Error: $(basename "$0") requires Bash function $1"
-
-    fi
+    function_exists "$1" || die "Error: $(basename "$0") requires Bash function $1"
 
 }
 
@@ -207,7 +209,7 @@ function is_int() {
 
 function is_url() {
 
-    echo "$1" | grep -Pq '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))'
+    grep -Pq '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))' <<<"$1"
 
 }
 
@@ -238,7 +240,7 @@ function echocn() {
 
 function die() {
 
-    [ "$#" -gt "0" ] && echoc "$@" >&2 || true
+    [ "$#" -eq "0" ] || echoc "$@" >&2
 
     exit 1
 
@@ -253,7 +255,7 @@ function console_message() {
     shift
     echocn "==> " "$@"
     echocn "$MESSAGE1"
-    [ -n "$MESSAGE2" ] && echocn " $MESSAGE2" "$@" || true
+    [ -z "$MESSAGE2" ] || echocn " $MESSAGE2" "$@"
     echo
 
 }
@@ -689,6 +691,8 @@ function flush_fifo() {
 
 function get_x_displays() {
 
+    assert_has_gui
+
     local X
 
     if [ -d /tmp/.X11-unix ]; then
@@ -881,6 +885,7 @@ LOG_DIR="$ROOT_DIR/log"
 TEMP_DIR="$ROOT_DIR/tmp"
 
 SUBSHELL_SCRIPT_PATH="$ROOT_DIR/bash/common-subshell"
+SED_IN_PLACE_ARGS=(-i)
 
 DELETE_ON_EXIT=()
 KILL_ON_EXIT=()
@@ -951,10 +956,9 @@ fi
 IS_MACOS=0
 IS_LINUX=0
 IS_UBUNTU=0
-IS_SERVER=0
 IS_ELEMENTARY_OS=0
-IS_PURE_LINUX=0
 IS_WSL=0
+HAS_GUI=0
 PLATFORM=
 
 case "$(uname -s)" in
@@ -963,6 +967,8 @@ Darwin)
 
     IS_MACOS=1
     PLATFORM=mac
+    HAS_GUI=1
+    SED_IN_PLACE_ARGS+=("")
     ;;
 
 Linux)
@@ -976,12 +982,10 @@ Linux)
 
     else
 
-        IS_PURE_LINUX=1
         PLATFORM=linux
+        command_exists X && HAS_GUI=1
 
     fi
-
-    command_exists X || IS_SERVER=1
 
     if command_exists lsb_release; then
 
@@ -1033,11 +1037,3 @@ EOF
     ;;
 
 esac
-
-SED_IN_PLACE_ARGS=(-i)
-
-if [ "$IS_MACOS" -eq 1 ]; then
-
-    SED_IN_PLACE_ARGS+=("")
-
-fi

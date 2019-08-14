@@ -17,7 +17,7 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 . "$SCRIPT_DIR/../bash/common-dev"
 
 assert_is_ubuntu
-assert_not_server
+assert_has_gui
 assert_not_root
 
 APT_GUI_PACKAGES="\
