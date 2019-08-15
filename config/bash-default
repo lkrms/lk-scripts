@@ -1,0 +1,2 @@
+# e.g. for git update checks
+DEFAULT_CODE_ROOTS=("$HOME/Code" "/opt/linac-scripts")

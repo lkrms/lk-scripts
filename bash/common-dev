@@ -1,5 +1,29 @@
 #!/bin/bash
 
+function git_get_code_roots() {
+
+    local KEY
+
+    CODE_ROOTS=()
+
+    if [ "${#ORIGINAL_ARGUMENTS[@]}" -gt "0" ]; then
+
+        CODE_ROOTS=("${ORIGINAL_ARGUMENTS[@]}")
+
+    elif [ "${#DEFAULT_CODE_ROOTS[@]}" -gt "0" ]; then
+
+        CODE_ROOTS=("${DEFAULT_CODE_ROOTS[@]}")
+
+    fi
+
+    for KEY in "${!CODE_ROOTS[@]}"; do
+
+        [ -d "${CODE_ROOTS[$KEY]}" ] || unset "CODE_ROOTS[$KEY]"
+
+    done
+
+}
+
 function git_add_global_ignore() {
 
     local i IGNORE_FILE

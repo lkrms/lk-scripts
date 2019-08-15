@@ -181,6 +181,8 @@ if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
 
 fi
 
+apt_install_packages "openconnect dependencies" "libxml2-dev pkg-config vpnc-scripts" N
+
 apt_install_packages "performance monitoring" "\
  atop\
  auditd\
@@ -206,6 +208,7 @@ apt_install_packages "desktop essentials" "\
  dconf-editor\
  deepin-notifications-\
  deepin-screenshot\
+ evtest\
  eyed3\
  filezilla\
  firefox\
@@ -269,6 +272,7 @@ apt_install_packages "PDF tools" "\
 apt_install_packages "photography" "\
  geeqie\
  rapid-photo-downloader\
+ trimage\
 "
 
 apt_install_packages "development" "\

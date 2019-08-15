@@ -1037,3 +1037,6 @@ EOF
     ;;
 
 esac
+
+[ -e "$CONFIG_DIR/bash-default" ] && . "$CONFIG_DIR/bash-default" || true
+[ -e "$CONFIG_DIR/bash" ] && . "$CONFIG_DIR/bash" || true

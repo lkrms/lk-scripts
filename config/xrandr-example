@@ -28,7 +28,7 @@ case "${XDG_CURRENT_DESKTOP:-}" in
 #
 # Here, we achieve 1.5x scaling despite Gnome's scaling-factor limitations
 
-*GNOME)
+*GNOME|Pantheon)
 
     # 4K connected?
     if [ "$EDID_DISPLAY_0_ACTIVE" -eq "1" ]; then

@@ -331,7 +331,7 @@ xrandr "${OPTIONS[@]}"
 # ok, xrandr is sorted -- look after everything else
 case "${XDG_CURRENT_DESKTOP:-}" in
 
-*GNOME)
+*GNOME|Pantheon)
 
     (
         . "$SUBSHELL_SCRIPT_PATH" || exit
