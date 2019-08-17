@@ -83,6 +83,7 @@ x11vnc
 xautomation
 xclip
 xdotool
+xscreensaver*
 "
 
 offer_sudo_password_bypass
@@ -119,6 +120,7 @@ EOF
 # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
 apt_register_ppa "caffeine-developers/ppa" "caffeine"
 apt_register_ppa "flexiondotorg/awf" "awf"
+apt_register_ppa "hda-me/xscreensaver" "xscreensaver*"
 apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
 apt_register_ppa "hluk/copyq" "copyq"
 apt_register_ppa "inkscape.dev/stable" "inkscape"
@@ -411,7 +413,16 @@ done
 
 apt_remove_packages apport deja-dup fonts-twemoji-svginot
 
-if [ "$IS_ELEMENTARY_OS" -eq "1" ] && [ "$(lsb_release -sc)" = "juno" ]; then
+case "${XDG_CURRENT_DESKTOP:-}" in
+
+XFCE)
+
+    apt_install_packages "XFCE extras" "plank xscreensaver xscreensaver-data xscreensaver-data-extra xscreensaver-gl xscreensaver-gl-extra xscreensaver-screensaver-bsod xscreensaver-screensaver-webcollage"
+    apt_remove_packages "light-locker"
+
+    ;;
+
+Pantheon)
 
     apt_install_packages "elementary OS extras" "com.github.cassidyjames.ideogram gnome-tweaks libgtk-3-dev"
 
@@ -473,7 +484,9 @@ EOF
         sudo "${SUDO_EXTRA[@]}" kill "$DBUS_SESSION_BUS_PID"
     )
 
-fi
+    ;;
+
+esac
 
 # shellcheck disable=SC2034
 SNAPS_INSTALLED=($(sudo snap list 2>/dev/null))
