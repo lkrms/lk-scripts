@@ -14,7 +14,11 @@ assert_command_exists testparm
 
 SAMBA_DEFAULT_CONF_PATH="${SAMBA_DEFAULT_CONF_PATH:-/usr/share/samba/smb.conf}"
 
-SETTINGS=()
+SETTINGS=(
+    'create mask = 0777'
+    'directory mask = 0777'
+    'map archive = No'
+)
 
 [ -z "${SAMBA_WORKGROUP:-}" ] || SETTINGS+=("workgroup = $SAMBA_WORKGROUP")
 
@@ -24,6 +28,19 @@ SETTINGS+=(
     'printcap name = /dev/null'
     'disable spoolss = Yes'
     'printing = bsd'
+)
+
+# improve support for Apple clients
+SETTINGS+=(
+    'server min protocol = SMB2'
+    'ea support = Yes'
+    'vfs objects = catia fruit streams_xattr'
+    'aio read size = 1'
+    'aio write size = 1'
+    'use sendfile = Yes'
+    'delete veto files = Yes'
+    'fruit:wipe_intentionally_left_blank_rfork = Yes'
+    'fruit:delete_empty_adfiles = Yes'
 )
 
 TESTPARM_EXTRA=()
