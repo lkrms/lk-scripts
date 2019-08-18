@@ -1038,5 +1038,5 @@ EOF
 
 esac
 
-[ -e "$CONFIG_DIR/bash-default" ] && . "$CONFIG_DIR/bash-default" || true
-[ -e "$CONFIG_DIR/bash" ] && . "$CONFIG_DIR/bash" || true
+[ -e "$CONFIG_DIR/settings-default" ] && . "$CONFIG_DIR/settings-default" || true
+[ -e "$CONFIG_DIR/settings" ] && . "$CONFIG_DIR/settings" || true
