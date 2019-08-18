@@ -2,6 +2,7 @@
 # shellcheck disable=SC2034
 
 SAMBA_WORKGROUP="LINAC"
+SAMBA_DEFAULT_CONF_PATH=
 
 DEFAULT_CODE_ROOTS=("$HOME/Code" "/opt/linac-scripts")
 DEFAULT_CODE_REPO_DEPTH=2

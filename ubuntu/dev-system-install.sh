@@ -242,6 +242,7 @@ apt_install_packages "desktop essentials" "\
  qpdfview\
  recoll\
  remmina\
+ samba\
  scribus\
  seahorse\
  skypeforlinux\
@@ -525,6 +526,29 @@ libdvd-pkg libdvd-pkg/upgrade note
 EOF
 
     sudo DEBIAN_FRONTEND=noninteractive dpkg-reconfigure libdvd-pkg
+
+fi
+
+if apt_package_installed "samba"; then
+
+    console_message "Configuring Samba..." "" "$CYAN"
+
+    if apt_package_just_installed "samba"; then
+
+        "$ROOT_DIR/linux/dev-samba-configure.sh" --reset
+
+    else
+
+        "$ROOT_DIR/linux/dev-samba-configure.sh"
+
+    fi
+
+    sudo pdbedit -L | grep '^'"$USER"':' >/dev/null || {
+
+        sudo smbpasswd -san "$USER" &&
+            echoc "${BOLD}WARNING: Samba user $USER has been added with no password${RESET} (use smbpasswd to create one)" "$RED"
+
+    }
 
 fi
 

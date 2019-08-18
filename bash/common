@@ -171,6 +171,17 @@ function is_root() {
 
 }
 
+# the relevant function mustn't depend on other functions
+function sudo_function() {
+
+    local FUNCTION="$1"
+
+    shift
+
+    sudo bash -c "$(declare -f "$FUNCTION"); $FUNCTION \"\$@\"" "$0" "$@"
+
+}
+
 function command_exists() {
 
     command -v "$1" >/dev/null 2>&1
@@ -224,17 +235,16 @@ function echoc() {
 # as above, but no newline afterwards
 function echocn() {
 
-    local MESSAGE="$1" c
+    local MESSAGE="$1" IFS= COLOURS
 
     shift
 
-    for c in "$@"; do
+    COLOURS="$*"
+    unset IFS
 
-        echo -ne "$c"
+    MESSAGE="$(search_replace "$RESET" "${RESET}${COLOURS}" "$MESSAGE")"
 
-    done
-
-    echo -ne "${MESSAGE}${RESET}"
+    echo -ne "${COLOURS}${MESSAGE}${RESET}"
 
 }
 
@@ -482,6 +492,18 @@ function sed_escape_replace() {
 
     ESCAPED="$(echo "${1:-}" | sed 's/[\/&]/\\&/g')"
     echo "${ESCAPED//$'\n'/\\n}"
+
+}
+
+# Usage: search_replace "find" "replace with" "string"
+function search_replace() {
+
+    local FIND REPLACE
+
+    FIND="$(sed_escape_search "$1")"
+    REPLACE="$(sed_escape_replace "$2")"
+
+    sed -E "s/${FIND}/${REPLACE}/g" <<<"$3"
 
 }
 
