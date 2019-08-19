@@ -34,6 +34,9 @@ function exit_trap() {
 
 trap exit_trap EXIT
 
+shopt -s expand_aliases
+alias pop_return1='{ popd >/dev/null; return 1; }'
+
 ORIGINAL_BASH_SUBSHELL="$BASH_SUBSHELL"
 ORIGINAL_ARGUMENTS=("$@")
 
@@ -263,6 +266,7 @@ function console_message() {
 
     shift
     shift
+
     echocn "==> " "$@"
     echocn "$MESSAGE1"
     [ -z "$MESSAGE2" ] || echocn " $MESSAGE2" "$@"
