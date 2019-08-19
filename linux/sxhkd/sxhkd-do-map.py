@@ -36,7 +36,7 @@ is_unknown = window_class == "" and window_name == ""
 is_chrome = bool(re.search(r"^google-chrome\.Google-chrome$", window_class))
 is_dbeaver = bool(re.search(r"^DBeaver\.DBeaver$", window_class))
 is_terminal = bool(
-    re.search(r"^(io\.elementary\.terminal|tilix|guake)\.", window_class))
+    re.search(r"^(guake|io\.elementary\.terminal|tilix|xfce4-terminal)\.", window_class))
 is_todoist = bool(re.search(
     r"^(todoist\.Todoist|crx_bgjohebimpjdhhocbknplfelpmdhifhd\.Google-chrome)$", window_class))
 is_vscode = bool(re.search(r"^code\.Code$", window_class))
@@ -115,10 +115,26 @@ if not skip:
             key_command = ["alt", "F4"]
             done = True
 
-    # Command+Shift+Z -> Ctrl+Y
-    if not done and is_command and in_shift and original_key == "z":
-        out_shift = False
-        key = "y"
+    if not done:
+
+        if is_command:
+
+            # Command+Shift+Z -> Ctrl+Y
+            if in_shift and original_key == "z":
+                out_shift = False
+                key = "y"
+
+            if original_key == "g":
+                keyup_pre_command = [original_key]
+                done = True
+
+                # "find next"
+                if not in_shift:
+                    key_command = ["F3"]
+
+                # "find previous"
+                else:
+                    key_command = ["shift", "F3"]
 
 if not done:
     if out_ctrl and (not clear_modifiers_manually or not in_ctrl):
