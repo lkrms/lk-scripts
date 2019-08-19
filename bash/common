@@ -836,8 +836,8 @@ function install_or_queue() {
 
         else
 
-            # ITEMS_INSTALLED=($(COMMAND | sort | uniq))
-            eval "$j"'=($('"$k"' | sort | uniq))'
+            # ITEMS_INSTALLED=($(COMMAND | sort | uniq)) || true
+            eval "$j"'=($('"$k"' | sort | uniq)) || true'
 
         fi
 
