@@ -40,7 +40,7 @@ function git_is_dir_working_root() {
 
     # 1. repo directory? (exits non-zero with error output otherwise)
     # 2. *working* repo directory? (i.e. not bare or inside .git)
-    IN_WORK_TREE="$(git rev-parse --is-inside-work-tree 2>/dev/null)" || pop_return1
+    IN_WORK_TREE="$(git rev-parse --is-inside-work-tree 2>/dev/null || echo "false")"
     [ "$IN_WORK_TREE" = "true" ] || pop_return1
 
     # 3. not a submodule?
