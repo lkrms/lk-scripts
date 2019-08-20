@@ -1,2 +1,5 @@
 # lossless creation of PDFs from source JPEGs
 img2pdf
+
+# required by Recoll
+pylzma
