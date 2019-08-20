@@ -460,7 +460,7 @@ if ! is_root; then
 
     if killall plank 2>/dev/null; then
 
-        nohup plank &
+        nohup plank >/dev/null 2>&1 &
 
     fi
 
