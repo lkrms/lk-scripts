@@ -868,7 +868,20 @@ function apt_force_install_packages() {
 
 }
 
+function apt_check_sources() {
+
+    # if we're using Apt-Cacher NG, replace every "https://" with "http://"
+    if apt-config dump | grep '^Acquire::http::Proxy\b.*:3142\b' >/dev/null; then
+
+        sudo find /etc/apt /etc/apt/sources.list.d -maxdepth 1 -type f -name '*.list' -exec grep -q '\bhttps://' '{}' \; -exec sed -i.https 's/\bhttps:\/\//http:\/\//' '{}' \;
+
+    fi
+
+}
+
 function apt_upgrade_all() {
+
+    apt_check_sources
 
     APT_CACHE_DIRTY=1
     apt_make_cache_clean

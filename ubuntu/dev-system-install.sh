@@ -98,7 +98,6 @@ apt_enable_ubuntu_repository main "updates backports proposed"
 apt_enable_ubuntu_repository restricted "updates backports proposed"
 apt_enable_ubuntu_repository universe "updates backports proposed"
 apt_enable_ubuntu_repository multiverse "updates backports proposed"
-apt_enable_partner_repository
 
 # prevent "proposed" packages from being installed automatically
 if [ ! -e "/etc/apt/preferences.d/proposed-updates" ]; then
