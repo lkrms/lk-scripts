@@ -75,7 +75,11 @@ for CODE_ROOT in "${CODE_ROOTS[@]}"; do
 
                 console_message "Fetching from ${#REPO_REMOTES[@]} $(single_or_plural "${#REPO_REMOTES[@]}" remote remotes):" "$(git_format_remotes "${REPO_REMOTES[@]}")" "$MAGENTA"
 
-                git fetch --all --quiet
+                for REMOTE in "${REPO_REMOTES[@]}"; do
+
+                    git fetch --quiet "$REMOTE" || WARNINGS+=("Can't fetch from remote ${BOLD}${REMOTE}${RESET} in $REPO_LONG_NAME")
+
+                done
 
             fi
 
@@ -267,6 +271,7 @@ fi
 if [ "${#WARNINGS[@]}" -gt "0" ]; then
 
     echoc "${#WARNINGS[@]} $(single_or_plural "${#WARNINGS[@]}" "issue requires" "issues require") attention:" "$BOLD" "$RED"
-    printf '%s\n' "${WARNINGS[@]}" ""
+    printf -- '- %s\n' "${WARNINGS[@]}"
+    echo
 
 fi
