@@ -219,9 +219,18 @@ PUSH_REMOTE="%(push:remotename)"
 
         fi
 
-        if ! git diff-files --quiet || ! git diff-index --cached --quiet HEAD; then
+        CHANGES=()
 
-            WARNINGS+=("Uncommitted changes in $REPO_LONG_NAME")
+        UNTRACKED="$(git ls-files --other --exclude-standard)" || die
+        [ -z "$UNTRACKED" ] || CHANGES+=("untracked")
+
+        git diff-files --quiet || CHANGES+=("unstaged")
+
+        git diff-index --cached --quiet HEAD || CHANGES+=("uncommitted")
+
+        if [ "${#CHANGES[@]}" -gt "0" ]; then
+
+            WARNINGS+=("$(upper_first "$(array_join_oxford "${CHANGES[@]}")") changes in $REPO_LONG_NAME")
 
         fi
 

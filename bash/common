@@ -424,6 +424,27 @@ function array_join_by() {
 
 }
 
+# Usage: array_join_oxford "${MY_ARRAY[@]}"
+function array_join_oxford() {
+
+    local THREE_OR_MORE=0
+
+    echo -n "${1:-}"
+    shift
+
+    while [ "$#" -gt "1" ]; do
+
+        THREE_OR_MORE=1
+        echo -n ", $1"
+        shift
+
+    done
+
+    [ "$THREE_OR_MORE" -eq "0" ] || echo -n ','
+    [ "$#" -eq "0" ] || echo -n " and $1"
+
+}
+
 function has_argument() {
 
     array_search "$1" ORIGINAL_ARGUMENTS >/dev/null
