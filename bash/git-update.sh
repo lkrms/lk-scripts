@@ -29,6 +29,13 @@ case "$(basename "$0")" in
     COMPLETION_VERB="checked"
     ;;
 
+*push*)
+    DO_FETCH=0
+    DO_PUSH=1
+    MAIN_VERB="Checking"
+    COMPLETION_VERB="checked"
+    ;;
+
 *)
     DO_FETCH=1
     DO_PUSH=1
