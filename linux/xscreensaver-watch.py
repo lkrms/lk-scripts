@@ -35,17 +35,15 @@ try:
 
     while p.poll() is None:
 
-        line = p.stdout.readline()
+        line = str(p.stdout.readline())
 
-        if line:
+        if re.match(r'LOCK\b', line):
 
-            if re.match(r'LOCK\b', line):
+            i.Lock()
 
-                i.Lock()
+        elif re.match(r'UNBLANK\b', line):
 
-            elif re.match(r'UNBLANK\b', line):
-
-                i.Unlock()
+            i.Unlock()
 
 except KeyboardInterrupt:
 
