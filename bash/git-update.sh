@@ -147,18 +147,17 @@ for CODE_ROOT in "${CODE_ROOTS[@]}"; do
                             console_message "${BOLD}${AHEAD_PUSH} $(single_or_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(single_or_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${RESET}" "" "$BOLD" "$YELLOW"
                             echo
                             echo "${NO_WRAP}$(git log "-$GIT_LOG_LIMIT" --oneline --decorate --color=always "${PUSH_COMMIT}..${LOCAL_COMMIT}")${WRAP}"
-                            echo
 
                             if [ "$AHEAD_PUSH" -gt "$GIT_LOG_LIMIT" ]; then
 
                                 ((NOT_SHOWN = AHEAD_PUSH - GIT_LOG_LIMIT))
 
-                                echo "($NOT_SHOWN $(single_or_plural "$NOT_SHOWN" commit commits) not shown)"
                                 echo
+                                echo "($NOT_SHOWN $(single_or_plural "$NOT_SHOWN" commit commits) not shown)"
 
                             fi
 
-                            if [ "$DO_PUSH" -eq "1" ] && get_confirmation "Attempt to push branch \"$BRANCH\" to remote \"$PUSH_REMOTE\"?" Y; then
+                            if [ "$DO_PUSH" -eq "1" ] && echo && get_confirmation "Attempt to push branch \"$BRANCH\" to remote \"$PUSH_REMOTE\"?" Y; then
 
                                 git push "$PUSH_REMOTE" "$BRANCH:$BRANCH" && PUSHED_BRANCHES+=("$PRETTY_BRANCH") && AHEAD_PUSH=0 || WARNINGS+=("Can't push $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH in $REPO_LONG_NAME")
 
