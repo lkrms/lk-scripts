@@ -20,6 +20,8 @@ import sys
 assert "XDG_SESSION_ID" in os.environ, \
     "Error: environment variable XDG_SESSION_ID is not set"
 
+signal.signal(signal.SIGTERM, lambda signum, frame: sys.exit(signum))
+
 bus = dbus.SystemBus()
 o = bus.get_object("org.freedesktop.login1",
                    "/org/freedesktop/login1/session/{}".format(os.getenv("XDG_SESSION_ID")))
@@ -35,7 +37,7 @@ try:
 
     while p.poll() is None:
 
-        line = str(p.stdout.readline())
+        line = p.stdout.readline().decode()
 
         if re.match(r'LOCK\b', line):
 
