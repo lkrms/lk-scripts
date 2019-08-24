@@ -338,6 +338,8 @@ function apt_make_cache_clean() {
 
         console_message "Updating package lists..." "" "$CYAN"
 
+        apt_check_sources
+
         sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || die
 
     fi
@@ -875,13 +877,17 @@ function apt_check_sources() {
 
         sudo find /etc/apt /etc/apt/sources.list.d -maxdepth 1 -type f -name '*.list' -exec grep -q '\bhttps://' '{}' \; -exec sed -i.https 's/\bhttps:\/\//http:\/\//' '{}' \;
 
+        if ! apt-config dump | grep '^Dir::Ignore-Files-Silently\b.*"\\\.https\$";$' >/dev/null; then
+
+            echo 'Dir::Ignore-Files-Silently:: "\.https$";' | sudo tee -a /etc/apt/apt.conf.d/00proxy >/dev/null
+
+        fi
+
     fi
 
 }
 
 function apt_upgrade_all() {
-
-    apt_check_sources
 
     APT_CACHE_DIRTY=1
     apt_make_cache_clean

@@ -20,9 +20,15 @@ function git_get_code_roots() {
 
     for KEY in "${!CODE_ROOTS[@]}"; do
 
-        [ -d "${CODE_ROOTS[$KEY]}" ] || unset "CODE_ROOTS[$KEY]"
+        if [ ! -d "${CODE_ROOTS[$KEY]}" ]; then
 
-        CODE_ROOTS[$KEY]="$(realpath "${CODE_ROOTS[$KEY]}")"
+            unset "CODE_ROOTS[$KEY]"
+
+        else
+
+            CODE_ROOTS[$KEY]="$(realpath "${CODE_ROOTS[$KEY]}")"
+
+        fi
 
     done
 
