@@ -232,6 +232,7 @@ apt_install_packages "desktop essentials" "\
  lame\
  libdvd-pkg!\
  libreoffice\
+ libxss-dev\
  makemkv-bin\
  makemkv-oss\
  meld\
@@ -251,9 +252,11 @@ apt_install_packages "desktop essentials" "\
  sxhkd\
  synaptic\
  synergy\
+ t1-xfree86-nonfree\
  thunderbird\
  tilix\
  transmission\
+ ttf-xfree86-nonfree\
  typora\
  usb-creator-gtk\
  vlc\
@@ -261,6 +264,8 @@ apt_install_packages "desktop essentials" "\
  xautomation\
  xclip\
  xdotool\
+ xfonts-100dpi\
+ xfonts-75dpi\
  youtube-dl\
 "
 
