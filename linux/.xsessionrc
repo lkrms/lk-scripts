@@ -5,3 +5,5 @@
 
 # see https://github.com/symless/synergy-core/issues/4132
 export QT_BEARER_POLL_TIMEOUT=-1
+
+export GTK_MODULES="${GTK_MODULES:+$GTK_MODULES:}canberra-gtk-module"

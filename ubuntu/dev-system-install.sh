@@ -417,7 +417,7 @@ case "${XDG_CURRENT_DESKTOP:-}" in
 
 XFCE)
 
-    apt_install_packages "XFCE extras" "plank xscreensaver xscreensaver-data xscreensaver-data-extra xscreensaver-gl xscreensaver-gl-extra xscreensaver-screensaver-bsod xscreensaver-screensaver-webcollage"
+    apt_install_packages "XFCE extras" "gnome-session-canberra libcanberra-gtk-module libcanberra-gtk3-module plank sox ubuntu-sounds xscreensaver xscreensaver-data xscreensaver-data-extra xscreensaver-gl xscreensaver-gl-extra xscreensaver-screensaver-bsod xscreensaver-screensaver-webcollage"
     apt_remove_packages "light-locker"
 
     ;;
