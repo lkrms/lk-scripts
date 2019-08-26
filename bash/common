@@ -168,6 +168,12 @@ function assert_function_exists() {
 
 }
 
+function assert_variable_exists() {
+
+    variable_exists "$1" || die "Error: $(basename "$0") requires variable $1"
+
+}
+
 function is_root() {
 
     [ "$EUID" -eq "0" ]
@@ -238,14 +244,19 @@ function echoc() {
 # as above, but no newline afterwards
 function echocn() {
 
-    local MESSAGE="$1" IFS= COLOURS
+    local MESSAGE="$1" COLOURS=
 
     shift
 
-    COLOURS="$*"
-    unset IFS
+    if [ "$#" -gt "0" ] && [ -n "$RESET" ]; then
 
-    MESSAGE="$(search_replace "$RESET" "${RESET}${COLOURS}" "$MESSAGE")"
+        local IFS=
+        COLOURS="$*"
+        unset IFS
+
+        MESSAGE="$(search_replace "$RESET" "${RESET}${COLOURS}" "$MESSAGE")"
+
+    fi
 
     echo -ne "${COLOURS}${MESSAGE}${RESET}"
 
@@ -264,8 +275,7 @@ function console_message() {
 
     local MESSAGE1="$1" MESSAGE2="$2"
 
-    shift
-    shift
+    shift 2
 
     echocn "==> " "$@"
     echocn "$MESSAGE1"
@@ -866,30 +876,30 @@ function install_or_queue() {
 
     done
 
-    local INSTALL UNAVAILABLE ALREADY_INSTALLED
+    local IOQ_INSTALL IOQ_UNAVAILABLE IOQ_ALREADY_INSTALLED
 
-    INSTALL=($(comm -23 <(printf '%s\n' "${REQUESTED[@]}" | sort | uniq) <([ "${#ITEMS_INSTALLED[@]}" -gt "0" ] && printf '%s\n' "${ITEMS_INSTALLED[@]}" || true)))
-    ALREADY_INSTALLED=($(comm -12 <(printf '%s\n' "${REQUESTED[@]}" | sort | uniq) <([ "${#ITEMS_INSTALLED[@]}" -gt "0" ] && printf '%s\n' "${ITEMS_INSTALLED[@]}" || true)))
+    IOQ_INSTALL=($(comm -23 <(printf '%s\n' "${REQUESTED[@]}" | sort | uniq) <([ "${#ITEMS_INSTALLED[@]}" -gt "0" ] && printf '%s\n' "${ITEMS_INSTALLED[@]}" || true)))
+    IOQ_ALREADY_INSTALLED=($(comm -12 <(printf '%s\n' "${REQUESTED[@]}" | sort | uniq) <([ "${#ITEMS_INSTALLED[@]}" -gt "0" ] && printf '%s\n' "${ITEMS_INSTALLED[@]}" || true)))
 
-    if [ "${#ALREADY_INSTALLED[@]}" -gt "0" ] && [ -n "$ALREADY_INSTALLED_TARGET" ]; then
+    if [ "${#IOQ_ALREADY_INSTALLED[@]}" -gt "0" ] && [ -n "$ALREADY_INSTALLED_TARGET" ]; then
 
-        eval "$ALREADY_INSTALLED_TARGET"'+=("${ALREADY_INSTALLED[@]}")'
+        eval "$ALREADY_INSTALLED_TARGET"'+=("${IOQ_ALREADY_INSTALLED[@]}")'
 
     fi
 
-    if [ "${#INSTALL[@]}" -gt "0" ]; then
+    if [ "${#IOQ_INSTALL[@]}" -gt "0" ]; then
 
         if [ "${#ITEMS_AVAILABLE[@]}" -gt "0" ]; then
 
-            UNAVAILABLE=($(comm -23 <(printf '%s\n' "${INSTALL[@]}" | sort | uniq) <(printf '%s\n' "${ITEMS_AVAILABLE[@]}")))
+            IOQ_UNAVAILABLE=($(comm -23 <(printf '%s\n' "${IOQ_INSTALL[@]}" | sort | uniq) <(printf '%s\n' "${ITEMS_AVAILABLE[@]}")))
 
-            if [ "${#UNAVAILABLE[@]}" -gt "0" ]; then
+            if [ "${#IOQ_UNAVAILABLE[@]}" -gt "0" ]; then
 
-                console_message "${#UNAVAILABLE[@]} $(single_or_plural "${#UNAVAILABLE[@]}" "$SINGLE" "$PLURAL") unavailable for installation:" "${UNAVAILABLE[*]}" "$BOLD" "$RED"
+                console_message "${#IOQ_UNAVAILABLE[@]} $(single_or_plural "${#IOQ_UNAVAILABLE[@]}" "$SINGLE" "$PLURAL") unavailable for installation:" "${IOQ_UNAVAILABLE[*]}" "$BOLD" "$RED"
 
-                INSTALL=($(comm -12 <(printf '%s\n' "${INSTALL[@]}" | sort | uniq) <(printf '%s\n' "${ITEMS_AVAILABLE[@]}")))
+                IOQ_INSTALL=($(comm -12 <(printf '%s\n' "${IOQ_INSTALL[@]}" | sort | uniq) <(printf '%s\n' "${ITEMS_AVAILABLE[@]}")))
 
-                [ "${#INSTALL[@]}" -gt "0" ] || return 0
+                [ "${#IOQ_INSTALL[@]}" -gt "0" ] || return 0
 
             fi
 
@@ -897,24 +907,24 @@ function install_or_queue() {
 
         if [ "$UI" = "Y" ]; then
 
-            console_message "Missing ${#INSTALL[@]} $1 $(single_or_plural "${#INSTALL[@]}" "$SINGLE" "$PLURAL"):" "${INSTALL[*]}" "$BOLD" "$MAGENTA"
+            console_message "Missing ${#IOQ_INSTALL[@]} $1 $(single_or_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "${IOQ_INSTALL[*]}" "$BOLD" "$MAGENTA"
 
-            get_confirmation "Add the $1 $(single_or_plural "${#INSTALL[@]}" "$SINGLE" "$PLURAL") listed above?" Y Y || return 0
+            get_confirmation "Add the $1 $(single_or_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL") listed above?" Y Y || return 0
 
         else
 
-            console_message "Adding ${#INSTALL[@]} $1 $(single_or_plural "${#INSTALL[@]}" "$SINGLE" "$PLURAL"):" "${INSTALL[*]}" "$GREEN"
+            console_message "Adding ${#IOQ_INSTALL[@]} $1 $(single_or_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "${IOQ_INSTALL[*]}" "$GREEN"
 
         fi
 
         if variable_exists "$INSTALL_TARGET"; then
 
-            eval "$INSTALL_TARGET"'+=("${INSTALL[@]}")'
+            eval "$INSTALL_TARGET"'+=("${IOQ_INSTALL[@]}")'
 
         else
 
             # shellcheck disable=SC2086
-            eval $INSTALL_TARGET "${INSTALL[@]}"
+            eval $INSTALL_TARGET "${IOQ_INSTALL[@]}"
 
         fi
 

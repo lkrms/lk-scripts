@@ -1,6 +1,7 @@
-.vscode/
 *.code-workspace
 *.sublime-project
 *.sublime-workspace
+
+.vscode/
 
 php_errors.log

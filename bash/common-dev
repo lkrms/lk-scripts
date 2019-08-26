@@ -100,7 +100,7 @@ function git_add_global_ignore() {
     IGNORE_FILE="$(git config --global core.excludesFile)" || die "Error: Git global option core.excludesFile not defined"
     IGNORE_FILE="${IGNORE_FILE/#\~/$HOME}"
 
-    [ -f "$IGNORE_FILE" ] || touch "$IGNORE_FILE" || die
+    [ -e "$IGNORE_FILE" ] || touch "$IGNORE_FILE" || die
 
     [ -f "$IGNORE_FILE" ] || die "Error: unable to create file $IGNORE_FILE"
 
@@ -116,61 +116,40 @@ function git_add_global_ignore() {
 
 }
 
-# Usage: git_add_global_setting <setting.name> <value> [change if already set? (y/N)]
+# Usage: git_add_global_setting <setting.name> <value> [change if already set? (y/N)] [git config option...]
 function git_add_global_setting() {
 
-    if [ "${3:-N}" = "Y" ] || ! git config --global "$1" >/dev/null 2>&1; then
+    local SETTING_NAME SETTING_VALUE OVERWRITE
 
-        local EXTRA=(--global)
+    SETTING_NAME="$1"
+    SETTING_VALUE="$2"
+    OVERWRITE="${3:-N}"
 
-        if is_bool "$1"; then
+    shift 2
+    shift || true
 
-            EXTRA+=("--bool")
+    if [ "$OVERWRITE" = "Y" ] || ! git config --global "$SETTING_NAME" >/dev/null 2>&1; then
 
-        elif is_int "$1"; then
-
-            EXTRA+=("--int")
-
-        fi
-
-        git config "${EXTRA[@]}" "$1" "$2"
+        git config --global "$@" "$SETTING_NAME" "$SETTING_VALUE"
 
     fi
 
 }
 
-function dev_apply_system_config() {
+# Usage: dev_install_packages [queue only? (y/N)] [name of 'already installed' array]
+function dev_install_packages() {
+
+    local QUEUE_ONLY="${1:-N}" INSTALL_COMMAND ALREADY_INSTALLED_NAME="" SUDO_OR_NOT=""
+
+    [ "$QUEUE_ONLY" = "N" ] || {
+        ALREADY_INSTALLED_NAME="${2:-}"
+        variable_exists PIP_INSTALL_QUEUE || PIP_INSTALL_QUEUE=()
+        variable_exists PIP3_INSTALL_QUEUE || PIP3_INSTALL_QUEUE=()
+        variable_exists NPM_INSTALL_QUEUE || NPM_INSTALL_QUEUE=()
+        variable_exists COMPOSER_INSTALL_QUEUE || COMPOSER_INSTALL_QUEUE=()
+    }
 
     dir_make_and_own "/usr/local/bin"
-
-    if command_exists git; then
-
-        file_to_array "$CONFIG_DIR/gitignore" '^[[:space:]]*$' '^#'
-
-        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-            # shellcheck disable=SC2088
-            git_add_global_setting core.excludesFile "~/.gitignore"
-            git_add_global_ignore "${FILE_TO_ARRAY[@]}"
-
-        fi
-
-        git_add_global_setting push.default simple
-
-        local MERGETOOL=
-
-        command_exists meld && MERGETOOL=meld || true
-
-        if [ -n "$MERGETOOL" ]; then
-
-            git_add_global_setting merge.guitool "$MERGETOOL" Y
-            git_add_global_setting mergetool.prompt false
-
-        fi
-
-    fi
-
-    local SUDO_OR_NOT=
 
     # on macOS, global pip and npm management doesn't require sudo (courtesy of Homebrew)
     if [ "$IS_MACOS" -ne "1" ]; then
@@ -193,7 +172,10 @@ function dev_apply_system_config() {
 
         if [ "${#PIP_REQUIRED[@]}" -gt "0" ]; then
 
-            install_or_queue "pip" "${PIP_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "${SUDO_OR_NOT}pip install"
+            INSTALL_COMMAND="${SUDO_OR_NOT}pip install"
+            [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="PIP_INSTALL_QUEUE"
+
+            install_or_queue "pip" "${PIP_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
 
         fi
 
@@ -213,7 +195,10 @@ function dev_apply_system_config() {
 
         if [ "${#PIP3_REQUIRED[@]}" -gt "0" ]; then
 
-            install_or_queue "pip3" "${PIP3_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip3 list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "${SUDO_OR_NOT}pip3 install"
+            INSTALL_COMMAND="${SUDO_OR_NOT}pip3 install"
+            [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="PIP3_INSTALL_QUEUE"
+
+            install_or_queue "pip3" "${PIP3_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip3 list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
 
         fi
 
@@ -249,7 +234,10 @@ function dev_apply_system_config() {
 
         if [ "${#NPM_REQUIRED[@]}" -gt "0" ]; then
 
-            install_or_queue "npm" "${NPM_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}npm list -g --depth=0 --parseable | tail -n +2 | gnu_grep -Po '(?<=/)[^/]*$'" "" "npm_install"
+            INSTALL_COMMAND="npm_install"
+            [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="NPM_INSTALL_QUEUE"
+
+            install_or_queue "npm" "${NPM_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}npm list -g --depth=0 --parseable | tail -n +2 | gnu_grep -Po '(?<=/)[^/]*$'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
 
         fi
 
@@ -300,10 +288,47 @@ EOF
 
         fi
 
-        # if needed: it's slow, but "./composer.phar show -aN" returns a list of all available composer packages
-        install_or_queue "composer" "${COMPOSER_REQUIRED[*]}" Y package packages "./composer.phar show -ND" "" "./composer.phar require"
+        INSTALL_COMMAND="./composer.phar require"
+        [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="COMPOSER_INSTALL_QUEUE"
 
-        popd >/dev/null || die
+        # if needed: it's slow, but "./composer.phar show -aN" returns a list of all available composer packages
+        install_or_queue "composer" "${COMPOSER_REQUIRED[*]}" Y package packages "./composer.phar show -ND" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+
+        popd >/dev/null
+
+    fi
+
+}
+
+# Usage: dev_apply_system_config [queue missing packages rather than installing immediately? (y/N)] [name of 'already installed' array]
+function dev_apply_system_config() {
+
+    dev_install_packages "$@"
+
+    if command_exists git; then
+
+        file_to_array "$CONFIG_DIR/gitignore" '^[[:space:]]*$' '^#'
+
+        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
+
+            # shellcheck disable=SC2088
+            git_add_global_setting core.excludesFile "~/.gitignore"
+            git_add_global_ignore "${FILE_TO_ARRAY[@]}"
+
+        fi
+
+        git_add_global_setting push.default simple
+
+        local MERGETOOL=
+
+        command_exists meld && MERGETOOL=meld || true
+
+        if [ -n "$MERGETOOL" ]; then
+
+            git_add_global_setting merge.guitool "$MERGETOOL" Y
+            git_add_global_setting mergetool.prompt false N --bool
+
+        fi
 
     fi
 
@@ -323,6 +348,64 @@ EOF
         fi
 
         systemctl --user enable --now --no-block "$ROOT_DIR/linux/sxhkd/sxhkd.service"
+
+    fi
+
+}
+
+# Usage: dev_process_queue [name of 'installed' array]
+function dev_process_queue() {
+
+    assert_variable_exists PIP_INSTALL_QUEUE
+    assert_variable_exists PIP3_INSTALL_QUEUE
+    assert_variable_exists NPM_INSTALL_QUEUE
+    assert_variable_exists COMPOSER_INSTALL_QUEUE
+
+    local JUST_INSTALLED="${1:-}" SUDO_OR_NOT=
+
+    if [ "$IS_MACOS" -ne "1" ]; then
+
+        SUDO_OR_NOT="sudo -H "
+
+    fi
+
+    if [ "${#PIP_INSTALL_QUEUE[@]}" -gt "0" ]; then
+
+        eval "${SUDO_OR_NOT}pip install" "${PIP_INSTALL_QUEUE[@]}" || die
+
+        [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED"'+=("${PIP_INSTALL_QUEUE[@]}")'
+        PIP_INSTALL_QUEUE=()
+
+    fi
+
+    if [ "${#PIP3_INSTALL_QUEUE[@]}" -gt "0" ]; then
+
+        eval "${SUDO_OR_NOT}pip3 install" "${PIP3_INSTALL_QUEUE[@]}" || die
+
+        [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED"'+=("${PIP3_INSTALL_QUEUE[@]}")'
+        PIP3_INSTALL_QUEUE=()
+
+    fi
+
+    if [ "${#NPM_INSTALL_QUEUE[@]}" -gt "0" ]; then
+
+        eval "npm_install" "${NPM_INSTALL_QUEUE[@]}" || die
+
+        [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED"'+=("${NPM_INSTALL_QUEUE[@]}")'
+        NPM_INSTALL_QUEUE=()
+
+    fi
+
+    if [ "${#COMPOSER_INSTALL_QUEUE[@]}" -gt "0" ]; then
+
+        pushd "$LOCAL_DIR/composer" >/dev/null || die
+
+        eval "./composer.phar require" "${COMPOSER_INSTALL_QUEUE[@]}" || die
+
+        [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED"'+=("${COMPOSER_INSTALL_QUEUE[@]}")'
+        COMPOSER_INSTALL_QUEUE=()
+
+        popd >/dev/null
 
     fi
 
