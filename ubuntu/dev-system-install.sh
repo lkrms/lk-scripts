@@ -493,13 +493,15 @@ EOF
 
 esac
 
+dev_install_packages Y APT_INSTALLED
+
 # shellcheck disable=SC2034
 SNAPS_INSTALLED=($(sudo snap list 2>/dev/null))
 SNAPS_INSTALL=()
 
 for s in twist; do
 
-    array_search "$s" SNAPS_INSTALLED >/dev/null || SNAPS_INSTALL+=("$s")
+    array_search "$s" SNAPS_INSTALLED >/dev/null && APT_INSTALLED+=("$s") || SNAPS_INSTALL+=("$s")
 
 done
 
@@ -558,10 +560,23 @@ fi
 
 # non-apt installations
 
+DEV_JUST_INSTALLED=()
+dev_process_queue DEV_JUST_INSTALLED
+
+if [ "${#DEV_JUST_INSTALLED[@]}" -gt "0" ]; then
+
+    APT_INSTALLED+=("${DEV_JUST_INSTALLED[@]}")
+    APT_JUST_INSTALLED+=("${DEV_JUST_INSTALLED[@]}")
+
+fi
+
 for i in "${!SNAPS_INSTALL[@]}"; do
 
     # tolerate errors because snap can be temperamental
-    sudo snap install "${SNAPS_INSTALL[$i]}" || true
+    sudo snap install "${SNAPS_INSTALL[$i]}" && {
+        APT_INSTALLED+=("${SNAPS_INSTALL[$i]}")
+        APT_JUST_INSTALLED+=("${SNAPS_INSTALL[$i]}")
+    } || true
 
 done
 

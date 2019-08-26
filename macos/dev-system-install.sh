@@ -169,7 +169,19 @@ brew_queue_casks "Brother P-touch Editor" "\
  brother-p-touch-update-software\
 "
 
+dev_install_packages Y BREW_INSTALLED
+
 brew_process_queue
+
+DEV_JUST_INSTALLED=()
+dev_process_queue DEV_JUST_INSTALLED
+
+if [ "${#DEV_JUST_INSTALLED[@]}" -gt "0" ]; then
+
+    BREW_INSTALLED+=("${DEV_JUST_INSTALLED[@]}")
+    BREW_JUST_INSTALLED+=("${DEV_JUST_INSTALLED[@]}")
+
+fi
 
 # TODO:
 # sudo tlmgr update --self && sudo tlmgr install collection-fontsrecommended || die

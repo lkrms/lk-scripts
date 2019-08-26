@@ -300,10 +300,7 @@ EOF
 
 }
 
-# Usage: dev_apply_system_config [queue missing packages rather than installing immediately? (y/N)] [name of 'already installed' array]
 function dev_apply_system_config() {
-
-    dev_install_packages "$@"
 
     if command_exists git; then
 

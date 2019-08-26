@@ -14,4 +14,6 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 assert_not_root
 
+dev_install_packages
+
 dev_apply_system_config
