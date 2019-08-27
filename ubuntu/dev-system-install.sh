@@ -60,6 +60,7 @@ meld
 mkvtoolnix-gui
 owncloud-client
 qpdfview
+quicktile
 rapid-photo-downloader
 recoll
 remmina
@@ -185,6 +186,15 @@ if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
 fi
 
 apt_install_packages "openconnect dependencies" "libxml2-dev pkg-config vpnc-scripts" N
+
+apt_install_packages "QuickTile dependencies" "\
+ python\
+ python-gtk2\
+ python-xlib\
+ python-dbus\
+ python-wnck?\
+ python-setuptools\
+" N
 
 apt_install_packages "performance monitoring" "\
  atop\
@@ -561,6 +571,14 @@ if apt_package_installed "samba"; then
 
 fi
 
+if ! apt_package_installed python-wnck; then
+
+    apt_install_deb "http://old-releases.ubuntu.com/ubuntu/pool/main/g/gnome-python-desktop/python-wnck_2.32.0-0ubuntu6_amd64.deb"
+
+    apt_process_queue
+
+fi
+
 # non-apt installations
 
 DEV_JUST_INSTALLED=()
@@ -570,6 +588,19 @@ if [ "${#DEV_JUST_INSTALLED[@]}" -gt "0" ]; then
 
     APT_INSTALLED+=("${DEV_JUST_INSTALLED[@]}")
     APT_JUST_INSTALLED+=("${DEV_JUST_INSTALLED[@]}")
+
+fi
+
+if ! sudo -H pip list --format freeze 2>/dev/null | grep -E '^QuickTile==' >/dev/null; then
+
+    sudo -H pip install "https://github.com/ssokolow/quicktile/archive/master.zip" && {
+        APT_INSTALLED+=("quicktile")
+        APT_JUST_INSTALLED+=("quicktile")
+    }
+
+else
+
+    APT_INSTALLED+=("quicktile")
 
 fi
 
