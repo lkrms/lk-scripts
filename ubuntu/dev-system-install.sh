@@ -79,6 +79,7 @@ transmission
 usb-creator-gtk
 vlc
 wingpanel-indicator-ayatana
+x-tile
 x11vnc
 xautomation
 xclip
@@ -119,6 +120,7 @@ EOF
 # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
 apt_register_ppa "caffeine-developers/ppa" "caffeine"
 apt_register_ppa "flexiondotorg/awf" "awf"
+apt_register_ppa "giuspen/ppa" "x-tile"
 apt_register_ppa "hda-me/xscreensaver" "xscreensaver*"
 apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
 apt_register_ppa "hluk/copyq" "copyq"
@@ -260,6 +262,7 @@ apt_install_packages "desktop essentials" "\
  typora\
  usb-creator-gtk\
  vlc\
+ x-tile\
  x11vnc\
  xautomation\
  xclip\
