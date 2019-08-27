@@ -3,11 +3,11 @@ Description=Simple X hotkey daemon
 
 [Service]
 Environment=SXHKD_SHELL=/bin/sh
-ExecStartPre=/bin/sleep 4
+ExecStartPre=/bin/sleep 2
 ExecStart=/usr/bin/sxhkd
 ExecReload=/bin/kill -SIGUSR1 $MAINPID
 Restart=always
-RestartSec=10
+RestartSec=2
 
 [Install]
 WantedBy=default.target

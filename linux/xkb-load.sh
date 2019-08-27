@@ -30,7 +30,7 @@ if [ "$IS_AUTOSTART" -eq "0" ]; then
 
     if command_exists systemctl && systemctl --user --quiet is-active sxhkd.service; then
 
-        systemctl --user reload sxhkd.service
+        systemctl --user restart sxhkd.service
 
     fi
 
