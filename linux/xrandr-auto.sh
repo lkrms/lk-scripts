@@ -449,6 +449,12 @@ if ! is_root; then
     move_file_delete_link "$HOME/.local/bin/xrandr-auto.sh"
     ln -s "$ROOT_DIR/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh"
 
+    if killall quicktile 2>/dev/null; then
+
+        nohup quicktile --daemonize >/dev/null 2>&1 &
+
+    fi
+
     if killall plank 2>/dev/null; then
 
         nohup plank >/dev/null 2>&1 &
