@@ -461,6 +461,12 @@ function has_argument() {
 
 }
 
+function is_autostart() {
+
+    has_argument "--autostart"
+
+}
+
 function offer_sudo_password_bypass() {
 
     # don't proceed if there's no point

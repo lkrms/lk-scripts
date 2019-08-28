@@ -13,7 +13,11 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 assert_command_exists xrandr
 assert_command_exists bc
 
-has_argument "--autostart" && IS_AUTOSTART=1 || IS_AUTOSTART=0
+if has_argument "-h" || has_argument "--help"; then
+
+    die "Usage: $(basename "$0") [--autostart] [--suggest] [--get-qt-exports] [--set-dpi-only] [--skip-lightdm]"
+
+fi
 
 # if the primary output's actual DPI is above this, enable "Retina" mode
 HIDPI_THRESHOLD=144
@@ -147,7 +151,7 @@ for i in "${!OUTPUTS[@]}"; do
 
 done
 
-echo "Actual DPI of largest screen (${PRIMARY_SIZE:-??}\"): $ACTUAL_DPI" >&2
+echo "Actual DPI of largest screen${PRIMARY_SIZE:+ ($PRIMARY_SIZE\")}: $ACTUAL_DPI" >&2
 
 if [ "$ACTUAL_DPI" -ge "$HIDPI_THRESHOLD" ]; then
 
@@ -247,23 +251,17 @@ if has_argument "--get-qt-exports"; then
     echo "export QT_SCALE_FACTOR=$SCALING_FACTOR"
     echo "export QT_FONT_DPI=$QT_FONT_DPI"
 
-    has_argument "--dpi-only" || exit 0
-
 fi
 
-if has_argument "--dpi-only"; then
+if has_argument "--set-dpi-only"; then
 
     echo -e "\nxrandr --dpi $DPI\n" >&2
 
-    if ! has_argument "--get-qt-exports"; then
+    xrandr --dpi "$DPI" >&2
 
-        xrandr --dpi "$DPI"
+fi
 
-    else
-
-        xrandr --dpi "$DPI" >/dev/null
-
-    fi
+if has_argument "--get-qt-exports" || has_argument "--set-dpi-only"; then
 
     exit
 
@@ -331,6 +329,11 @@ xrandr "${OPTIONS[@]}"
 # ok, xrandr is sorted -- look after everything else
 case "${XDG_CURRENT_DESKTOP:-}" in
 
+XFCE)
+
+    "$SCRIPT_DIR/xfce-set-dpi.sh" "$DPI" "$@"
+    ;;
+
 *GNOME | Pantheon)
 
     (
@@ -384,7 +387,7 @@ case "${XDG_CURRENT_DESKTOP:-}" in
         fi
 
         # attempt to apply the same settings to LightDM
-        if user_exists "lightdm"; then
+        if user_exists "lightdm" && ! has_argument "--skip-lightdm"; then
 
             SUDO_OR_NOT=(sudo -nu lightdm -H)
 
@@ -435,21 +438,9 @@ case "${XDG_CURRENT_DESKTOP:-}" in
 
 esac
 
-if command_exists displaycal-apply-profiles; then
-
-    if [ "$IS_AUTOSTART" -eq "0" ] && ! is_root; then
-
-        displaycal-apply-profiles || true
-
-    else
-
-        echo "Skipped: displaycal-apply-profiles" >&2
-
-    fi
-
-fi
-
 if ! is_root; then
+
+    ! is_autostart && command_exists displaycal-apply-profiles && displaycal-apply-profiles || true
 
     "$SCRIPT_DIR/xkb-load.sh" "$@"
     "$SCRIPT_DIR/xinput-load.sh" "$@"
