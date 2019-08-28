@@ -90,6 +90,16 @@ xscreensaver*
 
 offer_sudo_password_bypass
 
+for FILE in 10-help-text 50-motd-news 80-esm 80-livepatch 90-updates-available 91-release-upgrade 95-hwe-eol; do
+
+    if [ -x "/etc/update-motd.d/$FILE" ]; then
+
+        sudo chmod a-x "/etc/update-motd.d/$FILE"
+
+    fi
+
+done
+
 apt_mark_cache_clean
 
 # install prequisites and packages that may be needed to bootstrap others
@@ -223,7 +233,6 @@ apt_install_packages "desktop essentials" "\
  deepin-screenshot\
  evtest\
  eyed3\
- filezilla\
  firefox\
  fonts-symbola\
  galculator\
@@ -429,13 +438,13 @@ for DEB_URL in "${DEB_URLS[@]}"; do
 
 done
 
-apt_remove_packages apport deja-dup fonts-twemoji-svginot
+apt_remove_packages apport deja-dup filezilla fonts-twemoji-svginot
 
 case "${XDG_CURRENT_DESKTOP:-}" in
 
 XFCE)
 
-    apt_install_packages "XFCE extras" "gnome-session-canberra libcanberra-gtk-module libcanberra-gtk3-module plank sox ubuntu-sounds xscreensaver xscreensaver-data xscreensaver-data-extra xscreensaver-gl xscreensaver-gl-extra xscreensaver-screensaver-bsod xscreensaver-screensaver-webcollage"
+    apt_install_packages "XFCE extras" "gnome-session-canberra libcanberra-gtk-module libcanberra-gtk3-module plank sox ubuntu-sounds xfce4-clipman xscreensaver xscreensaver-data xscreensaver-data-extra xscreensaver-gl xscreensaver-gl-extra xscreensaver-screensaver-bsod xscreensaver-screensaver-webcollage"
     apt_remove_packages "light-locker"
 
     ;;

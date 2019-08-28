@@ -41,4 +41,7 @@ case "$1" in
 
 esac
 
-xfconf-query -c xsettings -p "/Gtk/IconSizes" -s "gtk-button=${_16},${_16}:gtk-dialog=${_48},${_48}:gtk-dnd=${_32},${_32}:gtk-large-toolbar=${_24},${_24}:gtk-menu=${_16},${_16}:gtk-small-toolbar=${_16},${_16}"
+# mouse cursor size
+xfconf-query -c xsettings -p "/Gtk/CursorThemeSize" -n -t int -s "${_24}"
+
+xfconf-query -c xsettings -p "/Gtk/IconSizes" -n -t string -s "gtk-button=${_16},${_16}:gtk-dialog=${_48},${_48}:gtk-dnd=${_32},${_32}:gtk-large-toolbar=${_24},${_24}:gtk-menu=${_16},${_16}:gtk-small-toolbar=${_16},${_16}"
