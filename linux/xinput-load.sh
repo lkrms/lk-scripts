@@ -109,7 +109,7 @@ if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
         SETTING="${FILE_TO_ARRAY[$i]}"
 
-        LINES=("$(xinput list | grep -E "$PATTERN")")
+        LINES=("$(xinput list | grep -E "$PATTERN")") || continue
         DEVICE_IDS=($(printf '%s\n' "${LINES[@]}" | sort | uniq | gnu_grep -Po '(?<=\bid=)[0-9]+\b'))
 
         if [ "${#DEVICE_IDS[@]}" -gt "0" ]; then
