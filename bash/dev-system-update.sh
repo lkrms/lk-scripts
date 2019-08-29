@@ -1,5 +1,4 @@
 #!/bin/bash
-# shellcheck disable=SC2119
 
 set -euo pipefail
 
@@ -15,6 +14,11 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 assert_not_root
 
-dev_install_packages
+if command_exists apt-get; then
 
-dev_apply_system_config
+    # shellcheck source=common-apt
+    . "$SCRIPT_DIR/common-apt"
+
+    apt_upgrade_all
+
+fi
