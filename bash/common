@@ -337,6 +337,7 @@ function file_to_array() {
     shift
 
     FILE_TO_ARRAY=()
+    FILE_TO_ARRAY_FILENAME=
 
     if [ ! -e "$FILENAME" ]; then
 
@@ -345,6 +346,8 @@ function file_to_array() {
     fi
 
     if [ -e "$FILENAME" ]; then
+
+        FILE_TO_ARRAY_FILENAME="$FILENAME"
 
         while IFS= read -r LINE || [ -n "$LINE" ]; do
 
