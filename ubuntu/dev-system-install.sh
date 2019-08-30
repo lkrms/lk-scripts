@@ -164,6 +164,7 @@ apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb htt
 apt_install_packages "essential utilities" "\
  attr\
  cifs-utils\
+ curl\
  debsums\
  fio\
  hfsprogs\
