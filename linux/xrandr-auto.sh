@@ -442,6 +442,7 @@ if ! is_root; then
 
     ! is_autostart && command_exists displaycal-apply-profiles && displaycal-apply-profiles || true
 
+    "$SCRIPT_DIR/x-release-modifiers.sh" --no-sleep
     "$SCRIPT_DIR/xkb-load.sh" "$@"
     "$SCRIPT_DIR/xinput-load.sh" "$@"
 
