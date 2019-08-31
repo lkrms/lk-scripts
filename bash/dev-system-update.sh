@@ -23,4 +23,10 @@ if command_exists apt-get; then
 
 fi
 
+if command_exists snap; then
+
+    sudo snap refresh
+
+fi
+
 dev_update_packages

@@ -888,7 +888,7 @@ function apt_upgrade_all() {
 
     console_message "Installing all available package updates..." "" "$GREEN"
 
-    sudo apt-get "${APT_GET_OPTIONS[@]}" dist-upgrade && apt_refresh_packages || die
+    sudo apt-get "${APT_GET_OPTIONS[@]}" --fix-missing dist-upgrade && apt_refresh_packages || die
 
 }
 

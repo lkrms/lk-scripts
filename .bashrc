@@ -44,6 +44,7 @@
 
     command_exists gtk-launch && echo 'alias gtk-debug="GTK_DEBUG=interactive "'
     command_exists xdg-open && echo 'alias open=xdg-open'
+    command_exists youtube-dl && echo 'alias youtube-dl-audio="youtube-dl -x --audio-format mp3 --audio-quality 0"'
 
 )"
 
@@ -77,3 +78,5 @@ function latest-dir() {
 function latest-all() {
     _latest f
 }
+
+alias duh="du -h --max-depth 1 | sort -h"
