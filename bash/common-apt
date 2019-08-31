@@ -7,7 +7,7 @@ function apt_require_package() {
 
     if get_confirmation "$(basename "$0") needs to install the $1 package. Is that OK?" Y Y; then
 
-        sudo apt-get install -y "$1" || die
+        sudo apt-get "${APT_GET_OPTIONS[@]}" install -y "$1" || die
 
     else
 
@@ -884,12 +884,23 @@ function apt_check_sources() {
 
 function apt_upgrade_all() {
 
-    APT_CACHE_DIRTY=1
     apt_make_cache_clean
 
     console_message "Installing all available package updates..." "" "$GREEN"
 
     sudo apt-get "${APT_GET_OPTIONS[@]}" dist-upgrade && apt_refresh_packages || die
+
+}
+
+function apt_purge() {
+
+    sudo apt-get "${APT_GET_OPTIONS[@]}" "$@" autoremove || die
+
+    PURGE_PACKAGES=($(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po '^.*(?=\tconfig-files$)')) || die
+
+    [ "${#PURGE_PACKAGES[@]}" -eq "0" ] || sudo apt-get "${APT_GET_OPTIONS[@]}" "$@" purge "${PURGE_PACKAGES[@]}" || die
+
+    apt_refresh_packages
 
 }
 

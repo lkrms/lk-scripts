@@ -139,9 +139,9 @@ function git_add_global_setting() {
 # Usage: dev_install_packages [queue only? (y/N)] [name of 'already installed' array]
 function dev_install_packages() {
 
-    local QUEUE_ONLY="${1:-N}" INSTALL_COMMAND ALREADY_INSTALLED_NAME="" SUDO_OR_NOT=""
+    local QUEUE_ONLY="${1:-N}" UPDATE=N INSTALL_COMMAND ALREADY_INSTALLED_NAME="" SUDO_OR_NOT=""
 
-    [ "$QUEUE_ONLY" = "N" ] || {
+    [ "$QUEUE_ONLY" = "N" ] && UPDATE="${3:-N}" || {
         ALREADY_INSTALLED_NAME="${2:-}"
         variable_exists PIP_INSTALL_QUEUE || PIP_INSTALL_QUEUE=()
         variable_exists PIP3_INSTALL_QUEUE || PIP3_INSTALL_QUEUE=()
@@ -172,10 +172,18 @@ function dev_install_packages() {
 
         if [ "${#PIP_REQUIRED[@]}" -gt "0" ]; then
 
-            INSTALL_COMMAND="${SUDO_OR_NOT}pip install"
-            [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="PIP_INSTALL_QUEUE"
+            if [ "$UPDATE" = "N" ]; then
 
-            install_or_queue "pip" "${PIP_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+                INSTALL_COMMAND="${SUDO_OR_NOT}pip install"
+                [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="PIP_INSTALL_QUEUE"
+
+                install_or_queue "pip" "${PIP_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+
+            else
+
+                eval "${SUDO_OR_NOT}pip install --upgrade --upgrade-strategy eager" "${PIP_REQUIRED[@]}"
+
+            fi
 
         fi
 
@@ -195,10 +203,18 @@ function dev_install_packages() {
 
         if [ "${#PIP3_REQUIRED[@]}" -gt "0" ]; then
 
-            INSTALL_COMMAND="${SUDO_OR_NOT}pip3 install"
-            [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="PIP3_INSTALL_QUEUE"
+            if [ "$UPDATE" = "N" ]; then
 
-            install_or_queue "pip3" "${PIP3_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip3 list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+                INSTALL_COMMAND="${SUDO_OR_NOT}pip3 install"
+                [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="PIP3_INSTALL_QUEUE"
+
+                install_or_queue "pip3" "${PIP3_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip3 list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+
+            else
+
+                eval "${SUDO_OR_NOT}pip3 install --upgrade --upgrade-strategy eager" "${PIP3_REQUIRED[@]}"
+
+            fi
 
         fi
 
@@ -206,38 +222,46 @@ function dev_install_packages() {
 
     if command_exists npm; then
 
-        function npm_install() {
+        if [ "$UPDATE" = "N" ]; then
 
-            [ -e "/usr/bin/python2" ] && eval "${SUDO_OR_NOT}npm config -g set python /usr/bin/python2" || true
+            function npm_install() {
 
-            local PACKAGE
+                [ -e "/usr/bin/python2" ] && eval "${SUDO_OR_NOT}npm config -g set python /usr/bin/python2" || true
 
-            for PACKAGE in "$@"; do
+                local PACKAGE
 
-                eval "${SUDO_OR_NOT}npm install -g" "$PACKAGE" || eval "${SUDO_OR_NOT}npm install -g --unsafe-perm" "$PACKAGE"
+                for PACKAGE in "$@"; do
 
-            done
+                    eval "${SUDO_OR_NOT}npm install -g" "$PACKAGE" || eval "${SUDO_OR_NOT}npm install -g --unsafe-perm" "$PACKAGE"
 
-        }
+                done
 
-        local NPM_REQUIRED=()
+            }
 
-        [ "$IS_MACOS" -eq "1" ] && NPM_REQUIRED+=(yarn) || true
+            local NPM_REQUIRED=()
 
-        file_to_array "$CONFIG_DIR/npm-packages" '^[[:space:]]*$' '^#'
+            [ "$IS_MACOS" -eq "1" ] && NPM_REQUIRED+=(yarn) || true
 
-        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
+            file_to_array "$CONFIG_DIR/npm-packages" '^[[:space:]]*$' '^#'
 
-            NPM_REQUIRED+=("${FILE_TO_ARRAY[@]}")
+            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-        fi
+                NPM_REQUIRED+=("${FILE_TO_ARRAY[@]}")
 
-        if [ "${#NPM_REQUIRED[@]}" -gt "0" ]; then
+            fi
 
-            INSTALL_COMMAND="npm_install"
-            [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="NPM_INSTALL_QUEUE"
+            if [ "${#NPM_REQUIRED[@]}" -gt "0" ]; then
 
-            install_or_queue "npm" "${NPM_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}npm list -g --depth=0 --parseable | tail -n +2 | gnu_grep -Po '(?<=/)[^/]*$'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+                INSTALL_COMMAND="npm_install"
+                [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="NPM_INSTALL_QUEUE"
+
+                install_or_queue "npm" "${NPM_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}npm list -g --depth=0 --parseable | tail -n +2 | gnu_grep -Po '(?<=/)[^/]*$'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+
+            fi
+
+        else
+
+            eval "${SUDO_OR_NOT}npm update -g"
 
         fi
 
@@ -245,29 +269,31 @@ function dev_install_packages() {
 
     if command_exists php; then
 
-        local INI_ROOT COMPOSER_REQUIRED
+        if [ "$UPDATE" = "N" ]; then
 
-        for INI_ROOT in /etc/php /usr/local/etc/php; do
+            local INI_ROOT COMPOSER_REQUIRED
 
-            [ -d "$INI_ROOT" ] && php_apply_developer_settings "$INI_ROOT" || true
+            for INI_ROOT in /etc/php /usr/local/etc/php; do
 
-        done
+                [ -d "$INI_ROOT" ] && php_apply_developer_settings "$INI_ROOT" || true
 
-        dir_make_and_own "/usr/local/lib/composer"
+            done
 
-        mkdir -p "$LOCAL_DIR/composer"
+            dir_make_and_own "/usr/local/lib/composer"
 
-        pushd "$LOCAL_DIR/composer" >/dev/null || die
+            mkdir -p "$LOCAL_DIR/composer"
 
-        if [ ! -e "composer.phar" ]; then
+            pushd "$LOCAL_DIR/composer" >/dev/null || die
 
-            "$ROOT_DIR/bash/composer-install.sh" || die
+            if [ ! -e "composer.phar" ]; then
 
-        fi
+                "$ROOT_DIR/bash/composer-install.sh" || die
 
-        if [ ! -e "composer.json" ]; then
+            fi
 
-            cat <<EOF >"composer.json"
+            if [ ! -e "composer.json" ]; then
+
+                cat <<EOF >"composer.json"
 {
     "config": {
         "vendor-dir": "/usr/local/lib/composer",
@@ -276,27 +302,44 @@ function dev_install_packages() {
 }
 EOF
 
+            fi
+
+            COMPOSER_REQUIRED=("composer/composer")
+
+            file_to_array "$CONFIG_DIR/composer-packages" '^[[:space:]]*$' '^#'
+
+            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
+
+                COMPOSER_REQUIRED+=("${FILE_TO_ARRAY[@]}")
+
+            fi
+
+            INSTALL_COMMAND="./composer.phar require"
+            [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="COMPOSER_INSTALL_QUEUE"
+
+            # if needed: it's slow, but "./composer.phar show -aN" returns a list of all available composer packages
+            install_or_queue "composer" "${COMPOSER_REQUIRED[*]}" Y package packages "./composer.phar show -ND" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+
+            popd >/dev/null
+
+        elif [ -e "$LOCAL_DIR/composer/composer.phar" ] && [ -e "$LOCAL_DIR/composer/composer.json" ]; then
+
+            pushd "$LOCAL_DIR/composer" >/dev/null || die
+
+            ./composer.phar self-update
+            ./composer.phar update --with-dependencies
+
+            popd >/dev/null
+
         fi
-
-        COMPOSER_REQUIRED=("composer/composer")
-
-        file_to_array "$CONFIG_DIR/composer-packages" '^[[:space:]]*$' '^#'
-
-        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-            COMPOSER_REQUIRED+=("${FILE_TO_ARRAY[@]}")
-
-        fi
-
-        INSTALL_COMMAND="./composer.phar require"
-        [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="COMPOSER_INSTALL_QUEUE"
-
-        # if needed: it's slow, but "./composer.phar show -aN" returns a list of all available composer packages
-        install_or_queue "composer" "${COMPOSER_REQUIRED[*]}" Y package packages "./composer.phar show -ND" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
-
-        popd >/dev/null
 
     fi
+
+}
+
+function dev_update_packages() {
+
+    dev_install_packages N "" Y
 
 }
 

@@ -31,7 +31,7 @@ for p in "${PACKAGES[@]}"; do
 
     apt_package_installed "$p" || continue
 
-    DOWNLOAD_INFO=($(apt-get download --print-uris "$p")) && [ "${#DOWNLOAD_INFO[@]}" -ge "2" ] || continue
+    DOWNLOAD_INFO=($(apt-get "${APT_GET_OPTIONS[@]}" download --print-uris "$p")) && [ "${#DOWNLOAD_INFO[@]}" -ge "2" ] || continue
 
     eval url="${DOWNLOAD_INFO[0]}"
     EXTRACT_PATH="$TEMP_DIR/extract/${DOWNLOAD_INFO[1]}"

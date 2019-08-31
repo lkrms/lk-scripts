@@ -11,7 +11,9 @@
     # shellcheck source=bash/common
     . "$SCRIPT_DIR/bash/common"
 
-    ADD_TO_PATH=("$ROOT_DIR" "$ROOT_DIR/bash" "$ROOT_DIR/synergy")
+    variable_exists "ADD_TO_PATH" || ADD_TO_PATH=()
+
+    ADD_TO_PATH+=("$ROOT_DIR" "$ROOT_DIR/bash" "$ROOT_DIR/synergy")
 
     [ "$IS_MACOS" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/macos")
     [ "$IS_LINUX" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/linux")
@@ -41,5 +43,37 @@
     echo "export LINAC_ROOT_DIR=\"$ROOT_DIR\""
 
     command_exists gtk-launch && echo 'alias gtk-debug="GTK_DEBUG=interactive "'
+    command_exists xdg-open && echo 'alias open=xdg-open'
 
 )"
+
+function _latest() {
+
+    local TYPE="${1:-}" COMMAND
+
+    [ "${#TYPE}" -eq "1" ] && shift || TYPE="f"
+
+    COMMAND=(find . -xdev \()
+
+    [ "$#" -eq "0" ] || COMMAND+=(\( "$@" -prune \) -o)
+
+    COMMAND+=(\( -type "$TYPE" -print0 \) \))
+
+    "${COMMAND[@]}" | xargs -0 stat --format '%Y :%y %n' | sort -nr | cut -d: -f2- | less
+
+}
+
+# files after excluding .git directories
+function latest() {
+    _latest f -type d -name .git
+}
+
+# directories after excluding .git directories
+function latest-dir() {
+    _latest d -type d -name .git
+}
+
+# all files
+function latest-all() {
+    _latest f
+}

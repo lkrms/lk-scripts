@@ -22,3 +22,5 @@ if command_exists apt-get; then
     apt_upgrade_all
 
 fi
+
+dev_update_packages
