@@ -74,7 +74,7 @@
         PHP_PATHS=(/usr/local/opt/php*)
 
         [ "${#PHP_PATHS[@]}" -lt "2" ] ||
-            echo -e "WARNING: multiple PHP installations detected and added to PATH:\n$(printf '- %s\n' "${PHP_PATHS[@]}")" >&2
+            echo -e "WARNING: multiple PHP installations detected and added to PATH:\n$(printf -- '- %s\n' "${PHP_PATHS[@]}")" >&2
 
         for PHP_PATH in "${!PHP_PATHS[@]}"; do
 
