@@ -605,7 +605,7 @@ fi
 
 if apt_package_installed mariadb-server; then
 
-    move_file_delete_link "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
+    sudo_function move_file_delete_link "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
 
     if [ -e "$CONFIG_DIR/mariadb-settings.cnf" ]; then
 
