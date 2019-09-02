@@ -648,7 +648,7 @@ function download_urls() {
         fi
 
         if HEADER="$(
-            set -euo pipefail
+            . "$SUBSHELL_SCRIPT_PATH" || exit
             echo "$HEADERS" | grep -Ei '^[[:space:]]*Content-Disposition:' | tail -n1 | sed -E 's/(^[[:space:]]*Content-Disposition:)//ig'
         )"; then
 
@@ -661,7 +661,7 @@ function download_urls() {
                 HEADER="${HEADER_PARTS[$i]}"
 
                 if FILENAME="$(
-                    set -euo pipefail
+                    . "$SUBSHELL_SCRIPT_PATH" || exit
                     echo "$HEADER" | grep -Pio '(?<=^filename=).*' | sed -E 's/^[[:space:]]*("?)(.*)\1[[:space:]]*$/\2/g'
                 )"; then
 

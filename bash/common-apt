@@ -184,7 +184,7 @@ function apt_ubuntu_archive_url() {
     if [ -z "${UBUNTU_ARCHIVE_URL:-}" ]; then
 
         UBUNTU_ARCHIVE_URL="$(
-            set -euo pipefail
+            . "$SUBSHELL_SCRIPT_PATH" || exit
             grep -Eo '\bhttps?://([[:alnum:]]+\.)archive\.ubuntu\.com/ubuntu\b' /etc/apt/sources.list | head -n1
         )/" || UBUNTU_ARCHIVE_URL="http://archive.ubuntu.com/ubuntu/"
 
@@ -741,7 +741,7 @@ function do_apt_install_deb() {
     DOWNLOAD_URLS_SKIP_REGEX='^\s*HTTP/[0-9.]+\s+429\b'
 
     PATHS="$(
-        set -euo pipefail
+        . "$SUBSHELL_SCRIPT_PATH" || exit
         download_urls "$@"
     )" || die
 
@@ -756,7 +756,7 @@ function do_apt_install_deb() {
     for path in "${!DEB_PATHS[@]}"; do
 
         DEB_PACKAGE="$(
-            set -euo pipefail
+            . "$SUBSHELL_SCRIPT_PATH" || exit
 
             # shellcheck disable=SC2016
             dpkg-deb --showformat '${Package}' -W "${DEB_PATHS[$path]}" | tail -n 1
@@ -765,7 +765,7 @@ function do_apt_install_deb() {
         if apt_package_installed "$DEB_PACKAGE"; then
 
             DEB_VERSION="$(
-                set -euo pipefail
+                . "$SUBSHELL_SCRIPT_PATH" || exit
 
                 # shellcheck disable=SC2016
                 dpkg-deb --showformat '${Version}' -W "${DEB_PATHS[$path]}" | tail -n 1
@@ -950,7 +950,7 @@ function apt_get_new_configuration_files() {
     command_exists debsums || apt_force_install_packages "debsums"
 
     sudo find /etc -type f | grep -vFf <(
-        set -euo pipefail
+        . "$SUBSHELL_SCRIPT_PATH" || exit
         sudo debsums -e 2>/dev/null | sed -E 's/[[:space:]]*[A-Z]+$//' || die
     ) || die
 

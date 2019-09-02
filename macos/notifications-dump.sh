@@ -22,7 +22,7 @@ DUMP_DIR="$TEMP_DIR/notifications/$(date_get_timestamp)"
 mkdir -p "$DUMP_DIR"
 
 DUMP_COUNT="$(
-    set -euo pipefail
+    . "$SUBSHELL_SCRIPT_PATH" || exit
     sqlite3 "$DB_PATH" 'select writefile("'"$DUMP_DIR"'/" || r.rec_id || "-" || a.identifier || ".plist", data) from record r inner join app a on r.app_id = a.app_id where r.presented = 1' | wc -l | tr -d '[:space:]'
 )"
 

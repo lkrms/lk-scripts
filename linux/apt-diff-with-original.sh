@@ -19,7 +19,7 @@ assert_not_root
 FILE_PATH="$(readlink -e "$1")"
 
 PACKAGES=($(
-    set -euo pipefail
+    . "$SUBSHELL_SCRIPT_PATH" || exit
     dpkg-query -S "$FILE_PATH" | sed 's/:.*$//' | sort | uniq
 ))
 

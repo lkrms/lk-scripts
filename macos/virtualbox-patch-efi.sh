@@ -47,7 +47,7 @@ fi
 EFI_DEVICE=$(hdiutil attach -nomount "$DST_SPARSE")
 
 EFI_DEVICE=$(
-  set -euo pipefail
+  . "$SUBSHELL_SCRIPT_PATH" || exit
   echo "$EFI_DEVICE" | grep -Eo '/dev/disk[[:digit:]]{1}' | head -n1
 )
 
