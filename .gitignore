@@ -5,6 +5,6 @@
 
 /config/*
 !/config/xkb
-!/config/*-default
-!/config/*-example
+!/config/*-default*
+!/config/*-example*
 !/config/README.md

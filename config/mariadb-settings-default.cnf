@@ -1,0 +1,4 @@
+[mysqld]
+max_allowed_packet = 128M
+table_open_cache = 250
+innodb_file_per_table = 1
