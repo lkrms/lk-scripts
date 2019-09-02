@@ -603,7 +603,44 @@ if apt_package_installed "samba"; then
 
 fi
 
-if apt_package_installed mariadb-server; then
+if apt_package_installed "apache2"; then
+
+    console_message "Configuring Apache..." "" "$CYAN"
+
+    dir_make_and_own /var/www/virtual
+
+    mkdir -p /var/www/virtual/127.0.0.1
+
+    # TODO: abstract this to a function like is_user_in_group
+    groups | grep -Eq '(\s|^)(www-data)(\s|$)' || sudo adduser "$(id -un)" "www-data"
+    groups "www-data" | grep -Eo '[^:]+$' | grep -Eq '(\s|^)'"$(id -gn)"'(\s|$)' || sudo adduser "www-data" "$(id -gn)"
+
+    sudo_function move_file_delete_link "/etc/apache2/sites-available/000-virtual-linacreative.conf"
+
+    if [ -e "$CONFIG_DIR/apache2-virtual.conf" ]; then
+
+        sudo ln -s "$CONFIG_DIR/apache2-virtual.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf"
+
+    elif [ -e "$CONFIG_DIR/apache2-virtual-default.conf" ]; then
+
+        sudo ln -s "$CONFIG_DIR/apache2-virtual-default.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf"
+
+    fi
+
+    sudo rm -f /etc/apache2/sites-enabled/*.conf
+    sudo ln -s ../sites-available/000-virtual-linacreative.conf /etc/apache2/sites-enabled/000-virtual-linacreative.conf
+
+    sudo a2enmod headers
+    sudo a2enmod rewrite
+    sudo a2enmod vhost_alias
+
+    sudo service apache2 restart
+
+fi
+
+if apt_package_installed "mariadb-server"; then
+
+    console_message "Configuring MariaDB..." "" "$CYAN"
 
     sudo_function move_file_delete_link "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
 
@@ -617,11 +654,12 @@ if apt_package_installed mariadb-server; then
 
     fi
 
-    sudo service mysql reload
+    # reload isn't enough
+    sudo service mysql restart
 
 fi
 
-if ! apt_package_installed python-wnck; then
+if ! apt_package_installed "python-wnck"; then
 
     apt_install_deb "http://old-releases.ubuntu.com/ubuntu/pool/main/g/gnome-python-desktop/python-wnck_2.32.0-0ubuntu6_amd64.deb"
 
