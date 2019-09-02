@@ -375,8 +375,6 @@ apt_install_packages "development" "\
 
 apt_install_packages "development services" "\
  apache2\
- libapache2-mod-fastcgi?\
- libapache2-mod-fcgid?\
  libapache2-mod-php*-\
  mariadb-server\
  mongodb-org\
@@ -461,7 +459,7 @@ for DEB_URL in "${DEB_URLS[@]}"; do
 
 done
 
-apt_remove_packages apport deja-dup filezilla fonts-twemoji-svginot libxss-dev
+apt_remove_packages apport deja-dup filezilla fonts-twemoji-svginot libapache2-mod-fastcgi libapache2-mod-fcgid libxss-dev
 
 case "${XDG_CURRENT_DESKTOP:-}" in
 
@@ -631,6 +629,7 @@ if apt_package_installed "apache2"; then
     sudo ln -s ../sites-available/000-virtual-linacreative.conf /etc/apache2/sites-enabled/000-virtual-linacreative.conf
 
     sudo a2enmod headers
+    sudo a2enmod proxy_fcgi
     sudo a2enmod rewrite
     sudo a2enmod vhost_alias
 
