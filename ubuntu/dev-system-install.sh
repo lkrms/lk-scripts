@@ -26,6 +26,7 @@ autokey-gtk
 awf
 blueman
 caffeine
+caprine
 catfish
 code
 com.github.cassidyjames.ideogram
@@ -44,14 +45,18 @@ gimp
 git-cola
 gnome-color-manager
 gnome-tweaks
+gnome-session-canberra
 google-chrome-stable
 gparted
 guake
 handbrake-gtk
 indicator-multiload
 inkscape
+intel-gpu-tools
 keepassxc
 libgtk-3-dev
+libcanberra-gtk-module
+libcanberra-gtk3-module
 libreoffice
 makemkv-bin
 makemkv-oss
@@ -59,6 +64,7 @@ master-pdf-editor
 meld
 mkvtoolnix-gui
 owncloud-client
+plank
 qpdfview
 quicktile
 rapid-photo-downloader
@@ -68,15 +74,21 @@ rescuetime
 scribus
 seahorse
 skypeforlinux
+slack-desktop
 speedcrunch
+spotify-client
 stretchly
 sublime-merge
 sublime-text
 synaptic
 synergy
+t1-xfree86-nonfree
+teams-for-linux
 thunderbird
 tilix
 transmission
+trimage
+twist
 usb-creator-gtk
 vlc
 wingpanel-indicator-ayatana
@@ -85,7 +97,16 @@ x11vnc
 xautomation
 xclip
 xdotool
-xscreensaver*
+xfce4-clipman
+xfonts-100dpi
+xfonts-75dpi
+xscreensaver
+xscreensaver-data
+xscreensaver-data-extra
+xscreensaver-gl
+xscreensaver-gl-extra
+xscreensaver-screensaver-bsod
+xscreensaver-screensaver-webcollage
 "
 
 offer_sudo_password_bypass
@@ -254,7 +275,6 @@ apt_install_packages "desktop essentials" "\
  lame\
  libdvd-pkg!\
  libreoffice\
- libxss-dev\
  makemkv-bin\
  makemkv-oss\
  meld\
@@ -294,6 +314,8 @@ apt_install_packages "desktop essentials" "\
 
 apt_install_packages "PDF tools" "\
  ghostscript\
+ mupdf\
+ mupdf-tools\
  pandoc\
  texlive\
  texlive-luatex\
@@ -439,7 +461,7 @@ for DEB_URL in "${DEB_URLS[@]}"; do
 
 done
 
-apt_remove_packages apport deja-dup filezilla fonts-twemoji-svginot
+apt_remove_packages apport deja-dup filezilla fonts-twemoji-svginot libxss-dev
 
 case "${XDG_CURRENT_DESKTOP:-}" in
 
@@ -684,82 +706,17 @@ if [ "${#HOLD_PACKAGES[@]}" -gt "0" ] && dpkg-query -f '${Version}\n' -W "${HOLD
 
 fi
 
-apt_upgrade_all
+"$ROOT_DIR/bash/dev-system-update.sh"
 
-console_message "Installing all available snap updates..." "" "$GREEN"
-sudo snap refresh
+apt_purge --no-y
 
-ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | sort | uniq))
+ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | grep -Eo '[^/]+$' | sort | uniq))
 console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "" "$BLUE"
-COLUMNS="$(tput cols)"
-apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")"
+COLUMNS="$(tput cols)" && apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")" || apt_pretty_packages "${ALL_PACKAGES[*]}" Y
 
 if apt_package_available "linux-generic-hwe-$DISTRIB_RELEASE" && apt_package_available "xserver-xorg-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "xserver-xorg-hwe-$DISTRIB_RELEASE"; then
 
     echo
     console_message "To use the Ubuntu LTS enablement stack, but only for X server, run:" "sudo apt-get install linux-generic-hwe-${DISTRIB_RELEASE}- xserver-xorg-hwe-$DISTRIB_RELEASE" "$BOLD" "$CYAN"
 
-elif apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE"; then
-
-    echo
-    if get_confirmation "Ubuntu LTS enablement package ${BOLD}linux-generic-hwe-${DISTRIB_RELEASE}${RESET} is currently installed. Remove it and any related kernel packages?" N Y; then
-
-        apt_remove_packages "linux-generic-hwe-$DISTRIB_RELEASE" "linux-image-generic-hwe-$DISTRIB_RELEASE" "linux-headers-generic-hwe-18.04-$DISTRIB_RELEASE"
-
-        apt_install_packages "kernel" "linux-generic" N
-
-        apt_process_queue
-
-    fi
-
 fi
-
-CURRENT_KERNEL=($(apt-cache depends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances linux-generic | grep -E '^linux-image-[-.0-9]+-generic$'))
-
-if [ "${#CURRENT_KERNEL[@]}" -eq "1" ] && apt_package_installed "${CURRENT_KERNEL[0]}"; then
-
-    CURRENT_KERNEL_VERSION="$(dpkg-query -f '${Version}\n' -W "${CURRENT_KERNEL[0]}")"
-
-    OTHER_KERNEL_PACKAGES=()
-
-    IFS=$'\t'
-
-    while IFS= read -r LINE; do
-
-        PACKAGE=($LINE)
-
-        if dpkg --compare-versions "${PACKAGE[1]}" gt "$CURRENT_KERNEL_VERSION"; then
-
-            OTHER_KERNEL_PACKAGES+=("${PACKAGE[0]}")
-
-        fi
-
-    done < <(dpkg-query -f '${binary:Package}\t${Version}\t${db:Status-Status}\n' -W "linux-image-*-generic" "linux-modules-*-generic" "linux-headers-*" | grep $'\tinstalled$' | cut -d $'\t' -f1-2 | grep -v $'^linux-headers-generic\t')
-
-    unset IFS
-
-    if [ "${#OTHER_KERNEL_PACKAGES[@]}" -gt "0" ]; then
-
-        console_message "Most recent kernel provided by the ${BOLD}linux-generic${RESET} package:" "$CURRENT_KERNEL_VERSION" "$CYAN"
-
-        console_message "${#OTHER_KERNEL_PACKAGES[@]} kernel $(single_or_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) to delete:" "${OTHER_KERNEL_PACKAGES[*]}" "$BOLD" "$YELLOW"
-
-        if get_confirmation "Delete the kernel $(single_or_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) listed above?" N Y; then
-
-            sudo debconf-set-selections <<EOF
-linux-base linux-base/removing-running-kernel boolean false
-EOF
-
-            sudo DEBIAN_FRONTEND=noninteractive apt-get "${APT_GET_OPTIONS[@]}" remove "${OTHER_KERNEL_PACKAGES[@]}"
-
-        fi
-
-    fi
-
-else
-
-    console_message "Unable to identify most recent kernel provided by the ${BOLD}linux-generic${RESET} package" "" "$BOLD" "$RED"
-
-fi
-
-sudo apt-get "${APT_GET_OPTIONS[@]}" autoremove

@@ -458,6 +458,19 @@ function array_join_oxford() {
 
 }
 
+# Usage: sort_words "these words need sorting"
+# (output would be "need sorting these words")
+function sort_words() {
+
+    local WORDS
+
+    # shellcheck disable=SC2086
+    WORDS=($(printf '%s\n' $1 | sort | uniq))
+
+    echo "${WORDS[*]}"
+
+}
+
 function has_argument() {
 
     array_search "$1" ORIGINAL_ARGUMENTS >/dev/null

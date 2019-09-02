@@ -31,6 +31,12 @@ function apt_refresh_packages() {
         )" || die
         APT_GUI_PACKAGES_AUTO=1
 
+    elif [ "$APT_GUI_PACKAGES_AUTO" -eq "-1" ]; then
+
+        # shellcheck disable=SC2086
+        APT_GUI_PACKAGES="$(printf '%s\n' $APT_GUI_PACKAGES | sort | uniq)"
+        APT_GUI_PACKAGES_AUTO=0
+
     fi
 
 }
@@ -57,7 +63,6 @@ function apt_package_available() {
 
 function apt_package_is_gui() {
 
-    apt_make_cache_clean
     apt_package_available "$1" && echo "$APT_GUI_PACKAGES" | grep -E "^$1"'(:.*)?$' >/dev/null 2>&1
 
 }
@@ -72,10 +77,11 @@ function apt_package_is_cli() {
 # Usage: apt_filter_packages "package1 package2 package3-" [include removed? (Y/n)]
 function apt_filter_packages() {
 
-    local PACKAGES=($1) INCLUDE_REMOVED="${2:-Y}" FILTERED=() p
+    local PACKAGES INCLUDE_REMOVED="${2:-Y}" FILTERED=() p
 
-    PACKAGES=($(printf '%s\n' "${PACKAGES[@]}" | sort | uniq))
+    PACKAGES=($(sort_words "$1"))
 
+    # TODO: replace loop with comm-based method (as in apt_pretty_packages)
     for p in "${PACKAGES[@]}"; do
 
         if [ "${p:(-1)}" = "-" ]; then
@@ -96,53 +102,75 @@ function apt_filter_packages() {
 
 }
 
-# Underlines "gui" packages, and colours packages being removed red. Optionally reflows text.
-# Usage: apt_pretty_packages "package1 package2 package3-" [reflow text? (y/N)] ["$BLUE" ...]
+# Underlines "gui" packages and highlights packages being removed. Optionally reflows text.
+# Usage: apt_pretty_packages "package1 package2 package3-" [reflow text? (y/N)]
 function apt_pretty_packages() {
 
-    local PACKAGES=($1) FORMATTED="$1" REFLOW="${2:-N}" REFLOWED=() COLOUR_RESET="${RESET}" p q s r
+    local FORMATTED="$1" REFLOW="${2:-N}" ALL_PACKAGES REMOVE_PACKAGES GUI_PACKAGES ADD_PACKAGES REFLOWED GUI_PACKAGES_JOINED FIND REPLACE p
 
-    [ "$#" -gt "2" ] && {
-        shift
-        shift
-        COLOUR_RESET="$(printf '%s' "$@")"
-    } || true
+    apt_make_cache_clean
 
-    for p in "${PACKAGES[@]}"; do
+    # shellcheck disable=SC2086
+    ALL_PACKAGES="$(printf '%s\n' $1 | gnu_grep -Po '^.*[^-]+(?=-?$)' | sort | uniq)" || true
 
-        s="$(sed_escape_search "$p")"
-        q="$p"
-
-        if [ "${p:(-1)}" = "-" ]; then
-
-            p="${p::(-1)}"
-            q="${BOLD}${RED}${p} "
-
-        fi
-
-        apt_package_is_gui "$p" && q="${UNDERLINE}${q}${NO_UNDERLINE}"
-        q="${q}${COLOUR_RESET}"
-
-        r="$(sed_escape_replace "$q")"
-
-        if [ "$REFLOW" = "N" ]; then
-
-            FORMATTED="$(echo "$FORMATTED" | sed -E 's/(\s|^)'"$s"'(\s|$)/\1'"$r"'\2/g')"
-
-        else
-
-            # remove trailing space
-            REFLOWED+=("${q% }")
-
-        fi
-
-    done
+    # shellcheck disable=SC2086
+    REMOVE_PACKAGES=($(printf '%s\n' $1 | gnu_grep -Po '^.*[^-]+(?=-$)' | sort | uniq)) || true
 
     if [ "$REFLOW" = "N" ]; then
+
+        GUI_PACKAGES=($(comm -12 <(echo "$ALL_PACKAGES") <(echo "$APT_GUI_PACKAGES")))
+
+        for p in "${REMOVE_PACKAGES[@]}"; do
+
+            # replace the trailing hyphen with a space to preserve formatting
+            FIND="(\s|^)$(sed_escape_search "$p")-(\s|\$)"
+            REPLACE="\1$(sed_escape_replace "${BOLD}${RED}${p}${RESET} ")\2"
+
+            FORMATTED="$(sed -E "s/${FIND}/${REPLACE}/g" <<<"$FORMATTED")"
+
+        done
+
+        for p in "${GUI_PACKAGES[@]}"; do
+
+            [ -n "$RED" ] && FIND="(\s|^|$(sed_escape_search "$RED"))$(sed_escape_search "$p")(\s|\$|$(sed_escape_search "$RESET"))" || FIND="(\s|^)$(sed_escape_search "$p")(\s|\$)"
+            REPLACE="\1$(sed_escape_replace "${UNDERLINE}${p}${NO_UNDERLINE}")\2"
+
+            FORMATTED="$(sed -E "s/${FIND}/${REPLACE}/g" <<<"$FORMATTED")"
+
+        done
 
         echo "$FORMATTED"
 
     else
+
+        # shellcheck disable=SC2086
+        ADD_PACKAGES="$(printf '%s\n' $1 | grep -E '^.*[^-]+$' | sort | uniq)" || true
+
+        REFLOWED=($(comm -23 <(echo "$ADD_PACKAGES") <(echo "$APT_GUI_PACKAGES")))
+
+        GUI_PACKAGES=($(comm -12 <(echo "$ADD_PACKAGES") <(echo "$APT_GUI_PACKAGES")))
+
+        for p in "${GUI_PACKAGES[@]}"; do
+
+            REFLOWED+=("${UNDERLINE}${p}${NO_UNDERLINE}")
+
+        done
+
+        GUI_PACKAGES_JOINED="$(comm -12 <(echo "$ALL_PACKAGES") <(echo "$APT_GUI_PACKAGES"))"
+
+        for p in "${REMOVE_PACKAGES[@]}"; do
+
+            if [[ "$GUI_PACKAGES_JOINED" =~ ([[:space:]]|^)"$p"([[:space:]]|$) ]]; then
+
+                REFLOWED+=("${BOLD}${RED}${UNDERLINE}${p}${RESET}")
+
+            else
+
+                REFLOWED+=("${BOLD}${RED}${p}${RESET}")
+
+            fi
+
+        done
 
         echo "${REFLOWED[*]}"
 
@@ -498,7 +526,7 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "$(apt_filter_packages "${INSTALL[*]}")" Y "$BOLD" "$MAGENTA")" "$BOLD" "$MAGENTA"
+            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "$(sort_words "${INSTALL[*]}")" Y)" "$BOLD" "$MAGENTA"
 
             [ "${#QUEUE[@]}" -gt "0" ] && {
                 console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$BOLD" "$MAGENTA"
@@ -532,7 +560,7 @@ function apt_install_packages() {
             INSTALL_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" N))
             SILENT_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" Y))
             PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}"))
-            console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y "$GREEN")" "$GREEN"
+            console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y)" "$GREEN"
 
             for q in INSTALL SILENT; do
 
@@ -823,7 +851,7 @@ function apt_process_queue() {
         INSTALL_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "${APT_REMOVE_QUEUE[*]}" "${APT_SILENCED[*]}" N))
         SILENT_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]}" "${APT_SUPPRESSED[*]}" "" "${APT_SILENCED[*]}" Y))
         PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}"))
-        console_message "Applying ${#PRETTY_QUEUE[@]} package $(single_or_plural ${#PRETTY_QUEUE[@]} change changes):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y "$GREEN")" "$GREEN"
+        console_message "Applying ${#PRETTY_QUEUE[@]} package $(single_or_plural ${#PRETTY_QUEUE[@]} change changes):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y)" "$GREEN"
 
         for q in INSTALL SILENT; do
 
@@ -894,9 +922,12 @@ function apt_upgrade_all() {
 
 function apt_purge() {
 
+    local PURGE_PACKAGES
+
     sudo apt-get "${APT_GET_OPTIONS[@]}" "$@" autoremove || die
 
-    PURGE_PACKAGES=($(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po '^.*(?=\tconfig-files$)')) || die
+    PURGE_PACKAGES=($(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W)) || die
+    PURGE_PACKAGES=($(printf '%s\n' "${PURGE_PACKAGES[@]}" | gnu_grep -Po '^.*(?=\tconfig-files$)')) || true
 
     [ "${#PURGE_PACKAGES[@]}" -eq "0" ] || sudo apt-get "${APT_GET_OPTIONS[@]}" "$@" purge "${PURGE_PACKAGES[@]}" || die
 
@@ -926,7 +957,7 @@ function apt_get_new_configuration_files() {
 }
 
 APT_CACHE_DIRTY=1
-APT_GUI_PACKAGES_AUTO=0
+APT_GUI_PACKAGES_AUTO=-1
 APT_DEB_PATH="$CACHE_DIR/deb"
 APT_GET_OPTIONS=(-o "Acquire::ForceIPv4=true" -y)
 APT_PPA_REGISTRY=()
