@@ -603,6 +603,24 @@ if apt_package_installed "samba"; then
 
 fi
 
+if apt_package_installed mariadb-server; then
+
+    move_file_delete_link "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
+
+    if [ -e "$CONFIG_DIR/mariadb-settings.cnf" ]; then
+
+        sudo ln -s "$CONFIG_DIR/mariadb-settings.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
+
+    elif [ -e "$CONFIG_DIR/mariadb-settings-default.cnf" ]; then
+
+        sudo ln -s "$CONFIG_DIR/mariadb-settings-default.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
+
+    fi
+
+    sudo service mysql reload
+
+fi
+
 if ! apt_package_installed python-wnck; then
 
     apt_install_deb "http://old-releases.ubuntu.com/ubuntu/pool/main/g/gnome-python-desktop/python-wnck_2.32.0-0ubuntu6_amd64.deb"
