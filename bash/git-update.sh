@@ -234,6 +234,14 @@ PUSH_REMOTE="%(push:remotename)"
 
         fi
 
+        if git rev-parse --verify -q refs/stash; then
+
+            STASH_COUNT="$(git rev-list --walk-reflogs --count refs/stash)"
+
+            WARNINGS+=("$STASH_COUNT stashes in repository $REPO_LONG_NAME")
+
+        fi
+
         GIT_FILEMODE="$(git config --local core.fileMode 2>/dev/null)" || true
 
         if is_windows; then
