@@ -69,6 +69,14 @@ function gnu_sed() {
 
 }
 
+function is_virtual() {
+
+    assert_is_linux
+
+    grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo
+
+}
+
 function assert_is_macos() {
 
     is_macos || die "Error: $(basename "$0") is not supported on this platform (macOS required)"

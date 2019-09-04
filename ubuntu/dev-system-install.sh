@@ -21,6 +21,7 @@ assert_has_gui
 assert_not_root
 
 APT_GUI_PACKAGES="\
+audacity
 autokey-common
 autokey-gtk
 awf
@@ -44,8 +45,8 @@ ghostwriter
 gimp
 git-cola
 gnome-color-manager
-gnome-tweaks
 gnome-session-canberra
+gnome-tweaks
 google-chrome-stable
 gparted
 guake
@@ -54,9 +55,9 @@ indicator-multiload
 inkscape
 intel-gpu-tools
 keepassxc
-libgtk-3-dev
 libcanberra-gtk-module
 libcanberra-gtk3-module
+libgtk-3-dev
 libreoffice
 makemkv-bin
 makemkv-oss
@@ -163,6 +164,7 @@ apt_register_ppa "phoerious/keepassxc" "keepassxc"
 apt_register_ppa "recoll-backports/recoll-1.15-on" "recoll *-recoll"
 apt_register_ppa "scribus/ppa" "scribus*"
 apt_register_ppa "stebbins/handbrake-releases" "handbrake-*"
+apt_register_ppa "ubuntuhandbook1/audacity" "audacity*"
 apt_register_ppa "wereturtle/ppa" "ghostwriter"
 
 # ditto for non-PPA repositories
@@ -187,7 +189,6 @@ apt_install_packages "essential utilities" "\
  cifs-utils\
  curl\
  debsums\
- fio\
  hfsprogs\
  hwinfo\
  ksh\
@@ -197,23 +198,31 @@ apt_install_packages "essential utilities" "\
  mediainfo\
  msmtp\
  net-tools\
+ ntp\
+ ntpdate\
  openssh-server\
  ppa-purge\
  pv\
  s-nail\
  screen\
  syslinux-utils\
- tlp-rdw\
- tlp\
  traceroute\
- trickle\
  vim\
  whois\
 " N
 
-if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
+if ! is_virtual; then
 
-    apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms" N
+    apt_install_packages "power management" "\
+ tlp\
+ tlp-rdw\
+" N
+
+    if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
+
+        apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms" N
+
+    fi
 
 fi
 
@@ -240,8 +249,14 @@ apt_install_packages "performance monitoring" "\
  sysstat\
 " N
 
+apt_install_packages "load testing" "\
+ fio\
+ trickle\
+" N
+
 apt_install_packages "desktop essentials" "\
  abcde\
+ audacity\
  awf\
  beets\
  blueman\
@@ -293,7 +308,6 @@ apt_install_packages "desktop essentials" "\
  sublime-text\
  sxhkd\
  synaptic\
- synergy\
  t1-xfree86-nonfree\
  thunderbird\
  tilix\
@@ -394,78 +408,11 @@ fi
 apt_install_packages "VirtualBox" "virtualbox-6.0"
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
-apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.2-stable-8c010140/synergy_1.10.2.stable_b10%2B8c010140_ubuntu18_amd64.deb"
-apt_install_deb "https://displaycal.net/download/xUbuntu_${DISTRIB_RELEASE}/amd64/DisplayCAL.deb"
-apt_install_deb "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
-
-DEB_URLS=()
-IFS=$'\n'
-
-# AutoKey
-DEB_URLS+=($(
-    # shellcheck source=../bash/common-subshell
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://api.github.com/repos/autokey/autokey/releases/latest" 'autokey-(common|gtk).*\.deb$' | head -n2
-))
-
-# Caprine
-DEB_URLS+=("$(
-    # shellcheck source=../bash/common-subshell
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://api.github.com/repos/sindresorhus/caprine/releases/latest" '_amd64\.deb$' | head -n1
-)")
-
-# Caret Beta
-DEB_URLS+=("$(
-    # shellcheck source=../bash/common-subshell
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1
-)")
-
-# Master PDF Editor
-DEB_URLS+=("$(
-    # shellcheck source=../bash/common-subshell
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1
-)")
-
-# Slack
-DEB_URLS+=("$(
-    # shellcheck source=../bash/common-subshell
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1
-)")
-
-# stretchly
-DEB_URLS+=("$(
-    # shellcheck source=../bash/common-subshell
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1
-)")
-
-# Teams for Linux
-DEB_URLS+=("$(
-    # shellcheck source=../bash/common-subshell
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    get_urls_from_url "https://api.github.com/repos/IsmaelMartinez/teams-for-linux/releases/latest" '_amd64\.deb$' | head -n1
-)")
-
-unset IFS
-
-for DEB_URL in "${DEB_URLS[@]}"; do
-
-    apt_install_deb "$DEB_URL"
-    console_message "Queued for download:" "${NO_WRAP}${DEB_URL}${WRAP}" "$BOLD" "$YELLOW"
-
-done
-
-apt_remove_packages apport deja-dup filezilla fonts-twemoji-svginot libapache2-mod-fastcgi libapache2-mod-fcgid libxss-dev
-
 case "${XDG_CURRENT_DESKTOP:-}" in
 
 XFCE)
 
-    apt_install_packages "XFCE extras" "gnome-session-canberra libcanberra-gtk-module libcanberra-gtk3-module plank sox ubuntu-sounds xfce4-clipman xscreensaver xscreensaver-data xscreensaver-data-extra xscreensaver-gl xscreensaver-gl-extra xscreensaver-screensaver-bsod xscreensaver-screensaver-webcollage"
+    apt_install_packages "XFCE extras" "gnome-session-canberra libcanberra-gtk-module libcanberra-gtk3-module plank sox ubuntu-sounds xfce4-clipman xfdashboard xscreensaver xscreensaver-data xscreensaver-data-extra xscreensaver-gl xscreensaver-gl-extra xscreensaver-screensaver-bsod xscreensaver-screensaver-webcollage"
     apt_remove_packages "light-locker"
 
     ;;
@@ -474,7 +421,7 @@ Pantheon)
 
     apt_install_packages "elementary OS extras" "com.github.cassidyjames.ideogram gnome-tweaks libgtk-3-dev"
 
-    if apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Restore elementary OS system tray indicators?" Y Y; then
+    if ! has_argument "--skip-debs" && { apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Restore elementary OS system tray indicators?" Y Y; }; then
 
         # because too many apps don't play by the rules (see: https://www.reddit.com/r/elementaryos/comments/aghyiq/system_tray/)
         mkdir -p "$HOME/.config/autostart"
@@ -536,6 +483,77 @@ EOF
 
 esac
 
+if ! has_argument "--skip-debs"; then
+
+    apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.3-stable-ca35737a/synergy_1.10.3.stable_b24%2Bca35737a_ubuntu18_amd64.deb"
+    apt_install_deb "https://displaycal.net/download/xUbuntu_${DISTRIB_RELEASE}/amd64/DisplayCAL.deb"
+    apt_install_deb "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
+
+    DEB_URLS=()
+    IFS=$'\n'
+
+    # AutoKey
+    DEB_URLS+=($(
+        # shellcheck source=../bash/common-subshell
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+        get_urls_from_url "https://api.github.com/repos/autokey/autokey/releases/latest" 'autokey-(common|gtk).*\.deb$' | head -n2
+    ))
+
+    # Caprine
+    DEB_URLS+=("$(
+        # shellcheck source=../bash/common-subshell
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+        get_urls_from_url "https://api.github.com/repos/sindresorhus/caprine/releases/latest" '_amd64\.deb$' | head -n1
+    )")
+
+    # Caret Beta
+    DEB_URLS+=("$(
+        # shellcheck source=../bash/common-subshell
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+        get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1
+    )")
+
+    # Master PDF Editor
+    DEB_URLS+=("$(
+        # shellcheck source=../bash/common-subshell
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+        get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1
+    )")
+
+    # Slack
+    DEB_URLS+=("$(
+        # shellcheck source=../bash/common-subshell
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+        get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1
+    )")
+
+    # stretchly
+    DEB_URLS+=("$(
+        # shellcheck source=../bash/common-subshell
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+        get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1
+    )")
+
+    # Teams for Linux
+    DEB_URLS+=("$(
+        # shellcheck source=../bash/common-subshell
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+        get_urls_from_url "https://api.github.com/repos/IsmaelMartinez/teams-for-linux/releases/latest" '_amd64\.deb$' | head -n1
+    )")
+
+    unset IFS
+
+    for DEB_URL in "${DEB_URLS[@]}"; do
+
+        apt_install_deb "$DEB_URL"
+        console_message "Queued for download:" "${NO_WRAP}${DEB_URL}${WRAP}" "$BOLD" "$YELLOW"
+
+    done
+
+fi
+
+apt_remove_packages apport deja-dup filezilla fonts-twemoji-svginot libapache2-mod-fastcgi libapache2-mod-fcgid libxss-dev
+
 dev_install_packages Y APT_INSTALLED
 
 # shellcheck disable=SC2034
@@ -557,6 +575,13 @@ if [ "${#SNAPS_INSTALL[@]}" -gt "0" ]; then
         SNAPS_INSTALL=()
 
     fi
+
+fi
+
+# we're about to install ntp
+if command_exists timedatectl; then
+
+    sudo timedatectl set-ntp no
 
 fi
 
@@ -601,6 +626,26 @@ if apt_package_installed "samba"; then
 
 fi
 
+if apt_package_installed "ntp"; then
+
+    console_message "Configuring NTP..." "" "$CYAN"
+
+    sudo_function move_file_delete_link "/etc/ntp.conf"
+
+    if [ -e "$CONFIG_DIR/ntp.conf" ]; then
+
+        sudo ln -s "$CONFIG_DIR/ntp.conf" "/etc/ntp.conf"
+
+    else
+
+        sudo ln -s "$CONFIG_DIR/ntp-default.conf" "/etc/ntp.conf"
+
+    fi
+
+    sudo service ntp restart
+
+fi
+
 if apt_package_installed "apache2"; then
 
     console_message "Configuring Apache..." "" "$CYAN"
@@ -619,7 +664,7 @@ if apt_package_installed "apache2"; then
 
         sudo ln -s "$CONFIG_DIR/apache2-virtual.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf"
 
-    elif [ -e "$CONFIG_DIR/apache2-virtual-default.conf" ]; then
+    else
 
         sudo ln -s "$CONFIG_DIR/apache2-virtual-default.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf"
 
@@ -647,7 +692,7 @@ if apt_package_installed "mariadb-server"; then
 
         sudo ln -s "$CONFIG_DIR/mariadb-settings.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
 
-    elif [ -e "$CONFIG_DIR/mariadb-settings-default.cnf" ]; then
+    else
 
         sudo ln -s "$CONFIG_DIR/mariadb-settings-default.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
 
@@ -705,12 +750,6 @@ done
 
 dev_apply_system_config
 
-if apt_package_installed "libgtk-3-dev"; then
-
-    gsettings set org.gtk.Settings.Debug enable-inspector-keybinding true
-
-fi
-
 if apt_package_installed "cups-browsed"; then
 
     # prevent AirPrint printers being added automatically
@@ -727,6 +766,12 @@ fi
 if apt_package_installed "docker-ce"; then
 
     sudo groupadd -f docker >/dev/null 2>&1 && sudo adduser "$USER" docker >/dev/null 2>&1 || die "Error adding $USER to docker group"
+
+fi
+
+if apt_package_installed "libgtk-3-dev"; then
+
+    gsettings set org.gtk.Settings.Debug enable-inspector-keybinding true
 
 fi
 

@@ -902,7 +902,7 @@ function apt_check_sources() {
 
         if ! apt-config dump | grep '^Dir::Ignore-Files-Silently\b.*"\\\.https\$";$' >/dev/null; then
 
-            echo 'Dir::Ignore-Files-Silently:: "\.https$";' | sudo tee -a /etc/apt/apt.conf.d/00proxy >/dev/null
+            echo 'Dir::Ignore-Files-Silently:: "\.https$";' | sudo tee -a /etc/apt/apt.conf.d/00aptproxy >/dev/null
 
         fi
 
