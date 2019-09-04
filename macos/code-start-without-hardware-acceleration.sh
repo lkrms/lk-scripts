@@ -29,7 +29,7 @@ if [ "$MAKE_PERMANENT" -eq "1" ]; then
         # just in case it exists but isn't a symbolic link
         rm -f "$EXECUTABLE"
 
-        ln -s "$SCRIPT_DIR/$SCRIPT_NAME" "$EXECUTABLE" && {
+        ln -sv "$SCRIPT_DIR/$SCRIPT_NAME" "$EXECUTABLE" && {
 
             if [ "$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$PLIST")" != "$SCRIPT_NAME" ]; then
 
@@ -42,4 +42,3 @@ if [ "$MAKE_PERMANENT" -eq "1" ]; then
     fi
 
 fi
-

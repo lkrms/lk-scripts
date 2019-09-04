@@ -448,7 +448,7 @@ if ! is_root; then
 
     mkdir -p "$HOME/.local/bin"
     move_file_delete_link "$HOME/.local/bin/xrandr-auto.sh"
-    ln -s "$ROOT_DIR/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh"
+    ln -sv "$ROOT_DIR/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh" >&2
 
     if killall quicktile 2>/dev/null; then
 
