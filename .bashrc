@@ -42,6 +42,7 @@
     fi
 
     echo "export LINAC_ROOT_DIR=\"$ROOT_DIR\""
+    echo "export LINAC_IS_MACOS=\"$IS_MACOS\""
 
     if is_macos; then
 
@@ -112,6 +113,12 @@
     command_exists youtube-dl && echo 'alias youtube-dl-audio="youtube-dl -x --audio-format mp3 --audio-quality 0"'
 
 )"
+
+function is_macos() {
+
+    [ "$LINAC_IS_MACOS" -eq "1" ]
+
+}
 
 function _latest() {
 
