@@ -634,11 +634,19 @@ if apt_package_installed "ntp"; then
 
     if [ -e "$CONFIG_DIR/ntp.conf" ]; then
 
-        sudo ln -s "$CONFIG_DIR/ntp.conf" "/etc/ntp.conf"
+        sudo ln -sv "$CONFIG_DIR/ntp.conf" "/etc/ntp.conf"
 
     else
 
-        sudo ln -s "$CONFIG_DIR/ntp-default.conf" "/etc/ntp.conf"
+        sudo ln -sv "$CONFIG_DIR/ntp-default.conf" "/etc/ntp.conf"
+
+    fi
+
+    if [ -f "/etc/apparmor.d/usr.sbin.ntpd" ] && ! [ -e "/etc/apparmor.d/disable/usr.sbin.ntpd" ]; then
+
+        sudo ln -sv "../usr.sbin.ntpd" "/etc/apparmor.d/disable/usr.sbin.ntpd"
+
+        sudo apparmor_parser -R "/etc/apparmor.d/usr.sbin.ntpd" 2>/dev/null || true
 
     fi
 
@@ -662,16 +670,16 @@ if apt_package_installed "apache2"; then
 
     if [ -e "$CONFIG_DIR/apache2-virtual.conf" ]; then
 
-        sudo ln -s "$CONFIG_DIR/apache2-virtual.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf"
+        sudo ln -sv "$CONFIG_DIR/apache2-virtual.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf"
 
     else
 
-        sudo ln -s "$CONFIG_DIR/apache2-virtual-default.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf"
+        sudo ln -sv "$CONFIG_DIR/apache2-virtual-default.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf"
 
     fi
 
     sudo rm -f /etc/apache2/sites-enabled/*.conf
-    sudo ln -s ../sites-available/000-virtual-linacreative.conf /etc/apache2/sites-enabled/000-virtual-linacreative.conf
+    sudo ln -sv ../sites-available/000-virtual-linacreative.conf /etc/apache2/sites-enabled/000-virtual-linacreative.conf
 
     sudo a2enmod headers
     sudo a2enmod proxy_fcgi
@@ -690,11 +698,11 @@ if apt_package_installed "mariadb-server"; then
 
     if [ -e "$CONFIG_DIR/mariadb.cnf" ]; then
 
-        sudo ln -s "$CONFIG_DIR/mariadb.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
+        sudo ln -sv "$CONFIG_DIR/mariadb.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
 
     else
 
-        sudo ln -s "$CONFIG_DIR/mariadb-default.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
+        sudo ln -sv "$CONFIG_DIR/mariadb-default.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
 
     fi
 
