@@ -238,7 +238,7 @@ PUSH_REMOTE="%(push:remotename)"
 
             STASH_COUNT="$(git rev-list --walk-reflogs --count refs/stash)"
 
-            WARNINGS+=("$STASH_COUNT stashes in repository $REPO_LONG_NAME")
+            WARNINGS+=("$STASH_COUNT $(single_or_plural "$STASH_COUNT" stash stashes) in repository $REPO_LONG_NAME")
 
         fi
 
