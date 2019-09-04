@@ -688,13 +688,13 @@ if apt_package_installed "mariadb-server"; then
 
     sudo_function move_file_delete_link "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
 
-    if [ -e "$CONFIG_DIR/mariadb-settings.cnf" ]; then
+    if [ -e "$CONFIG_DIR/mariadb.cnf" ]; then
 
-        sudo ln -s "$CONFIG_DIR/mariadb-settings.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
+        sudo ln -s "$CONFIG_DIR/mariadb.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
 
     else
 
-        sudo ln -s "$CONFIG_DIR/mariadb-settings-default.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
+        sudo ln -s "$CONFIG_DIR/mariadb-default.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
 
     fi
 
