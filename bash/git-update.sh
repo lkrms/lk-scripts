@@ -54,6 +54,9 @@ for CODE_ROOT in "${CODE_ROOTS[@]}"; do
 
     while IFS= read -u 3 -rd $'\0' REPO_ROOT; do
 
+        # in case the update itself has changed something
+        [ -d "$REPO_ROOT" ] || continue
+
         REPO_ROOT="$(realpath "$REPO_ROOT")"
 
         git_is_dir_working_root "$REPO_ROOT" || continue
