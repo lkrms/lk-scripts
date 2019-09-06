@@ -1,3 +1,6 @@
+// standard PC keymap with the following additions:
+// - types: "+command_option"
+// - symbols: "+compose(rctrl)+macos"
 xkb_keymap {
 	xkb_keycodes  { include "evdev+aliases(qwerty)"	};
 	xkb_types     { include "complete+command_option"	};

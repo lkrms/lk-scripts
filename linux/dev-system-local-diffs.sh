@@ -88,7 +88,7 @@ for i in "${!LOCAL_PATHS[@]}"; do
 
 done
 
-if [ "${#FAILOVER[@]}" -gt 0 ]; then
+if [ "${#FAILOVER[@]}" -gt "0" ]; then
 
     echoc "Local $(single_or_plural "${#FAILOVER[@]}" file files) with system failover $(single_or_plural "${#FAILOVER[@]}" counterpart counterparts):" "$BOLD"
 
@@ -97,7 +97,7 @@ if [ "${#FAILOVER[@]}" -gt 0 ]; then
 
 fi
 
-if [ "${#NO_SYSTEM[@]}" -gt 0 ]; then
+if [ "${#NO_SYSTEM[@]}" -gt "0" ]; then
 
     echoc "Local $(single_or_plural "${#NO_SYSTEM[@]}" file files) with no system $(single_or_plural "${#NO_SYSTEM[@]}" counterpart counterparts):" "$BOLD"
 

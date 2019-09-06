@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # Recommended:
-# - create ../config/xkbcomp
-# - rely on "/path/to/linux/xrandr-auto.sh" during startup and/or via keyboard shortcut
+# - create file: config/xkbcomp (an example is provided)
+# - rely on xrandr-auto.sh during startup and/or via keyboard shortcut
 
 set -euo pipefail
 
@@ -16,20 +16,21 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 assert_not_root
 assert_command_exists xkbcomp
 
-has_argument "--autostart" && IS_AUTOSTART=1 || IS_AUTOSTART=0
+# give it a second for keys to be (physically) released
+has_argument "--no-sleep" || sleep 1
 
-sleep 1
+if [ -f "$CONFIG_DIR/xkbcomp" ] && [ -n "$DISPLAY" ]; then
 
-if [ -e "$CONFIG_DIR/xkbcomp" ] && [ -n "$DISPLAY" ]; then
-
-    xkbcomp -I"$CONFIG_DIR/xkb" "$CONFIG_DIR/xkbcomp" "$DISPLAY"
+    echo -e "xkbcomp -I$SCRIPT_DIR/xkb $CONFIG_DIR/xkbcomp $DISPLAY\n" >&2
+    xkbcomp -I"$SCRIPT_DIR/xkb" "$CONFIG_DIR/xkbcomp" "$DISPLAY"
 
 fi
 
-if [ "$IS_AUTOSTART" -eq "0" ]; then
+if ! has_argument "--autostart"; then
 
     if command_exists systemctl && systemctl --user --quiet is-active sxhkd.service; then
 
+        echo -e "systemctl --user restart sxhkd.service\n" >&2
         systemctl --user restart sxhkd.service
 
     fi

@@ -1,0 +1,79 @@
+- [ ] Check for incorrect uses of `\b` in regular expressions (word boundaries exist between letters/numbers and hyphens)
+- [ ] Check all uses of `grep` and `sed`, replace with `gnu_*` as needed
+- [ ] Check all uses of `grep -q` for `SIGPIPE` risk
+- [ ] Check for output to stderr wherever appropriate
+- [ ] Replace, for example, `IS_MACOS` tests with `is_macos`
+- [ ] macOS: Add SSH key loading to .bashrc
+
+Review:
+
+- [x] .bashrc
+- [x] bash/colour-test.sh
+- [x] bash/common
+- [ ] bash/common-apt
+    Up to `apt_pretty_packages` (inclusive)
+- [ ] bash/common-dev
+- [ ] bash/common-homebrew
+- [ ] bash/common-subshell
+- [ ] bash/common-synergy
+- [ ] bash/common-virtualbox
+- [ ] bash/composer-install.sh
+- [ ] bash/dev-system-configure.sh
+- [ ] bash/dev-system-update.sh
+- [x] bash/git-update.sh
+- [x] config/apache2-virtual-default.conf
+- [ ] config/composer-packages-default
+- [ ] config/gitignore-default
+- [x] config/mariadb-default.cnf
+- [ ] config/natural-scroll-devices-default
+- [ ] config/npm-packages-default
+- [x] config/ntp-default.conf
+- [ ] config/pip-packages-default
+- [ ] config/pip3-packages-default
+- [ ] config/settings-default
+- [ ] config/xinput-settings-example
+- [x] config/xkbcomp-example
+- [ ] config/xrandr-example
+- [ ] facebook/fb-delete-history.js
+- [ ] linux/.xsessionrc
+- [ ] linux/app-icon-install.sh
+- [x] linux/apt-diff-with-original.sh
+- [ ] linux/apt-gui-packages.sh
+- [ ] linux/apt-packages-by-repo.sh
+- [x] linux/apt-purge.sh
+- [ ] linux/dev-samba-configure.sh
+- [x] linux/dev-system-local-diffs.sh
+- [x] linux/glib-update-variant-dictionary.py
+- [x] linux/keepassxc-start.sh
+- [x] linux/openconnect-start.sh
+- [x] linux/openconnect-stop.sh
+- [x] linux/sxhkd/sxhkd-do-map.py
+- [x] linux/sxhkd/sxhkd.service
+- [x] linux/sxhkd/sxhkdrc
+- [x] linux/x-release-modifiers.sh
+- [x] linux/x-switch-windows.py
+- [x] linux/xfce-set-dpi.sh
+- [x] linux/xfconf-dump.sh
+- [x] linux/xinput-load.sh
+- [x] linux/xkb-load.sh
+- [x] linux/xkb/symbols/macos
+- [x] linux/xkb/types/command_option
+- [x] linux/xrandr-auto.sh
+- [x] linux/xscreensaver-watch.py
+- [ ] macos/code-start-without-hardware-acceleration.sh
+- [ ] macos/dev-system-install.sh
+- [ ] macos/homebrew-clean.sh
+- [ ] macos/homebrew-formulae
+- [ ] macos/monitor-patch-edid.rb
+- [ ] macos/nag.sh
+- [ ] macos/notifications-dump.sh
+- [ ] macos/skype-start-without-hardware-acceleration.sh
+- [ ] macos/teams-start-without-hardware-acceleration.sh
+- [ ] macos/user-session-is-active.py
+- [ ] macos/virtualbox-patch-efi.sh
+- [ ] synergy/com.linacreative.Synergy.plist
+- [ ] synergy/synergy.service
+- [ ] synergy/synergyc-start.sh
+- [ ] synergy/synergys-start.sh
+- [ ] ubuntu/dev-system-install.sh
+- [ ] vscode/code-convert-default-keybindings.js

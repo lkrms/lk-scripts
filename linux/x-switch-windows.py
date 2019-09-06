@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# adapted from: https://gist.github.com/tysonholub/c737d562614aa0d83add66dbec378723
+# sourced from: https://gist.github.com/tysonholub/c737d562614aa0d83add66dbec378723
 
 from subprocess import Popen, PIPE, call
 import logging
@@ -13,18 +13,18 @@ import os
 #   org.gnome.desktop.wm.keybindings.switch-group: []
 #   org.gnome.desktop.wm.keybindings.switch-group-backward: []
 # set custom hotkey for forward/backward window group scrolling (switch-group)
-#   python /path/to/window-switch-group.py group -f
-#   python /path/to/window-switch-group.py group -b
+#   python /path/to/x-switch-windows.py group -f
+#   python /path/to/x-switch-windows.py group -b
 # set custom hotkey for forward/backward window scrolling (switch-windows)
-#   python /path/to/window-switch-group.py window -f
-#   python /path/to/window-switch-group.py window -b
+#   python /path/to/x-switch-windows.py window -f
+#   python /path/to/x-switch-windows.py window -b
 
 # logging will be placed into
-#   log/window-switch-group.py.log
+#   log/x-switch-windows.py.log
 
 log_directory = os.path.normpath(os.path.dirname(
     os.path.realpath(__file__)) + '/../log')
-log_file = os.path.join(log_directory, 'window-switch-group.py.log')
+log_file = os.path.join(log_directory, 'x-switch-windows.py.log')
 
 if not os.path.exists(log_directory):
     os.makedirs(log_directory)
@@ -137,4 +137,4 @@ try:
         logging.info('current_window_class not found')
 
 except Exception as e:
-    logging.exception("window-switch-group.py blew up")
+    logging.exception("x-switch-windows.py blew up")

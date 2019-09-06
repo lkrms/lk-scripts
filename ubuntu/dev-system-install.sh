@@ -682,6 +682,7 @@ if apt_package_installed "apache2"; then
     sudo ln -sv ../sites-available/000-virtual-linacreative.conf /etc/apache2/sites-enabled/000-virtual-linacreative.conf
 
     sudo a2enmod headers
+    sudo a2enmod proxy
     sudo a2enmod proxy_fcgi
     sudo a2enmod rewrite
     sudo a2enmod vhost_alias
