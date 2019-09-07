@@ -1,0 +1,33 @@
+default partial alphanumeric_keys
+xkb_symbols "all" {
+    include "tenkeyless(move_prsc_cluster_to_keypad)"
+};
+
+partial alphanumeric_keys
+xkb_symbols "move_prsc_cluster_to_keypad" {
+    include "tenkeyless(move_prsc_to_kpdv)"
+    include "tenkeyless(move_sclk_to_kpmu)"
+    include "tenkeyless(move_paus_to_kpsu)"
+};
+
+partial alphanumeric_keys
+xkb_symbols "move_prsc_to_kpdv" {
+    key <PRSC> {
+        // for some reason, xkbcomp doesn't like type[Group1] here
+        type= "ONE_LEVEL",
+        symbols[Group1]= [       KP_Divide ]
+    };
+};
+
+partial alphanumeric_keys
+xkb_symbols "move_sclk_to_kpmu" {
+    key <SCLK> {         [     KP_Multiply ] };
+};
+
+partial alphanumeric_keys
+xkb_symbols "move_paus_to_kpsu" {
+    key <PAUS> {
+        type= "ONE_LEVEL",
+        symbols[Group1]= [     KP_Subtract ]
+    };
+};
