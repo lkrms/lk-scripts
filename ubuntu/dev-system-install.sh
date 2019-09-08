@@ -265,6 +265,7 @@ apt_install_packages "desktop essentials" "\
  catfish\
  code\
  copyq\
+ dconf-cli\
  dconf-editor\
  deepin-notifications-\
  deepin-screenshot\
