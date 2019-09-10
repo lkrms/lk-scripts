@@ -11,9 +11,10 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 assert_not_root
 assert_command_exists openconnect
+assert_command_exists vpn-slice
 assert_command_exists secret-tool
 
-USAGE="Usage: $(basename "$0") <username@vpn.host.com> [openconnect-option...]"
+USAGE="Usage: $(basename "$0") <username@vpn.host.com> [\"route1 route2...\" [openconnect-option...]]"
 
 if [ "$#" -lt 1 ]; then
 
@@ -23,6 +24,7 @@ fi
 
 VPN_HOST="${1##*@}"
 VPN_USER="${1%@*}"
+HOSTS_TO_ROUTE="${2:-}"
 
 if [ -z "$VPN_HOST" ] || [ -z "$VPN_USER" ]; then
 
@@ -31,6 +33,13 @@ if [ -z "$VPN_HOST" ] || [ -z "$VPN_USER" ]; then
 fi
 
 shift
+shift || true
+
+if pgrep -x openconnect >/dev/null; then
+
+    die "openconnect is already running"
+
+fi
 
 OPENCONNECT_OPTIONS=(nohup openconnect)
 OPENCONNECT_OPTIONS+=("$@")
@@ -49,9 +58,23 @@ if ! array_search "--protocol*" OPENCONNECT_OPTIONS >/dev/null; then
 
 fi
 
-if ! array_search "--dump" OPENCONNECT_OPTIONS >/dev/null; then
+if ! array_search "-s" OPENCONNECT_OPTIONS >/dev/null && ! array_search "--script" OPENCONNECT_OPTIONS >/dev/null; then
 
-    OPENCONNECT_OPTIONS+=(--dump)
+    if [ -z "$HOSTS_TO_ROUTE" ]; then
+
+        OPENCONNECT_OPTIONS+=(--script "'vpn-slice -IS'")
+
+    else
+
+        OPENCONNECT_OPTIONS+=(--script "'vpn-slice $HOSTS_TO_ROUTE'")
+
+    fi
+
+fi
+
+if ! array_search "--dump-http-traffic" OPENCONNECT_OPTIONS >/dev/null; then
+
+    OPENCONNECT_OPTIONS+=(--dump-http-traffic)
 
 fi
 

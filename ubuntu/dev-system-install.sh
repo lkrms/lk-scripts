@@ -746,6 +746,19 @@ else
 
 fi
 
+if ! sudo -H pip3 list --format freeze 2>/dev/null | grep -E '^vpn-slice==' >/dev/null; then
+
+    sudo -H pip3 install "https://github.com/dlenski/vpn-slice/archive/master.zip" && {
+        APT_INSTALLED+=("vpn-slice")
+        APT_JUST_INSTALLED+=("vpn-slice")
+    }
+
+else
+
+    APT_INSTALLED+=("vpn-slice")
+
+fi
+
 for i in "${!SNAPS_INSTALL[@]}"; do
 
     # tolerate errors because snap can be temperamental
