@@ -16,6 +16,8 @@ assert_command_exists bc
 
 [ -n "${1:-}" ] || die "Usage: $(basename "$0") <effective dpi>"
 
+[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] || die "Error: DBUS_SESSION_BUS_ADDRESS not set"
+
 RESTART_PANEL=0
 
 _MULTIPLIER="$(bc <<<"scale = 10; $1 / 96")"
