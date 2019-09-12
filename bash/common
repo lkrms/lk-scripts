@@ -191,8 +191,9 @@ function is_root() {
 # the relevant function mustn't depend on other functions
 function sudo_function() {
 
-    local FUNCTION="$1"
+    local FUNCTION
 
+    FUNCTION="$1"
     shift
 
     sudo bash -c "$(declare -f "$FUNCTION"); $FUNCTION \"\$@\"" "$0" "$@"
@@ -252,8 +253,9 @@ function echoc() {
 # as above, but no newline afterwards
 function echocn() {
 
-    local MESSAGE="$1" COLOURS=
+    local MESSAGE COLOURS=
 
+    MESSAGE="$1"
     shift
 
     if [ "$#" -gt "0" ] && [ -n "$RESET" ]; then
@@ -281,8 +283,10 @@ function die() {
 # Usage: console_message "Main message" "Secondary message with colour too" "$BOLD" "$BLUE"
 function console_message() {
 
-    local MESSAGE1="$1" MESSAGE2="$2"
+    local MESSAGE1 MESSAGE2
 
+    MESSAGE1="$1"
+    MESSAGE2="$2"
     shift 2
 
     echocn "==> " "$@"
@@ -339,9 +343,10 @@ function get_confirmation() {
 # Usage: file_to_array "/path/to/file" [exclude-pattern...]
 function file_to_array() {
 
-    local FILENAME LINE PATTERN
+    local FILENAME LINE COMMAND=(cat)
 
-    FILENAME="$1"
+    FILENAME="${1:-}"
+    [ -n "$FILENAME" ] || die "Filename required"
     shift
 
     FILE_TO_ARRAY=()
@@ -357,17 +362,17 @@ function file_to_array() {
 
         FILE_TO_ARRAY_FILENAME="$FILENAME"
 
+        if [ "$#" -gt "0" ]; then
+
+            COMMAND=(grep -Ev "($(array_join_by ")|(" "$@"))")
+
+        fi
+
         while IFS= read -r LINE || [ -n "$LINE" ]; do
-
-            for PATTERN in "$@"; do
-
-                [[ "$LINE" =~ $PATTERN ]] && continue 2 || true
-
-            done
 
             FILE_TO_ARRAY+=("$LINE")
 
-        done <"$FILENAME"
+        done < <("${COMMAND[@]}" "$FILENAME")
 
     fi
 
@@ -438,10 +443,18 @@ function array_search() {
 # Usage: array_join_by ":" "${MY_ARRAY[@]}"
 function array_join_by() {
 
-    local IFS="$1"
+    local SEP ARR
 
+    SEP="$1"
     shift
-    echo "$*"
+
+    if [ "$#" -gt "0" ]; then
+
+        ARR=("${@/#/$SEP}")
+        ARR[0]="$1"
+        printf "%s" "${ARR[@]}"
+
+    fi
 
 }
 
