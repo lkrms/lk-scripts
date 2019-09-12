@@ -205,6 +205,7 @@ apt_install_packages "essential utilities" "\
  pv\
  s-nail\
  screen\
+ smartmontools\
  syslinux-utils\
  traceroute\
  vim\
