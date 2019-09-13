@@ -245,15 +245,38 @@ PUSH_REMOTE="%(push:remotename)"
 
         fi
 
-        GIT_FILEMODE="$(git config --local core.fileMode 2>/dev/null)" || true
+        GIT_FILEMODE="$(git config core.fileMode 2>/dev/null)" || true
+        GIT_IGNORECASE="$(git config core.ignoreCase 2>/dev/null)" || true
+        GIT_PRECOMPOSEUNICODE="$(git config core.precomposeUnicode 2>/dev/null)" || true
 
         if is_windows; then
 
-            [ -z "$GIT_FILEMODE" ] || { git config --unset core.fileMode && echoc "Git option cleared: core.fileMode" "$BOLD" "$YELLOW"; } || die
+            [ "$GIT_FILEMODE" = "false" ] || { git config --bool core.fileMode "false" && echoc "Git option disabled: core.fileMode" "$BOLD" "$YELLOW"; } || die
 
         else
 
-            [ "$GIT_FILEMODE" = "true" ] || { git config --bool core.fileMode "true" && echoc "Git option set: core.fileMode" "$BOLD" "$YELLOW"; } || die
+            [ -z "$GIT_FILEMODE" ] || [ "$GIT_FILEMODE" = "true" ] || { git config --bool core.fileMode "true" && echoc "Git option enabled: core.fileMode" "$BOLD" "$YELLOW"; } || die
+
+        fi
+
+        # TODO: check filesystem case-sensitivity rather than assuming macOS and Windows are case-insensitive
+        if is_linux; then
+
+            [ -z "$GIT_IGNORECASE" ] || [ "$GIT_IGNORECASE" = "false" ] || { git config --bool core.ignoreCase "false" && echoc "Git option disabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || die
+
+        else
+
+            [ "$GIT_IGNORECASE" = "true" ] || { git config --bool core.ignoreCase "true" && echoc "Git option enabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || die
+
+        fi
+
+        if is_macos; then
+
+            [ "$GIT_PRECOMPOSEUNICODE" = "true" ] || { git config --bool core.precomposeUnicode "true" && echoc "Git option enabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || die
+
+        else
+
+            [ -z "$GIT_PRECOMPOSEUNICODE" ] || [ "$GIT_PRECOMPOSEUNICODE" = "false" ] || { git config --bool core.precomposeUnicode "false" && echoc "Git option disabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || die
 
         fi
 
