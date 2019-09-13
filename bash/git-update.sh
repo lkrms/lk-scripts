@@ -237,7 +237,7 @@ PUSH_REMOTE="%(push:remotename)"
 
         fi
 
-        if git rev-parse --verify -q refs/stash; then
+        if git rev-parse --verify -q refs/stash >/dev/null; then
 
             STASH_COUNT="$(git rev-list --walk-reflogs --count refs/stash)"
 
