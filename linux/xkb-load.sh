@@ -28,7 +28,7 @@ fi
 
 if ! has_argument "--autostart"; then
 
-    if command_exists systemctl && systemctl --user --quiet is-active sxhkd.service; then
+    if user_service_running "sxhkd"; then
 
         echo -e "systemctl --user restart sxhkd.service\n" >&2
         systemctl --user restart sxhkd.service

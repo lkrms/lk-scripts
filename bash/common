@@ -1129,6 +1129,8 @@ EOF
 
     fi
 
+    . "$ROOT_DIR/bash/common-linux"
+
     ;;
 
 *)

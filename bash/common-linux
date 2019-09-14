@@ -1,0 +1,26 @@
+#!/bin/bash
+# shellcheck disable=SC2016
+
+function system_service_exists() {
+
+    command_exists systemctl && systemctl list-units --full --all 2>/dev/null | grep -E '(\s|^)'"$1"'\.service(\s|$)' >/dev/null
+
+}
+
+function user_service_exists() {
+
+    command_exists systemctl && systemctl --user list-units --full --all 2>/dev/null | grep -E '(\s|^)'"$1"'\.service(\s|$)' >/dev/null
+
+}
+
+function system_service_running() {
+
+    command_exists systemctl && systemctl --quiet is-active "$1.service"
+
+}
+
+function user_service_running() {
+
+    command_exists systemctl && systemctl --user --quiet is-active "$1.service"
+
+}

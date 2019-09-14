@@ -206,6 +206,7 @@ apt_install_packages "essential utilities" "\
  s-nail\
  screen\
  smartmontools\
+ sysfsutils\
  syslinux-utils\
  traceroute\
  vim\
@@ -280,6 +281,7 @@ apt_install_packages "desktop essentials" "\
  ghostwriter\
  gimp\
  git-cola\
+ glmark2\
  gnome-color-manager\
  google-chrome-stable\
  gparted\
@@ -317,6 +319,7 @@ apt_install_packages "desktop essentials" "\
  ttf-xfree86-nonfree\
  typora\
  usb-creator-gtk\
+ vainfo\
  vlc\
  x-tile\
  x11vnc\
@@ -799,7 +802,7 @@ if apt_package_installed "libgtk-3-dev"; then
 
 fi
 
-# workaround for bugs introduced in libx11-6 2:1.6.4-3ubuntu0.2
+# workaround for Synergy bug: https://github.com/symless/synergy-core/issues/6481
 HOLD_PACKAGES=(libx11-6 libx11-data libx11-dev libx11-doc libx11-xcb-dev libx11-xcb1)
 
 for i in "${!HOLD_PACKAGES[@]}"; do
@@ -812,21 +815,33 @@ for i in "${!HOLD_PACKAGES[@]}"; do
 
 done
 
-if [ "${#HOLD_PACKAGES[@]}" -gt "0" ] && dpkg-query -f '${Version}\n' -W "${HOLD_PACKAGES[@]}" | grep -Eq "$(sed_escape_search "2:1.6.4-3ubuntu0.2")"; then
+if [ "${#HOLD_PACKAGES[@]}" -gt "0" ]; then
 
-    VERSIONED_HOLD_PACKAGES=()
+    if system_service_exists "synergy"; then
 
-    for p in "${HOLD_PACKAGES[@]}"; do
+        if dpkg-query -f '${Version}\n' -W "${HOLD_PACKAGES[@]}" | grep -Eq "$(sed_escape_search "2:1.6.4-3ubuntu0.2")"; then
 
-        VERSIONED_HOLD_PACKAGES+=("$p=2:1.6.4-3ubuntu0.1")
+            VERSIONED_HOLD_PACKAGES=()
 
-    done
+            for p in "${HOLD_PACKAGES[@]}"; do
 
-    console_message "Downgrading from ${BOLD}2:1.6.4-3ubuntu0.2${RESET} to ${BOLD}2:1.6.4-3ubuntu0.1${RESET} and marking as held:" "${HOLD_PACKAGES[*]}" "$BOLD" "$RED"
+                VERSIONED_HOLD_PACKAGES+=("$p=2:1.6.4-3ubuntu0.1")
 
-    sudo apt-get "${APT_GET_OPTIONS[@]}" --allow-downgrades install "${VERSIONED_HOLD_PACKAGES[@]}"
+            done
 
-    sudo apt-mark hold "${HOLD_PACKAGES[@]}"
+            console_message "Downgrading from ${BOLD}2:1.6.4-3ubuntu0.2${RESET} to ${BOLD}2:1.6.4-3ubuntu0.1${RESET} and marking as held:" "${HOLD_PACKAGES[*]}" "$BOLD" "$RED"
+
+            sudo apt-get "${APT_GET_OPTIONS[@]}" --allow-downgrades install "${VERSIONED_HOLD_PACKAGES[@]}"
+
+            sudo apt-mark hold "${HOLD_PACKAGES[@]}" >/dev/null
+
+        fi
+
+    else
+
+        sudo apt-mark unhold "${HOLD_PACKAGES[@]}" >/dev/null
+
+    fi
 
 fi
 
