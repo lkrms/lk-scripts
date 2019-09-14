@@ -28,20 +28,24 @@ case "${XDG_CURRENT_DESKTOP:-}" in
 #
 # Here, we achieve 1.5x scaling despite Gnome's scaling-factor limitations
 
-*GNOME|Pantheon)
+*GNOME | Pantheon)
 
-    # 4K connected?
-    if [ "$EDID_DISPLAY_0_ACTIVE" -eq "1" ]; then
+    if [ "${XRANDR_ALLOW_SCALING:-0}" -eq "1" ]; then
 
-        # "looks like 2560x1440"
-        EDID_DISPLAY_0_OPTIONS+=(--mode 3840x2160 --scale-from 5120x2880)
+        # 4K connected?
+        if [ "$EDID_DISPLAY_0_ACTIVE" -eq "1" ]; then
 
-        # 1080p also connected?
-        if [ "$EDID_DISPLAY_1_ACTIVE" -eq "1" ]; then
+            # "looks like 2560x1440"
+            EDID_DISPLAY_0_OPTIONS+=(--mode 3840x2160 --scale-from 5120x2880)
 
-            # "looks like 1536x864" - i.e. use all of i915's (software-limited) 8192x8192 framebuffer
-            EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 3072x1728 --pos 0x576)
-            EDID_DISPLAY_0_OPTIONS+=(--pos 3072x0)
+            # 1080p also connected?
+            if [ "$EDID_DISPLAY_1_ACTIVE" -eq "1" ]; then
+
+                # "looks like 1536x864" - i.e. use all of i915's (software-limited) 8192x8192 framebuffer
+                EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 3072x1728 --pos 0x576)
+                EDID_DISPLAY_0_OPTIONS+=(--pos 3072x0)
+
+            fi
 
         fi
 
@@ -71,9 +75,18 @@ case "${XDG_CURRENT_DESKTOP:-}" in
         # 1080p also connected?
         if [ "$EDID_DISPLAY_1_ACTIVE" -eq "1" ]; then
 
-            # "looks like 1920x1080" - i.e. scale this output to appear normal despite 1.5x scaling
-            EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 2560x1440 --pos 0x360)
-            EDID_DISPLAY_0_OPTIONS+=(--pos 2560x0)
+            if [ "${XRANDR_ALLOW_SCALING:-0}" -eq "1" ]; then
+
+                # "looks like 1920x1080" - i.e. scale this output to appear normal despite 1.5x scaling
+                EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 2560x1440 --pos 0x360)
+                EDID_DISPLAY_0_OPTIONS+=(--pos 2560x0)
+
+            else
+
+                EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 1920x1080 --pos 0x540)
+                EDID_DISPLAY_0_OPTIONS+=(--pos 1920x0)
+
+            fi
 
         fi
 

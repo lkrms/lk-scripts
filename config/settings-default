@@ -1,6 +1,8 @@
 #!/bin/bash
 # shellcheck disable=SC2034
 
+XRANDR_ALLOW_SCALING=0
+
 SAMBA_WORKGROUP="LINAC"
 SAMBA_DEFAULT_CONF_PATH=
 
