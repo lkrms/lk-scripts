@@ -45,6 +45,7 @@ ghostwriter
 gimp
 git-cola
 gnome-color-manager
+gnome-screensaver
 gnome-session-canberra
 gnome-tweaks
 google-chrome-stable
@@ -262,7 +263,9 @@ apt_install_packages "desktop essentials" "\
  awf\
  beets\
  blueman\
+ blueproximity\
  bsd-mailx-\
+ btscanner\
  caffeine\
  catfish\
  code\
@@ -418,7 +421,7 @@ case "${XDG_CURRENT_DESKTOP:-}" in
 XFCE)
 
     apt_install_packages "XFCE extras" "gnome-session-canberra libcanberra-gtk-module libcanberra-gtk3-module plank sox ubuntu-sounds xfce4-clipman xfdashboard xscreensaver xscreensaver-data xscreensaver-data-extra xscreensaver-gl xscreensaver-gl-extra xscreensaver-screensaver-bsod xscreensaver-screensaver-webcollage"
-    apt_remove_packages "light-locker"
+    apt_remove_packages "gnome-screensaver light-locker"
 
     ;;
 

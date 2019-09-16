@@ -160,6 +160,7 @@ for FILE in "$HOME/.config/xfce4/panel/"whiskermenu*.rc; do
 
     NEW_SETTINGS="$(
         array_join_by $'\n' "${WHISKER_SETTINGS[@]}"
+        echo
         grep -Ev '^(menu-(width|height)|(item|category)-icon-size)=' "$FILE"
     )"
 
