@@ -44,6 +44,13 @@
     echo "export LINAC_ROOT_DIR=\"$ROOT_DIR\""
     echo "export LINAC_IS_MACOS=\"$IS_MACOS\""
 
+    if [ -n "${SCREENSHOT_DIR:-}" ]; then
+
+        [ -d "$SCREENSHOT_DIR" ] || mkdir -p "$SCREENSHOT_DIR" || true
+        [ -d "$SCREENSHOT_DIR" ] && echo "export LINAC_SCREENSHOT_DIR=\"$SCREENSHOT_DIR\""
+
+    fi
+
     if is_macos; then
 
         if [ "${TERM_PROGRAM:-}" = "iTerm.app" ]; then

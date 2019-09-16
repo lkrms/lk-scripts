@@ -1,7 +1,10 @@
 #!/bin/bash
 # shellcheck disable=SC2034
 
+# xrandr scaling isn't quite as stable as its macOS counterpart
 XRANDR_ALLOW_SCALING=0
+
+SCREENSHOT_DIR="$HOME/ownCloud/Screenshots"
 
 SAMBA_WORKGROUP="LINAC"
 SAMBA_DEFAULT_CONF_PATH=
