@@ -13,7 +13,9 @@ Review:
 - [ ] bash/common-apt
     Up to `apt_pretty_packages` (inclusive)
 - [ ] bash/common-dev
-- [ ] bash/common-homebrew
+- [x] bash/common-homebrew
+- [x] bash/common-linux
+- [x] bash/common-macos
 - [ ] bash/common-subshell
 - [ ] bash/common-synergy
 - [ ] bash/common-virtualbox

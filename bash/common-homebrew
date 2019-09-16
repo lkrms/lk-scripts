@@ -1,11 +1,29 @@
 #!/bin/bash
 # shellcheck disable=SC2034,SC2206,SC2207
 
-if ! command_exists brew; then
+function brew_check() {
 
-    ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || die
+    if ! command_exists brew; then
 
-fi
+        if is_macos; then
+
+            check_developer_tools
+
+            ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || die
+
+        elif is_linux; then
+
+            sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)" || die
+
+        else
+
+            die "Homebrew isn't supported on this platform"
+
+        fi
+
+    fi
+
+}
 
 function brew_check_taps() {
 
@@ -90,7 +108,7 @@ function brew_formula_available() {
 
 function brew_mark_cache_clean() {
 
-    [ "$BREW_CACHE_DIRTY" -ne "0" ] && brew_refresh && BREW_CACHE_DIRTY=0
+    [ "$BREW_CACHE_DIRTY" -eq "0" ] || { brew_refresh && BREW_CACHE_DIRTY=0; }
 
 }
 
@@ -151,6 +169,26 @@ function brew_process_queue() {
     BREW_FORMULA_QUEUE=()
     BREW_CASK_QUEUE=()
     brew_refresh
+
+}
+
+function brew_upgrade_all() {
+
+    brew_make_cache_clean
+
+    console_message "Installing all available formula updates..." "" "$GREEN"
+
+    brew upgrade || die
+
+    if is_macos; then
+
+        console_message "Installing all available cask updates..." "" "$GREEN"
+
+        brew cask upgrade --no-quarantine || die
+
+    fi
+
+    brew cleanup || die
 
 }
 

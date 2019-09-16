@@ -126,7 +126,7 @@ function _latest() {
 
     [ "${#TYPE}" -eq "1" ] && shift || TYPE="f"
 
-    is_macos && COMMAND=(find . -x \() || COMMAND=(find . -xdev \()
+    is_macos && COMMAND=(find -x . \() || COMMAND=(find . -xdev \()
 
     [ "$#" -eq "0" ] || COMMAND+=(\( "$@" -prune \) -o)
 

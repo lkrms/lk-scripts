@@ -296,6 +296,15 @@ function console_message() {
 
 }
 
+function get_enter() {
+
+    local PROMPT REPLY
+
+    PROMPT="${1:-Press Enter to continue}"
+    read -rsp "$PROMPT"
+
+}
+
 # Usage: get_confirmation "Do this?" [default response (y/n)] [force valid response? (y/N)] && { do_it; }
 function get_confirmation() {
 
@@ -1069,6 +1078,7 @@ Darwin)
     PLATFORM=mac
     HAS_GUI=1
     SED_IN_PLACE_ARGS+=("")
+    . "$ROOT_DIR/bash/common-macos"
     ;;
 
 Linux)

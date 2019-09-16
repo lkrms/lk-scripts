@@ -23,6 +23,15 @@ if command_exists apt-get; then
 
 fi
 
+if command_exists brew; then
+
+    # shellcheck source=common-homebrew
+    . "$SCRIPT_DIR/common-homebrew"
+
+    brew_upgrade_all
+
+fi
+
 if command_exists snap; then
 
     sudo snap refresh

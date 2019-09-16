@@ -12,14 +12,16 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common-dev
 . "$SCRIPT_DIR/../bash/common-dev"
 
+# shellcheck source=../bash/common-homebrew
+. "$SCRIPT_DIR/../bash/common-homebrew"
+
 assert_is_macos
 assert_not_root
 
 offer_sudo_password_bypass
 
-# included later because it installs Homebrew if needed
-# shellcheck source=../bash/common-homebrew
-. "$SCRIPT_DIR/../bash/common-homebrew"
+# install Homebrew if needed
+brew_check
 
 # don't force a "brew update" -- Homebrew does this often enough automatically
 brew_mark_cache_clean
@@ -183,8 +185,10 @@ if [ "${#DEV_JUST_INSTALLED[@]}" -gt "0" ]; then
 
 fi
 
-# TODO:
+# TODO (and same on system update):
 # sudo tlmgr update --self && sudo tlmgr install collection-fontsrecommended || die
 # luaotfload-tool --update || die
 
 dev_apply_system_config
+
+"$ROOT_DIR/bash/dev-system-update.sh"
