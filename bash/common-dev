@@ -162,7 +162,7 @@ function dev_install_packages() {
 
         local PIP_REQUIRED=()
 
-        file_to_array "$CONFIG_DIR/pip-packages" '^[[:space:]]*$' '^#'
+        file_to_array "$CONFIG_DIR/pip-packages"
 
         if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
@@ -193,7 +193,7 @@ function dev_install_packages() {
 
         local PIP3_REQUIRED=()
 
-        file_to_array "$CONFIG_DIR/pip3-packages" '^[[:space:]]*$' '^#'
+        file_to_array "$CONFIG_DIR/pip3-packages"
 
         if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
@@ -242,7 +242,7 @@ function dev_install_packages() {
 
             [ "$IS_MACOS" -eq "1" ] && NPM_REQUIRED+=(yarn) || true
 
-            file_to_array "$CONFIG_DIR/npm-packages" '^[[:space:]]*$' '^#'
+            file_to_array "$CONFIG_DIR/npm-packages"
 
             if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
@@ -306,7 +306,7 @@ EOF
 
             COMPOSER_REQUIRED=("composer/composer")
 
-            file_to_array "$CONFIG_DIR/composer-packages" '^[[:space:]]*$' '^#'
+            file_to_array "$CONFIG_DIR/composer-packages"
 
             if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
@@ -347,7 +347,7 @@ function dev_apply_system_config() {
 
     if command_exists git; then
 
-        file_to_array "$CONFIG_DIR/gitignore" '^[[:space:]]*$' '^#'
+        file_to_array "$CONFIG_DIR/gitignore"
 
         if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 

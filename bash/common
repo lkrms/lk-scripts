@@ -350,13 +350,27 @@ function get_confirmation() {
 }
 
 # Usage: file_to_array "/path/to/file" [exclude-pattern...]
+#
+# If "/path/to/file" doesn't exist, "/path/to/file-default" is tried.
+#
+# The following are excluded by default:
+# - lines that are empty or only contain whitespace: /^\s*$/
+# - comments (lines that start with "#" or ";"): /^[#;]/
+#
+# To include all lines: file_to_array "/path/to/file" ""
 function file_to_array() {
 
-    local FILENAME LINE COMMAND=(cat)
+    local FILENAME LINE COMMAND=(cat) EXCLUDE=('^\s*$' '^[#;]')
 
     FILENAME="${1:-}"
     [ -n "$FILENAME" ] || die "Filename required"
     shift
+
+    if [ "$#" -gt "0" ]; then
+
+        EXCLUDE=("$@")
+
+    fi
 
     FILE_TO_ARRAY=()
     FILE_TO_ARRAY_FILENAME=
@@ -369,11 +383,11 @@ function file_to_array() {
 
     if [ -e "$FILENAME" ]; then
 
-        FILE_TO_ARRAY_FILENAME="$FILENAME"
+        FILE_TO_ARRAY_FILENAME="$(realpath "$FILENAME")" || die
 
-        if [ "$#" -gt "0" ]; then
+        if [ "${#EXCLUDE[@]}" -gt "1" ] || [ -n "${EXCLUDE[0]}" ]; then
 
-            COMMAND=(grep -Ev "($(array_join_by ")|(" "$@"))")
+            COMMAND=(grep -Ev "($(array_join_by ")|(" "${EXCLUDE[@]}"))")
 
         fi
 

@@ -68,7 +68,7 @@ function xinput_set_sign() {
 
 }
 
-file_to_array "$CONFIG_DIR/natural-scroll-devices" '^[[:space:]]*$' '^#'
+file_to_array "$CONFIG_DIR/natural-scroll-devices"
 
 if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
@@ -103,7 +103,7 @@ if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
 fi
 
-file_to_array "$CONFIG_DIR/xinput-settings" '^[[:space:]]*$' '^#'
+file_to_array "$CONFIG_DIR/xinput-settings"
 
 if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
