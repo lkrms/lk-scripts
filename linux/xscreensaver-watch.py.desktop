@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=xscreensaver-watch.py
+Comment=
+Exec=xscreensaver-watch.py
+StartupNotify=false
+Terminal=false
+Hidden=false
+

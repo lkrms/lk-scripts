@@ -24,3 +24,17 @@ function user_service_running() {
     command_exists systemctl && systemctl --user --quiet is-active "$1.service"
 
 }
+
+function freedesktop_disable_autostart() {
+
+    if [ ! -e "$HOME/.config/autostart/$1.desktop" ]; then
+
+        cat <<EOF >"$HOME/.config/autostart/$1.desktop"
+[Desktop Entry]
+Hidden=true
+
+EOF
+
+    fi
+
+}
