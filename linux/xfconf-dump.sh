@@ -13,12 +13,16 @@ assert_command_exists xfconf-query
 
 CHANNELS=($(xfconf-query -l | tail -n +2 | sort -f))
 
-for CHANNEL in "${CHANNELS[@]}"; do
+{
 
-    while read -r PROPERTY VALUE; do
+    for CHANNEL in "${CHANNELS[@]}"; do
 
-        printf '%s,%s,"%s"\n' "$CHANNEL" "$PROPERTY" "$VALUE"
+        while read -r PROPERTY VALUE; do
 
-    done < <(xfconf-query -c "$CHANNEL" -lv | sort -f)
+            printf '%s,%s,"%s"\n' "$CHANNEL" "$PROPERTY" "$VALUE"
 
-done
+        done < <(xfconf-query -c "$CHANNEL" -lv | sort -f)
+
+    done
+
+} | tee "xfconf-dump-$(date_get_ymdhms)"
