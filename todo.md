@@ -4,6 +4,7 @@
 - [ ] Check for output to stderr wherever appropriate
 - [ ] Replace, for example, `IS_MACOS` tests with `is_macos`
 - [ ] macOS: Add SSH key loading to .bashrc
+- [ ] Review file_to_array: can we standardise the filters?
 
 Review:
 

@@ -12,9 +12,21 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 assert_not_root
 assert_command_exists xinput
 
+function xinput_is_touchpad() {
+
+    xinput_has_prop "$1" "Synaptics Capabilities"
+
+}
+
+function xinput_has_prop() {
+
+    xinput list-props "$1" | grep "$2" >/dev/null
+
+}
+
 function xinput_set_prop() {
 
-    if xinput list-props "$1" | grep "$2" >/dev/null; then
+    if xinput_has_prop "$1" "$2"; then
 
         echo -e "xinput set-prop $*\n" >&2
         xinput set-prop "$@" || die "Error: unable to set '$2' on device $1"
@@ -123,5 +135,34 @@ if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
         fi
 
     done
+
+fi
+
+if [ "${XINPUT_DISABLE_TOUCHPAD_DURATION:-0.5}" != "0" ] && command_exists syndaemon; then
+
+    DEVICE_IDS=($(xinput list | grep -E '\bslave\s+pointer\b' | sort | uniq | gnu_grep -Po '(?<=\bid=)[0-9]+\b'))
+    HAVE_TOUCHPAD=0
+
+    if [ "${#DEVICE_IDS[@]}" -gt "0" ]; then
+
+        for DEVICE_ID in "${DEVICE_IDS[@]}"; do
+
+            ! xinput_is_touchpad "$DEVICE_ID" || {
+                HAVE_TOUCHPAD=1
+                break
+            }
+
+        done
+
+        [ "$HAVE_TOUCHPAD" -eq "0" ] || {
+
+            killall syndaemon 2>/dev/null || true
+
+            echo -e "syndaemon -i ${XINPUT_DISABLE_TOUCHPAD_DURATION:-0.5} -d -t -K -R\n" >&2
+            syndaemon -i "${XINPUT_DISABLE_TOUCHPAD_DURATION:-0.5}" -d -t -K -R
+
+        }
+
+    fi
 
 fi
