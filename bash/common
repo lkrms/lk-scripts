@@ -743,6 +743,53 @@ function move_file_delete_link() {
 
 }
 
+# Usage: maybe_sudo <use sudo? (Y/N)> command [arg1...]
+function maybe_sudo() {
+
+    local SUDO_OR_NOT
+
+    SUDO_OR_NOT="$1"
+    shift
+
+    if [ "$SUDO_OR_NOT" = "Y" ]; then
+
+        sudo -H "$@"
+
+    else
+
+        "$@"
+
+    fi
+
+}
+
+# Usage: safe_symlink /path/to/target /path/to/link [use sudo? (y/N)]
+function safe_symlink() {
+
+    local SUDO_OR_NOT
+
+    SUDO_OR_NOT="${3:-N}"
+
+    [ -e "$1" ] || return
+
+    if [ -L "$2" ]; then
+
+        maybe_sudo "$SUDO_OR_NOT" rm -f "$2"
+
+    elif [ -e "$2" ]; then
+
+        maybe_sudo "$SUDO_OR_NOT" mv -f "$2" "$2.bak"
+
+    else
+
+        maybe_sudo "$SUDO_OR_NOT" mkdir -p "$(dirname "$2")"
+
+    fi
+
+    maybe_sudo "$SUDO_OR_NOT" ln -sv "$1" "$2"
+
+}
+
 # Usage: create_temp_file [queue for deletion? (Y/n)]
 function create_temp_file() {
 

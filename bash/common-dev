@@ -372,14 +372,16 @@ function dev_apply_system_config() {
 
     fi
 
+    if is_linux; then
+
+        command_exists xrandr && safe_symlink "$ROOT_DIR/linux/xrandr-auto.sh.desktop" "$HOME/.config/autostart/xrandr-auto.sh.desktop" || true
+
+    fi
+
     if command_exists sxhkd && command_exists systemctl; then
 
-        mkdir -p "$HOME/.config/sxhkd"
-        mkdir -p "$HOME/.local/bin"
-        move_file_delete_link "$HOME/.config/sxhkd/sxhkdrc"
-        move_file_delete_link "$HOME/.local/bin/sxhkd-do-map.py"
-        ln -sv "$ROOT_DIR/linux/sxhkd/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc"
-        ln -sv "$ROOT_DIR/linux/sxhkd/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py"
+        safe_symlink "$ROOT_DIR/linux/sxhkd/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc"
+        safe_symlink "$ROOT_DIR/linux/sxhkd/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py"
 
         if user_service_exists "sxhkd"; then
 
