@@ -93,6 +93,7 @@ trimage
 twist
 usb-creator-gtk
 vlc
+winehq-stable
 wingpanel-indicator-ayatana
 x-tile
 x11vnc
@@ -183,6 +184,7 @@ apt_register_repository sublime-text "https://download.sublimetext.com/sublimehq
 apt_register_repository typora "https://typora.io/linux/public-key.asc" "deb https://typora.io/linux ./" "origin typora.io" "typora"
 apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_vbox_2016.asc" "deb [arch=amd64] https://download.virtualbox.org/virtualbox/debian $DISTRIB_CODENAME contrib" "origin download.virtualbox.org" "virtualbox-*"
 apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "release o=vscode stable,l=vscode stable" "code code-*"
+apt_register_repository wine "https://dl.winehq.org/wine-builds/winehq.key" "deb https://dl.winehq.org/wine-builds/ubuntu/ $DISTRIB_CODENAME main" "origin dl.winehq.org" "wine-* winehq-*"
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "origin dl.yarnpkg.com" "yarn"
 
 apt_install_packages "essential utilities" "\
@@ -415,6 +417,7 @@ fi
 
 apt_install_packages "VirtualBox" "virtualbox-6.0"
 apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
+#apt_install_packages "Wine" "winehq-stable winetricks"
 
 case "${XDG_CURRENT_DESKTOP:-}" in
 
