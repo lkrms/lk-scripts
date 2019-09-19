@@ -792,7 +792,29 @@ fi
 
 if apt_package_installed "virtualbox-[0-9.]+"; then
 
-    sudo adduser "$USER" vboxusers >/dev/null 2>&1 || die "Error adding $USER to vboxusers group"
+    console_message "Configuring VirtualBox..." "" "$CYAN"
+
+    groups | grep -Eq '(\s|^)(vboxusers)(\s|$)' || sudo adduser "$(id -un)" "vboxusers"
+
+    [ -e "/etc/default/virtualbox" ] || sudo tee "/etc/default/virtualbox" >/dev/null <<EOF
+VBOXAUTOSTART_DB=/etc/vbox
+VBOXAUTOSTART_CONFIG=/etc/vbox/vbox.cfg
+EOF
+
+    # shellcheck disable=SC1091
+    . "/etc/default/virtualbox"
+
+    sudo mkdir -p "$VBOXAUTOSTART_DB"
+    sudo mkdir -p "$(dirname "$VBOXAUTOSTART_CONFIG")"
+
+    [ -e "$VBOXAUTOSTART_CONFIG" ] || sudo tee "$VBOXAUTOSTART_CONFIG" >/dev/null <<EOF
+default_policy = allow
+EOF
+
+    sudo chgrp -c vboxusers "$VBOXAUTOSTART_DB"
+    sudo chmod -c 1775 "$VBOXAUTOSTART_DB"
+
+    VBoxManage setproperty autostartdbpath "$VBOXAUTOSTART_DB"
 
 fi
 
