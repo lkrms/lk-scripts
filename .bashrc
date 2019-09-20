@@ -133,9 +133,17 @@ function _latest() {
 
     [ "${#TYPE}" -eq "1" ] && shift || TYPE="f"
 
-    is_macos && COMMAND=(find -x . \() || COMMAND=(find . -xdev \()
+    if is_macos; then
 
-    [ "$#" -eq "0" ] || COMMAND+=(\( "$@" -prune \) -o)
+        COMMAND=(find -xE . \()
+
+    else
+
+        COMMAND=(find . -xdev -regextype posix-extended \()
+
+    fi
+
+    [ "$#" -eq "0" ] || COMMAND+=("$@")
 
     COMMAND+=(\( -type "$TYPE" -print0 \) \))
 
@@ -151,19 +159,24 @@ function _latest() {
 
 }
 
-# files after excluding .git directories
+# files after excluding .git directories (and various others we don't care about)
 function latest() {
-    _latest f -type d -name .git
+    _latest f \! \( \( -type d \( -name .git -o -path "*/.*/google-chrome" -o -path "*/.*/Cache" -o -path "*/.*/GPUCache" -o -path "*/.*/Local Storage" \) -prune \) -o \( -type f -regex '.*/(Cookies|QuotaManager)(-journal)?$' \) \)
 }
 
 # directories after excluding .git directories
 function latest-dir() {
-    _latest d -type d -name .git
+    _latest d \! \( -type d -name .git -prune \)
 }
 
 # all files
 function latest-all() {
     _latest f
+}
+
+# all directories
+function latest-all-dir() {
+    _latest d
 }
 
 if command -v owncloudcmd >/dev/null 2>&1; then
