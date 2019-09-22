@@ -496,6 +496,9 @@ esac
 
 if ! has_argument "--skip-debs"; then
 
+    # the Ubuntu package doesn't work
+    apt_install_deb "http://ftp.debian.org/debian/pool/contrib/m/msttcorefonts/ttf-mscorefonts-installer_3.7_all.deb"
+
     apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.3-stable-ca35737a/synergy_1.10.3.stable_b24%2Bca35737a_ubuntu18_amd64.deb"
     apt_install_deb "https://displaycal.net/download/xUbuntu_${DISTRIB_RELEASE}/amd64/DisplayCAL.deb"
     apt_install_deb "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
