@@ -440,15 +440,15 @@ esac
 
 if ! is_root; then
 
-    ! is_autostart && command_exists displaycal-apply-profiles && displaycal-apply-profiles || true
+    if ! is_autostart; then
 
-    "$SCRIPT_DIR/x-release-modifiers.sh" --no-sleep
+        command_exists displaycal-apply-profiles && displaycal-apply-profiles || true
+        "$SCRIPT_DIR/x-release-modifiers.sh"
+
+    fi
+
     "$SCRIPT_DIR/xkb-load.sh" "$@" --no-sleep
     "$SCRIPT_DIR/xinput-load.sh" "$@"
-
-    mkdir -p "$HOME/.local/bin"
-    move_file_delete_link "$HOME/.local/bin/xrandr-auto.sh"
-    ln -sv "$ROOT_DIR/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh" >&2
 
     if killall quicktile 2>/dev/null; then
 

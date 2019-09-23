@@ -1,14 +1,19 @@
 #!/bin/bash
+# shellcheck disable=SC2034
 
 # 26.9", 3840x2160
 EDID_DISPLAY_0="00ffffffffffff0005e39027182c0000041d0103803c22782a67a1a5554da2270e5054bfef00d1c0b30095008180814081c0010101014dd000a0f0703e803020350055502100001aa36600a0f0701f803020350055502100001a000000fc005532373930420a202020202020000000fd0017501ea03c000a2020202020200181020333f14c9004031f1301125d5e5f606123090707830100006d030c001000387820006001020367d85dc401788003e30f000c565e00a0a0a029503020350055502100001e023a801871382d40582c450055502100001e011d007251d01e206e28550055502100001e4d6c80a070703e8030203a0055502100001a000000004e"
 EDID_DISPLAY_0_OPTIONS=()
 
+# 27.1", 3840x2160
+EDID_DISPLAY_2="00ffffffffffff001e6d067739ac0100041d0103803c2278ea3e31ae5047ac270c50542108007140818081c0a9c0d1c081000101010108e80030f2705a80b0588a0058542100001e04740030f2705a80b0588a0058542100001a000000fd00383d1e873c000a202020202020000000fc004c472048445220344b0a20202001f7020338714d9022201f1203040161605d5e5f230907076d030c001000b83c20006001020367d85dc401788003e30f0003e305c000e3060501023a801871382d40582c450058542100001e565e00a0a0a029503020350058542100001a000000ff003930344e54574733373632350a0000000000000000000000000000000000f3"
+EDID_DISPLAY_2_OPTIONS=()
+
 # 19.5", 1920x1080
 EDID_DISPLAY_1="00ffffffffffff00410c03c1b18e0000331b0103802c18782ac955a25750a126115054bd4b00d1c09500950fb30081c0818081400101023a801871382d40582c4500b3ef1000001e000000ff00554b3531373531303336353239000000fc0050484c203230305634510a2020000000fd00384c1e5311000a20202020202000af"
 EDID_DISPLAY_1_OPTIONS=()
 
-for i in $(seq 0 1); do
+for i in $(seq 0 2); do
     eval "EDID_DISPLAY_${i}_ACTIVE=0"
     if eval "EDID_DISPLAY_${i}_INDEX=\"\$(get_edid_index \"\$EDID_DISPLAY_${i}\")\""; then
         eval "EDID_DISPLAY_${i}_ACTIVE=1"
@@ -42,8 +47,17 @@ case "${XDG_CURRENT_DESKTOP:-}" in
             if [ "$EDID_DISPLAY_1_ACTIVE" -eq "1" ]; then
 
                 # "looks like 1536x864" - i.e. use all of i915's (software-limited) 8192x8192 framebuffer
+                # positioned to the left of display 0
                 EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 3072x1728 --pos 0x576)
                 EDID_DISPLAY_0_OPTIONS+=(--pos 3072x0)
+
+            # or: additional 4K also connected?
+            elif [ "$EDID_DISPLAY_2_ACTIVE" -eq "1" ]; then
+
+                # will fail if maximum framebuffer is smaller than 10240x2880
+                # positioned to the right of display 0
+                EDID_DISPLAY_2_OPTIONS+=(--mode 3840x2160 --scale-from 5120x2880 --pos 5120x0 --primary)
+                EDID_DISPLAY_0_OPTIONS+=(--pos 0x0)
 
             fi
 
@@ -78,6 +92,7 @@ case "${XDG_CURRENT_DESKTOP:-}" in
             if [ "${XRANDR_ALLOW_SCALING:-0}" -eq "1" ]; then
 
                 # "looks like 1920x1080" - i.e. scale this output to appear normal despite 1.5x scaling
+                # positioned to the left of display 0
                 EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 2560x1440 --pos 0x360)
                 EDID_DISPLAY_0_OPTIONS+=(--pos 2560x0)
 
@@ -88,6 +103,13 @@ case "${XDG_CURRENT_DESKTOP:-}" in
 
             fi
 
+        # or: additional 4K also connected?
+        elif [ "$EDID_DISPLAY_2_ACTIVE" -eq "1" ]; then
+
+            # positioned to the right of display 0
+            EDID_DISPLAY_2_OPTIONS+=(--mode 3840x2160 --scale-from 3840x2160 --pos 3840x0)
+            EDID_DISPLAY_0_OPTIONS+=(--pos 0x0)
+
         fi
 
     fi
@@ -96,7 +118,7 @@ case "${XDG_CURRENT_DESKTOP:-}" in
 
 esac
 
-for i in $(seq 0 1); do
+for i in $(seq 0 2); do
     eval "EDID_DISPLAY_ACTIVE=\"\$EDID_DISPLAY_${i}_ACTIVE\""
     if [ "$EDID_DISPLAY_ACTIVE" -eq "1" ]; then
         eval "EDID_DISPLAY_INDEX=\"\$EDID_DISPLAY_${i}_INDEX\""
