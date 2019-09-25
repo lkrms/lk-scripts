@@ -5,6 +5,7 @@
 - [ ] Replace, for example, `IS_MACOS` tests with `is_macos`
 - [ ] macOS: Add SSH key loading to .bashrc
 - [x] Review file_to_array: can we standardise the filters?
+- [ ] Move `git_*` functions to `common-git`
 
 Review:
 
@@ -14,6 +15,7 @@ Review:
 - [ ] bash/common-apt
     Up to `apt_pretty_packages` (inclusive)
 - [ ] bash/common-dev
+    `git_*` functions checked
 - [x] bash/common-homebrew
 - [x] bash/common-linux
 - [x] bash/common-macos
@@ -33,7 +35,7 @@ Review:
 - [x] config/ntp-default.conf
 - [ ] config/pip-packages-default
 - [ ] config/pip3-packages-default
-- [ ] config/settings-default
+- [x] config/settings-default
 - [ ] config/xinput-settings-example
 - [x] config/xkbcomp-example
 - [ ] config/xrandr-example

@@ -1,17 +1,14 @@
 #!/bin/bash
 # shellcheck disable=SC2034
 
-# xrandr scaling isn't quite as stable as its macOS counterpart
-XRANDR_ALLOW_SCALING=0
+#SCREENSHOT_DIR="$HOME/Pictures/Screenshots"
 
-SCREENSHOT_DIR="$HOME/ownCloud/Screenshots"
-
-SAMBA_WORKGROUP="LINAC"
-SAMBA_DEFAULT_CONF_PATH=
-
-GIT_LOG_LIMIT=14
+#SAMBA_WORKGROUP="LINAC"
 
 DEFAULT_CODE_ROOTS=()
-[ -z "${HOME:-}" ] || DEFAULT_CODE_ROOTS+=("$HOME/Code")
-[ -z "${HOME:-}" ] || [[ "$ROOT_DIR" == "$HOME/Code"* ]] || DEFAULT_CODE_ROOTS+=("$ROOT_DIR")
-DEFAULT_CODE_REPO_DEPTH=2
+if [ -n "${HOME:-}" ]; then
+    DEFAULT_CODE_ROOTS+=("$HOME/Code")
+    [[ "$ROOT_DIR" == "$HOME/Code"* ]] || DEFAULT_CODE_ROOTS+=("$ROOT_DIR")
+else
+    DEFAULT_CODE_ROOTS+=("$ROOT_DIR")
+fi
