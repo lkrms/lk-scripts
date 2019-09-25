@@ -9,6 +9,6 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=common
 . "$SCRIPT_DIR/common"
 
-[ "$#" -eq "1" ] || die "Usage: $(basename "$0") <uuid|vmname>"
+[ "$#" -ge "1" ] && [ "$#" -le "3" ] || die "Usage: $(basename "$0") <uuid|vmname> [delay-seconds [acpishutdown|savestate|...]]"
 
-VBoxManage modifyvm "$1" --autostart-enabled on --autostop-type savestate --defaultfrontend headless
+VBoxManage modifyvm "$1" --autostart-enabled on --autostart-delay "${2:-0}" --autostop-type "${3:-acpishutdown}" --defaultfrontend headless || die
