@@ -922,11 +922,14 @@ function apt_upgrade_all() {
 
 function apt_purge() {
 
-    local PURGE_PACKAGES
+    local PURGE_PACKAGES IFS
 
     sudo apt-get "${APT_GET_OPTIONS[@]}" "$@" autoremove || die
 
+    IFS=$'\n'
     PURGE_PACKAGES=($(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W)) || die
+    unset IFS
+
     PURGE_PACKAGES=($(printf '%s\n' "${PURGE_PACKAGES[@]}" | gnu_grep -Po '^.*(?=\tconfig-files$)')) || true
 
     [ "${#PURGE_PACKAGES[@]}" -eq "0" ] || sudo apt-get "${APT_GET_OPTIONS[@]}" "$@" purge "${PURGE_PACKAGES[@]}" || die

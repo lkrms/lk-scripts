@@ -290,6 +290,7 @@ apt_install_packages "desktop essentials" "\
  gnome-color-manager\
  google-chrome-stable\
  gparted\
+ gssp-recoll\
  guake\
  handbrake-cli\
  handbrake-gtk\
