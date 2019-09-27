@@ -914,6 +914,16 @@ function link_settings() {
 
     APP_NAME="${APP_NAME:-app}"
 
+    if [ -n "${COMMAND_CHECK:-}" ]; then
+
+        if ! command_exists "$COMMAND_CHECK"; then
+
+            die "Error: $APP_NAME isn't installed (command doesn't exist: $COMMAND_CHECK)"
+
+        fi
+
+    fi
+
     if [ -n "${RUNNING_CHECK:-}" ]; then
 
         if eval_test "$RUNNING_CHECK"; then
@@ -948,9 +958,7 @@ function link_settings() {
         }
 
         TO="$(realpath "${LINK_TO[$i]}")" || die
-        move_file_delete_link "${LINK_FROM[$i]}" || die
-        mkdir -p "$(dirname "${LINK_FROM[$i]}")"
-        ln -sv "$TO" "${LINK_FROM[$i]}"
+        safe_symlink "$TO" "${LINK_FROM[$i]}"
 
     done
 
