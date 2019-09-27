@@ -6,6 +6,9 @@ import re
 import subprocess
 import sys
 
+xte_delay = "12000"
+xdotool_delay = "12"
+
 
 def make_xte_commands(command, keys, both_modifiers=False):
 
@@ -28,7 +31,7 @@ def make_xte_commands(command, keys, both_modifiers=False):
 
         for the_key in key_array:
             commands.append("{0} {1}".format(command, the_key))
-            commands.append("usleep 2000")
+            commands.append("usleep " + xte_delay)
 
     return commands
 
@@ -220,27 +223,30 @@ if use_xte:
 else:
 
     if keyup_pre_command:
-        command.extend(["keyup", "--delay", "2", "+".join(keyup_pre_command)])
+        command.extend(["keyup", "--delay", xdotool_delay,
+                        "+".join(keyup_pre_command)])
 
     if mouseup_pre_command:
         # unrecognized option '--delay'
         command.extend(["mouseup", mouseup_pre_command])
 
     if key_command:
-        command.extend(["key", "--delay", "2"])
+        command.extend(["key", "--delay", xdotool_delay])
         if clear_modifiers:
             command.append("--clearmodifiers")
         command.append("+".join(key_command))
 
     if click_key_command:
-        command.extend(["keydown", "--delay", "2",
+        command.extend(["keydown", "--delay", xdotool_delay,
                         "+".join(click_key_command)])
 
     if click_command:
-        command.extend(["click", "--delay", "2", "+".join(click_command)])
+        command.extend(
+            ["click", "--delay", xdotool_delay, "+".join(click_command)])
 
     if click_key_command:
-        command.extend(["keyup", "--delay", "2", "+".join(click_key_command)])
+        command.extend(["keyup", "--delay", xdotool_delay,
+                        "+".join(click_key_command)])
 
 if len(command) > 1:
     subprocess.run(command, check=True)

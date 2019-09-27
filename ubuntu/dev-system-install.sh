@@ -221,11 +221,11 @@ if ! is_virtual; then
     apt_install_packages "power management" "\
  tlp\
  tlp-rdw\
-" N
+"
 
     if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
 
-        apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms" N
+        apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms"
 
     fi
 
