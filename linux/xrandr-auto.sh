@@ -10,14 +10,16 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
 
-assert_command_exists xrandr
-assert_command_exists bc
+command_exists xrandr || die_happy "xrandr command not found"
+command_exists bc || die_happy "bc command not found"
 
 if has_argument "-h" || has_argument "--help"; then
 
     die "Usage: $(basename "$0") [--autostart] [--suggest] [--get-qt-exports] [--set-dpi-only] [--skip-lightdm]"
 
 fi
+
+! is_autostart || sleep 2
 
 # if the primary output's actual DPI is above this, enable "Retina" mode
 HIDPI_THRESHOLD=144
@@ -26,7 +28,7 @@ HIDPI_THRESHOLD=144
 XRANDR_OUTPUT="$(
     . "$SUBSHELL_SCRIPT_PATH" || exit
     xrandr --verbose | sed -E 's/[[:space:]]+$//'
-)" || die "Error: unable to retrieve current RandR state"
+)" || die_happy "Error: unable to retrieve current RandR state"
 
 # convert to single line for upcoming greps
 XRANDR_OUTPUT="\\n${XRANDR_OUTPUT//$'\n'/\\n}\\n"
@@ -35,7 +37,7 @@ XRANDR_OUTPUT="\\n${XRANDR_OUTPUT//$'\n'/\\n}\\n"
 OUTPUTS=($(
     . "$SUBSHELL_SCRIPT_PATH" || exit
     echo "$XRANDR_OUTPUT" | grep -Po '(?<=\\n)([^[:space:]]+)(?= connected)'
-)) || die "Error: no connected outputs"
+)) || die_happy "Error: no connected outputs"
 
 # and all output names (i.e. connected and disconnected)
 ALL_OUTPUTS=($(
@@ -234,7 +236,7 @@ fi
 if [ -e "$CONFIG_DIR/xrandr" ]; then
 
     # shellcheck disable=SC1090
-    . "$CONFIG_DIR/xrandr" || die
+    . "$CONFIG_DIR/xrandr" || die_happy
 
 fi
 
@@ -317,122 +319,62 @@ for i in "${ALL_OUTPUTS[@]}"; do
 done
 
 # check that our configuration is valid
-xrandr --dryrun "${RESET_OPTIONS[@]}" >/dev/null
-xrandr --dryrun "${OPTIONS[@]}" >/dev/null
+xrandr --dryrun "${RESET_OPTIONS[@]}" >/dev/null || die_happy
+xrandr --dryrun "${OPTIONS[@]}" >/dev/null || die_happy
 
 # apply configuration
 echo -e "\nxrandr ${RESET_OPTIONS[*]}\n" >&2
 xrandr "${RESET_OPTIONS[@]}" || true
 echo -e "xrandr ${OPTIONS[*]}\n" >&2
-xrandr "${OPTIONS[@]}"
+xrandr "${OPTIONS[@]}" || die_happy
+
+if ! has_argument "--lightdm" && ! has_argument "--skip-lightdm" && [ -d "/etc/lightdm/lightdm.conf.d" ]; then
+
+    sudo -n tee "/etc/lightdm/lightdm.conf.d/90-xrandr-auto.conf" >/dev/null 2>&1 <<EOF || echo -e "WARNING: unable to configure LightDM\n" >&2
+[Seat:*]
+display-setup-script='$SCRIPT_PATH' --lightdm
+EOF
+
+fi
+
+! has_argument "--lightdm" || die_happy
 
 # ok, xrandr is sorted -- look after everything else
 case "${XDG_CURRENT_DESKTOP:-}" in
 
 XFCE)
 
+    # prevent Xfce from interfering with our display settings
+    echo -e "xfconf-query -c displays -p / -rR\n" >&2
+    xfconf-query -c displays -p / -rR
+    echo -e "xfconf-query -c displays -p /Notify -n -t bool -s false\n" >&2
+    xfconf-query -c displays -p /Notify -n -t bool -s false
+
     "$SCRIPT_DIR/xfce-set-dpi.sh" "$DPI" "$@"
     ;;
 
 *GNOME | Pantheon)
 
-    (
-        . "$SUBSHELL_SCRIPT_PATH" || exit
+    if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
 
-        function sudo_or_not() {
+        ((XFT_DPI = 1024 * DPI))
 
-            if [ "${#SUDO_OR_NOT[@]}" -gt "0" ]; then
+        if OVERRIDES="$(gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)"; then
 
-                "${SUDO_OR_NOT[@]}" "$@"
-
-            else
-
-                "$@"
-
-            fi
-
-        }
-
-        function gsettings_apply() {
-
-            local SUDO_OR_NOT_STRING=
-
-            if [ "${#SUDO_OR_NOT[@]}" -gt "0" ]; then
-
-                SUDO_OR_NOT_STRING="${SUDO_OR_NOT[*]} "
-
-            fi
-
-            ((XFT_DPI = 1024 * DPI))
-
-            OVERRIDES="$(sudo_or_not gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)" || return
             OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Gdk/WindowScalingFactor' "$SCALING_FACTOR")"
             OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Xft/DPI' "$XFT_DPI")"
 
-            echo -e "${SUDO_OR_NOT_STRING}gsettings set org.gnome.settings-daemon.plugins.xsettings overrides \"$OVERRIDES\"\n" >&2
-            sudo_or_not gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
-            echo -e "${SUDO_OR_NOT_STRING}gsettings set org.gnome.desktop.interface scaling-factor $SCALING_FACTOR\n" >&2
-            sudo_or_not gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
-            echo -e "${SUDO_OR_NOT_STRING}gsettings set org.gnome.desktop.interface text-scaling-factor $DPI_MULTIPLIER\n" >&2
-            sudo_or_not gsettings set org.gnome.desktop.interface text-scaling-factor "$DPI_MULTIPLIER" || true
-
-        }
-
-        SUDO_OR_NOT=()
-
-        if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
-
-            gsettings_apply || exit 0
+            echo -e "gsettings set org.gnome.settings-daemon.plugins.xsettings overrides \"$OVERRIDES\"\n" >&2
+            gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
 
         fi
 
-        # attempt to apply the same settings to LightDM
-        if user_exists "lightdm" && ! has_argument "--skip-lightdm"; then
+        echo -e "gsettings set org.gnome.desktop.interface scaling-factor $SCALING_FACTOR\n" >&2
+        gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
+        echo -e "gsettings set org.gnome.desktop.interface text-scaling-factor $DPI_MULTIPLIER\n" >&2
+        gsettings set org.gnome.desktop.interface text-scaling-factor "$DPI_MULTIPLIER" || true
 
-            SUDO_OR_NOT=(sudo -nu lightdm -H)
-
-            if is_root; then
-
-                SUDO_OR_NOT+=(-E)
-
-            else
-
-                SUDO_OR_NOT+=(env -i)
-
-            fi
-
-            if ! is_root || [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
-
-                DBUS_LAUNCH_CODE="$(sudo_or_not dbus-launch --sh-syntax)" || exit 0
-
-                # shellcheck disable=SC1091
-                . /dev/stdin <<<"$DBUS_LAUNCH_CODE"
-
-                is_root || SUDO_OR_NOT+=("DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS")
-
-                echo "D-Bus process started: $DBUS_SESSION_BUS_PID" >&2
-
-            fi
-
-            gsettings_apply || true
-
-            if [ -n "${DBUS_SESSION_BUS_PID:-}" ]; then
-
-                if sudo_or_not kill "$DBUS_SESSION_BUS_PID"; then
-
-                    echo "D-Bus process killed: $DBUS_SESSION_BUS_PID" >&2
-
-                else
-
-                    echo "Unable to kill D-Bus process: $DBUS_SESSION_BUS_PID" >&2
-
-                fi
-
-            fi
-
-        fi
-
-    )
+    fi
 
     ;;
 

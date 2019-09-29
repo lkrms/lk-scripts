@@ -9,7 +9,6 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
 
-assert_not_root
 assert_command_exists xinput
 
 function xinput_is_touchpad() {

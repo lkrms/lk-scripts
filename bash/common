@@ -280,6 +280,14 @@ function die() {
 
 }
 
+function die_happy() {
+
+    [ "$#" -eq "0" ] || echoc "$@" >&2
+
+    exit 0
+
+}
+
 # Usage: console_message "Main message" "Secondary message with colour too" "$BOLD" "$BLUE"
 function console_message() {
 
