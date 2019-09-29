@@ -137,6 +137,8 @@ if [ "$DO_FETCH" -eq "1" ]; then
 
     wait
 
+    echo
+
     file_to_array "$WARNINGS_FILE" ""
 
     if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
