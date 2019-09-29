@@ -125,10 +125,6 @@ if [ "$DO_FETCH" -eq "1" ]; then
 
                 done
 
-            else
-
-                echo "No remotes in repository $REPO_LONG_NAME" >>"$WARNINGS_FILE"
-
             fi
 
         ) &
@@ -287,6 +283,10 @@ PUSH_REMOTE="%(push:remotename)"
             PUSHED_REPOS+=("${REPO_LONG_NAME}($(array_join_by ', ' "${PUSHED_BRANCHES[@]}"))")
 
         fi
+
+    else
+
+        WARNINGS+=("No remotes in repository $REPO_LONG_NAME")
 
     fi
 
