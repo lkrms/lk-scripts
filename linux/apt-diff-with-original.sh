@@ -72,6 +72,10 @@ for p in "${PACKAGES[@]}"; do
 
             console_message "No differences found" "" "$BOLD" "$GREEN" >&2
 
+        else
+
+            console_message "Original version is available at:" "${EXTRACT_PATH}${FILE_PATH}" "$BOLD" >&2
+
         fi
 
         exit
