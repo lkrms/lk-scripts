@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2034
 
 set -euo pipefail
 
@@ -168,6 +169,9 @@ for i in "${!REPO_ROOTS[@]}"; do
 
             eval "$REF_CODE"
 
+            UPSTREAM_REMOTE="${UPSTREAM%%/*}"
+            PUSH_REMOTE="${PUSH%%/*}"
+
             BEHIND_UPSTREAM=0
             AHEAD_PUSH=0
             PRETTY_BRANCH="$(git_format_branch "$BRANCH" "$BEHIND_UPSTREAM" "$AHEAD_PUSH")"
@@ -265,9 +269,7 @@ BRANCH="%(refname:short)"
 LOCAL_COMMIT="%(objectname:short)"
 IS_CURRENT_BRANCH="%(HEAD)"
 UPSTREAM="%(upstream:short)"
-UPSTREAM_REMOTE="%(upstream:remotename)"
 PUSH="%(push:short)"
-PUSH_REMOTE="%(push:remotename)"
 %00' refs/heads/
 
         )
