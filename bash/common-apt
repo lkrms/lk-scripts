@@ -22,23 +22,6 @@ function apt_refresh_packages() {
     APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po '^.*(?=\tinstalled$)' | sort | uniq)" || die
     APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames | sort | uniq)" || die
 
-    if [ "$APT_GUI_PACKAGES_AUTO" -eq "1" ] || ! variable_exists APT_GUI_PACKAGES; then
-
-        APT_GUI_PACKAGES="$(
-            # shellcheck source=../bash/common-subshell
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances libwayland-client0 libwayland-server0 libx11-6 x11-common | grep -v " " | sort | uniq
-        )" || die
-        APT_GUI_PACKAGES_AUTO=1
-
-    elif [ "$APT_GUI_PACKAGES_AUTO" -eq "-1" ]; then
-
-        # shellcheck disable=SC2086
-        APT_GUI_PACKAGES="$(printf '%s\n' $APT_GUI_PACKAGES | sort | uniq)"
-        APT_GUI_PACKAGES_AUTO=0
-
-    fi
-
 }
 
 function apt_package_installed() {
@@ -58,18 +41,6 @@ function apt_package_available() {
 
     apt_make_cache_clean
     echo "$APT_AVAILABLE_PACKAGES" | grep -E "^$1"'(:.*)?$' >/dev/null 2>&1
-
-}
-
-function apt_package_is_gui() {
-
-    apt_package_available "$1" && echo "$APT_GUI_PACKAGES" | grep -E "^$1"'(:.*)?$' >/dev/null 2>&1
-
-}
-
-function apt_package_is_cli() {
-
-    apt_package_available "$1" && ! apt_package_is_gui "$1"
 
 }
 
@@ -102,23 +73,18 @@ function apt_filter_packages() {
 
 }
 
-# Underlines "gui" packages and highlights packages being removed. Optionally reflows text.
+# Highlights packages being removed. Optionally reflows text (not desirable if preformatted with `column`, for example).
 # Usage: apt_pretty_packages "package1 package2 package3-" [reflow text? (y/N)]
 function apt_pretty_packages() {
 
-    local FORMATTED="$1" REFLOW="${2:-N}" ALL_PACKAGES REMOVE_PACKAGES GUI_PACKAGES ADD_PACKAGES REFLOWED GUI_PACKAGES_JOINED FIND REPLACE p
+    local FORMATTED="$1" REFLOW="${2:-N}" REMOVE_PACKAGES REFLOWED FIND REPLACE p
 
     apt_make_cache_clean
-
-    # shellcheck disable=SC2086
-    ALL_PACKAGES="$(printf '%s\n' $1 | gnu_grep -Po '^.*[^-]+(?=-?$)' | sort | uniq)" || true
 
     # shellcheck disable=SC2086
     REMOVE_PACKAGES=($(printf '%s\n' $1 | gnu_grep -Po '^.*[^-]+(?=-$)' | sort | uniq)) || true
 
     if [ "$REFLOW" = "N" ]; then
-
-        GUI_PACKAGES=($(comm -12 <(echo "$ALL_PACKAGES") <(echo "$APT_GUI_PACKAGES")))
 
         for p in "${REMOVE_PACKAGES[@]}"; do
 
@@ -130,45 +96,16 @@ function apt_pretty_packages() {
 
         done
 
-        for p in "${GUI_PACKAGES[@]}"; do
-
-            [ -n "$RED" ] && FIND="(\s|^|$(sed_escape_search "$RED"))$(sed_escape_search "$p")(\s|\$|$(sed_escape_search "$RESET"))" || FIND="(\s|^)$(sed_escape_search "$p")(\s|\$)"
-            REPLACE="\1$(sed_escape_replace "${UNDERLINE}${p}${NO_UNDERLINE}")\2"
-
-            FORMATTED="$(sed -E "s/${FIND}/${REPLACE}/g" <<<"$FORMATTED")"
-
-        done
-
         echo "$FORMATTED"
 
     else
 
         # shellcheck disable=SC2086
-        ADD_PACKAGES="$(printf '%s\n' $1 | grep -E '^.*[^-]+$' | sort | uniq)" || true
-
-        REFLOWED=($(comm -23 <(echo "$ADD_PACKAGES") <(echo "$APT_GUI_PACKAGES")))
-
-        GUI_PACKAGES=($(comm -12 <(echo "$ADD_PACKAGES") <(echo "$APT_GUI_PACKAGES")))
-
-        for p in "${GUI_PACKAGES[@]}"; do
-
-            REFLOWED+=("${UNDERLINE}${p}${NO_UNDERLINE}")
-
-        done
-
-        GUI_PACKAGES_JOINED="$(comm -12 <(echo "$ALL_PACKAGES") <(echo "$APT_GUI_PACKAGES"))"
+        REFLOWED=($(printf '%s\n' $1 | grep -E '^.*[^-]+$' | sort | uniq)) || true
 
         for p in "${REMOVE_PACKAGES[@]}"; do
 
-            if [[ "$GUI_PACKAGES_JOINED" =~ ([[:space:]]|^)"$p"([[:space:]]|$) ]]; then
-
-                REFLOWED+=("${BOLD}${RED}${UNDERLINE}${p}${RESET}")
-
-            else
-
-                REFLOWED+=("${BOLD}${RED}${p}${RESET}")
-
-            fi
+            REFLOWED+=("${BOLD}${RED}${p}${RESET}")
 
         done
 
@@ -184,6 +121,7 @@ function apt_ubuntu_archive_url() {
     if [ -z "${UBUNTU_ARCHIVE_URL:-}" ]; then
 
         UBUNTU_ARCHIVE_URL="$(
+            # shellcheck disable=SC1090
             . "$SUBSHELL_SCRIPT_PATH" || exit
             grep -Eo '\bhttps?://([[:alnum:]]+\.)archive\.ubuntu\.com/ubuntu\b' /etc/apt/sources.list | head -n1
         )/" || UBUNTU_ARCHIVE_URL="http://archive.ubuntu.com/ubuntu/"
@@ -741,6 +679,7 @@ function do_apt_install_deb() {
     DOWNLOAD_URLS_SKIP_REGEX='^\s*HTTP/[0-9.]+\s+429\b'
 
     PATHS="$(
+        # shellcheck disable=SC1090
         . "$SUBSHELL_SCRIPT_PATH" || exit
         download_urls "$@"
     )" || die
@@ -756,6 +695,7 @@ function do_apt_install_deb() {
     for path in "${!DEB_PATHS[@]}"; do
 
         DEB_PACKAGE="$(
+            # shellcheck disable=SC1090
             . "$SUBSHELL_SCRIPT_PATH" || exit
 
             # shellcheck disable=SC2016
@@ -765,6 +705,7 @@ function do_apt_install_deb() {
         if apt_package_installed "$DEB_PACKAGE"; then
 
             DEB_VERSION="$(
+                # shellcheck disable=SC1090
                 . "$SUBSHELL_SCRIPT_PATH" || exit
 
                 # shellcheck disable=SC2016
@@ -953,6 +894,7 @@ function apt_get_new_configuration_files() {
     command_exists debsums || apt_force_install_packages "debsums"
 
     sudo find /etc -type f | grep -vFf <(
+        # shellcheck disable=SC1090
         . "$SUBSHELL_SCRIPT_PATH" || exit
         sudo debsums -e 2>/dev/null | sed -E 's/[[:space:]]*[A-Z]+$//' || die
     ) || die
@@ -960,7 +902,6 @@ function apt_get_new_configuration_files() {
 }
 
 APT_CACHE_DIRTY=1
-APT_GUI_PACKAGES_AUTO=-1
 APT_DEB_PATH="$CACHE_DIR/deb"
 APT_GET_OPTIONS=(-o "Acquire::ForceIPv4=true" -y)
 APT_PPA_REGISTRY=()

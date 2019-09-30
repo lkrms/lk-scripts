@@ -14,11 +14,10 @@
 
     variable_exists "ADD_TO_PATH" || ADD_TO_PATH=()
 
-    ADD_TO_PATH+=("$ROOT_DIR" "$ROOT_DIR/bash" "$ROOT_DIR/synergy")
+    ADD_TO_PATH+=("$ROOT_DIR/bin")
 
-    [ "$IS_MACOS" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/macos")
-    [ "$IS_LINUX" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/linux")
-    [ "$IS_UBUNTU" -eq "1" ] && ADD_TO_PATH+=("$ROOT_DIR/ubuntu")
+    # TODO: move executable scripts into bin and remove this
+    ADD_TO_PATH+=("$ROOT_DIR" "$ROOT_DIR/bash" "$ROOT_DIR/synergy")
 
     ADD_TO_PATH+=("$HOME/.local/bin")
     ADD_TO_PATH+=("$HOME/.composer/vendor/bin")
@@ -52,6 +51,9 @@
     fi
 
     if is_macos; then
+
+        # TODO: remove ROOT_DIR/macos
+        ADD_TO_PATH+=("$ROOT_DIR/bin/macos" "$ROOT_DIR/macos")
 
         if [ "${TERM_PROGRAM:-}" = "iTerm.app" ]; then
 
@@ -101,6 +103,10 @@
         fi
 
     else
+
+        # TODO: remove ROOT_DIR/linux and ROOT_DIR/ubuntu
+        ADD_TO_PATH+=("$ROOT_DIR/bin/linux" "$ROOT_DIR/linux")
+        is_ubuntu && ADD_TO_PATH+=("$ROOT_DIR/bin/ubuntu" "$ROOT_DIR/ubuntu")
 
         echo 'alias duh="du -h --max-depth 1 | sort -h"'
 
