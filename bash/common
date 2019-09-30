@@ -69,6 +69,12 @@ function gnu_sed() {
 
 }
 
+function gnu_sort() {
+
+    gnu_command sort "$@"
+
+}
+
 function is_virtual() {
 
     assert_is_linux
@@ -285,6 +291,16 @@ function die_happy() {
     [ "$#" -eq "0" ] || echoc "$@" >&2
 
     exit 0
+
+}
+
+# Usage: version_is_at_least <installed-version> <minimum-version>
+function version_is_at_least() {
+
+    local MINIMUM
+
+    MINIMUM="$(printf '%s\n' "$1" "$2" | gnu_sort -V | head -n1)" || die
+    [ "$MINIMUM" = "$2" ]
 
 }
 
