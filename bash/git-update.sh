@@ -15,6 +15,9 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
 assert_command_exists git
 
+# no support for anything before Debian "jessie"
+git_version_is_at_least 2.1.4
+
 git_get_code_roots
 
 # shellcheck disable=SC2153
@@ -169,7 +172,10 @@ for i in "${!REPO_ROOTS[@]}"; do
 
             eval "$REF_CODE"
 
-            UPSTREAM_REMOTE="${UPSTREAM%%/*}"
+            UPSTREAM="$(git rev-parse --symbolic-full-name "$BRANCH"'@{upstream}')"
+            PUSH="$(git rev-parse --symbolic-full-name "$BRANCH"'@{push}' 2>/dev/null)" || PUSH="$UPSTREAM"
+            UPSTREAM="${UPSTREAM#refs/remotes/}"
+            PUSH="${PUSH#refs/remotes/}"
             PUSH_REMOTE="${PUSH%%/*}"
 
             BEHIND_UPSTREAM=0
@@ -268,8 +274,6 @@ for i in "${!REPO_ROOTS[@]}"; do
 BRANCH="%(refname:short)"
 LOCAL_COMMIT="%(objectname:short)"
 IS_CURRENT_BRANCH="%(HEAD)"
-UPSTREAM="%(upstream:short)"
-PUSH="%(push:short)"
 %00' refs/heads/
 
         )
