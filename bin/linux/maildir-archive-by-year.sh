@@ -31,7 +31,7 @@ for MAILDIR in "${MAILDIRS[@]}"; do
 	YEAR="$(date '+%Y')"
 	CONTINUE=1
 
-	while [ "$CONTINUE" -eq "1" ]; do
+	while [ "$CONTINUE" -ne "0" ]; do
 
 		CONTINUE=0
 		((NEXT_YEAR = YEAR + 1))
@@ -60,6 +60,12 @@ for MAILDIR in "${MAILDIRS[@]}"; do
 		fi
 
 		maybe_dryrun find "$ARCHIVE" -type f -newermt "${YEAR}0101" -not -newermt "${NEXT_YEAR}0101" -exec mv -v '{}' "$TARGET_DIR" \;
+
+		# set CONTINUE=1 if the archive contains email from a previous year
+		CONTINUE="$(find "$ARCHIVE" -type f -not -newermt "${YEAR}0101" -print -quit | wc -l)"
+		CONTINUE="${CONTINUE// /}"
+
+		((--YEAR))
 
 	done
 
