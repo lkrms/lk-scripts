@@ -47,9 +47,17 @@ function gnu_command() {
     COMMAND="$1"
     shift
 
-    if [ "$IS_MACOS" -eq "1" ]; then
+    if is_macos; then
 
-        command_exists "g${COMMAND}" && COMMAND="g${COMMAND}" || echoc "Warning: GNU $COMMAND not available; $(basename "0") may not work as expected" >&2
+        if command_exists "g${COMMAND}"; then
+
+            COMMAND="g${COMMAND}"
+
+        else
+
+            die "$(basename "$0") requires g${COMMAND} (have you installed Homebrew coreutils?)"
+
+        fi
 
     fi
 
@@ -72,6 +80,12 @@ function gnu_sed() {
 function gnu_sort() {
 
     gnu_command sort "$@"
+
+}
+
+function gnu_stat() {
+
+    gnu_command stat "$@"
 
 }
 
@@ -203,6 +217,21 @@ function sudo_function() {
     shift
 
     sudo bash -c "$(declare -f "$FUNCTION"); $FUNCTION \"\$@\"" "$0" "$@"
+
+}
+
+# returns non-zero if any of the arguments aren't directories
+function are_directories() {
+
+    local DIR
+
+    for DIR in "$@"; do
+
+        [ -d "$DIR" ] || return 1
+
+    done
+
+    return 0
 
 }
 
@@ -825,6 +854,41 @@ function safe_symlink() {
     fi
 
     maybe_sudo "$SUDO_OR_NOT" ln -sv "$1" "$2"
+
+}
+
+function is_dryrun() {
+
+    has_argument "--dryrun" || { [ "${DRYRUN_BY_DEFAULT:-N}" != "N" ] && ! has_argument "--run"; }
+
+}
+
+function dryrun_message() {
+
+    local EXTRA=
+
+    if is_dryrun; then
+
+        [ "${DRYRUN_BY_DEFAULT:-N}" = "N" ] || EXTRA=" (add ${BOLD}--run${RESET} argument to run skipped commands)"
+
+        console_message "${BOLD}$(basename "$0") is in dry run mode${RESET}${EXTRA}" "" "$BOLD" "$RED"
+
+    fi
+
+}
+
+# Usage: maybe_dryrun command [argument1...]
+function maybe_dryrun() {
+
+    if is_dryrun; then
+
+        console_message "Command skipped (${BOLD}dry run${RESET}):" "$*" "$YELLOW"
+
+    else
+
+        "$@"
+
+    fi
 
 }
 
