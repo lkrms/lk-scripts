@@ -41,7 +41,9 @@ for MAILDIR in "${MAILDIRS[@]}"; do
 
 		if [ ! -d "$TARGET_DIR" ]; then
 
-			maybe_dryrun sudo -u "$OWNER" maildirmake -f "$FOLDER" "$MAILDIR" && [ -d "$TARGET_DIR" ] || die "Unable to create folder $FOLDER in Maildir $MAILDIR"
+			maybe_dryrun sudo -u "$OWNER" maildirmake -f "$FOLDER" "$MAILDIR" && {
+				is_dryrun || [ -d "$TARGET_DIR" ]
+			} || die "Unable to create folder $FOLDER in Maildir $MAILDIR"
 
 			if [ -f "$SUBSCRIBED" ] && ! grep -Fxq "${FOLDER_PREFIX}.${FOLDER}" "$SUBSCRIBED"; then
 
