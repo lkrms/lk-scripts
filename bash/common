@@ -220,6 +220,43 @@ function sudo_function() {
 
 }
 
+# Usage: filename_add_suffix "/path/to/file.ext" "_backup"
+# (output would be "/path/to/file_backup.ext")
+function filename_add_suffix() {
+
+    local BASENAME
+
+    BASENAME="$(basename "$1")" || die
+
+    if [[ "$BASENAME" =~ .+\..+ ]]; then
+
+        echo "${1%.*}${2}.${1##*.}"
+
+    else
+
+        echo "${1}${2}"
+
+    fi
+
+}
+
+function file_mime_type() {
+
+    [ -f "$1" ] || die "$1 isn't a file"
+
+    file -b --mime-type "$1" || die
+
+}
+
+function is_pdf() {
+
+    local MIME_TYPE
+
+    MIME_TYPE="$(file_mime_type "$1")" || die
+    [ "$MIME_TYPE" = "application/pdf" ]
+
+}
+
 # returns non-zero if any of the arguments aren't directories
 function are_directories() {
 
@@ -1152,6 +1189,7 @@ TEMP_DIR="$ROOT_DIR/tmp"
 
 SUBSHELL_SCRIPT_PATH="$ROOT_DIR/bash/common-subshell"
 SED_IN_PLACE_ARGS=(-i)
+FONTPATH=
 
 DELETE_ON_EXIT=()
 KILL_ON_EXIT=()
@@ -1235,6 +1273,7 @@ Darwin)
     PLATFORM=mac
     HAS_GUI=1
     SED_IN_PLACE_ARGS+=("")
+    FONTPATH="${HOME:+$HOME/Library/Fonts:}/Library/Fonts"
     . "$ROOT_DIR/bash/common-macos"
     ;;
 
@@ -1246,11 +1285,13 @@ Linux)
 
         IS_WSL=1
         PLATFORM=wsl
+        FONTPATH="/mnt/c/Windows/Fonts"
 
     else
 
         PLATFORM=linux
         command_exists X && HAS_GUI=1
+        FONTPATH="${HOME:+$HOME/.local/share/fonts:}/usr/share/fonts"
 
     fi
 
