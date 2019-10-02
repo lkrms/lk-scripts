@@ -1,6 +1,9 @@
 autopep8
 pylint
 
+# CLI Qt installer
+aqtinstall
+
 # lossless creation of PDFs from source JPEGs
 img2pdf
 
