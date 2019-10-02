@@ -2,6 +2,24 @@
 
 assert_command_exists realpath
 
+function assert_git_version_is_at_least() {
+
+    git_version_is_at_least "$1" || die "$(basename "$0") requires Git version $1 or higher"
+
+}
+
+function assert_git_is_dir_working_repo() {
+
+    git_is_dir_working_repo "${1:-$PWD}" || die "${1:-$PWD} isn't part of a repository's working directory"
+
+}
+
+function assert_git_is_dir_working_root() {
+
+    git_is_dir_working_root "${1:-$PWD}" || die "${1:-$PWD} isn't the root of a repository's working directory"
+
+}
+
 function git_version_is_at_least() {
 
     [ -n "${GIT_VERSION:-}" ] || GIT_VERSION="$(git --version | gnu_grep -Pom 1 '(?<=\s|^)[0-9.]+(?=\s|$)')" || die "Unable to parse output from \"git --version\""
@@ -42,22 +60,40 @@ function git_get_code_roots() {
 
 }
 
+function git_has_remote() {
+
+    git remote | grep -Fxq "$1"
+
+}
+
+function git_is_dir_working_repo() {
+
+    local DIR_PATH="${1:-$PWD}" IN_WORK_TREE
+
+    [ -d "$DIR_PATH" ] || die "$DIR_PATH is not a directory"
+
+    [ "$DIR_PATH" = "$PWD" ] || pushd "$DIR_PATH" >/dev/null || die
+
+    # exits non-zero with error output if outside of a repo
+    IN_WORK_TREE="$(git rev-parse --is-inside-work-tree 2>/dev/null || echo "false")"
+
+    [ "$DIR_PATH" = "$PWD" ] || popd >/dev/null
+
+    [ "$IN_WORK_TREE" = "true" ]
+
+}
+
 function git_is_dir_working_root() {
 
-    local ROOT_PATH="$1" IN_WORK_TREE SUPERPROJECT TOPLEVEL
+    local ROOT_PATH="${1:-$PWD}" SUPERPROJECT TOPLEVEL
 
-    [ -d "$ROOT_PATH" ] || die "Error: $ROOT_PATH is not a directory"
+    git_is_dir_working_repo "$ROOT_PATH" || return
 
     ROOT_PATH="$(realpath "$ROOT_PATH")"
 
     pushd "$ROOT_PATH" >/dev/null || die
 
-    # 1. repo directory? (exits non-zero with error output otherwise)
-    # 2. *working* repo directory? (i.e. not bare or inside .git)
-    IN_WORK_TREE="$(git rev-parse --is-inside-work-tree 2>/dev/null || echo "false")"
-    [ "$IN_WORK_TREE" = "true" ] || pop_return1
-
-    # 3. not a submodule?
+    # if possible, check this repo isn't a submodule
     if git_version_is_at_least 2.13; then
 
         SUPERPROJECT="$(git rev-parse --show-superproject-working-tree)" || die
@@ -65,7 +101,6 @@ function git_is_dir_working_root() {
 
     fi
 
-    # 4. top-level directory?
     TOPLEVEL="$(git rev-parse --show-toplevel)" || die
 
     popd >/dev/null

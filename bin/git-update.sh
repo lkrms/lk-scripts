@@ -16,7 +16,7 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 assert_command_exists git
 
 # no support for anything before Debian "jessie"
-git_version_is_at_least 2.1.4
+assert_git_version_is_at_least 2.1.4
 
 git_get_code_roots
 
