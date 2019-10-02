@@ -106,6 +106,10 @@
 
     else
 
+        [ -d "/home/linuxbrew/.linuxbrew" ] && eval "$("/home/linuxbrew/.linuxbrew/bin/brew" shellenv)" || {
+            [ -d "$HOME/.linuxbrew" ] && eval "$("$HOME/.linuxbrew/bin/brew" shellenv)"
+        } || true
+
         echo 'alias duh="du -h --max-depth 1 | sort -h"'
 
         command_exists gtk-launch && echo 'alias gtk-debug="GTK_DEBUG=interactive "'
