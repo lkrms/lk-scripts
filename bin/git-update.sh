@@ -172,7 +172,7 @@ for i in "${!REPO_ROOTS[@]}"; do
 
             eval "$REF_CODE"
 
-            UPSTREAM="$(git rev-parse --symbolic-full-name "$BRANCH"'@{upstream}')"
+            UPSTREAM="$(git rev-parse --symbolic-full-name "$BRANCH"'@{upstream}' 2>/dev/null)" || UPSTREAM=
             PUSH="$(git rev-parse --symbolic-full-name "$BRANCH"'@{push}' 2>/dev/null)" || PUSH="$UPSTREAM"
             UPSTREAM="${UPSTREAM#refs/remotes/}"
             PUSH="${PUSH#refs/remotes/}"
