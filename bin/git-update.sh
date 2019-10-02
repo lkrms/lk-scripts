@@ -125,7 +125,7 @@ if [ "$DO_FETCH" -eq "1" ]; then
 
                 for REMOTE in "${REPO_REMOTES[@]}"; do
 
-                    git fetch --quiet "$REMOTE" || echo "Can't fetch from remote ${BOLD}${REMOTE}${RESET} in $REPO_LONG_NAME" >>"$WARNINGS_FILE"
+                    git fetch --prune --quiet "$REMOTE" || echo "Can't fetch from remote ${BOLD}${REMOTE}${RESET} in $REPO_LONG_NAME" >>"$WARNINGS_FILE"
 
                 done
 
