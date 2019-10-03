@@ -463,6 +463,13 @@ if ! has_argument "--skip-debs"; then
         get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1
     )")
 
+    # Motion
+    DEB_URLS+=("$(
+        # shellcheck source=../bash/common-subshell
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+        get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases/latest" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1
+    )")
+
     # Slack
     DEB_URLS+=("$(
         # shellcheck source=../bash/common-subshell
