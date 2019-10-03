@@ -27,7 +27,7 @@ AVAILABLE_PACKAGES=($(
 # and all currently installed formulae
 CURRENT_PACKAGES=($(
     . "$SUBSHELL_SCRIPT_PATH" || exit
-    brew list -1 | sort | uniq
+    brew list -1 --full-name | sort | uniq
 ))
 
 # load formulae we consider "safe"
@@ -91,9 +91,16 @@ SAFE_PACKAGES=($(printf '%s\n' "${SAFE_PACKAGES[@]}" | sort | uniq))
 # remove any formulae that aren't actually installed
 SAFE_PACKAGES=($(comm -12 <(printf '%s\n' "${SAFE_PACKAGES[@]}") <(printf '%s\n' "${CURRENT_PACKAGES[@]}")))
 
-# add dependencies
-SAFE_PACKAGES+=($(brew deps --union "${SAFE_PACKAGES[@]}"))
-SAFE_PACKAGES=($(printf '%s\n' "${SAFE_PACKAGES[@]}" | sort | uniq))
+# add dependencies (repeatedly, because Homebrew has recursion bugs)
+SAFE_PACKAGE_COUNT=-1
+while [ "${#SAFE_PACKAGES[@]}" -ne "$SAFE_PACKAGE_COUNT" ]; do
+
+    SAFE_PACKAGE_COUNT="${#SAFE_PACKAGES[@]}"
+
+    SAFE_PACKAGES+=($(brew deps --union --installed "${SAFE_PACKAGES[@]}"))
+    SAFE_PACKAGES=($(printf '%s\n' "${SAFE_PACKAGES[@]}" | sort | uniq))
+
+done
 
 REMOVE_LIST=($(comm -23 <(printf '%s\n' "${CURRENT_PACKAGES[@]}") <(printf '%s\n' "${SAFE_PACKAGES[@]}")))
 

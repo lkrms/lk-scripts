@@ -41,6 +41,7 @@ brew_queue_formulae "prerequisites" "\
  rsync\
  s-nail\
  telnet\
+ unison\
  wget\
 " N
 
@@ -59,10 +60,10 @@ brew_queue_formulae "essentials" "\
  youtube-dl\
 "
 
+# 2019-10-03: copyq removed due to macOS bugs (last known "good" version: 3.7.2)
 brew_queue_casks "desktop essentials" "\
  acorn\
  balenaetcher\
- copyq\
  firefox\
  geekbench\
  google-chrome\
@@ -156,7 +157,7 @@ brew_queue_casks "development" "\
 
 brew_queue_formulae "development services" "\
  mariadb\
- mongodb\
+ mongodb/brew/mongodb-community@4.0\
 "
 
 brew_queue_casks "PowerShell" "powershell"

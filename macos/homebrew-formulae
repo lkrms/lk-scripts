@@ -13,7 +13,7 @@ magic-wormhole
 mariadb
 mas
 media-info
-mongodb
+mongodb/brew/mongodb-community@4.0
 msmtp
 node@8
 ocrmypdf
@@ -31,5 +31,6 @@ telnet
 terminal-notifier
 tesseract
 tesseract-lang
+unison
 wget
 youtube-dl

@@ -196,6 +196,7 @@ BREW_TAPS=(
     homebrew/cask-drivers
     homebrew/cask-fonts
     homebrew/cask-versions
+    mongodb/brew
 )
 
 BREW_CACHE_DIRTY=1
