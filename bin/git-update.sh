@@ -100,7 +100,7 @@ done
 
 if [ "$DO_FETCH" -eq "1" ]; then
 
-    console_message "Fetching from all remotes in ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories):" "${REPO_LONG_NAMES[*]}" "$MAGENTA"
+    console_message "Fetching from all remotes in ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories):" "${REPO_NAMES[*]}" "$BOLD" "$MAGENTA"
 
     WARNINGS_FILE="$(create_temp_file N)"
     DELETE_ON_EXIT+=("$WARNINGS_FILE")
@@ -158,6 +158,8 @@ for i in "${!REPO_ROOTS[@]}"; do
     pushd "$REPO_ROOT" >/dev/null || die
 
     console_message "$MAIN_VERB repository:" "${REPO_LONG_NAME}" "$CYAN"
+
+    git update-index --refresh -q >/dev/null || true
 
     IFS=$'\n'
     REPO_REMOTES=($(git remote))
