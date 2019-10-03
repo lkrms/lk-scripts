@@ -619,26 +619,33 @@ function is_autostart() {
 
 function offer_sudo_password_bypass() {
 
-    # don't proceed if there's no point
-    groups | grep -Eq '\b(admin|sudo)\b' || return 0
+    local VERBOSE="${1:-N}" USERNAME="${SUDO_USER:-$USER}" FILENAME CHECK_FILENAME
 
-    local USERNAME="${SUDO_USER:-$USER}" FILENAME CHECK_FILENAME
+    # don't proceed if there's no point
+    if ! groups "$USERNAME" | grep -Eo '[^:]+$' | grep -E '(\s|^)(admin|sudo)(\s|$)' >/dev/null; then
+
+        [ "$VERBOSE" = "Y" ] && console_message "User ${BOLD}${USERNAME}${RESET} is not an administrator" "" "$BOLD" "$RED" || true
+        return
+
+    fi
 
     FILENAME="/etc/sudoers.d/nopasswd-$USERNAME"
     CHECK_FILENAME="$CACHE_DIR/.nopasswd-$USERNAME"
 
     if [ -e "$CHECK_FILENAME" ]; then
 
+        [ "$VERBOSE" = "Y" ] && console_message "Password bypass previously enabled for user ${BOLD}${USERNAME}${RESET}" "" "$GREEN" || true
         return
 
     fi
 
-    console_message "Please provide your computer password if requested" "" "$BLUE"
+    console_message "Please provide your computer password if requested" "" "$CYAN"
 
     # check that we can, in fact, sudo as root
     if ! sudo true; then
 
-        return 0
+        [ "$VERBOSE" = "Y" ] && console_message "User ${BOLD}${USERNAME}${RESET} is not allowed to sudo as root" "" "$BOLD" "$RED" || true
+        return
 
     fi
 
@@ -647,12 +654,17 @@ function offer_sudo_password_bypass() {
         if get_confirmation "Allow user ${BOLD}${USERNAME}${RESET} to skip future password prompts?" Y Y; then
 
             sudo tee "$FILENAME" >/dev/null <<<"${USERNAME} ALL=(ALL) NOPASSWD:ALL" && sudo chmod 0440 "$FILENAME" || die
+            console_message "Password bypass enabled for user ${BOLD}${USERNAME}${RESET} in:" "$FILENAME" "$BOLD" "$BLUE"
 
         else
 
-            return 0
+            return
 
         fi
+
+    elif [ "$VERBOSE" = "Y" ]; then
+
+        console_message "Password bypass previously enabled for user ${BOLD}${USERNAME}${RESET}" "" "$GREEN"
 
     fi
 
