@@ -531,7 +531,7 @@ fi
 # we're about to install ntp
 if command_exists timedatectl; then
 
-    sudo timedatectl set-ntp no
+    sudo timedatectl set-ntp no || true
 
 fi
 
