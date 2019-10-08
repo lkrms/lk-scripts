@@ -140,9 +140,11 @@ brew_queue_formulae "development" "\
  gradle\
  php@7.2\
  pkg-config\
+ shellcheck\
 "
 
-# TODO: remove composer
+# TODO:
+# brew_remove_formulae composer
 
 brew_queue_casks "development" "\
  android-studio\
@@ -158,6 +160,7 @@ brew_queue_casks "development" "\
 "
 
 brew_queue_formulae "development services" "\
+ httpd\
  mariadb\
  mongodb/brew/mongodb-community@4.0\
 "
@@ -173,6 +176,13 @@ brew_queue_casks "Brother P-touch Editor" "\
  brother-p-touch-editor\
  brother-p-touch-update-software\
 "
+
+if brew_formula_installed_or_queued "httpd"; then
+
+    console_message "Disabling built-in Apache web server..." "" "$CYAN"
+    sudo /usr/sbin/apachectl stop 2>/dev/null || true
+
+fi
 
 dev_install_packages Y BREW_INSTALLED
 

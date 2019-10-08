@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # shellcheck source=common-git
-. "$ROOT_DIR/common-git"
+. "$ROOT_DIR/bash/common-git"
 
 # Usage: dev_install_packages [queue only? (y/N)] [name of 'already installed' array]
 function dev_install_packages() {
