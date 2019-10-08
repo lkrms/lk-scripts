@@ -3,11 +3,15 @@
 
 function brew_check() {
 
+    if is_macos; then
+
+        check_developer_tools
+
+    fi
+
     if ! command_exists brew; then
 
         if is_macos; then
-
-            check_developer_tools
 
             ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || die
 
@@ -49,7 +53,7 @@ function brew_check_taps() {
 
 function brew_refresh() {
 
-    BREW_INSTALLED_FORMULAE="$(brew list | sort | uniq)" || die
+    BREW_INSTALLED_FORMULAE="$(brew list --full-name | sort | uniq)" || die
     BREW_AVAILABLE_FORMULAE="$(brew search | sort | uniq)" || die
     BREW_INSTALLED_CASKS="$(brew cask list | sort | uniq)" || die
     BREW_AVAILABLE_CASKS="$(brew search --casks | sort | uniq)" || die
@@ -196,6 +200,7 @@ BREW_TAPS=(
     homebrew/cask-drivers
     homebrew/cask-fonts
     homebrew/cask-versions
+    AdoptOpenJDK/openjdk
     mongodb/brew
 )
 

@@ -9,8 +9,8 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
 
-# shellcheck source=../bash/common
-. "$SCRIPT_DIR/../bash/common-dev"
+# shellcheck source=../bash/common-git
+. "$SCRIPT_DIR/../bash/common-git"
 
 assert_command_exists git
 assert_git_is_dir_working_repo

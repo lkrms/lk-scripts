@@ -20,4 +20,11 @@ function check_developer_tools() {
 
     done
 
+    # opendiff doesn't work if Xcode isn't active
+    if [ -d "/Applications/Xcode.app" ]; then
+
+        sudo xcode-select -switch "/Applications/Xcode.app" || die
+
+    fi
+
 }

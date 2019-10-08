@@ -906,6 +906,29 @@ function safe_symlink() {
 
 }
 
+# Usage: safe_sed "/path/to/file" 'command1' ['command2'...]
+function safe_sed() {
+
+    local FILENAME="$1" COMMAND COMMANDS=() CHANGED
+
+    shift
+
+    for COMMAND in "$@"; do
+
+        COMMANDS+=(-e "$COMMAND")
+
+    done
+
+    CHANGED="$(gnu_sed "${COMMANDS[@]}" "$FILENAME")" || die
+
+    if ! diff -q ".git/config" <(printf "$CHANGED") >/dev/null; then
+
+        printf "$CHANGED" >"$FILENAME" || die
+
+    fi
+
+}
+
 function is_dryrun() {
 
     has_argument "--dryrun" || { [ "${DRYRUN_BY_DEFAULT:-N}" != "N" ] && ! has_argument "--run"; }

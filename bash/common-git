@@ -1,0 +1,188 @@
+#!/bin/bash
+
+variable_exists "GIT_URL_REPLACEMENTS" || GIT_URL_REPLACEMENTS=()
+
+function assert_git_version_is_at_least() {
+
+    git_version_is_at_least "$1" || die "$(basename "$0") requires Git version $1 or higher"
+
+}
+
+function assert_git_is_dir_working_repo() {
+
+    git_is_dir_working_repo "${1:-$PWD}" || die "${1:-$PWD} isn't part of a repository's working directory"
+
+}
+
+function assert_git_is_dir_working_root() {
+
+    git_is_dir_working_root "${1:-$PWD}" || die "${1:-$PWD} isn't the root of a repository's working directory"
+
+}
+
+function git_version_is_at_least() {
+
+    [ -n "${GIT_VERSION:-}" ] || GIT_VERSION="$(git --version | gnu_grep -Pom 1 '(?<=\s|^)[0-9.]+(?=\s|$)')" || die "Unable to parse output from \"git --version\""
+
+    version_is_at_least "$GIT_VERSION" "$1"
+
+}
+
+function git_get_code_roots() {
+
+    assert_command_exists realpath
+
+    local KEY
+
+    CODE_ROOTS=()
+
+    if [ "${#ORIGINAL_ARGUMENTS[@]}" -gt "0" ]; then
+
+        CODE_ROOTS=("${ORIGINAL_ARGUMENTS[@]}")
+
+    elif [ "${#DEFAULT_CODE_ROOTS[@]}" -gt "0" ]; then
+
+        CODE_ROOTS=("${DEFAULT_CODE_ROOTS[@]}")
+
+    fi
+
+    for KEY in "${!CODE_ROOTS[@]}"; do
+
+        if [ ! -d "${CODE_ROOTS[$KEY]}" ]; then
+
+            unset "CODE_ROOTS[$KEY]"
+
+        else
+
+            CODE_ROOTS[$KEY]="$(realpath "${CODE_ROOTS[$KEY]}")"
+
+        fi
+
+    done
+
+}
+
+function git_has_remote() {
+
+    git remote | grep -Fxq "$1"
+
+}
+
+function git_is_dir_working_repo() {
+
+    local DIR_PATH="${1:-$PWD}" IN_WORK_TREE
+
+    [ -d "$DIR_PATH" ] || die "$DIR_PATH is not a directory"
+
+    [ "$DIR_PATH" = "$PWD" ] || pushd "$DIR_PATH" >/dev/null || die
+
+    # exits non-zero with error output if outside of a repo
+    IN_WORK_TREE="$(git rev-parse --is-inside-work-tree 2>/dev/null || echo "false")"
+
+    [ "$DIR_PATH" = "$PWD" ] || popd >/dev/null
+
+    [ "$IN_WORK_TREE" = "true" ]
+
+}
+
+function git_is_dir_working_root() {
+
+    assert_command_exists realpath
+
+    local ROOT_PATH="${1:-$PWD}" SUPERPROJECT TOPLEVEL
+
+    git_is_dir_working_repo "$ROOT_PATH" || return
+
+    ROOT_PATH="$(realpath "$ROOT_PATH")"
+
+    pushd "$ROOT_PATH" >/dev/null || die
+
+    # if possible, check this repo isn't a submodule
+    if git_version_is_at_least 2.13; then
+
+        SUPERPROJECT="$(git rev-parse --show-superproject-working-tree)" || die
+        [ -z "$SUPERPROJECT" ] || pop_return1
+
+    fi
+
+    TOPLEVEL="$(git rev-parse --show-toplevel)" || die
+
+    popd >/dev/null
+
+    [ "$TOPLEVEL" = "$ROOT_PATH" ]
+
+}
+
+function git_format_remotes() {
+
+    local REMOTE REMOTE_URL REMOTES=()
+
+    for REMOTE in "$@"; do
+
+        REMOTE_URL="$(git remote get-url "$REMOTE")"
+        [ -z "$REMOTE_URL" ] || REMOTE_URL="($REMOTE_URL)"
+        REMOTES+=("${BOLD}${REMOTE}${RESET}${REMOTE_URL}")
+
+    done
+
+    echo "${NO_WRAP}${REMOTES[*]}${WRAP}"
+
+}
+
+# Usage: git_format_branch "branch_name" [commits behind] [commits ahead]
+function git_format_branch() {
+
+    local BRANCH BRANCH_EXTRA=()
+
+    BRANCH="${BOLD}${1}${RESET}"
+
+    [ "${2:-0}" -eq "0" ] || BRANCH_EXTRA+=("behind $2")
+    [ "${3:-0}" -eq "0" ] || BRANCH_EXTRA+=("ahead $3")
+    [ "${#BRANCH_EXTRA[@]}" -eq "0" ] || BRANCH="${BRANCH}[$(array_join_by "," "${BRANCH_EXTRA[@]}")]"
+
+    echo "$BRANCH"
+
+}
+
+function git_add_global_ignore() {
+
+    local i IGNORE_FILE
+
+    IGNORE_FILE="$(git config --global core.excludesFile)" || die "Error: Git global option core.excludesFile not defined"
+    IGNORE_FILE="${IGNORE_FILE/#\~/$HOME}"
+
+    [ -e "$IGNORE_FILE" ] || touch "$IGNORE_FILE" || die
+
+    [ -f "$IGNORE_FILE" ] || die "Error: unable to create file $IGNORE_FILE"
+
+    for i in "$@"; do
+
+        if ! grep -q '^'"$(sed_escape_search "$i" N)"'$' "$IGNORE_FILE"; then
+
+            echo "$i" >>"$IGNORE_FILE"
+
+        fi
+
+    done
+
+}
+
+# Usage: git_add_global_setting <setting.name> <value> [change if already set? (y/N)] [git config option...]
+function git_add_global_setting() {
+
+    local SETTING_NAME SETTING_VALUE OVERWRITE
+
+    SETTING_NAME="$1"
+    SETTING_VALUE="$2"
+    OVERWRITE="${3:-N}"
+
+    shift 2
+    shift || true
+
+    if [ "$OVERWRITE" = "Y" ] || ! git config --global "$SETTING_NAME" >/dev/null 2>&1; then
+
+        git config --global "$@" "$SETTING_NAME" "$SETTING_VALUE"
+
+    fi
+
+}

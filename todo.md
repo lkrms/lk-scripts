@@ -5,7 +5,7 @@
 - [ ] Replace, for example, `IS_MACOS` tests with `is_macos`
 - [ ] macOS: Add SSH key loading to .bashrc
 - [x] Review file_to_array: can we standardise the filters?
-- [ ] Move `git_*` functions to `common-git`
+- [x] Move `git_*` functions to `common-git`
 
 Review:
 

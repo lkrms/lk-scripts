@@ -10,8 +10,8 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 # shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
 
-# shellcheck source=../bash/common
-. "$SCRIPT_DIR/../bash/common-dev"
+# shellcheck source=../bash/common-git
+. "$SCRIPT_DIR/../bash/common-git"
 
 assert_command_exists git
 
@@ -122,6 +122,12 @@ if [ "$DO_FETCH" -eq "1" ]; then
             unset IFS
 
             if [ "${#REPO_REMOTES[@]}" -gt "0" ]; then
+
+                if [ "${#GIT_URL_REPLACEMENTS[@]}" -gt "0" ] && [ -f ".git/config" ]; then
+
+                    safe_sed ".git/config" "${GIT_URL_REPLACEMENTS[@]}"
+
+                fi
 
                 for REMOTE in "${REPO_REMOTES[@]}"; do
 
