@@ -192,6 +192,10 @@ function brew_upgrade_all() {
 
     fi
 
+    # see https://github.com/Homebrew/brew/issues/6112
+    rm -fv "$HOME/Library/Caches/Homebrew/Cask/adoptopenjdk8"* \
+        "$HOME/Library/Caches/Homebrew/downloads/"*-OpenJDK8*
+
     brew cleanup || die
 
 }
