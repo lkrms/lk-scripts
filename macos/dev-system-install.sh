@@ -31,6 +31,8 @@ brew_check_taps
 
 brew_queue_formulae "prerequisites" "\
  coreutils\
+ gawk\
+ gnu-sed\
  grep\
  lftp\
  msmtp\

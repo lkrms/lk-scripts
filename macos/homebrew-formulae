@@ -4,7 +4,9 @@ autoconf
 cmake
 coreutils
 exiftool
+gawk
 ghostscript
+gnu-sed
 gradle
 grep
 imagemagick
