@@ -65,6 +65,12 @@ function gnu_command() {
 
 }
 
+function gnu_awk() {
+
+    gnu_command awk "$@"
+
+}
+
 function gnu_grep() {
 
     gnu_command grep "$@"
@@ -310,7 +316,8 @@ function is_int() {
 
 function is_url() {
 
-    grep -Pq '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))' <<<"$1"
+    # TODO: replace with uri_get_parts regex
+    gnu_grep -Pq '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))' <<<"$1"
 
 }
 
@@ -762,6 +769,69 @@ function get_urls_from_url() {
     done
 
     echo "$URLS"
+
+}
+
+# Usage: uri_get_parts "any://valid.uri?with=any#parts" <scheme|username|password|host|ipv6_address|port|path|query|fragment...>
+# See: https://en.wikipedia.org/wiki/Uniform_Resource_Identifier
+function uri_get_parts() {
+
+    local URI="$1" FMT=() EXPR=() PART
+
+    shift
+
+    for PART in "$@"; do
+
+        FMT+=("%s")
+
+        case "$PART" in
+
+        scheme)
+            EXPR+=("a[2]")
+            ;;
+
+        username)
+            EXPR+=("a[5]")
+            ;;
+
+        password)
+            EXPR+=("a[7]")
+            ;;
+
+        host)
+            # with brackets if IPv6 address
+            EXPR+=("a[8]")
+            ;;
+
+        ipv6_address)
+            EXPR+=("a[9]")
+            ;;
+
+        port)
+            EXPR+=("a[11]")
+            ;;
+
+        path)
+            EXPR+=("a[12]")
+            ;;
+
+        query)
+            EXPR+=("a[14]")
+            ;;
+
+        fragment)
+            EXPR+=("a[16]")
+            ;;
+
+        *)
+            die "Unknown URI component: $PART"
+            ;;
+
+        esac
+
+    done
+
+    gnu_awk '{match($0,/^(([a-zA-Z][-a-zA-Z0-9+.]*):)?(\/\/(([^:\/?#\][@]+)(:([^:\/?#\][@]*))?@)?([^:\/?#\][@]+|\[([0-9a-fA-F:]+)\])(:([0-9]+))?)?([^?#\][]+)?(\?([^#\][]+))?(#([^#\][]*))?/,a);printf "'"$(array_join_by '\n' "${FMT[@]}")"'\n",'"$(array_join_by ',' "${EXPR[@]}")"'}' <<<"$URI"
 
 }
 

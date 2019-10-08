@@ -204,7 +204,7 @@ BREW_TAPS=(
     homebrew/cask-drivers
     homebrew/cask-fonts
     homebrew/cask-versions
-    AdoptOpenJDK/openjdk
+    adoptopenjdk/openjdk
     mongodb/brew
 )
 
