@@ -1283,6 +1283,14 @@ function install_or_queue() {
 
 }
 
+# Usage: test_host_port my.host.address port-number
+function test_host_port() {
+
+    # 1-second timeout -- intended for LAN service availability checks
+    gnu_command nc -zw 1 "$1" "$2" >/dev/null 2>&1
+
+}
+
 COMMON_SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then COMMON_SCRIPT_PATH="$(realpath "$COMMON_SCRIPT_PATH")"; fi
 ROOT_DIR="$(cd "$(dirname "$COMMON_SCRIPT_PATH")/.." && pwd -P)"
