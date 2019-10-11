@@ -96,75 +96,82 @@ apt_register_repository wine "https://dl.winehq.org/wine-builds/winehq.key" "deb
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "origin dl.yarnpkg.com" "yarn"
 
 apt_install_packages "essential utilities" "\
- attr\
- cifs-utils\
- curl\
- debsums\
- hfsprogs\
- hwinfo\
- ksh\
- lftp\
- libsecret-tools\
- linux-tools-generic\
- mediainfo\
- msmtp\
- net-tools\
- ntp\
- ntpdate\
- openssh-server\
- ppa-purge\
- pv\
- s-nail\
- screen\
- smartmontools\
- sysfsutils\
- syslinux-utils\
- traceroute\
- vim\
- whois\
+atop \
+attr \
+cifs-utils \
+curl \
+debsums \
+glances \
+hfsprogs \
+hwinfo \
+ksh \
+lftp \
+libsecret-tools \
+linux-tools-generic \
+mediainfo \
+msmtp \
+net-tools \
+ntp \
+ntpdate \
+openssh-server \
+pv \
+radvdump \
+s-nail \
+screen \
+smartmontools \
+sysfsutils \
+syslinux-utils \
+traceroute \
+vim \
+whois \
 " N
 
 if ! is_virtual; then
 
     apt_install_packages "power management" "\
- tlp\
- tlp-rdw\
+tlp \
+tlp-rdw \
 "
 
     if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
 
-        apt_install_packages "ThinkPad power management" "acpi-call-dkms tp-smapi-dkms"
+        apt_install_packages "ThinkPad power management" "\
+acpi-call-dkms \
+tp-smapi-dkms \
+"
 
     fi
 
 fi
 
-apt_install_packages "openconnect dependencies" "libxml2-dev pkg-config vpnc-scripts" N
+apt_install_packages "openconnect dependencies" "\
+libxml2-dev \
+pkg-config \
+vpnc-scripts \
+" N
 
 apt_install_packages "QuickTile dependencies" "\
- python\
- python-gtk2\
- python-xlib\
- python-dbus\
- python-wnck?\
- python-setuptools\
+python \
+python-dbus \
+python-gtk2 \
+python-setuptools \
+python-wnck? \
+python-xlib \
 " N
 
 apt_install_packages "performance monitoring" "\
- atop\
- auditd\
- glances\
- intel-gpu-tools\
- iotop\
- lm-sensors\
- nethogs\
- powertop\
- sysstat\
+auditd \
+intel-gpu-tools \
+iotop \
+lm-sensors \
+nethogs \
+powertop \
+sysstat \
 " N
 
 apt_install_packages "load testing" "\
- fio\
- trickle\
+fio \
+trickle \
 " N
 
 apt_install_packages "desktop essentials" "\
@@ -502,7 +509,7 @@ if ! has_argument "--skip-debs"; then
 
 fi
 
-apt_remove_packages apport deja-dup filezilla fonts-twemoji-svginot libapache2-mod-fastcgi libapache2-mod-fcgid libxss-dev
+apt_remove_packages apport deja-dup filezilla fonts-twemoji-svginot libapache2-mod-fastcgi libapache2-mod-fcgid libxss-dev ppa-purge
 
 dev_install_packages Y APT_INSTALLED
 
