@@ -253,12 +253,13 @@ apt_install_packages "desktop essentials" "\
 "
 
 apt_install_packages "PDF tools" "\
- ghostscript\
- mupdf\
- mupdf-tools\
- pandoc\
- texlive\
- texlive-luatex\
+ghostscript \
+mupdf \
+mupdf-tools \
+pandoc \
+pstoedit \
+texlive \
+texlive-luatex \
 "
 
 apt_install_packages "photography" "\

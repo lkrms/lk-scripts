@@ -107,10 +107,12 @@ brew_queue_casks "Microsoft Office" "microsoft-office"
 # ghostscript: PDF/PostScript processor
 # pandoc: text conversion tool (e.g. Markdown to PDF)
 # poppler: PDF tools like pdfimages
+# pstoedit: converts PDF/PostScript to vector formats
 brew_queue_formulae "PDF tools" "\
- ghostscript\
- pandoc\
- poppler\
+ghostscript \
+pandoc \
+poppler \
+pstoedit \
 "
 
 if brew_formula_installed_or_queued "pandoc"; then
