@@ -836,16 +836,47 @@ function apt_force_install_packages() {
 
 function apt_check_sources() {
 
-    # if we're using Apt-Cacher NG, replace every "https://" with "http://"
-    if apt-config dump | grep '^Acquire::http::Proxy\b.*:3142\b' >/dev/null; then
+    local APT_PROXY='' PROXY_GOOD PROXY_HOST PROXY_PORT
 
-        sudo find /etc/apt /etc/apt/sources.list.d -maxdepth 1 -type f -name '*.list' -exec grep -q '\bhttps://' '{}' \; -exec sed -i.https 's/\bhttps:\/\//http:\/\//' '{}' \;
+    sudo rm -f "/etc/apt/apt.conf.d/99noproxy"
 
-        if ! apt-config dump | grep '^Dir::Ignore-Files-Silently\b.*"\\\.https\$";$' >/dev/null; then
+    # shellcheck disable=SC1091
+    . /dev/stdin <<<"$(apt-config shell APT_PROXY "Acquire::http::Proxy")"
 
-            echo 'Dir::Ignore-Files-Silently:: "\.https$";' | sudo tee -a /etc/apt/apt.conf.d/00aptproxy >/dev/null
+    if [ -n "$APT_PROXY" ]; then
+
+        PROXY_GOOD=0
+
+        PROXY_HOST="$(uri_get_parts "$APT_PROXY" host)"
+        PROXY_PORT="$(uri_get_parts "$APT_PROXY" port)"
+
+        if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
+
+            if test_host_port "$PROXY_HOST" "$PROXY_PORT"; then
+
+                PROXY_GOOD=1
+
+            fi
 
         fi
+
+        [ "$PROXY_GOOD" -eq "1" ] || {
+            console_message "APT proxy disabled (unreachable):" "$APT_PROXY" "$BOLD" "$YELLOW"
+            echo 'Acquire::http::Proxy "";' | sudo tee "/etc/apt/apt.conf.d/99noproxy" >/dev/null
+            APT_PROXY=
+        }
+
+    fi
+
+    if [ "${APT_PROXY/:3142/}" != "$APT_PROXY" ]; then
+
+        # if we're using Apt-Cacher NG, replace every "https://" with "http://"
+        sudo find /etc/apt /etc/apt/sources.list.d -maxdepth 1 -type f -name '*.list' -exec grep -q '\bhttps://' '{}' \; -exec sed -i.https.orig 's/\bhttps:\/\//http:\/\//' '{}' \;
+
+    else
+
+        # otherwise, move any active https sources back
+        sudo find /etc/apt /etc/apt/sources.list.d -maxdepth 1 -type f -name '*.list.https.orig' -exec sh -c 'ORIG="${1%.https.orig}"; if [ -e "$ORIG" ]; then mv "$1" "$ORIG" || exit; fi' sh '{}' \;
 
     fi
 
