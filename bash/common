@@ -270,11 +270,26 @@ function are_directories() {
 
     for DIR in "$@"; do
 
-        [ -d "$DIR" ] || return 1
+        [ -d "$DIR" ] || return
 
     done
 
-    return 0
+    return
+
+}
+
+# returns non-zero if any of the arguments aren't files
+function are_files() {
+
+    local FILE
+
+    for FILE in "$@"; do
+
+        [ -f "$FILE" ] || return
+
+    done
+
+    return
 
 }
 
