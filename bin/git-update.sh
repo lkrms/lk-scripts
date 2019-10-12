@@ -23,370 +23,377 @@ git_get_code_roots
 
 GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
-case "$(basename "$0")" in
+# allow this script to be changed while it's running
+{
 
-*check*)
-    DO_FETCH=0
-    DO_PUSH=0
-    MAIN_VERB="Checking"
-    COMPLETION_VERB="checked"
-    ;;
+    case "$(basename "$0")" in
 
-*push*)
-    DO_FETCH=0
-    DO_PUSH=1
-    MAIN_VERB="Checking"
-    COMPLETION_VERB="checked"
-    ;;
+    *check*)
+        DO_FETCH=0
+        DO_PUSH=0
+        MAIN_VERB="Checking"
+        COMPLETION_VERB="checked"
+        ;;
 
-*)
-    DO_FETCH=1
-    DO_PUSH=1
-    MAIN_VERB="Updating"
-    COMPLETION_VERB="updated"
-    ;;
+    *push*)
+        DO_FETCH=0
+        DO_PUSH=1
+        MAIN_VERB="Checking"
+        COMPLETION_VERB="checked"
+        ;;
 
-esac
+    *)
+        DO_FETCH=1
+        DO_PUSH=1
+        MAIN_VERB="Updating"
+        COMPLETION_VERB="updated"
+        ;;
 
-REPO_ROOTS=()
-REPO_NAMES=()
-REPO_LONG_NAMES=()
-REPO_COUNT=0
-UPDATED_REPOS=()
-PUSHED_REPOS=()
-WARNINGS=()
+    esac
 
-for CODE_ROOT in "${CODE_ROOTS[@]}"; do
+    REPO_ROOTS=()
+    REPO_NAMES=()
+    REPO_LONG_NAMES=()
+    REPO_COUNT=0
+    UPDATED_REPOS=()
+    PUSHED_REPOS=()
+    WARNINGS=()
 
-    while IFS= read -rd $'\0' REPO_ROOT; do
+    for CODE_ROOT in "${CODE_ROOTS[@]}"; do
 
-        REPO_ROOT="$(realpath "$REPO_ROOT")"
+        while IFS= read -rd $'\0' REPO_ROOT; do
 
-        git_is_dir_working_root "$REPO_ROOT" || continue
+            REPO_ROOT="$(realpath "$REPO_ROOT")"
 
-        REPO_ROOTS+=("$REPO_ROOT")
+            git_is_dir_working_root "$REPO_ROOT" || continue
 
-        ((++REPO_COUNT))
+            REPO_ROOTS+=("$REPO_ROOT")
 
-        REPO_NAME="${REPO_ROOT#$CODE_ROOT}"
-        REPO_NAME="${REPO_NAME#/}"
-        REPO_LONG_NAME="${CODE_ROOT}/${BOLD}${REPO_NAME}${RESET}"
-        [ -n "$REPO_NAME" ] || {
-            REPO_NAME="$REPO_ROOT"
-            REPO_LONG_NAME="${BOLD}${REPO_NAME}${RESET}"
-        }
-        REPO_NAMES+=("$REPO_NAME")
-        REPO_LONG_NAMES+=("$REPO_LONG_NAME")
+            ((++REPO_COUNT))
 
-    done < <(
+            REPO_NAME="${REPO_ROOT#$CODE_ROOT}"
+            REPO_NAME="${REPO_NAME#/}"
+            REPO_LONG_NAME="${CODE_ROOT}/${BOLD}${REPO_NAME}${RESET}"
+            [ -n "$REPO_NAME" ] || {
+                REPO_NAME="$REPO_ROOT"
+                REPO_LONG_NAME="${BOLD}${REPO_NAME}${RESET}"
+            }
+            REPO_NAMES+=("$REPO_NAME")
+            REPO_LONG_NAMES+=("$REPO_LONG_NAME")
 
-        # shellcheck disable=SC1090
-        . "$SUBSHELL_SCRIPT_PATH" || exit
+        done < <(
 
-        # within each CODE_ROOT, sort by depth then name
-        for i in $(seq 0 "${DEFAULT_CODE_REPO_DEPTH:-2}"); do
+            # shellcheck disable=SC1090
+            . "$SUBSHELL_SCRIPT_PATH" || exit
 
-            find "$CODE_ROOT" -mindepth "$i" -maxdepth "$i" -type d -print0 | sort -z
+            # within each CODE_ROOT, sort by depth then name
+            for i in $(seq 0 "${DEFAULT_CODE_REPO_DEPTH:-2}"); do
+
+                find "$CODE_ROOT" -mindepth "$i" -maxdepth "$i" -type d -print0 | sort -z
+
+            done
+
+        )
+
+    done
+
+    [ "${#REPO_ROOTS[@]}" -gt "0" ] || die "No repositories found"
+
+    if [ "$DO_FETCH" -eq "1" ]; then
+
+        console_message "Fetching from all remotes in ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories):" "${REPO_NAMES[*]}" "$BOLD" "$MAGENTA"
+
+        WARNINGS_FILE="$(create_temp_file N)"
+        DELETE_ON_EXIT+=("$WARNINGS_FILE")
+
+        for i in "${!REPO_ROOTS[@]}"; do
+
+            REPO_ROOT="${REPO_ROOTS[$i]}"
+            REPO_LONG_NAME="${REPO_LONG_NAMES[$i]}"
+
+            (
+
+                # shellcheck disable=SC1090
+                . "$SUBSHELL_SCRIPT_PATH" || exit
+
+                pushd "$REPO_ROOT" >/dev/null || die
+
+                IFS=$'\n'
+                REPO_REMOTES=($(git remote))
+                unset IFS
+
+                if [ "${#REPO_REMOTES[@]}" -gt "0" ]; then
+
+                    if [ "${#GIT_URL_REPLACEMENTS[@]}" -gt "0" ] && [ -f ".git/config" ]; then
+
+                        safe_sed ".git/config" "${GIT_URL_REPLACEMENTS[@]}"
+
+                    fi
+
+                    for REMOTE in "${REPO_REMOTES[@]}"; do
+
+                        git fetch --prune --quiet "$REMOTE" || echo "Can't fetch from remote ${BOLD}${REMOTE}${RESET} in $REPO_LONG_NAME" >>"$WARNINGS_FILE"
+
+                    done
+
+                fi
+
+            ) &
 
         done
 
-    )
+        wait
 
-done
+        echo
 
-[ "${#REPO_ROOTS[@]}" -gt "0" ] || die "No repositories found"
+        file_to_array "$WARNINGS_FILE" ""
 
-if [ "$DO_FETCH" -eq "1" ]; then
+        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-    console_message "Fetching from all remotes in ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories):" "${REPO_NAMES[*]}" "$BOLD" "$MAGENTA"
+            WARNINGS+=("${FILE_TO_ARRAY[@]}")
 
-    WARNINGS_FILE="$(create_temp_file N)"
-    DELETE_ON_EXIT+=("$WARNINGS_FILE")
+        fi
+
+    fi
 
     for i in "${!REPO_ROOTS[@]}"; do
 
         REPO_ROOT="${REPO_ROOTS[$i]}"
+        REPO_NAME="${REPO_NAMES[$i]}"
         REPO_LONG_NAME="${REPO_LONG_NAMES[$i]}"
 
-        (
+        pushd "$REPO_ROOT" >/dev/null || die
 
-            # shellcheck disable=SC1090
-            . "$SUBSHELL_SCRIPT_PATH" || exit
+        console_message "$MAIN_VERB repository:" "${REPO_LONG_NAME}" "$CYAN"
 
-            pushd "$REPO_ROOT" >/dev/null || die
+        git update-index --refresh -q >/dev/null || true
 
-            IFS=$'\n'
-            REPO_REMOTES=($(git remote))
-            unset IFS
+        IFS=$'\n'
+        REPO_REMOTES=($(git remote))
+        unset IFS
 
-            if [ "${#REPO_REMOTES[@]}" -gt "0" ]; then
+        if [ "${#REPO_REMOTES[@]}" -gt "0" ]; then
 
-                if [ "${#GIT_URL_REPLACEMENTS[@]}" -gt "0" ] && [ -f ".git/config" ]; then
+            UPDATED_BRANCHES=()
+            PUSHED_BRANCHES=()
 
-                    safe_sed ".git/config" "${GIT_URL_REPLACEMENTS[@]}"
+            while IFS= read -u 4 -rd $'\0' REF_CODE; do
 
-                fi
+                eval "$REF_CODE"
 
-                for REMOTE in "${REPO_REMOTES[@]}"; do
+                UPSTREAM="$(git rev-parse --symbolic-full-name "$BRANCH"'@{upstream}' 2>/dev/null)" || UPSTREAM=
+                PUSH="$(git rev-parse --symbolic-full-name "$BRANCH"'@{push}' 2>/dev/null)" || PUSH="$UPSTREAM"
+                UPSTREAM="${UPSTREAM#refs/remotes/}"
+                PUSH="${PUSH#refs/remotes/}"
+                PUSH_REMOTE="${PUSH%%/*}"
 
-                    git fetch --prune --quiet "$REMOTE" || echo "Can't fetch from remote ${BOLD}${REMOTE}${RESET} in $REPO_LONG_NAME" >>"$WARNINGS_FILE"
+                BEHIND_UPSTREAM=0
+                AHEAD_PUSH=0
+                PRETTY_BRANCH="$(git_format_branch "$BRANCH" "$BEHIND_UPSTREAM" "$AHEAD_PUSH")"
 
-                done
+                if [ -n "$UPSTREAM" ]; then
 
-            fi
+                    UPSTREAM_COMMIT="$(git rev-parse --verify "$UPSTREAM")"
+                    BEHIND_UPSTREAM="$(git rev-list --count "${LOCAL_COMMIT}..${UPSTREAM_COMMIT}")"
 
-        ) &
+                    if [ "$BEHIND_UPSTREAM" -gt "0" ]; then
 
-    done
+                        PRETTY_BRANCH="$(git_format_branch "$BRANCH" "$BEHIND_UPSTREAM" "$AHEAD_PUSH")"
 
-    wait
+                        if [ "$IS_CURRENT_BRANCH" = '*' ]; then
 
-    echo
-
-    file_to_array "$WARNINGS_FILE" ""
-
-    if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-        WARNINGS+=("${FILE_TO_ARRAY[@]}")
-
-    fi
-
-fi
-
-for i in "${!REPO_ROOTS[@]}"; do
-
-    REPO_ROOT="${REPO_ROOTS[$i]}"
-    REPO_NAME="${REPO_NAMES[$i]}"
-    REPO_LONG_NAME="${REPO_LONG_NAMES[$i]}"
-
-    pushd "$REPO_ROOT" >/dev/null || die
-
-    console_message "$MAIN_VERB repository:" "${REPO_LONG_NAME}" "$CYAN"
-
-    git update-index --refresh -q >/dev/null || true
-
-    IFS=$'\n'
-    REPO_REMOTES=($(git remote))
-    unset IFS
-
-    if [ "${#REPO_REMOTES[@]}" -gt "0" ]; then
-
-        UPDATED_BRANCHES=()
-        PUSHED_BRANCHES=()
-
-        while IFS= read -u 4 -rd $'\0' REF_CODE; do
-
-            eval "$REF_CODE"
-
-            UPSTREAM="$(git rev-parse --symbolic-full-name "$BRANCH"'@{upstream}' 2>/dev/null)" || UPSTREAM=
-            PUSH="$(git rev-parse --symbolic-full-name "$BRANCH"'@{push}' 2>/dev/null)" || PUSH="$UPSTREAM"
-            UPSTREAM="${UPSTREAM#refs/remotes/}"
-            PUSH="${PUSH#refs/remotes/}"
-            PUSH_REMOTE="${PUSH%%/*}"
-
-            BEHIND_UPSTREAM=0
-            AHEAD_PUSH=0
-            PRETTY_BRANCH="$(git_format_branch "$BRANCH" "$BEHIND_UPSTREAM" "$AHEAD_PUSH")"
-
-            if [ -n "$UPSTREAM" ]; then
-
-                UPSTREAM_COMMIT="$(git rev-parse --verify "$UPSTREAM")"
-                BEHIND_UPSTREAM="$(git rev-list --count "${LOCAL_COMMIT}..${UPSTREAM_COMMIT}")"
-
-                if [ "$BEHIND_UPSTREAM" -gt "0" ]; then
-
-                    PRETTY_BRANCH="$(git_format_branch "$BRANCH" "$BEHIND_UPSTREAM" "$AHEAD_PUSH")"
-
-                    if [ "$IS_CURRENT_BRANCH" = '*' ]; then
-
-                        console_message "Attempting to merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) (fast-forward only):" "$PRETTY_BRANCH" "$GREEN"
-                        git merge --ff-only "$UPSTREAM" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || WARNINGS+=("Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH in $REPO_LONG_NAME")
-
-                    else
-
-                        console_message "Attempting to fast-forward branch from upstream:" "$PRETTY_BRANCH" "$GREEN"
-                        git fetch . "$UPSTREAM":"$BRANCH" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || WARNINGS+=("Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH in $REPO_LONG_NAME")
-
-                    fi
-
-                    [ "$BEHIND_UPSTREAM" -gt "0" ] || PRETTY_BRANCH="$(git_format_branch "$BRANCH" "$BEHIND_UPSTREAM" "$AHEAD_PUSH")"
-
-                fi
-
-            else
-
-                WARNINGS+=("Branch $PRETTY_BRANCH in $REPO_LONG_NAME doesn't have an \"upstream\" remote-tracking branch")
-
-            fi
-
-            if [ -n "$PUSH" ]; then
-
-                # TODO: fast-forward from this ref too
-
-                PUSH_COMMIT="$(git rev-parse --verify "$PUSH")"
-                AHEAD_PUSH="$(git rev-list --count "${PUSH_COMMIT}..${LOCAL_COMMIT}")"
-                BEHIND_PUSH="$BEHIND_UPSTREAM"
-
-                if [ "$AHEAD_PUSH" -gt "0" ]; then
-
-                    PRETTY_BRANCH="$(git_format_branch "$BRANCH" "$BEHIND_PUSH" "$AHEAD_PUSH")"
-
-                    if [ "$BEHIND_PUSH" -gt "0" ]; then
-
-                        WARNINGS+=("Can't push $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH in $REPO_LONG_NAME until upstream $(single_or_plural "$BEHIND_PUSH" "commit is" "commits are") resolved")
-
-                    else
-
-                        echo
-                        console_message "${BOLD}${AHEAD_PUSH} $(single_or_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(single_or_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${RESET}" "" "$BOLD" "$YELLOW"
-                        echo
-                        echo "${NO_WRAP}$(git log "-$GIT_LOG_LIMIT" --oneline --decorate --color=always "${PUSH_COMMIT}..${LOCAL_COMMIT}")${WRAP}"
-
-                        if [ "$AHEAD_PUSH" -gt "$GIT_LOG_LIMIT" ]; then
-
-                            ((NOT_SHOWN = AHEAD_PUSH - GIT_LOG_LIMIT))
-
-                            echo
-                            echo "($NOT_SHOWN $(single_or_plural "$NOT_SHOWN" commit commits) not shown)"
-
-                        fi
-
-                        if [ "$DO_PUSH" -eq "1" ] && echo && get_confirmation "Attempt to push branch \"$BRANCH\" to remote \"$PUSH_REMOTE\"?" Y; then
-
-                            git push "$PUSH_REMOTE" "$BRANCH:$BRANCH" && PUSHED_BRANCHES+=("$PRETTY_BRANCH") && AHEAD_PUSH=0 || WARNINGS+=("Can't push $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH in $REPO_LONG_NAME")
+                            console_message "Attempting to merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) (fast-forward only):" "$PRETTY_BRANCH" "$GREEN"
+                            git merge --ff-only "$UPSTREAM" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || WARNINGS+=("Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH in $REPO_LONG_NAME")
 
                         else
 
-                            WARNINGS+=("Unpushed $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH in $REPO_LONG_NAME")
+                            console_message "Attempting to fast-forward branch from upstream:" "$PRETTY_BRANCH" "$GREEN"
+                            git fetch . "$UPSTREAM":"$BRANCH" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || WARNINGS+=("Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH in $REPO_LONG_NAME")
+
+                        fi
+
+                        [ "$BEHIND_UPSTREAM" -gt "0" ] || PRETTY_BRANCH="$(git_format_branch "$BRANCH" "$BEHIND_UPSTREAM" "$AHEAD_PUSH")"
+
+                    fi
+
+                else
+
+                    WARNINGS+=("Branch $PRETTY_BRANCH in $REPO_LONG_NAME doesn't have an \"upstream\" remote-tracking branch")
+
+                fi
+
+                if [ -n "$PUSH" ]; then
+
+                    # TODO: fast-forward from this ref too
+
+                    PUSH_COMMIT="$(git rev-parse --verify "$PUSH")"
+                    AHEAD_PUSH="$(git rev-list --count "${PUSH_COMMIT}..${LOCAL_COMMIT}")"
+                    BEHIND_PUSH="$BEHIND_UPSTREAM"
+
+                    if [ "$AHEAD_PUSH" -gt "0" ]; then
+
+                        PRETTY_BRANCH="$(git_format_branch "$BRANCH" "$BEHIND_PUSH" "$AHEAD_PUSH")"
+
+                        if [ "$BEHIND_PUSH" -gt "0" ]; then
+
+                            WARNINGS+=("Can't push $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH in $REPO_LONG_NAME until upstream $(single_or_plural "$BEHIND_PUSH" "commit is" "commits are") resolved")
+
+                        else
+
+                            echo
+                            console_message "${BOLD}${AHEAD_PUSH} $(single_or_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(single_or_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${RESET}" "" "$BOLD" "$YELLOW"
+                            echo
+                            echo "${NO_WRAP}$(git log "-$GIT_LOG_LIMIT" --oneline --decorate --color=always "${PUSH_COMMIT}..${LOCAL_COMMIT}")${WRAP}"
+
+                            if [ "$AHEAD_PUSH" -gt "$GIT_LOG_LIMIT" ]; then
+
+                                ((NOT_SHOWN = AHEAD_PUSH - GIT_LOG_LIMIT))
+
+                                echo
+                                echo "($NOT_SHOWN $(single_or_plural "$NOT_SHOWN" commit commits) not shown)"
+
+                            fi
+
+                            if [ "$DO_PUSH" -eq "1" ] && echo && get_confirmation "Attempt to push branch \"$BRANCH\" to remote \"$PUSH_REMOTE\"?" Y; then
+
+                                git push "$PUSH_REMOTE" "$BRANCH:$BRANCH" && PUSHED_BRANCHES+=("$PRETTY_BRANCH") && AHEAD_PUSH=0 || WARNINGS+=("Can't push $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH in $REPO_LONG_NAME")
+
+                            else
+
+                                WARNINGS+=("Unpushed $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH in $REPO_LONG_NAME")
+
+                            fi
 
                         fi
 
                     fi
 
+                else
+
+                    WARNINGS+=("Branch $PRETTY_BRANCH in $REPO_LONG_NAME doesn't have a \"push\" remote-tracking branch")
+
                 fi
 
-            else
+            done 4< <(
 
-                WARNINGS+=("Branch $PRETTY_BRANCH in $REPO_LONG_NAME doesn't have a \"push\" remote-tracking branch")
+                # shellcheck disable=SC1090
+                . "$SUBSHELL_SCRIPT_PATH" || exit
 
-            fi
-
-        done 4< <(
-
-            # shellcheck disable=SC1090
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-
-            git for-each-ref --format='
+                git for-each-ref --format='
 BRANCH="%(refname:short)"
 LOCAL_COMMIT="%(objectname:short)"
 IS_CURRENT_BRANCH="%(HEAD)"
 %00' refs/heads/
 
-        )
+            )
 
-        if [ "${#UPDATED_BRANCHES[@]}" -gt "0" ]; then
+            if [ "${#UPDATED_BRANCHES[@]}" -gt "0" ]; then
 
-            UPDATED_REPOS+=("${REPO_LONG_NAME}($(array_join_by ', ' "${UPDATED_BRANCHES[@]}"))")
+                UPDATED_REPOS+=("${REPO_LONG_NAME}($(array_join_by ', ' "${UPDATED_BRANCHES[@]}"))")
+
+            fi
+
+            if [ "${#PUSHED_BRANCHES[@]}" -gt "0" ]; then
+
+                PUSHED_REPOS+=("${REPO_LONG_NAME}($(array_join_by ', ' "${PUSHED_BRANCHES[@]}"))")
+
+            fi
+
+        else
+
+            WARNINGS+=("No remotes in repository $REPO_LONG_NAME")
 
         fi
 
-        if [ "${#PUSHED_BRANCHES[@]}" -gt "0" ]; then
+        CHANGES=()
 
-            PUSHED_REPOS+=("${REPO_LONG_NAME}($(array_join_by ', ' "${PUSHED_BRANCHES[@]}"))")
+        UNTRACKED="$(git ls-files --other --exclude-standard)" || die
+        [ -z "$UNTRACKED" ] || CHANGES+=("untracked")
+
+        git diff-files --quiet || CHANGES+=("unstaged")
+
+        git diff-index --cached --quiet HEAD || CHANGES+=("uncommitted")
+
+        if [ "${#CHANGES[@]}" -gt "0" ]; then
+
+            WARNINGS+=("$(upper_first "$(array_join_oxford "${CHANGES[@]}")") changes in $REPO_LONG_NAME")
 
         fi
 
-    else
+        if git rev-parse --verify -q refs/stash >/dev/null; then
 
-        WARNINGS+=("No remotes in repository $REPO_LONG_NAME")
+            STASH_COUNT="$(git rev-list --walk-reflogs --count refs/stash)"
 
-    fi
+            WARNINGS+=("$STASH_COUNT $(single_or_plural "$STASH_COUNT" stash stashes) in repository $REPO_LONG_NAME")
 
-    CHANGES=()
+        fi
 
-    UNTRACKED="$(git ls-files --other --exclude-standard)" || die
-    [ -z "$UNTRACKED" ] || CHANGES+=("untracked")
+        GIT_FILEMODE="$(git config core.fileMode 2>/dev/null)" || true
+        GIT_IGNORECASE="$(git config core.ignoreCase 2>/dev/null)" || true
+        GIT_PRECOMPOSEUNICODE="$(git config core.precomposeUnicode 2>/dev/null)" || true
 
-    git diff-files --quiet || CHANGES+=("unstaged")
+        if is_windows; then
 
-    git diff-index --cached --quiet HEAD || CHANGES+=("uncommitted")
+            [ "$GIT_FILEMODE" = "false" ] || { git config --bool core.fileMode "false" && echoc "Git option disabled: core.fileMode" "$BOLD" "$YELLOW"; } || die
 
-    if [ "${#CHANGES[@]}" -gt "0" ]; then
+        else
 
-        WARNINGS+=("$(upper_first "$(array_join_oxford "${CHANGES[@]}")") changes in $REPO_LONG_NAME")
+            [ -z "$GIT_FILEMODE" ] || [ "$GIT_FILEMODE" = "true" ] || { git config --bool core.fileMode "true" && echoc "Git option enabled: core.fileMode" "$BOLD" "$YELLOW"; } || die
 
-    fi
+        fi
 
-    if git rev-parse --verify -q refs/stash >/dev/null; then
+        # TODO: check filesystem case-sensitivity rather than assuming macOS and Windows are case-insensitive
+        if is_linux; then
 
-        STASH_COUNT="$(git rev-list --walk-reflogs --count refs/stash)"
+            [ -z "$GIT_IGNORECASE" ] || [ "$GIT_IGNORECASE" = "false" ] || { git config --bool core.ignoreCase "false" && echoc "Git option disabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || die
 
-        WARNINGS+=("$STASH_COUNT $(single_or_plural "$STASH_COUNT" stash stashes) in repository $REPO_LONG_NAME")
+        else
 
-    fi
+            [ "$GIT_IGNORECASE" = "true" ] || { git config --bool core.ignoreCase "true" && echoc "Git option enabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || die
 
-    GIT_FILEMODE="$(git config core.fileMode 2>/dev/null)" || true
-    GIT_IGNORECASE="$(git config core.ignoreCase 2>/dev/null)" || true
-    GIT_PRECOMPOSEUNICODE="$(git config core.precomposeUnicode 2>/dev/null)" || true
+        fi
 
-    if is_windows; then
+        if is_macos; then
 
-        [ "$GIT_FILEMODE" = "false" ] || { git config --bool core.fileMode "false" && echoc "Git option disabled: core.fileMode" "$BOLD" "$YELLOW"; } || die
+            [ "$GIT_PRECOMPOSEUNICODE" = "true" ] || { git config --bool core.precomposeUnicode "true" && echoc "Git option enabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || die
 
-    else
+        else
 
-        [ -z "$GIT_FILEMODE" ] || [ "$GIT_FILEMODE" = "true" ] || { git config --bool core.fileMode "true" && echoc "Git option enabled: core.fileMode" "$BOLD" "$YELLOW"; } || die
+            [ -z "$GIT_PRECOMPOSEUNICODE" ] || [ "$GIT_PRECOMPOSEUNICODE" = "false" ] || { git config --bool core.precomposeUnicode "false" && echoc "Git option disabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || die
 
-    fi
+        fi
 
-    # TODO: check filesystem case-sensitivity rather than assuming macOS and Windows are case-insensitive
-    if is_linux; then
+        popd >/dev/null
 
-        [ -z "$GIT_IGNORECASE" ] || [ "$GIT_IGNORECASE" = "false" ] || { git config --bool core.ignoreCase "false" && echoc "Git option disabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || die
+        echo
 
-    else
+    done
 
-        [ "$GIT_IGNORECASE" = "true" ] || { git config --bool core.ignoreCase "true" && echoc "Git option enabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || die
-
-    fi
-
-    if is_macos; then
-
-        [ "$GIT_PRECOMPOSEUNICODE" = "true" ] || { git config --bool core.precomposeUnicode "true" && echoc "Git option enabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || die
-
-    else
-
-        [ -z "$GIT_PRECOMPOSEUNICODE" ] || [ "$GIT_PRECOMPOSEUNICODE" = "false" ] || { git config --bool core.precomposeUnicode "false" && echoc "Git option disabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || die
-
-    fi
-
-    popd >/dev/null
-
+    echoc "All done. ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories) ${COMPLETION_VERB}." "$BOLD"
     echo
 
-done
+    if [ "${#UPDATED_REPOS[@]}" -gt "0" ]; then
 
-echoc "All done. ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories) ${COMPLETION_VERB}." "$BOLD"
-echo
+        echoc "${#UPDATED_REPOS[@]} $(single_or_plural "${#UPDATED_REPOS[@]}" repository repositories) fast-forwarded from upstream:" "$BOLD" "$GREEN"
+        printf '%s\n' "${UPDATED_REPOS[@]}" ""
 
-if [ "${#UPDATED_REPOS[@]}" -gt "0" ]; then
+    fi
 
-    echoc "${#UPDATED_REPOS[@]} $(single_or_plural "${#UPDATED_REPOS[@]}" repository repositories) fast-forwarded from upstream:" "$BOLD" "$GREEN"
-    printf '%s\n' "${UPDATED_REPOS[@]}" ""
+    if [ "${#PUSHED_REPOS[@]}" -gt "0" ]; then
 
-fi
+        echoc "${#PUSHED_REPOS[@]} $(single_or_plural "${#PUSHED_REPOS[@]}" repository repositories) pushed upstream:" "$BOLD" "$GREEN"
+        printf '%s\n' "${PUSHED_REPOS[@]}" ""
 
-if [ "${#PUSHED_REPOS[@]}" -gt "0" ]; then
+    fi
 
-    echoc "${#PUSHED_REPOS[@]} $(single_or_plural "${#PUSHED_REPOS[@]}" repository repositories) pushed upstream:" "$BOLD" "$GREEN"
-    printf '%s\n' "${PUSHED_REPOS[@]}" ""
+    if [ "${#WARNINGS[@]}" -gt "0" ]; then
 
-fi
+        echoc "${#WARNINGS[@]} $(single_or_plural "${#WARNINGS[@]}" "issue requires" "issues require") attention:" "$BOLD" "$RED"
+        printf -- '- %s\n' "${WARNINGS[@]}"
+        echo
 
-if [ "${#WARNINGS[@]}" -gt "0" ]; then
+    fi
 
-    echoc "${#WARNINGS[@]} $(single_or_plural "${#WARNINGS[@]}" "issue requires" "issues require") attention:" "$BOLD" "$RED"
-    printf -- '- %s\n' "${WARNINGS[@]}"
-    echo
+    exit
 
-fi
+}
