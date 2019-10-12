@@ -1,5 +1,4 @@
 #!/bin/bash
-# shellcheck disable=
 
 function check_developer_tools() {
 
@@ -11,7 +10,7 @@ function check_developer_tools() {
 
         [ "$ATTEMPTS" -eq "0" ] || console_message "Command line developer tools aren't installed ($ATTEMPTS $(single_or_plural "$ATTEMPTS" attempt attempts) so far)" "" "$BOLD" "$RED"
 
-        console_message "Requesting installation of the command line developer tools" "" "$GREEN"
+        console_message "Requesting installation of the command line developer tools" "" "$CYAN"
         sudo xcode-select --install
 
         get_enter "Press Enter when command line developer tools installation has completed"

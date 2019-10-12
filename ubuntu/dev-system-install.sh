@@ -2,18 +2,11 @@
 # shellcheck disable=SC1090,SC2206,SC2207
 
 set -euo pipefail
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
-SCRIPT_PATH="${BASH_SOURCE[0]}"
-if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
-SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
-
-# shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
-
-# shellcheck source=../bash/common-apt
 . "$SCRIPT_DIR/../bash/common-apt"
-
-# shellcheck source=../bash/common-dev
 . "$SCRIPT_DIR/../bash/common-dev"
 
 assert_is_ubuntu
@@ -175,81 +168,81 @@ trickle \
 " N
 
 apt_install_packages "desktop essentials" "\
- abcde\
- audacity\
- awf\
- beets\
- blueman\
- blueproximity\
- bsd-mailx-\
- btscanner\
- caffeine\
- catfish\
- code\
- copyq\
- dconf-cli\
- dconf-editor\
- deepin-notifications-\
- deepin-screenshot\
- evtest\
- eyed3\
- firefox\
- fonts-symbola\
- galculator\
- gconf-editor\
- geany\
- ghostwriter\
- gimp\
- git-cola\
- glmark2\
- gnome-color-manager\
- google-chrome-stable\
- gparted\
- gssp-recoll\
- guake\
- handbrake-cli\
- handbrake-gtk\
- indicator-multiload\
- inkscape\
- keepassxc\
- lame\
- libdvd-pkg!\
- libreoffice\
- makemkv-bin\
- makemkv-oss\
- meld\
- mkvtoolnix-gui\
- mkvtoolnix\
- owncloud-client\
- qpdfview\
- recoll\
- remmina\
- samba\
- scribus\
- seahorse\
- skypeforlinux\
- speedcrunch\
- spotify-client\
- sublime-text\
- sxhkd\
- synaptic\
- t1-xfree86-nonfree\
- thunderbird\
- tilix\
- transmission\
- ttf-xfree86-nonfree\
- typora\
- usb-creator-gtk\
- vainfo\
- vlc\
- x-tile\
- x11vnc\
- xautomation\
- xclip\
- xdotool\
- xfonts-100dpi\
- xfonts-75dpi\
- youtube-dl\
+abcde \
+audacity \
+awf \
+beets \
+blueman \
+blueproximity \
+bsd-mailx- \
+btscanner \
+caffeine \
+catfish \
+code \
+copyq \
+dconf-cli \
+dconf-editor \
+deepin-notifications- \
+deepin-screenshot \
+evtest \
+eyed3 \
+firefox \
+fonts-symbola \
+galculator \
+gconf-editor \
+geany \
+ghostwriter \
+gimp \
+git-cola \
+glmark2 \
+gnome-color-manager \
+google-chrome-stable \
+gparted \
+gssp-recoll \
+guake \
+handbrake-cli \
+handbrake-gtk \
+indicator-multiload \
+inkscape \
+keepassxc \
+lame \
+libdvd-pkg! \
+libreoffice \
+makemkv-bin \
+makemkv-oss \
+meld \
+mkvtoolnix \
+mkvtoolnix-gui \
+owncloud-client \
+qpdfview \
+recoll \
+remmina \
+samba \
+scribus \
+seahorse \
+skypeforlinux \
+speedcrunch \
+spotify-client \
+sublime-text \
+sxhkd \
+synaptic \
+t1-xfree86-nonfree \
+thunderbird \
+tilix \
+transmission \
+ttf-xfree86-nonfree \
+typora \
+usb-creator-gtk \
+vainfo \
+vlc \
+x-tile \
+x11vnc \
+xautomation \
+xclip \
+xdotool \
+xfonts-100dpi \
+xfonts-75dpi \
+youtube-dl \
 "
 
 apt_install_packages "PDF tools" "\
@@ -263,62 +256,62 @@ texlive-luatex \
 "
 
 apt_install_packages "photography" "\
- geeqie\
- rapid-photo-downloader\
- trimage\
+geeqie \
+rapid-photo-downloader \
+trimage \
 "
 
 apt_install_packages "development" "\
- build-essential\
- cmake\
- dbeaver-ce\
- git\
- libapache2-mod-php*-\
- nodejs\
- php\
- php-bcmath\
- php-cli\
- php-curl\
- php-dev\
- php-fpm\
- php-gd\
- php-gettext\
- php-imagick\
- php-imap\
- php-json\
- php-mbstring\
- php-mcrypt?\
- php-memcache\
- php-memcached\
- php-mysql\
- php-pear\
- php-soap\
- php-xdebug\
- php-xml\
- php-xmlrpc\
- python\
- python-dateutil\
- python-dev\
- python-mysqldb\
- python-pip\
- python-requests\
- python3\
- python3-dateutil\
- python3-dev\
- python3-mysqldb\
- python3-pip\
- python3-requests\
- ruby\
- shellcheck\
- sublime-merge\
- yarn\
+build-essential \
+cmake \
+dbeaver-ce \
+git \
+libapache2-mod-php*- \
+nodejs \
+php \
+php-bcmath \
+php-cli \
+php-curl \
+php-dev \
+php-fpm \
+php-gd \
+php-gettext \
+php-imagick \
+php-imap \
+php-json \
+php-mbstring \
+php-mcrypt? \
+php-memcache \
+php-memcached \
+php-mysql \
+php-pear \
+php-soap \
+php-xdebug \
+php-xml \
+php-xmlrpc \
+python \
+python-dateutil \
+python-dev \
+python-mysqldb \
+python-pip \
+python-requests \
+python3 \
+python3-dateutil \
+python3-dev \
+python3-mysqldb \
+python3-pip \
+python3-requests \
+ruby \
+shellcheck \
+sublime-merge \
+yarn \
 "
 
 apt_install_packages "development services" "\
- apache2\
- libapache2-mod-php*-\
- mariadb-server\
- mongodb-org\
+apache2 \
+libapache2-mod-php*- \
+mariadb-server \
+mongodb-org \
 "
 
 if apt_package_available powershell; then
@@ -341,24 +334,24 @@ case "${XDG_CURRENT_DESKTOP:-}" in
 XFCE)
 
     apt_install_packages "XFCE extras" "\
- gnome-session-canberra\
- libcanberra-gtk-module\
- libcanberra-gtk3-module\
- plank\
- sox\
- ubuntu-sounds\
- xfce4-battery-plugin\
- xfce4-clipman\
- xfce4-timer-plugin\
- xfdashboard\
- xiccd\
- xscreensaver\
- xscreensaver-data\
- xscreensaver-data-extra\
- xscreensaver-gl\
- xscreensaver-gl-extra\
- xscreensaver-screensaver-bsod\
- xscreensaver-screensaver-webcollage\
+gnome-session-canberra \
+libcanberra-gtk-module \
+libcanberra-gtk3-module \
+plank \
+sox \
+ubuntu-sounds \
+xfce4-battery-plugin \
+xfce4-clipman \
+xfce4-timer-plugin \
+xfdashboard \
+xiccd \
+xscreensaver \
+xscreensaver-data \
+xscreensaver-data-extra \
+xscreensaver-gl \
+xscreensaver-gl-extra \
+xscreensaver-screensaver-bsod \
+xscreensaver-screensaver-webcollage \
 "
 
     apt_remove_packages "gnome-screensaver light-locker"

@@ -19,7 +19,7 @@ function dev_install_packages() {
     dir_make_and_own "/usr/local/bin"
 
     # on macOS, global pip and npm management doesn't require sudo (courtesy of Homebrew)
-    if [ "$IS_MACOS" -ne "1" ]; then
+    if ! is_macos; then
 
         SUDO_OR_NOT="sudo -H "
 
@@ -93,7 +93,7 @@ function dev_install_packages() {
 
             function npm_install() {
 
-                [ -e "/usr/bin/python2" ] && eval "${SUDO_OR_NOT}npm config -g set python /usr/bin/python2" || true
+                [ -e "/usr/bin/python" ] && eval "${SUDO_OR_NOT}npm config -g set python /usr/bin/python" || true
 
                 local PACKAGE
 

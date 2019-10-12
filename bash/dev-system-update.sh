@@ -30,6 +30,8 @@ if command_exists brew; then
 
     brew_upgrade_all
 
+    brew_formula_installed node || ! brew_formula_installed node@8 || brew link --force --overwrite node@8
+
 fi
 
 if command_exists snap; then
