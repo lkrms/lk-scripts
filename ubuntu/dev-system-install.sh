@@ -352,6 +352,7 @@ xscreensaver-gl \
 xscreensaver-gl-extra \
 xscreensaver-screensaver-bsod \
 xscreensaver-screensaver-webcollage \
+xssproxy \
 "
 
     apt_remove_packages "gnome-screensaver light-locker"

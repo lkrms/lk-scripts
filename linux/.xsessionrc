@@ -7,3 +7,6 @@
 export QT_BEARER_POLL_TIMEOUT=-1
 
 export GTK_MODULES="${GTK_MODULES:+$GTK_MODULES:}canberra-gtk-module"
+
+# ensure xscreensaver receives idle inhibition calls
+nohup xssproxy >/dev/null 2>&1 &

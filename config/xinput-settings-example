@@ -1,2 +1,5 @@
 Logitech Gaming Mouse G302.*\bslave\s+pointer\b
 "libinput Accel Speed" -0.8
+
+Logitech M705.*\bslave\s+pointer\b
+"libinput Accel Speed" -0.8
