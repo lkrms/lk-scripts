@@ -86,12 +86,7 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
             # shellcheck disable=SC1090
             . "$SUBSHELL_SCRIPT_PATH" || exit
 
-            # within each CODE_ROOT, sort by depth then name
-            for i in $(seq 0 "${DEFAULT_CODE_REPO_DEPTH:-2}"); do
-
-                find "$CODE_ROOT" -mindepth "$i" -maxdepth "$i" -type d -print0 | sort -z
-
-            done
+            find "$CODE_ROOT" -type d -exec test -d '{}/.git' \; -prune -print0 | sort -z
 
         )
 
