@@ -47,6 +47,14 @@ EOF
 
 fi
 
+{
+
+    [ -e "$CONFIG_DIR/apt.conf" ] &&
+        safe_symlink "$CONFIG_DIR/apt.conf" "/etc/apt/apt.conf.d/90-linacreative" Y ||
+        safe_symlink "$CONFIG_DIR/apt-default.conf" "/etc/apt/apt.conf.d/90-linacreative" Y
+
+} >/dev/null
+
 # seed debconf database with answers
 sudo debconf-set-selections <<EOF
 libc6 libraries/restart-without-asking boolean true
