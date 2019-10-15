@@ -176,7 +176,7 @@ blueman \
 blueproximity \
 bsd-mailx- \
 btscanner \
-caffeine \
+$([ "${XDG_CURRENT_DESKTOP:-}" = "XFCE" ] || printf '%s' "caffeine") \
 catfish \
 code \
 copyq \
@@ -355,7 +355,7 @@ xscreensaver-screensaver-webcollage \
 xssproxy \
 "
 
-    apt_remove_packages "gnome-screensaver light-locker"
+    apt_remove_packages caffeine gnome-screensaver light-locker
 
     ;;
 
