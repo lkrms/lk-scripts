@@ -1306,6 +1306,29 @@ function test_host_port() {
 
 }
 
+# outputs the installed memory size in MiB
+function get_memory_size() {
+
+    local MEMSIZE
+
+    if is_linux; then
+
+        assert_command_exists dmidecode
+
+        sudo dmidecode -t memory | sed -E 's/^\s+(.*)$/\1/' | gnu_grep -Po '(?<=^Size: )[0-9]+(?= MB$)' | awk '{ram+=$1} END {print ram}' || die
+
+    elif is_macos; then
+
+        MEMSIZE="$(sysctl -n hw.memsize)" || die
+        echo "$((MEMSIZE / 1024 ** 2))"
+
+    else
+
+        die "Unable to determine memory size on this platform"
+
+    fi
+}
+
 COMMON_SCRIPT_PATH="${BASH_SOURCE[0]}"
 if command -v realpath >/dev/null 2>&1; then COMMON_SCRIPT_PATH="$(realpath "$COMMON_SCRIPT_PATH")"; fi
 ROOT_DIR="$(cd "$(dirname "$COMMON_SCRIPT_PATH")/.." && pwd -P)"
