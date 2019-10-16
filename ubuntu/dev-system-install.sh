@@ -96,6 +96,9 @@ apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.as
 apt_register_repository wine "https://dl.winehq.org/wine-builds/winehq.key" "deb https://dl.winehq.org/wine-builds/ubuntu/ $DISTRIB_CODENAME main" "origin dl.winehq.org" "wine-* winehq-*"
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "origin dl.yarnpkg.com" "yarn"
 
+LOW_RAM=0
+[ "$(get_memory_size)" -lt "8192" ] && LOW_RAM=1
+
 apt_install_packages "essential utilities" "\
 atop \
 attr \
@@ -315,7 +318,7 @@ sublime-merge \
 yarn \
 "
 
-apt_install_packages "development services" "\
+[ "$LOW_RAM" -eq "1" ] || apt_install_packages "development services" "\
 apache2 \
 libapache2-mod-php*- \
 mariadb-server \
@@ -333,9 +336,9 @@ else
 
 fi
 
-apt_install_packages "VirtualBox" "virtualbox-6.0"
-apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
-#apt_install_packages "Wine" "winehq-stable winetricks"
+[ "$LOW_RAM" -eq "1" ] || apt_install_packages "VirtualBox" "virtualbox-6.0"
+[ "$LOW_RAM" -eq "1" ] || apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
+#[ "$LOW_RAM" -eq "1" ] || apt_install_packages "Wine" "winehq-stable winetricks"
 
 case "${XDG_CURRENT_DESKTOP:-}" in
 
