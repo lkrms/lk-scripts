@@ -169,6 +169,10 @@ brother-p-touch-editor \
 brother-p-touch-update-software \
 "
 
+brew_queue_formulae "Db2 dependencies" "\
+gcc@7 \
+"
+
 if brew_formula_installed_or_queued "httpd"; then
 
     console_message "Disabling built-in Apache web server..." "" "$CYAN"
