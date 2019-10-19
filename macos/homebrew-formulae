@@ -5,10 +5,12 @@ cmake
 coreutils
 exiftool
 gawk
+gcc@7
 ghostscript
 gnu-sed
 gradle
 grep
+httpd
 imagemagick
 lftp
 magic-wormhole
@@ -24,6 +26,7 @@ pandoc
 php@7.2
 pkg-config
 poppler
+pstoedit
 pv
 python@2
 rsync
