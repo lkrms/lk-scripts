@@ -422,7 +422,7 @@ function get_confirmation() {
 
     local PROMPT=() DEFAULT="${2:-}" FORCE="${3:-N}" YN
 
-    [ -n "$1" ] && PROMPT+=("$1") || true
+    [ -z "$1" ] || PROMPT+=("$1")
 
     case "$DEFAULT" in
 
@@ -445,7 +445,7 @@ function get_confirmation() {
 
         read -rp "${PROMPT[*]} " YN
 
-        [ -z "$YN" ] && [ -n "$DEFAULT" ] && YN="$DEFAULT" || true
+        [ -n "$YN" ] || YN="$DEFAULT"
 
         YN="$(upper "$YN")"
 
@@ -546,7 +546,7 @@ function upper() {
 
 }
 
-# Searches the array (must be global, passed by name) for the given value and outputs the first corresponding key if successful.
+# Searches the array (must be global, passed by name) for the given value and outputs the first corresponding key if found.
 # Plays nicely with globs and sparse arrays. Outputs nothing and exits non-zero if the value isn't found.
 #
 # Usage: array_search <needle> <haystack-name>
@@ -554,11 +554,11 @@ function array_search() {
 
     local KEYS VALUE i
 
-    eval KEYS='"${!'"$2"'[@]}"'
+    eval "KEYS=\"\${!$2[@]}\""
 
     for i in $KEYS; do
 
-        eval VALUE='"${'"$2"'[$i]}"'
+        eval "VALUE=\"\${$2[$i]}\""
 
         # $VALUE is left unquoted for globbing purposes
         # shellcheck disable=SC2053
