@@ -1,12 +1,10 @@
 #!/bin/bash
+# shellcheck disable=SC1090
 
 set -euo pipefail
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
-SCRIPT_PATH="${BASH_SOURCE[0]}"
-if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
-SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
-
-# shellcheck source=../../bash/common
 . "$SCRIPT_DIR/../../bash/common"
 
 assert_root
@@ -22,53 +20,53 @@ FOLDER_PREFIX="INBOX"
 
 for MAILDIR in "${MAILDIRS[@]}"; do
 
-	ARCHIVE="$MAILDIR/.Archive/cur"
+    ARCHIVE="$MAILDIR/.Archive/cur"
 
-	[ -d "$ARCHIVE" ] || continue
+    [ -d "$ARCHIVE" ] || continue
 
-	OWNER="$(gnu_stat -c '%U' "$MAILDIR")"
-	SUBSCRIBED="$MAILDIR/courierimapsubscribed"
-	YEAR="$(date '+%Y')"
-	CONTINUE=1
+    OWNER="$(gnu_stat -c '%U' "$MAILDIR")"
+    SUBSCRIBED="$MAILDIR/courierimapsubscribed"
+    YEAR="$(date '+%Y')"
+    CONTINUE=1
 
-	while [ "$CONTINUE" -ne "0" ]; do
+    while [ "$CONTINUE" -ne "0" ]; do
 
-		CONTINUE=0
-		((NEXT_YEAR = YEAR + 1))
+        CONTINUE=0
+        ((NEXT_YEAR = YEAR + 1))
 
-		FOLDER="Archive.${YEAR}"
-		TARGET_DIR="$MAILDIR/.${FOLDER}/cur"
+        FOLDER="Archive.${YEAR}"
+        TARGET_DIR="$MAILDIR/.${FOLDER}/cur"
 
-		if [ ! -d "$TARGET_DIR" ]; then
+        if [ ! -d "$TARGET_DIR" ]; then
 
-			maybe_dryrun sudo -u "$OWNER" maildirmake -f "$FOLDER" "$MAILDIR" && {
-				is_dryrun || [ -d "$TARGET_DIR" ]
-			} || die "Unable to create folder $FOLDER in Maildir $MAILDIR"
+            maybe_dryrun sudo -u "$OWNER" maildirmake -f "$FOLDER" "$MAILDIR" && {
+                is_dryrun || [ -d "$TARGET_DIR" ]
+            } || die "Unable to create folder $FOLDER in Maildir $MAILDIR"
 
-			if [ -f "$SUBSCRIBED" ] && ! grep -Fxq "${FOLDER_PREFIX}.${FOLDER}" "$SUBSCRIBED"; then
+            if [ -f "$SUBSCRIBED" ] && ! grep -Fxq "${FOLDER_PREFIX}.${FOLDER}" "$SUBSCRIBED"; then
 
-				if ! is_dryrun; then
+                if ! is_dryrun; then
 
-					echo "${FOLDER_PREFIX}.${FOLDER}" >>"$SUBSCRIBED" || die "Unable to subscribe $OWNER to newly created folder $FOLDER in Maildir $MAILDIR"
+                    echo "${FOLDER_PREFIX}.${FOLDER}" >>"$SUBSCRIBED" || die "Unable to subscribe $OWNER to newly created folder $FOLDER in Maildir $MAILDIR"
 
-				else
+                else
 
-					maybe_dryrun echo "${FOLDER_PREFIX}.${FOLDER}" ">>$SUBSCRIBED"
+                    maybe_dryrun echo "${FOLDER_PREFIX}.${FOLDER}" ">>$SUBSCRIBED"
 
-				fi
+                fi
 
-			fi
+            fi
 
-		fi
+        fi
 
-		maybe_dryrun find "$ARCHIVE" -type f -newermt "${YEAR}0101" -not -newermt "${NEXT_YEAR}0101" -exec mv -v '{}' "$TARGET_DIR" \;
+        maybe_dryrun find "$ARCHIVE" -type f -newermt "${YEAR}0101" -not -newermt "${NEXT_YEAR}0101" -exec mv -v '{}' "$TARGET_DIR" \;
 
-		# set CONTINUE=1 if the archive contains email from a previous year
-		CONTINUE="$(find "$ARCHIVE" -type f -not -newermt "${YEAR}0101" -print -quit | wc -l)"
-		CONTINUE="${CONTINUE// /}"
+        # set CONTINUE=1 if the archive contains email from a previous year
+        CONTINUE="$(find "$ARCHIVE" -type f -not -newermt "${YEAR}0101" -print -quit | wc -l)"
+        CONTINUE="${CONTINUE// /}"
 
-		((--YEAR))
+        ((--YEAR))
 
-	done
+    done
 
 done

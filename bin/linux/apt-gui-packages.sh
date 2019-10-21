@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2086
+# shellcheck disable=SC1090,SC2086
 #
 # Determine which of the given apt packages are likely to require a
 # desktop environment. If no package names are given, consider all
@@ -7,21 +7,15 @@
 #
 
 set -euo pipefail
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
-SCRIPT_PATH="${BASH_SOURCE[0]}"
-if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
-SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
-
-# shellcheck source=../../bash/common
 . "$SCRIPT_DIR/../../bash/common"
-
-# shellcheck source=../../bash/common-apt
 . "$SCRIPT_DIR/../../bash/common-apt"
 
 apt_refresh_packages
 
 APT_GUI_PACKAGES="$(
-    # shellcheck source=../../bash/common-subshell
     . "$SUBSHELL_SCRIPT_PATH" || exit
     apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances libwayland-client0 libwayland-server0 libx11-6 x11-common | grep -v " " | sort | uniq
 )" || die

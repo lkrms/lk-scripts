@@ -1,15 +1,11 @@
 #!/bin/bash
+# shellcheck disable=SC1090
 
 set -euo pipefail
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
-SCRIPT_PATH="${BASH_SOURCE[0]}"
-if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
-SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
-
-# shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
-
-# shellcheck source=../bash/common-virtualbox
 . "$SCRIPT_DIR/../bash/common-virtualbox"
 
 [ "$#" -eq "1" ] || die "Usage: $(basename "$0") <uuid|vmname>"
@@ -30,8 +26,8 @@ EFI_VDI_NUM=0
 
 while [ -e "$EFI_VDI" ]; do
 
-  ((EFI_VDI_NUM++))
-  EFI_VDI="$DST_DIR/$VM_NAME.$EFI_VDI_NUM.efi.vdi"
+    ((EFI_VDI_NUM++))
+    EFI_VDI="$DST_DIR/$VM_NAME.$EFI_VDI_NUM.efi.vdi"
 
 done
 
@@ -40,15 +36,15 @@ hdiutil detach /Volumes/EFI 2>/dev/null || true
 
 if [ ! -f "$DST_SPARSE" ]; then
 
-  hdiutil create -size 1m -fs MS-DOS -volname EFI "$DST_SPARSE"
+    hdiutil create -size 1m -fs MS-DOS -volname EFI "$DST_SPARSE"
 
 fi
 
 EFI_DEVICE=$(hdiutil attach -nomount "$DST_SPARSE")
 
 EFI_DEVICE=$(
-  . "$SUBSHELL_SCRIPT_PATH" || exit
-  echo "$EFI_DEVICE" | grep -Eo '/dev/disk[[:digit:]]{1}' | head -n1
+    . "$SUBSHELL_SCRIPT_PATH" || exit
+    echo "$EFI_DEVICE" | grep -Eo '/dev/disk[[:digit:]]{1}' | head -n1
 )
 
 # add APFS driver to EFI

@@ -1,14 +1,11 @@
 #!/bin/bash
-# shellcheck disable=SC2034
+# shellcheck disable=SC1090,SC2034
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
-# shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
-
-# shellcheck source=../bash/common-git
 . "$SCRIPT_DIR/../bash/common-git"
 
 assert_command_exists git

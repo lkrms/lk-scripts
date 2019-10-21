@@ -1329,9 +1329,9 @@ function get_memory_size() {
     fi
 }
 
-COMMON_SCRIPT_PATH="${BASH_SOURCE[0]}"
-if command -v realpath >/dev/null 2>&1; then COMMON_SCRIPT_PATH="$(realpath "$COMMON_SCRIPT_PATH")"; fi
-ROOT_DIR="$(cd "$(dirname "$COMMON_SCRIPT_PATH")/.." && pwd -P)"
+COMMON_SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || COMMON_SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
+ROOT_DIR="$(dirname "$COMMON_SCRIPT_PATH")/.."
+ROOT_DIR="$(realpath "$ROOT_DIR" 2>/dev/null)" || ROOT_DIR="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "$ROOT_DIR")"
 CONFIG_DIR="$ROOT_DIR/config"
 CACHE_DIR="$ROOT_DIR/cache"
 LOCAL_DIR="$ROOT_DIR/local"

@@ -450,56 +450,48 @@ if ! has_argument "--skip-debs"; then
 
     # AutoKey
     DEB_URLS+=($(
-        # shellcheck source=../bash/common-subshell
         . "$SUBSHELL_SCRIPT_PATH" || exit
         get_urls_from_url "https://api.github.com/repos/autokey/autokey/releases/latest" 'autokey-(common|gtk).*\.deb$' | head -n2
     ))
 
     # Caprine
     DEB_URLS+=("$(
-        # shellcheck source=../bash/common-subshell
         . "$SUBSHELL_SCRIPT_PATH" || exit
         get_urls_from_url "https://api.github.com/repos/sindresorhus/caprine/releases/latest" '_amd64\.deb$' | head -n1
     )")
 
     # Caret Beta
     DEB_URLS+=("$(
-        # shellcheck source=../bash/common-subshell
         . "$SUBSHELL_SCRIPT_PATH" || exit
         get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1
     )")
 
     # Master PDF Editor
     DEB_URLS+=("$(
-        # shellcheck source=../bash/common-subshell
         . "$SUBSHELL_SCRIPT_PATH" || exit
         get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1
     )")
 
     # Motion
     DEB_URLS+=("$(
-        # shellcheck source=../bash/common-subshell
         . "$SUBSHELL_SCRIPT_PATH" || exit
         get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases/latest" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1
     )")
 
     # Slack
     DEB_URLS+=("$(
-        # shellcheck source=../bash/common-subshell
         . "$SUBSHELL_SCRIPT_PATH" || exit
         get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1
     )")
 
     # stretchly
     DEB_URLS+=("$(
-        # shellcheck source=../bash/common-subshell
         . "$SUBSHELL_SCRIPT_PATH" || exit
         get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1
     )")
 
     # Teams for Linux
     DEB_URLS+=("$(
-        # shellcheck source=../bash/common-subshell
         . "$SUBSHELL_SCRIPT_PATH" || exit
         get_urls_from_url "https://api.github.com/repos/IsmaelMartinez/teams-for-linux/releases/latest" '_amd64\.deb$' | head -n1
     )")

@@ -1,15 +1,11 @@
 #!/bin/bash
+# shellcheck disable=SC1090
 
 set -euo pipefail
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
+SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
-SCRIPT_PATH="${BASH_SOURCE[0]}"
-if command -v realpath >/dev/null 2>&1; then SCRIPT_PATH="$(realpath "$SCRIPT_PATH")"; fi
-SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
-
-# shellcheck source=../bash/common
 . "$SCRIPT_DIR/../bash/common"
-
-# shellcheck source=../bash/common-apt
 . "$SCRIPT_DIR/../bash/common-apt"
 
 assert_is_ubuntu
