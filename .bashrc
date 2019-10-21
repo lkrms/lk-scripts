@@ -39,6 +39,8 @@
     if [ "${#ADD_TO_PATH[@]}" -gt "0" ]; then
 
         echo 'export PATH="$PATH:'"$(array_join_by ":" "${ADD_TO_PATH[@]}")"'"'
+        PATH="$PATH:$(array_join_by ":" "${ADD_TO_PATH[@]}")"
+        export PATH
 
     fi
 
