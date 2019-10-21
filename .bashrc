@@ -111,8 +111,8 @@
 
         echo 'alias duh="du -h --max-depth 1 | sort -h"'
 
-        command_exists gtk-launch && echo 'alias gtk-debug="GTK_DEBUG=interactive "'
-        command_exists xdg-open && echo 'alias open=xdg-open'
+        ! command_exists gtk-launch || echo 'alias gtk-debug="GTK_DEBUG=interactive "'
+        ! command_exists xdg-open || echo 'alias open=xdg-open'
 
         if [ -e "/lib/systemd/system/synergy.service" ]; then
 
@@ -124,7 +124,8 @@
 
     fi
 
-    command_exists youtube-dl && echo 'alias youtube-dl-audio="youtube-dl -x --audio-format mp3 --audio-quality 0"'
+    ! command_exists shfmt || echo 'alias shellformat-test="shfmt -i 4 -l ."'
+    ! command_exists youtube-dl || echo 'alias youtube-dl-audio="youtube-dl -x --audio-format mp3 --audio-quality 0"'
 
 )"
 

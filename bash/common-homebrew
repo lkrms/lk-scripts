@@ -33,6 +33,8 @@ function brew_check_taps() {
 
     local MISSING_TAPS TAP
 
+    [ "${#BREW_TAPS[@]}" -gt "0" ] || return 0
+
     MISSING_TAPS=($(comm -23 <(printf '%s\n' "${BREW_TAPS[@]}" | sort | uniq) <(brew tap | sort | uniq)))
 
     if [ "${#MISSING_TAPS[@]}" -gt "0" ]; then
@@ -55,8 +57,15 @@ function brew_refresh() {
 
     BREW_INSTALLED_FORMULAE="$(brew list --full-name | sort | uniq)" || die
     BREW_AVAILABLE_FORMULAE="$(brew search | sort | uniq)" || die
-    BREW_INSTALLED_CASKS="$(brew cask list | sort | uniq)" || die
-    BREW_AVAILABLE_CASKS="$(brew search --casks | sort | uniq)" || die
+    BREW_INSTALLED_CASKS=""
+    BREW_AVAILABLE_CASKS=""
+
+    if is_macos; then
+
+        BREW_INSTALLED_CASKS="$(brew cask list | sort | uniq)" || die
+        BREW_AVAILABLE_CASKS="$(brew search --casks | sort | uniq)" || die
+
+    fi
 
 }
 
@@ -140,6 +149,8 @@ function brew_queue_formulae() {
 # Usage: brew_queue_casks "Description of this group of casks" "cask1 cask2 ..." [allow user override? (Y/n)]
 function brew_queue_casks() {
 
+    is_macos || return
+
     brew_make_cache_clean
 
     install_or_queue "$1" "$2" "${3:-Y}" cask casks BREW_INSTALLED_CASKS BREW_AVAILABLE_CASKS BREW_CASK_QUEUE BREW_INSTALLED
@@ -160,6 +171,8 @@ function brew_process_queue() {
     fi
 
     if [ "${#BREW_CASK_QUEUE[@]}" -gt "0" ]; then
+
+        is_macos || return
 
         console_message "Installing ${#BREW_CASK_QUEUE[@]} $(single_or_plural "${#BREW_CASK_QUEUE[@]}" cask casks):" "${BREW_CASK_QUEUE[*]}" "$GREEN"
 
@@ -190,23 +203,29 @@ function brew_upgrade_all() {
 
         brew cask upgrade --no-quarantine || die
 
-    fi
+        # see https://github.com/Homebrew/brew/issues/6112
+        rm -fv "$HOME/Library/Caches/Homebrew/Cask/adoptopenjdk8"* \
+            "$HOME/Library/Caches/Homebrew/downloads/"*-OpenJDK8*
 
-    # see https://github.com/Homebrew/brew/issues/6112
-    rm -fv "$HOME/Library/Caches/Homebrew/Cask/adoptopenjdk8"* \
-        "$HOME/Library/Caches/Homebrew/downloads/"*-OpenJDK8*
+    fi
 
     brew cleanup || die
 
 }
 
-BREW_TAPS=(
-    homebrew/cask-drivers
-    homebrew/cask-fonts
-    homebrew/cask-versions
-    adoptopenjdk/openjdk
-    mongodb/brew
-)
+BREW_TAPS=()
+
+if is_macos; then
+
+    BREW_TAPS+=(
+        homebrew/cask-drivers
+        homebrew/cask-fonts
+        homebrew/cask-versions
+        adoptopenjdk/openjdk
+        mongodb/brew
+    )
+
+fi
 
 BREW_CACHE_DIRTY=1
 BREW_FORMULA_QUEUE=()
