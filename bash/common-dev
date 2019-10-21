@@ -154,7 +154,7 @@ function dev_install_packages() {
 
             if [ ! -e "composer.phar" ]; then
 
-                "$ROOT_DIR/bash/composer-install.sh" || die
+                "$ROOT_DIR/bin/composer-install.sh" --quiet || die
 
             fi
 

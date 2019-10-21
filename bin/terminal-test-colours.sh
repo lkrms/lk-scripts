@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
-. "$SCRIPT_DIR/common"
+. "$SCRIPT_DIR/../bash/common"
 
 for j in $(seq -1 8); do
 
@@ -40,11 +40,11 @@ for j in $(seq -1 8); do
 
         fi
 
-        echo -n "This is $FG_COLOUR on $BG_COLOUR. "
+        printf 'This is %s on %s. ' "$FG_COLOUR" "$BG_COLOUR"
 
         tput bold
 
-        echo -n "$(upper_first "$FG_COLOUR") with bold. "
+        printf '%s with bold. ' "$(upper_first "$FG_COLOUR")"
 
         tput sgr0
         [ "$i" -eq "-1" ] || tput setaf "$i"
@@ -52,13 +52,15 @@ for j in $(seq -1 8); do
 
         tput smso
 
-        echo -n "$(upper_first "$FG_COLOUR") with standout. "
+        printf '%s with standout. ' "$(upper_first "$FG_COLOUR")"
 
         tput bold
 
-        echo "$(upper_first "$FG_COLOUR") with standout and bold."
+        printf '%s with standout and bold.' "$(upper_first "$FG_COLOUR")"
 
         tput sgr0
+
+        printf '\n'
 
     done
 
