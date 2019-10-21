@@ -51,10 +51,10 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
     REPO_ROOTS=()
     REPO_NAMES=()
     REPO_LONG_NAMES=()
+    WARNINGS_FILES=()
     REPO_COUNT=0
     UPDATED_REPOS=()
     PUSHED_REPOS=()
-    WARNINGS=()
 
     for CODE_ROOT in "${CODE_ROOTS[@]}"; do
 
@@ -78,6 +78,10 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
             REPO_NAMES+=("$REPO_NAME")
             REPO_LONG_NAMES+=("$REPO_LONG_NAME")
 
+            WARNINGS_FILE="$(create_temp_file N)"
+            DELETE_ON_EXIT+=("$WARNINGS_FILE")
+            WARNINGS_FILES+=("$WARNINGS_FILE")
+
         done < <(
 
             # shellcheck disable=SC1090
@@ -95,13 +99,11 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
         console_message "Fetching from all remotes in ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories):" "${REPO_NAMES[*]}" "$BOLD" "$MAGENTA"
 
-        WARNINGS_FILE="$(create_temp_file N)"
-        DELETE_ON_EXIT+=("$WARNINGS_FILE")
-
         for i in "${!REPO_ROOTS[@]}"; do
 
             REPO_ROOT="${REPO_ROOTS[$i]}"
             REPO_LONG_NAME="${REPO_LONG_NAMES[$i]}"
+            WARNINGS_FILE="${WARNINGS_FILES[$i]}"
 
             (
 
@@ -124,7 +126,7 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
                     for REMOTE in "${REPO_REMOTES[@]}"; do
 
-                        git fetch --prune --quiet "$REMOTE" || echo "Can't fetch from remote ${BOLD}${REMOTE}${RESET} in $REPO_LONG_NAME" >>"$WARNINGS_FILE"
+                        git fetch --prune --quiet "$REMOTE" || echo "Can't fetch from remote ${BOLD}${REMOTE}${RESET}" >>"$WARNINGS_FILE"
 
                     done
 
@@ -138,14 +140,6 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
         echo
 
-        file_to_array "$WARNINGS_FILE" ""
-
-        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-            WARNINGS+=("${FILE_TO_ARRAY[@]}")
-
-        fi
-
     fi
 
     for i in "${!REPO_ROOTS[@]}"; do
@@ -153,6 +147,7 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
         REPO_ROOT="${REPO_ROOTS[$i]}"
         REPO_NAME="${REPO_NAMES[$i]}"
         REPO_LONG_NAME="${REPO_LONG_NAMES[$i]}"
+        WARNINGS_FILE="${WARNINGS_FILES[$i]}"
 
         pushd "$REPO_ROOT" >/dev/null || die
 
@@ -195,12 +190,12 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
                         if [ "$IS_CURRENT_BRANCH" = '*' ]; then
 
                             console_message "Attempting to merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) (fast-forward only):" "$PRETTY_BRANCH" "$GREEN"
-                            git merge --ff-only "$UPSTREAM" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || WARNINGS+=("Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH in $REPO_LONG_NAME")
+                            git merge --ff-only "$UPSTREAM" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                         else
 
                             console_message "Attempting to fast-forward branch from upstream:" "$PRETTY_BRANCH" "$GREEN"
-                            git fetch . "$UPSTREAM":"$BRANCH" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || WARNINGS+=("Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH in $REPO_LONG_NAME")
+                            git fetch . "$UPSTREAM":"$BRANCH" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                         fi
 
@@ -210,7 +205,7 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
                 else
 
-                    WARNINGS+=("Branch $PRETTY_BRANCH in $REPO_LONG_NAME doesn't have an \"upstream\" remote-tracking branch")
+                    echo "Branch $PRETTY_BRANCH doesn't have an \"upstream\" remote-tracking branch" >>"$WARNINGS_FILE"
 
                 fi
 
@@ -228,7 +223,7 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
                         if [ "$BEHIND_PUSH" -gt "0" ]; then
 
-                            WARNINGS+=("Can't push $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH in $REPO_LONG_NAME until upstream $(single_or_plural "$BEHIND_PUSH" "commit is" "commits are") resolved")
+                            echo "Can't push $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH until upstream $(single_or_plural "$BEHIND_PUSH" "commit is" "commits are") resolved" >>"$WARNINGS_FILE"
 
                         else
 
@@ -248,11 +243,11 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
                             if [ "$DO_PUSH" -eq "1" ] && echo && get_confirmation "Attempt to push branch \"$BRANCH\" to remote \"$PUSH_REMOTE\"?" Y; then
 
-                                git push "$PUSH_REMOTE" "$BRANCH:$BRANCH" && PUSHED_BRANCHES+=("$PRETTY_BRANCH") && AHEAD_PUSH=0 || WARNINGS+=("Can't push $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH in $REPO_LONG_NAME")
+                                git push "$PUSH_REMOTE" "$BRANCH:$BRANCH" && PUSHED_BRANCHES+=("$PRETTY_BRANCH") && AHEAD_PUSH=0 || echo "Can't push $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             else
 
-                                WARNINGS+=("Unpushed $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH in $REPO_LONG_NAME")
+                                echo "Unpushed $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             fi
 
@@ -262,7 +257,7 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
                 else
 
-                    WARNINGS+=("Branch $PRETTY_BRANCH in $REPO_LONG_NAME doesn't have a \"push\" remote-tracking branch")
+                    echo "Branch $PRETTY_BRANCH doesn't have a \"push\" remote-tracking branch" >>"$WARNINGS_FILE"
 
                 fi
 
@@ -293,7 +288,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
         else
 
-            WARNINGS+=("No remotes in repository $REPO_LONG_NAME")
+            echo "No remotes in repository" >>"$WARNINGS_FILE"
 
         fi
 
@@ -308,7 +303,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
         if [ "${#CHANGES[@]}" -gt "0" ]; then
 
-            WARNINGS+=("$(upper_first "$(array_join_oxford "${CHANGES[@]}")") changes in $REPO_LONG_NAME")
+            echo "$(upper_first "$(array_join_oxford "${CHANGES[@]}")") changes" >>"$WARNINGS_FILE"
 
         fi
 
@@ -316,7 +311,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
             STASH_COUNT="$(git rev-list --walk-reflogs --count refs/stash)"
 
-            WARNINGS+=("$STASH_COUNT $(single_or_plural "$STASH_COUNT" stash stashes) in repository $REPO_LONG_NAME")
+            echo "$STASH_COUNT $(single_or_plural "$STASH_COUNT" stash stashes)" >>"$WARNINGS_FILE"
 
         fi
 
@@ -378,13 +373,19 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
     fi
 
-    if [ "${#WARNINGS[@]}" -gt "0" ]; then
+    for i in "${!REPO_ROOTS[@]}"; do
 
-        echoc "${#WARNINGS[@]} $(single_or_plural "${#WARNINGS[@]}" "issue requires" "issues require") attention:" "$BOLD" "$RED"
-        printf -- '- %s\n' "${WARNINGS[@]}"
-        echo
+        file_to_array "${WARNINGS_FILES[$i]}" ""
 
-    fi
+        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
+
+            echoc "${BOLD}${#FILE_TO_ARRAY[@]} $(single_or_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention${RESET} in ${REPO_LONG_NAMES[$i]}:" "$RED"
+            printf -- '- %s\n' "${FILE_TO_ARRAY[@]}"
+            echo
+
+        fi
+
+    done
 
     exit
 
