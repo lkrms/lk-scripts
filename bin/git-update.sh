@@ -10,7 +10,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 assert_command_exists git
 
-# no support for anything before Debian "jessie"
+# don't support anything before Debian "jessie"
 assert_git_version_is_at_least 2.1.4
 
 git_get_code_roots
@@ -97,7 +97,7 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
     if [ "$DO_FETCH" -eq "1" ]; then
 
-        console_message "Fetching from all remotes in ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories):" "${REPO_NAMES[*]}" "$BOLD" "$MAGENTA"
+        console_message "Fetching from all remotes in ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories)" "" "$BOLD" "$MAGENTA"
 
         for i in "${!REPO_ROOTS[@]}"; do
 
@@ -379,8 +379,8 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
         if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-            echoc "${BOLD}${#FILE_TO_ARRAY[@]} $(single_or_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention${RESET} in ${REPO_LONG_NAMES[$i]}:" "$RED"
-            printf -- '- %s\n' "${FILE_TO_ARRAY[@]}"
+            console_message "${BOLD}${RED}${#FILE_TO_ARRAY[@]} $(single_or_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention in${RESET}" "${REPO_LONG_NAMES[$i]}:" "$RED"
+            printf -- '- [ ] %s\n' "${FILE_TO_ARRAY[@]}"
             echo
 
         fi
