@@ -109,6 +109,9 @@
 
             echo 'eval $(/home/linuxbrew/.linuxbrew/bin/brew shellenv)'
 
+            # shellcheck disable=SC2046
+            eval $(/home/linuxbrew/.linuxbrew/bin/brew shellenv)
+
         fi
 
         echo 'alias duh="du -h --max-depth 1 | sort -h"'
