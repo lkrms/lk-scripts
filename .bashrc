@@ -47,7 +47,7 @@
     echo "export LINAC_ROOT_DIR=\"$ROOT_DIR\""
     echo "export LINAC_IS_MACOS=\"$IS_MACOS\""
 
-    if [ -n "${SCREENSHOT_DIR:-}" ]; then
+    if ! is_root && [ -n "${SCREENSHOT_DIR:-}" ]; then
 
         [ -d "$SCREENSHOT_DIR" ] || mkdir -p "$SCREENSHOT_DIR" || true
         [ -d "$SCREENSHOT_DIR" ] && echo "export LINAC_SCREENSHOT_DIR=\"$SCREENSHOT_DIR\""
@@ -105,12 +105,14 @@
 
     else
 
-        if [ -d "/home/linuxbrew/.linuxbrew" ]; then
+        if ! is_root && [ -d "/home/linuxbrew/.linuxbrew" ]; then
 
             echo 'eval $(/home/linuxbrew/.linuxbrew/bin/brew shellenv)'
 
+            set +u
             # shellcheck disable=SC2046
             eval $(/home/linuxbrew/.linuxbrew/bin/brew shellenv)
+            set -u
 
         fi
 
