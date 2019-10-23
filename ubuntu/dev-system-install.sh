@@ -484,6 +484,12 @@ if ! has_argument "--skip-debs"; then
         get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases/latest" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1
     )")
 
+    # Notable
+    DEB_URLS+=("$(
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+        get_urls_from_url "https://api.github.com/repos/notable/notable/releases/latest" '_amd64\.deb$' | head -n1
+    )")
+
     # Slack
     DEB_URLS+=("$(
         . "$SUBSHELL_SCRIPT_PATH" || exit
