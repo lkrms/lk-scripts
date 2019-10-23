@@ -454,6 +454,12 @@ if ! has_argument "--skip-debs"; then
         get_urls_from_url "https://api.github.com/repos/autokey/autokey/releases/latest" 'autokey-(common|gtk).*\.deb$' | head -n2
     ))
 
+    # Boostnote
+    DEB_URLS+=("$(
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+        get_urls_from_url "https://api.github.com/repos/BoostIO/boost-releases/releases/latest" '_amd64\.deb$' | head -n1
+    )")
+
     # Caprine
     DEB_URLS+=("$(
         . "$SUBSHELL_SCRIPT_PATH" || exit
