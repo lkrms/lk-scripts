@@ -29,6 +29,7 @@ git_load_code_roots
     *check*)
         DO_FETCH=0
         DO_PUSH=0
+        DO_MERGE=0
         MAIN_VERB="Checking"
         COMPLETION_VERB="checked"
         ;;
@@ -36,6 +37,7 @@ git_load_code_roots
     *push*)
         DO_FETCH=0
         DO_PUSH=1
+        DO_MERGE=0
         MAIN_VERB="Checking"
         COMPLETION_VERB="checked"
         ;;
@@ -43,6 +45,7 @@ git_load_code_roots
     *)
         DO_FETCH=1
         DO_PUSH=1
+        DO_MERGE=1
         MAIN_VERB="Updating"
         COMPLETION_VERB="updated"
         ;;
@@ -183,15 +186,23 @@ git_load_code_roots
 
                         PRETTY_BRANCH="$(git_format_branch "$BRANCH" "$BEHIND_UPSTREAM" "$AHEAD_PUSH")"
 
-                        if [ "$IS_CURRENT_BRANCH" = '*' ]; then
+                        if [ "$DO_MERGE" -eq "1" ]; then
 
-                            console_message "Attempting to merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) (fast-forward only):" "$PRETTY_BRANCH" "$GREEN"
-                            git merge --ff-only "$UPSTREAM" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                            if [ "$IS_CURRENT_BRANCH" = '*' ]; then
+
+                                console_message "Attempting to merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) (fast-forward only):" "$PRETTY_BRANCH" "$GREEN"
+                                git merge --ff-only "$UPSTREAM" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+
+                            else
+
+                                console_message "Attempting to fast-forward branch from upstream:" "$PRETTY_BRANCH" "$GREEN"
+                                git fetch . "$UPSTREAM":"$BRANCH" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+
+                            fi
 
                         else
 
-                            console_message "Attempting to fast-forward branch from upstream:" "$PRETTY_BRANCH" "$GREEN"
-                            git fetch . "$UPSTREAM":"$BRANCH" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                            echo "Upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) to merge into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                         fi
 
@@ -206,8 +217,6 @@ git_load_code_roots
                 fi
 
                 if [ -n "$PUSH" ]; then
-
-                    # TODO: fast-forward from this ref too
 
                     PUSH_COMMIT="$(git rev-parse --verify "$PUSH")"
                     AHEAD_PUSH="$(git rev-list --count "${PUSH_COMMIT}..${LOCAL_COMMIT}")"
