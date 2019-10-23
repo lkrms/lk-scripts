@@ -52,7 +52,6 @@ openconnect \
 youtube-dl \
 "
 
-# 2019-10-03: copyq removed due to macOS bugs (last known "good" version: 3.7.2)
 brew_queue_casks "desktop essentials" "\
 acorn \
 balenaetcher \
@@ -67,6 +66,7 @@ keepingyouawake \
 libreoffice \
 makemkv \
 mkvtoolnix \
+notable \
 owncloud \
 pencil \
 scribus \
