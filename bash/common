@@ -226,6 +226,21 @@ function sudo_function() {
 
 }
 
+# Usage: filename_maybe_add_extension "/path/to/file" ".pdf"
+# (output would be "/path/to/file.ext.pdf")
+function filename_maybe_add_extension() {
+
+    local FILENAME BASENAME
+
+    FILENAME="$1"
+    BASENAME="$(basename "$1")" || die
+
+    [[ "$BASENAME" =~ .+\..+ ]] && [ "$(lower ".${1##*.}")" = "$(lower "$2")" ] || FILENAME="${1}${2}"
+
+    echo "$FILENAME"
+
+}
+
 # Usage: filename_add_suffix "/path/to/file.ext" "_backup"
 # (output would be "/path/to/file_backup.ext")
 function filename_add_suffix() {
@@ -414,6 +429,22 @@ function get_enter() {
 
     PROMPT="${1:-Press Enter to continue}"
     read -rsp "$PROMPT"
+
+}
+
+function get_value() {
+
+    local PROMPT=() DEFAULT="${2:-}" VALUE
+
+    PROMPT+=("$1")
+
+    [ -z "$DEFAULT" ] || PROMPT+=("[$DEFAULT]")
+
+    read -rp "${PROMPT[*]} " VALUE
+
+    [ -n "$VALUE" ] || VALUE="$DEFAULT"
+
+    echo "$VALUE"
 
 }
 
