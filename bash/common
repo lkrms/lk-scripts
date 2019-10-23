@@ -397,8 +397,8 @@ function die_happy() {
 
 }
 
-# Usage: version_is_at_least <installed-version> <minimum-version>
-function version_is_at_least() {
+# Usage: version_at_least <installed-version> <minimum-version>
+function version_at_least() {
 
     local MINIMUM
 

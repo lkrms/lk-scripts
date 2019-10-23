@@ -1,64 +1,60 @@
 #!/bin/bash
 
-variable_exists "GIT_URL_REPLACEMENTS" || GIT_URL_REPLACEMENTS=()
+function assert_git_version_at_least() {
 
-function assert_git_version_is_at_least() {
-
-    git_version_is_at_least "$1" || die "$(basename "$0") requires Git version $1 or higher"
+    git_version_at_least "$1" || die "$(basename "$0") requires Git version $1 or higher"
 
 }
 
-function assert_git_is_dir_working_repo() {
+function assert_git_dir_is_working_repo() {
 
     git_is_dir_working_repo "${1:-$PWD}" || die "${1:-$PWD} isn't part of a repository's working directory"
 
 }
 
-function assert_git_is_dir_working_root() {
+function assert_git_dir_is_working_root() {
 
     git_is_dir_working_root "${1:-$PWD}" || die "${1:-$PWD} isn't the root of a repository's working directory"
 
 }
 
-function git_version_is_at_least() {
+function git_version_at_least() {
 
     [ -n "${GIT_VERSION:-}" ] || GIT_VERSION="$(git --version | gnu_grep -Pom 1 '(?<=\s|^)[0-9.]+(?=\s|$)')" || die "Unable to parse output from \"git --version\""
 
-    version_is_at_least "$GIT_VERSION" "$1"
+    version_at_least "$GIT_VERSION" "$1"
 
 }
 
-function git_get_code_roots() {
+function git_load_code_roots() {
 
     assert_command_exists realpath
 
-    local KEY
+    local ROOTS ROOT
 
-    CODE_ROOTS=()
+    ROOTS=()
 
     if [ "${#ORIGINAL_ARGUMENTS[@]}" -gt "0" ]; then
 
-        CODE_ROOTS=("${ORIGINAL_ARGUMENTS[@]}")
+        ROOTS=("${ORIGINAL_ARGUMENTS[@]}")
 
     elif [ "${#DEFAULT_CODE_ROOTS[@]}" -gt "0" ]; then
 
-        CODE_ROOTS=("${DEFAULT_CODE_ROOTS[@]}")
+        ROOTS=("${DEFAULT_CODE_ROOTS[@]}")
 
     fi
 
-    for KEY in "${!CODE_ROOTS[@]}"; do
+    CODE_ROOTS=()
 
-        if [ ! -d "${CODE_ROOTS[$KEY]}" ]; then
+    if [ "${#ROOTS[@]}" -gt "0" ]; then
 
-            unset "CODE_ROOTS[$KEY]"
+        for ROOT in "${ROOTS[@]}"; do
 
-        else
+            [ ! -d "$ROOT" ] || CODE_ROOTS+=("$(realpath "$ROOT")")
 
-            CODE_ROOTS[$KEY]="$(realpath "${CODE_ROOTS[$KEY]}")"
+        done
 
-        fi
-
-    done
+    fi
 
 }
 
@@ -98,7 +94,7 @@ function git_is_dir_working_root() {
     pushd "$ROOT_PATH" >/dev/null || die
 
     # if possible, check this repo isn't a submodule
-    if git_version_is_at_least 2.13; then
+    if git_version_at_least 2.13; then
 
         SUPERPROJECT="$(git rev-parse --show-superproject-working-tree)" || die
         [ -z "$SUPERPROJECT" ] || pop_return1

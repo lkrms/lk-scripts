@@ -9,7 +9,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../bash/common-git"
 
 assert_command_exists git
-assert_git_is_dir_working_repo
+assert_git_dir_is_working_repo
 
 USAGE="Usage: $(basename "$0") [upstream.repo.url]"
 

@@ -8,17 +8,18 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../bash/common"
 . "$SCRIPT_DIR/../bash/common-git"
 
+variable_exists "GIT_URL_REPLACEMENTS" || GIT_URL_REPLACEMENTS=()
+GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
+
 assert_command_exists git
 
 # don't support anything before Debian "jessie"
-assert_git_version_is_at_least 2.1.4
+assert_git_version_at_least 2.1.4
 
-git_get_code_roots
+git_load_code_roots
 
 # shellcheck disable=SC2153
 [ "${#CODE_ROOTS[@]}" -gt "0" ] || die "Usage: $(basename "$0") [/code/root...]"
-
-GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
 # allow this script to be changed while it's running
 {
@@ -102,7 +103,6 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
         for i in "${!REPO_ROOTS[@]}"; do
 
             REPO_ROOT="${REPO_ROOTS[$i]}"
-            REPO_LONG_NAME="${REPO_LONG_NAMES[$i]}"
             WARNINGS_FILE="${WARNINGS_FILES[$i]}"
 
             (
@@ -112,9 +112,7 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
                 pushd "$REPO_ROOT" >/dev/null || die
 
-                IFS=$'\n'
-                REPO_REMOTES=($(git remote))
-                unset IFS
+                IFS=$'\n' read -d '' -ra REPO_REMOTES < <(git remote) || true
 
                 if [ "${#REPO_REMOTES[@]}" -gt "0" ]; then
 
@@ -155,9 +153,7 @@ GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
         git update-index --refresh -q >/dev/null || true
 
-        IFS=$'\n'
-        REPO_REMOTES=($(git remote))
-        unset IFS
+        IFS=$'\n' read -d '' -ra REPO_REMOTES < <(git remote) || true
 
         if [ "${#REPO_REMOTES[@]}" -gt "0" ]; then
 
