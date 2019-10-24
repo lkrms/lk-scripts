@@ -13,16 +13,21 @@ assert_command_exists qpdfview
 
 command_exists wmctrl && WINDOW_ID="$(xdotool getactivewindow 2>/dev/null)" || WINDOW_ID=
 
+FILE_COUNT="$#"
+FILE_NUMBER=0
+
 for FILE_PATH in "$@"; do
+
+    ((++FILE_NUMBER))
 
     echo
 
-    console_message "${BOLD}Opening:${RESET}" "$FILE_PATH" "$BLUE" "$BOLD"
+    console_message "Opening file ${BOLD}$FILE_NUMBER${RESET} of ${BOLD}$FILE_COUNT${RESET}:" "$FILE_PATH" "$BLUE" "$BOLD"
 
     nohup qpdfview --unique --instance pdf_rename "$FILE_PATH" >/dev/null 2>&1 &
     disown
 
-    sleep 0.5
+    sleep 1
 
     [ -z "$WINDOW_ID" ] || wmctrl -ia "$WINDOW_ID"
 
