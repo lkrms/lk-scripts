@@ -71,6 +71,7 @@ owncloud \
 pencil \
 scribus \
 skype \
+speedcrunch \
 stretchly \
 subler \
 sublime-text \
@@ -133,6 +134,7 @@ gradle \
 php@7.2 \
 pkg-config \
 shellcheck \
+shfmt \
 "
 
 # TODO:

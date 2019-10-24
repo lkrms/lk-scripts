@@ -32,6 +32,7 @@ python@2
 rsync
 s-nail
 shellcheck
+shfmt
 telnet
 terminal-notifier
 tesseract
