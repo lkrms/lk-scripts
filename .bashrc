@@ -16,10 +16,10 @@
     # TODO: move executable scripts into bin and remove this
     ADD_TO_PATH+=("$ROOT_DIR" "$ROOT_DIR/bash" "$ROOT_DIR/synergy")
 
-    # TODO: remove ROOT_DIR/macos, ROOT_DIR/linux and ROOT_DIR/ubuntu
+    # TODO: remove ROOT_DIR/macos, ROOT_DIR/linux
     is_macos && ADD_TO_PATH+=("$ROOT_DIR/bin/macos" "$ROOT_DIR/macos")
     is_linux && ADD_TO_PATH+=("$ROOT_DIR/bin/linux" "$ROOT_DIR/linux")
-    is_ubuntu && ADD_TO_PATH+=("$ROOT_DIR/bin/ubuntu" "$ROOT_DIR/ubuntu")
+    is_ubuntu && ADD_TO_PATH+=("$ROOT_DIR/bin/ubuntu")
 
     ADD_TO_PATH+=("$HOME/.local/bin")
     ADD_TO_PATH+=("$HOME/.composer/vendor/bin")
