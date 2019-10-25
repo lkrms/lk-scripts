@@ -71,6 +71,10 @@ if [ "${#MATCHING_BRANCHES[@]}" -gt "0" ]; then
 
     if get_confirmation "Track \"$UPSTREAM\" and push to \"$ORIGIN\" for the $(single_or_plural "${#MATCHING_BRANCHES[@]}" branch branches) listed above?" Y; then
 
+        # unfetched remote branches can't be tracked
+        console_message "Fetching from remotes \"$ORIGIN\" and \"$UPSTREAM\"..." "" "$CYAN"
+        git fetch --multiple --quiet "$UPSTREAM" "$ORIGIN"
+
         console_message "Configuring ${#MATCHING_BRANCHES[@]} local $(single_or_plural "${#MATCHING_BRANCHES[@]}" branch branches)..." "" "$BOLD" "$BLUE"
 
         for BRANCH in "${MATCHING_BRANCHES[@]}"; do
