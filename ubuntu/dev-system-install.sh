@@ -15,20 +15,13 @@ assert_not_root
 
 offer_sudo_password_bypass
 
-for FILE in 10-help-text 50-motd-news 80-esm 80-livepatch 90-updates-available 91-release-upgrade 95-hwe-eol; do
+configure_motd
 
-    if [ -x "/etc/update-motd.d/$FILE" ]; then
-
-        sudo chmod a-x "/etc/update-motd.d/$FILE"
-
-    fi
-
-done
-
+# get underway without an immediate index update
 apt_mark_cache_clean
 
 # install prequisites and packages that may be needed to bootstrap others
-apt_force_install_packages "apt-transport-https aptitude debconf-utils distro-info dmidecode lsb-core snapd software-properties-common trash-cli whiptail"
+apt_force_install_packages "apt-transport-https aptitude debconf-utils distro-info dmidecode software-properties-common"
 
 # ensure all of Ubuntu's repositories are available (including "backports" and "proposed" archives)
 apt_enable_ubuntu_repository main "updates backports proposed"
@@ -123,9 +116,11 @@ radvdump \
 s-nail \
 screen \
 smartmontools \
+sysdig \
 sysfsutils \
 syslinux-utils \
 traceroute \
+trash-cli \
 vim \
 whois \
 " N
@@ -289,6 +284,7 @@ php-gd \
 php-gettext \
 php-imagick \
 php-imap \
+php-intl \
 php-json \
 php-mbstring \
 php-mcrypt? \

@@ -1,27 +1,76 @@
 #!/bin/bash
-# shellcheck disable=SC2016
+# shellcheck disable=SC1090
+# Reviewed: 2019-10-25
+
+function service_get_property() {
+
+    local SERVICE_NAME PROPERTY_NAME PROPS PROP VAL
+
+    SERVICE_NAME="$1"
+    PROPERTY_NAME="$2"
+    shift 2
+
+    [ -n "$SERVICE_NAME" ] || die
+    [ -n "$PROPERTY_NAME" ] || die
+
+    PROPS="$(systemctl "$@" show --property="$PROPERTY_NAME" "$SERVICE_NAME.service")" || die
+    IFS="=" read -r PROP VAL <<<"$PROPS" || true
+    [ "$PROP" = "$PROPERTY_NAME" ] || die
+
+    echo "$VAL"
+
+}
+
+function service_property_is() {
+
+    local SERVICE_NAME PROPERTY_NAME EXPECTED_VALUE VALUE
+
+    SERVICE_NAME="$1"
+    PROPERTY_NAME="$2"
+    EXPECTED_VALUE="$3"
+    shift 3
+
+    VALUE="$(
+        . "$SUBSHELL_SCRIPT_PATH" || exit
+        service_get_property "$SERVICE_NAME" "$PROPERTY_NAME" "$@"
+    )" || die
+
+    [ "$VALUE" = "$EXPECTED_VALUE" ]
+
+}
+
+function service_exists() {
+
+    local SERVICE_NAME
+
+    SERVICE_NAME="$1"
+    shift
+
+    ! service_property_is "$SERVICE_NAME" "LoadState" "not-found" "$@"
+
+}
 
 function system_service_exists() {
 
-    command_exists systemctl && systemctl list-units --full --all 2>/dev/null | grep -E '(\s|^)'"$1"'\.service(\s|$)' >/dev/null
+    service_exists "$1"
 
 }
 
 function user_service_exists() {
 
-    command_exists systemctl && systemctl --user list-units --full --all 2>/dev/null | grep -E '(\s|^)'"$1"'\.service(\s|$)' >/dev/null
+    service_exists "$1" --user
 
 }
 
 function system_service_running() {
 
-    command_exists systemctl && systemctl --quiet is-active "$1.service"
+    systemctl --quiet is-active "$1.service"
 
 }
 
 function user_service_running() {
 
-    command_exists systemctl && systemctl --user --quiet is-active "$1.service"
+    systemctl --user --quiet is-active "$1.service"
 
 }
 
@@ -36,5 +85,21 @@ Hidden=true
 EOF
 
     fi
+
+}
+
+function configure_motd() {
+
+    local FILE
+
+    for FILE in 10-help-text 50-motd-news 80-esm 80-livepatch 90-updates-available 91-release-upgrade 95-hwe-eol; do
+
+        if [ -x "/etc/update-motd.d/$FILE" ]; then
+
+            maybe_dryrun sudo chmod -v a-x "/etc/update-motd.d/$FILE"
+
+        fi
+
+    done
 
 }
