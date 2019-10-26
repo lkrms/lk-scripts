@@ -76,6 +76,13 @@ function brew_formula_installed() {
 
 }
 
+function brew_cask_installed() {
+
+    brew_make_cache_clean
+    echo "$BREW_INSTALLED_CASKS" | grep -E '^'"$1"'$' >/dev/null 2>&1
+
+}
+
 function brew_formula_just_installed() {
 
     if [ "${#BREW_JUST_INSTALLED[@]}" -gt "0" ]; then
@@ -157,7 +164,63 @@ function brew_queue_casks() {
 
 }
 
+# Usage: brew_remove_formulae "formula1 formula2 ..."
+function brew_remove_formulae() {
+
+    local p
+
+    # shellcheck disable=SC2048
+    for p in $*; do
+
+        if brew_formula_installed "$p" && ! array_search "$p" BREW_FORMULA_REMOVE_QUEUE >/dev/null; then
+
+            BREW_FORMULA_REMOVE_QUEUE+=("$p")
+
+        fi
+
+    done
+
+}
+
+# Usage: brew_remove_casks "cask1 cask2 ..."
+function brew_remove_casks() {
+
+    local p
+
+    # shellcheck disable=SC2048
+    for p in $*; do
+
+        if brew_cask_installed "$p" && ! array_search "$p" BREW_CASK_REMOVE_QUEUE >/dev/null; then
+
+            BREW_CASK_REMOVE_QUEUE+=("$p")
+
+        fi
+
+    done
+
+}
+
 function brew_process_queue() {
+
+    if [ "${#BREW_FORMULA_REMOVE_QUEUE[@]}" -gt "0" ]; then
+
+        console_message "Removing ${#BREW_FORMULA_REMOVE_QUEUE[@]} $(single_or_plural "${#BREW_FORMULA_REMOVE_QUEUE[@]}" formula formulae):" "${BREW_FORMULA_REMOVE_QUEUE[*]}" "$BOLD" "$RED"
+
+        brew uninstall "${BREW_FORMULA_REMOVE_QUEUE[@]}" &&
+            BREW_FORMULA_REMOVE_QUEUE=() ||
+            die
+
+    fi
+
+    if [ "${#BREW_CASK_REMOVE_QUEUE[@]}" -gt "0" ]; then
+
+        console_message "Uninstalling ${#BREW_CASK_REMOVE_QUEUE[@]} $(single_or_plural "${#BREW_CASK_REMOVE_QUEUE[@]}" cask casks):" "${BREW_CASK_REMOVE_QUEUE[*]}" "$BOLD" "$RED"
+
+        brew cask uninstall "${BREW_CASK_REMOVE_QUEUE[@]}" &&
+            BREW_CASK_REMOVE_QUEUE=() ||
+            die
+
+    fi
 
     if [ "${#BREW_FORMULA_QUEUE[@]}" -gt "0" ]; then
 
@@ -230,5 +293,7 @@ fi
 BREW_CACHE_DIRTY=1
 BREW_FORMULA_QUEUE=()
 BREW_CASK_QUEUE=()
+BREW_FORMULA_REMOVE_QUEUE=()
+BREW_CASK_REMOVE_QUEUE=()
 BREW_INSTALLED=()
 BREW_JUST_INSTALLED=()

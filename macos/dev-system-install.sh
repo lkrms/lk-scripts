@@ -66,8 +66,8 @@ keepingyouawake \
 libreoffice \
 makemkv \
 mkvtoolnix \
+nextcloud \
 notable \
-owncloud \
 pencil \
 scribus \
 skype \
@@ -81,6 +81,8 @@ transmission \
 typora \
 vlc \
 "
+
+brew_remove_casks "owncloud"
 
 brew_queue_casks "proprietary essentials" "\
 anylist \
@@ -96,11 +98,13 @@ twist \
 brew_queue_casks "Microsoft Office" "microsoft-office"
 
 # ghostscript: PDF/PostScript processor
+# mupdf-tools: PDF manipulation tools
 # pandoc: text conversion tool (e.g. Markdown to PDF)
 # poppler: PDF tools like pdfimages
 # pstoedit: converts PDF/PostScript to vector formats
 brew_queue_formulae "PDF tools" "\
 ghostscript \
+mupdf-tools \
 pandoc \
 poppler \
 pstoedit \
@@ -137,8 +141,7 @@ shellcheck \
 shfmt \
 "
 
-# TODO:
-# brew_remove_formulae composer
+brew_remove_formulae "composer"
 
 brew_queue_casks "development" "\
 android-studio \
