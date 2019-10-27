@@ -1,0 +1,3 @@
+Package: libapache2-mod-php*
+Pin: release *
+Pin-Priority: -10
