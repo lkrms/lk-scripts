@@ -1,5 +1,6 @@
 #!/bin/bash
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090,SC2015
+# Reviewed: 2019-10-28
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -25,4 +26,4 @@ while IFS= read -rd $'\0' FILENAME; do
 
     esac
 
-done < <(gnu_stat --printf '%Y :%n\0' "$@" | sort -zn | cut -zd: -f2-)
+done < <(gnu_stat --printf '%Y :%n\0' "$@" | sort -zn | gnu_sed -zE 's/[0-9]+ ://')
