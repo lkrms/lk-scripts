@@ -57,7 +57,7 @@ function git_load_code_roots() {
     fi
 
     # guarantee uniqueness
-    IFS=$'\n' read -d '' -ra CODE_ROOTS < <(printf '%s\n' "${CODE_ROOTS[@]}" | sort | uniq)
+    IFS=$'\n' read -d '' -ra CODE_ROOTS < <(printf '%s\n' "${CODE_ROOTS[@]}" | sort | uniq) || true
 
 }
 
