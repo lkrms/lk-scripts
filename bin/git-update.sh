@@ -378,19 +378,28 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
     fi
 
+    DIRTY_REPO_COUNT=0
+
     for i in "${!REPO_ROOTS[@]}"; do
 
         file_to_array "${WARNINGS_FILES[$i]}" ""
 
         if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-            console_message "${BOLD}${RED}${#FILE_TO_ARRAY[@]} $(single_or_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention in${RESET}" "${REPO_LONG_NAMES[$i]}:" "$RED"
+            console_message "${BOLD}${RED}${#FILE_TO_ARRAY[@]} $(single_or_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention in:${RESET}" "${REPO_LONG_NAMES[$i]}" "$RED"
             printf -- '- [ ] %s\n' "${FILE_TO_ARRAY[@]}"
             echo
+
+            ((++DIRTY_REPO_COUNT))
 
         fi
 
     done
+
+    [ "$DIRTY_REPO_COUNT" -gt "0" ] || {
+        console_message "No issues found" "" "$BOLD" "$RED"
+        echo
+    }
 
     exit
 
