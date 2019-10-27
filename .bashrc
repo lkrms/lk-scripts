@@ -1,5 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2016
+# Reviewed: 2019-10-27
 
 # shellcheck disable=SC1091
 . /dev/stdin <<<"$(
@@ -17,9 +18,9 @@
     ADD_TO_PATH+=("$ROOT_DIR" "$ROOT_DIR/bash" "$ROOT_DIR/synergy")
 
     # TODO: remove ROOT_DIR/macos, ROOT_DIR/linux
-    is_macos && ADD_TO_PATH+=("$ROOT_DIR/bin/macos" "$ROOT_DIR/macos")
-    is_linux && ADD_TO_PATH+=("$ROOT_DIR/bin/linux" "$ROOT_DIR/linux")
-    is_ubuntu && ADD_TO_PATH+=("$ROOT_DIR/bin/ubuntu")
+    ! is_macos || ADD_TO_PATH+=("$ROOT_DIR/bin/macos" "$ROOT_DIR/macos")
+    ! is_linux || ADD_TO_PATH+=("$ROOT_DIR/bin/linux" "$ROOT_DIR/linux")
+    ! is_ubuntu || ADD_TO_PATH+=("$ROOT_DIR/bin/ubuntu")
 
     ADD_TO_PATH+=("$HOME/.local/bin")
     ADD_TO_PATH+=("$HOME/.composer/vendor/bin")
@@ -45,12 +46,11 @@
     fi
 
     echo "export LINAC_ROOT_DIR=\"$ROOT_DIR\""
-    echo "export LINAC_IS_MACOS=\"$IS_MACOS\""
 
     if ! is_root && [ -n "${SCREENSHOT_DIR:-}" ]; then
 
         [ -d "$SCREENSHOT_DIR" ] || mkdir -p "$SCREENSHOT_DIR" || true
-        [ -d "$SCREENSHOT_DIR" ] && echo "export LINAC_SCREENSHOT_DIR=\"$SCREENSHOT_DIR\""
+        [ ! -d "$SCREENSHOT_DIR" ] || echo "export LINAC_SCREENSHOT_DIR=\"$SCREENSHOT_DIR\""
 
     fi
 
@@ -70,9 +70,9 @@
 
         fi
 
-        echo 'alias audio-reset="sudo launchctl unload /System/Library/LaunchDaemons/com.apple.audio.coreaudiod.plist && sudo launchctl load /System/Library/LaunchDaemons/com.apple.audio.coreaudiod.plist"'
         echo 'alias duh="du -h -d 1 | sort -h"'
-        echo 'alias prefs-flush="killall -u \"\$USER\" cfprefsd"'
+        echo 'alias flush-prefs="killall -u \"\$USER\" cfprefsd"'
+        echo 'alias reset-audio="sudo launchctl unload /System/Library/LaunchDaemons/com.apple.audio.coreaudiod.plist && sudo launchctl load /System/Library/LaunchDaemons/com.apple.audio.coreaudiod.plist"'
         echo 'alias top="top -o cpu"'
 
         if [ -e "$HOME/Library/LaunchAgents/com.linacreative.Synergy.plist" ]; then
@@ -121,7 +121,7 @@
         ! command_exists gtk-launch || echo 'alias gtk-debug="GTK_DEBUG=interactive "'
         ! command_exists xdg-open || echo 'alias open=xdg-open'
 
-        if [ -e "/lib/systemd/system/synergy.service" ]; then
+        if system_service_exists "synergy"; then
 
             echo 'alias synergy-start="sudo systemctl start synergy.service"'
             echo 'alias synergy-stop="sudo systemctl stop synergy.service"'
@@ -138,7 +138,7 @@
 
 function is_macos() {
 
-    [ "$LINAC_IS_MACOS" -eq "1" ]
+    [ "$(uname -s)" = "Darwin" ]
 
 }
 
@@ -194,9 +194,15 @@ function latest-all-dir() {
     _latest d
 }
 
-if command -v owncloudcmd >/dev/null 2>&1; then
+function find-all() {
 
-    function _owncloud_sync() {
+    find . -iname "*$1*"
+
+}
+
+if command -v nextcloudcmd >/dev/null 2>&1; then
+
+    function _cloud_sync() {
 
         local SOURCE_DIR="$1" SERVER_URL="$2"
 
@@ -212,13 +218,13 @@ if command -v owncloudcmd >/dev/null 2>&1; then
 
         shift 2
 
-        if [ -f "$HOME/.config/ownCloud/sync-exclude.lst" ]; then
+        if [ -f "$HOME/.config/Nextcloud/sync-exclude.lst" ]; then
 
-            owncloudcmd "$@" --exclude "$HOME/.config/ownCloud/sync-exclude.lst" "$SOURCE_DIR" "$SERVER_URL"
+            nextcloudcmd "$@" --exclude "$HOME/.config/Nextcloud/sync-exclude.lst" "$SOURCE_DIR" "$SERVER_URL"
 
         else
 
-            owncloudcmd "$@" "$SOURCE_DIR" "$SERVER_URL"
+            nextcloudcmd "$@" "$SOURCE_DIR" "$SERVER_URL"
 
         fi
 
@@ -226,7 +232,7 @@ if command -v owncloudcmd >/dev/null 2>&1; then
 
 fi
 
-function _owncloud_check() {
+function _cloud_check() {
 
     local SOURCE_DIR="$1" CONFLICTS=0
 
