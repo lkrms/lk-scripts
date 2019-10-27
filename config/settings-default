@@ -5,13 +5,11 @@
 
 #SAMBA_WORKGROUP="LINAC"
 
-#GIT_URL_REPLACEMENTS=('s/https:\/\/github\.com\//github.com:/')
+#GIT_URL_REPLACEMENTS=(
+#    's/https:\/\/github\.com\//github.com:/'
+#    's/ssh:\/\/([^/]+)\//\1:/'
+#)
 
 # by default, update this repo and any repos in ~/Code
-DEFAULT_CODE_ROOTS=()
-if [ -n "${HOME:-}" ]; then
-    DEFAULT_CODE_ROOTS+=("$HOME/Code")
-    [[ "$ROOT_DIR" == "$HOME/Code/"* ]] || DEFAULT_CODE_ROOTS+=("$ROOT_DIR")
-else
-    DEFAULT_CODE_ROOTS+=("$ROOT_DIR")
-fi
+DEFAULT_CODE_ROOTS=("$ROOT_DIR")
+[ -z "${HOME:-}" ] || DEFAULT_CODE_ROOTS+=("$HOME/Code")

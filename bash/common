@@ -1022,12 +1022,16 @@ function safe_symlink() {
 
 }
 
-# Usage: safe_sed "/path/to/file" 'command1' ['command2'...]
+# Usage: safe_sed /path/to/file sed_command1 [sed_command2...]
+# Reviewed: 2019-10-27
 function safe_sed() {
 
-    local FILENAME="$1" COMMAND COMMANDS=() CHANGED
+    local FILENAME COMMAND COMMANDS=() CHANGED
 
+    FILENAME="$1" || die
     shift
+
+    [ -f "$FILENAME" ] || die "File doesn't exist: $FILENAME"
 
     for COMMAND in "$@"; do
 
@@ -1035,11 +1039,11 @@ function safe_sed() {
 
     done
 
-    CHANGED="$(gnu_sed "${COMMANDS[@]}" "$FILENAME")" || die
+    CHANGED="$(gnu_sed -E "${COMMANDS[@]}" "$FILENAME")" || die
 
-    if ! diff -q ".git/config" <(printf "$CHANGED") >/dev/null; then
+    if ! diff -q ".git/config" <(printf '%s' "$CHANGED") >/dev/null; then
 
-        printf "$CHANGED" >"$FILENAME" || die
+        printf '%s' "$CHANGED" >"$FILENAME" || die
 
     fi
 

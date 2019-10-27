@@ -30,9 +30,9 @@ function git_load_code_roots() {
 
     assert_command_exists realpath
 
-    local ROOTS ROOT
+    local ROOTS=() ROOT
 
-    ROOTS=()
+    variable_exists "DEFAULT_CODE_ROOTS" || DEFAULT_CODE_ROOTS=()
 
     if [ "${#ORIGINAL_ARGUMENTS[@]}" -gt "0" ]; then
 
@@ -55,6 +55,9 @@ function git_load_code_roots() {
         done
 
     fi
+
+    # guarantee uniqueness
+    IFS=$'\n' read -d '' -ra CODE_ROOTS < <(printf '%s\n' "${CODE_ROOTS[@]}" | sort | uniq)
 
 }
 
