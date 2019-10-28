@@ -1009,11 +1009,19 @@ function maybe_sudo() {
 # Reviewed: 2019-10-28
 function safe_symlink() {
 
-    local SUDO_OR_NOT="${3:-N}"
+    local SUDO_OR_NOT="${3:-N}" CURRENT_TARGET
 
     [ -e "$1" ] || return
 
     if [ -L "$2" ]; then
+
+        CURRENT_TARGET="$(readlink "$2")" || return
+
+        if [ "$CURRENT_TARGET" = "$1" ]; then
+
+            return
+
+        fi
 
         maybe_sudo "$SUDO_OR_NOT" rm -f "$2" || return
 
