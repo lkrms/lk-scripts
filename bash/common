@@ -40,6 +40,7 @@ alias pop_return1='{ popd >/dev/null; return 1; }'
 ORIGINAL_BASH_SUBSHELL="$BASH_SUBSHELL"
 ORIGINAL_ARGUMENTS=("$@")
 
+# Reviewed: 2019-10-28
 function gnu_command() {
 
     local COMMAND
@@ -65,33 +66,41 @@ function gnu_command() {
 
 }
 
-function gnu_awk() {
+# Reviewed: 2019-10-28
+function register_gnu_commands() {
 
-    gnu_command awk "$@"
+    local COMMAND
 
-}
+    for COMMAND in "$@"; do
 
-function gnu_grep() {
+        eval 'function gnu_'"$COMMAND"'() { gnu_command '"$COMMAND"' "$@"; }'
 
-    gnu_command grep "$@"
-
-}
-
-function gnu_sed() {
-
-    gnu_command sed "$@"
+    done
 
 }
 
-function gnu_sort() {
+# Reviewed: 2019-10-28
+function install_gnu_commands() {
 
-    gnu_command sort "$@"
+    local COMMAND GNU_COMMAND COMMAND_PATH
 
-}
+    for COMMAND in "$@"; do
 
-function gnu_stat() {
+        GNU_COMMAND="gnu_${COMMAND}"
 
-    gnu_command stat "$@"
+        ! is_macos || COMMAND="g${COMMAND}"
+
+        if COMMAND_PATH="$(command -v "$COMMAND" 2>/dev/null)"; then
+
+            safe_symlink "$COMMAND_PATH" "/usr/local/bin/$GNU_COMMAND" || return
+
+        else
+
+            echo "WARNING: GNU command ${BOLD}${COMMAND}${RESET} doesn't exist" >&2
+
+        fi
+
+    done
 
 }
 
@@ -976,6 +985,7 @@ function move_file_delete_link() {
 }
 
 # Usage: maybe_sudo <use sudo? (Y/N)> command [arg1...]
+# Reviewed: 2019-10-28
 function maybe_sudo() {
 
     local SUDO_OR_NOT
@@ -996,25 +1006,24 @@ function maybe_sudo() {
 }
 
 # Usage: safe_symlink /path/to/target /path/to/link [use sudo? (y/N)]
+# Reviewed: 2019-10-28
 function safe_symlink() {
 
-    local SUDO_OR_NOT
-
-    SUDO_OR_NOT="${3:-N}"
+    local SUDO_OR_NOT="${3:-N}"
 
     [ -e "$1" ] || return
 
     if [ -L "$2" ]; then
 
-        maybe_sudo "$SUDO_OR_NOT" rm -f "$2"
+        maybe_sudo "$SUDO_OR_NOT" rm -f "$2" || return
 
     elif [ -e "$2" ]; then
 
-        maybe_sudo "$SUDO_OR_NOT" mv -f "$2" "$2.bak"
+        maybe_sudo "$SUDO_OR_NOT" mv -fv "$2" "$2.bak" || return
 
     else
 
-        maybe_sudo "$SUDO_OR_NOT" mkdir -p "$(dirname "$2")"
+        maybe_sudo "$SUDO_OR_NOT" mkdir -p "$(dirname "$2")" || return
 
     fi
 
@@ -1334,10 +1343,11 @@ function install_or_queue() {
 }
 
 # Usage: test_host_port my.host.address port-number
+# Reviewed: 2019-10-28
 function test_host_port() {
 
     # 1-second timeout -- intended for LAN service availability checks
-    gnu_command nc -zw 1 "$1" "$2" >/dev/null 2>&1
+    gnu_nc -zw 1 "$1" "$2" >/dev/null 2>&1
 
 }
 
@@ -1379,6 +1389,8 @@ FONTPATH=
 
 DELETE_ON_EXIT=()
 KILL_ON_EXIT=()
+
+register_gnu_commands awk grep nc sed sort stat
 
 mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOCAL_DIR" "$LOG_DIR" "$TEMP_DIR"
 

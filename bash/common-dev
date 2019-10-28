@@ -212,6 +212,8 @@ function dev_update_packages() {
 
 function dev_apply_system_config() {
 
+    install_gnu_commands awk grep sed sort stat
+
     if command_exists git; then
 
         file_to_array "$CONFIG_DIR/gitignore"

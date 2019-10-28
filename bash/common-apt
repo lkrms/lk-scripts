@@ -934,7 +934,7 @@ function apt_get_new_configuration_files() {
 
 APT_CACHE_DIRTY=1
 APT_DEB_PATH="$CACHE_DIR/deb"
-APT_GET_OPTIONS=(-o "Acquire::ForceIPv4=true" -y)
+APT_GET_OPTIONS=(-y)
 APT_PPA_REGISTRY=()
 APT_PPA_PACKAGES=()
 APT_PPA_PREFERENCES=()
