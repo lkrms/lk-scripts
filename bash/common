@@ -804,7 +804,7 @@ function date_get_log() {
 
 function date_get_log_nano() {
 
-    date +'%b %_d %H:%M:%S.%N %z'
+    gnu_date +'%b %_d %H:%M:%S.%N %z'
 
 }
 
@@ -1469,7 +1469,7 @@ FONTPATH=
 DELETE_ON_EXIT=()
 KILL_ON_EXIT=()
 
-register_gnu_commands awk grep nc sed sort stat
+register_gnu_commands awk date grep nc sed sort stat
 
 mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOCAL_DIR" "$LOG_DIR" "$TEMP_DIR"
 
