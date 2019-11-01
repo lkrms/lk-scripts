@@ -1,5 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1090
+# Reviewed: 2019-11-01
 
 # Recommended:
 # - create file: config/xkbcomp (an example is provided)
@@ -13,23 +14,11 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 assert_command_exists xkbcomp
 
-# give it a second for keys to be (physically) released
-has_argument "--no-sleep" || sleep 1
+[ ! -f "$CONFIG_DIR/xkbcomp" ] || [ -z "$DISPLAY" ] || {
 
-if [ -f "$CONFIG_DIR/xkbcomp" ] && [ -n "$DISPLAY" ]; then
+    # give it a second for keys to be (physically) released
+    has_argument "--no-sleep" || sleep 1
 
-    echo -e "xkbcomp -I$SCRIPT_DIR/xkb $CONFIG_DIR/xkbcomp $DISPLAY\n" >&2
-    xkbcomp -I"$SCRIPT_DIR/xkb" "$CONFIG_DIR/xkbcomp" "$DISPLAY"
+    echo_run xkbcomp -I"$SCRIPT_DIR/xkb" "$CONFIG_DIR/xkbcomp" "$DISPLAY"
 
-fi
-
-if ! has_argument "--autostart"; then
-
-    if user_service_running "sxhkd"; then
-
-        echo -e "systemctl --user restart sxhkd.service\n" >&2
-        systemctl --user restart sxhkd.service
-
-    fi
-
-fi
+}

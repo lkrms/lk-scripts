@@ -735,32 +735,56 @@ function offer_sudo_password_bypass() {
 
 }
 
+# Reviewed: 2019-11-01
+function escape_separators() {
+
+    local ARG
+
+    ARG="$1" || die
+
+    ARG="${ARG// /\\ }"
+    ARG="${ARG//$'\t'/$'\\\t'}"
+    ARG="${ARG//$'\n'/$'\\\n'}"
+
+    printf '%s' "$ARG"
+
+}
+
 # Usage: sed_escape_search "text to escape" [extended regular expressions? (Y/n)]
+# Reviewed: 2019-11-01
 function sed_escape_search() {
 
-    if [ "${2:-Y}" = "Y" ]; then
+    local ESCAPE EXTENDED="${2:-Y}"
+
+    ESCAPE="$1" || die
+
+    if [ "$EXTENDED" != "N" ]; then
 
         # shellcheck disable=SC2016
-        echo "${1:-}" | sed 's/[]$()*+./?\^{|}[]/\\&/g'
+        gnu_sed 's/[]$()*+./?\^{|}[]/\\&/g' <<<"$ESCAPE"
 
     else
 
-        echo "${1:-}" | sed 's/[]$*./\^[]/\\&/g'
+        gnu_sed 's/[]$*./\^[]/\\&/g' <<<"$ESCAPE"
 
     fi
 
 }
 
+# Reviewed: 2019-11-01
 function sed_escape_replace() {
 
-    local ESCAPED
+    local ESCAPE ESCAPED
 
-    ESCAPED="$(echo "${1:-}" | sed 's/[\/&]/\\&/g')"
-    echo "${ESCAPED//$'\n'/\\n}"
+    ESCAPE="$1" || die
+
+    ESCAPED="$(gnu_sed 's/[\/&]/\\&/g' <<<"$ESCAPE")"
+    printf '%s' "${ESCAPED//$'\n'/\\n}"
 
 }
 
 # Usage: search_replace "find" "replace with" "string"
+# Reviewed: 2019-11-01
 function search_replace() {
 
     local FIND REPLACE
@@ -768,13 +792,19 @@ function search_replace() {
     FIND="$(sed_escape_search "$1")"
     REPLACE="$(sed_escape_replace "$2")"
 
-    sed -E "s/${FIND}/${REPLACE}/g" <<<"$3"
+    gnu_sed -E "s/${FIND}/${REPLACE}/g" <<<"$3"
 
 }
 
 function date_get_log() {
 
-    date -R
+    date +'%b %_d %H:%M:%S %z'
+
+}
+
+function date_get_log_nano() {
+
+    date +'%b %_d %H:%M:%S.%N %z'
 
 }
 
@@ -984,6 +1014,22 @@ function move_file_delete_link() {
 
 }
 
+# Reviewed: 2019-11-01
+function time_command() {
+
+    local EXIT_CODE=0
+
+    exec 8>&1 9>&2 || die
+    COMMAND_TIME="$(
+        TIMEFORMAT="${TIMEFORMAT:-%3lR}"
+        { time "$@" 1>&8 2>&9; } 2>&1
+    )" || EXIT_CODE="$?"
+    exec 8>&- 9>&-
+
+    return "$EXIT_CODE"
+
+}
+
 # Usage: maybe_sudo <use sudo? (Y/N)> command [arg1...]
 # Reviewed: 2019-10-28
 function maybe_sudo() {
@@ -1002,6 +1048,31 @@ function maybe_sudo() {
         "$@"
 
     fi
+
+}
+
+# Usage: echo_run command [arg1...]
+# Reviewed: 2019-11-01
+function echo_run() {
+
+    local ARG ARGS=() EXIT_CODE="0" EXIT_COLOR="${GREEN}"
+
+    for ARG in "$@"; do
+
+        ARGS+=("$(escape_separators "$ARG")")
+
+    done
+
+    printf "${GREY}[%s] ${BOLD}${CYAN}Running command:${RESET}%s\n\n" "$(date_get_log)" "$(printf ' %s' "${ARGS[@]}")" >&2
+
+    time_command "$@" || {
+        EXIT_CODE="$?"
+        EXIT_COLOR="${RED}"
+    }
+
+    printf "\n${GREY}[%s] ${BOLD}${EXIT_COLOR}Exit code:${RESET} %s ${GREY}(after %s)${RESET}\n\n" "$(date_get_log)" "$EXIT_CODE" "$COMMAND_TIME" >&2
+
+    return "$EXIT_CODE"
 
 }
 
@@ -1413,6 +1484,7 @@ if [ -t 1 ]; then
     MAGENTA="$(tput setaf 5)"
     CYAN="$(tput setaf 6)"
     WHITE="$(tput setaf 7)"
+    GREY="$(tput setaf 8)"
 
     # background colours
     BLACK_BG="$(tput setab 0)"
@@ -1423,6 +1495,7 @@ if [ -t 1 ]; then
     MAGENTA_BG="$(tput setab 5)"
     CYAN_BG="$(tput setab 6)"
     WHITE_BG="$(tput setab 7)"
+    GREY_BG="$(tput setab 8)"
 
     # other "formatting"
     BOLD="$(tput bold)"
@@ -1444,6 +1517,7 @@ else
     MAGENTA=
     CYAN=
     WHITE=
+    GREY=
     BLACK_BG=
     RED_BG=
     GREEN_BG=
@@ -1452,6 +1526,7 @@ else
     MAGENTA_BG=
     CYAN_BG=
     WHITE_BG=
+    GREY_BG=
     BOLD=
     UNDERLINE=
     NO_UNDERLINE=
