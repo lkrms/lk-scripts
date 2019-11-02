@@ -101,9 +101,11 @@ debsums \
 glances \
 hfsprogs \
 hwinfo \
+kdump-tools \
 ksh \
 lftp \
 libsecret-tools \
+linux-crashdump \
 linux-tools-generic \
 mediainfo \
 msmtp \
@@ -206,6 +208,7 @@ google-chrome-stable \
 gparted \
 gssp-recoll \
 guake \
+guvcview \
 handbrake-cli \
 handbrake-gtk \
 indicator-multiload \
@@ -515,8 +518,6 @@ if ! has_argument "--skip-debs"; then
     done
 
 fi
-
-apt_remove_packages apport deja-dup filezilla fonts-twemoji-svginot libapache2-mod-fastcgi libapache2-mod-fcgid libxss-dev owncloud-client ppa-purge
 
 dev_install_packages Y APT_INSTALLED
 
