@@ -1,12 +1,12 @@
 #!/bin/bash
+# Reviewed: 2019-11-03
 
 # shellcheck disable=SC1091
-. /dev/stdin <<<"$(xrandr-auto.sh --get-qt-exports --set-dpi-only)"
+LINAC_QT_EXPORTS="$(xrandr-auto.sh --get-qt-exports --set-dpi-only)" &&
+    . /dev/stdin <<<"$LINAC_QT_EXPORTS"
 
-# see https://github.com/symless/synergy-core/issues/4132
-export QT_BEARER_POLL_TIMEOUT=-1
+if ldconfig -p | grep -E '^\s*libcanberra-gtk3?\.so' >/dev/null; then
 
-export GTK_MODULES="${GTK_MODULES:+$GTK_MODULES:}canberra-gtk-module"
+    export GTK_MODULES="${GTK_MODULES:+$GTK_MODULES:}canberra-gtk-module"
 
-# ensure xscreensaver receives idle inhibition calls
-nohup sh -c "sleep 4; nohup xssproxy >/dev/null 2>&1 &" >/dev/null 2>&1 &
+fi

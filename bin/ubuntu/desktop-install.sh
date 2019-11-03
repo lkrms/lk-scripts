@@ -86,7 +86,6 @@ apt_register_repository sublime-text "https://download.sublimetext.com/sublimehq
 apt_register_repository typora "https://typora.io/linux/public-key.asc" "deb https://typora.io/linux ./" "origin typora.io" "typora"
 apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_vbox_2016.asc" "deb [arch=amd64] https://download.virtualbox.org/virtualbox/debian $DISTRIB_CODENAME contrib" "origin download.virtualbox.org" "virtualbox-*"
 apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "release o=vscode stable,l=vscode stable" "code code-*"
-apt_register_repository wine "https://dl.winehq.org/wine-builds/winehq.key" "deb https://dl.winehq.org/wine-builds/ubuntu/ $DISTRIB_CODENAME main" "origin dl.winehq.org" "wine-* winehq-*"
 apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "origin dl.yarnpkg.com" "yarn"
 
 LOW_RAM=0
@@ -192,6 +191,7 @@ dconf-cli \
 dconf-editor \
 deepin-notifications- \
 deepin-screenshot \
+evolution \
 evtest \
 eyed3 \
 firefox \
@@ -203,7 +203,7 @@ ghostwriter \
 gimp \
 git-cola \
 glmark2 \
-gnome-color-manager \
+gnome-calendar \
 google-chrome-stable \
 gparted \
 gssp-recoll \
@@ -236,7 +236,6 @@ sublime-text \
 sxhkd \
 synaptic \
 t1-xfree86-nonfree \
-thunderbird \
 tilix \
 transmission \
 ttf-xfree86-nonfree \
@@ -337,14 +336,12 @@ fi
 
 [ "$LOW_RAM" -eq "1" ] || apt_install_packages "VirtualBox" "virtualbox-6.0"
 [ "$LOW_RAM" -eq "1" ] || apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
-#[ "$LOW_RAM" -eq "1" ] || apt_install_packages "Wine" "winehq-stable winetricks"
 
 case "${XDG_CURRENT_DESKTOP:-}" in
 
 XFCE)
 
     apt_install_packages "XFCE extras" "\
-gnome-session-canberra \
 libcanberra-gtk-module \
 libcanberra-gtk3-module \
 plank \
@@ -353,7 +350,6 @@ ubuntu-sounds \
 xfce4-battery-plugin \
 xfce4-clipman \
 xfce4-timer-plugin \
-xfdashboard \
 xiccd \
 xscreensaver \
 xscreensaver-data \
@@ -362,10 +358,9 @@ xscreensaver-gl \
 xscreensaver-gl-extra \
 xscreensaver-screensaver-bsod \
 xscreensaver-screensaver-webcollage \
-xssproxy \
 "
 
-    apt_remove_packages caffeine gnome-screensaver light-locker
+    apt_remove_packages light-locker
 
     ;;
 

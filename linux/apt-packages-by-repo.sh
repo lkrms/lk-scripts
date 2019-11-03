@@ -10,7 +10,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 assert_not_root
 
-command_exists aptitude || apt_require_package "aptitude"
+assert_command_exists aptitude
 
 # https://www.debian.org/doc/manuals/aptitude/ch02s05s01.en.html#secDisplayFormat
 FORMAT="%?p|%?v|%?O"

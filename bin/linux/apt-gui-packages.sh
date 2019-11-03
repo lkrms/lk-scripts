@@ -26,7 +26,7 @@ if [ "$#" -gt "0" ]; then
 
 else
 
-    PACKAGES="$(printf '%s\n' $APT_INSTALLED_PACKAGES | gnu_grep -Po '^.*?(?=(:.*)?$)' | sort | uniq)"
+    PACKAGES="$APT_INSTALLED_PACKAGES"
 
 fi
 

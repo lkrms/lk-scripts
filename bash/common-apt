@@ -1,46 +1,57 @@
 #!/bin/bash
 
 assert_command_exists apt-get
-assert_command_exists add-apt-repository
 
-function apt_require_package() {
-
-    if get_confirmation "$(basename "$0") needs to install the $1 package. Is that OK?" Y Y; then
-
-        sudo apt-get "${APT_GET_OPTIONS[@]}" install -y "$1" || die
-
-    else
-
-        die
-
-    fi
-
-}
-
+# Reviewed: 2019-11-03
 function apt_refresh_packages() {
 
-    APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po '^.*(?=\tinstalled$)' | sort | uniq)" || die
+    APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po "^.*?(?=(:($(dpkg --print-architecture)))?\tinstalled\$)" | sort | uniq)" || die
     APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames | sort | uniq)" || die
 
 }
 
+# Reviewed: 2019-11-03
 function apt_package_installed() {
 
     apt_make_cache_clean
-    echo "$APT_INSTALLED_PACKAGES" | grep -E "^$1"'(:.*)?$' >/dev/null 2>&1
+    echo "$APT_INSTALLED_PACKAGES" | grep -F "$1" >/dev/null 2>&1
 
 }
 
+# Reviewed: 2019-11-03
 function apt_package_just_installed() {
 
-    printf '%s\n' "${APT_JUST_INSTALLED[@]}" | grep -E "^$1"'(:.*)?$' >/dev/null 2>&1
+    printf '%s\n' "${APT_JUST_INSTALLED[@]}" | grep -F "$1" >/dev/null 2>&1
 
 }
 
+# Reviewed: 2019-11-03
 function apt_package_available() {
 
     apt_make_cache_clean
-    echo "$APT_AVAILABLE_PACKAGES" | grep -E "^$1"'(:.*)?$' >/dev/null 2>&1
+    echo "$APT_AVAILABLE_PACKAGES" | grep -F "$1" >/dev/null 2>&1
+
+}
+
+# Reviewed: 2019-11-03
+function apt_describe_packages() {
+
+    local IFS PACKAGES COLOURS="$BOLD" PATTERN
+
+    PACKAGES=($1) || die
+    shift
+
+    [ "$#" -eq "0" ] || {
+        IFS=
+        COLOURS="$*"
+        unset IFS
+    }
+
+    IFS='|'
+    PATTERN="^(${PACKAGES[*]})\$"
+    unset IFS
+
+    apt-cache -n search "$PATTERN" | sort | sed -E "s/^([^ ]+) - (.*)\$/${COLOURS}\1:${RESET} \2/"
 
 }
 
@@ -136,7 +147,7 @@ function do_apt_enable_ubuntu_repository() {
 
     if ! grep -E '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.ubuntu\.com/ubuntu/?[[:space:]]+'"$1"'[[:space:]]+.*\b'"$2"'\b' </etc/apt/sources.list >/dev/null 2>&1; then
 
-        command_exists add-apt-repository || apt_force_install_packages "software-properties-common"
+        assert_command_exists add-apt-repository
 
         sudo add-apt-repository -yn "deb $(apt_ubuntu_archive_url) $1 $2" || die
 
@@ -168,7 +179,7 @@ function apt_enable_partner_repository() {
 
     if ! grep -E '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.canonical\.com/ubuntu/?[[:space:]]+'"$DISTRIB_CODENAME"'[[:space:]]+.*\bpartner\b' </etc/apt/sources.list >/dev/null 2>&1; then
 
-        command_exists add-apt-repository || apt_force_install_packages "software-properties-common"
+        assert_command_exists add-apt-repository
 
         sudo add-apt-repository -yn "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner" || die
 
@@ -180,8 +191,6 @@ function apt_enable_partner_repository() {
 
 # Usage: apt_register_ppa "the/ppa" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? (Y/n)]
 function apt_register_ppa() {
-
-    command_exists add-apt-repository || apt_force_install_packages "software-properties-common"
 
     local p PREFERENCES=
 
@@ -464,7 +473,9 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$(apt_pretty_packages "$(sort_words "${INSTALL[*]}")" Y)" "$BOLD" "$MAGENTA"
+            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "" "$BOLD" "$MAGENTA"
+
+            apt_describe_packages "${INSTALL[*]}" "$BOLD" "$MAGENTA"
 
             [ "${#QUEUE[@]}" -gt "0" ] && {
                 console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$BOLD" "$MAGENTA"
@@ -543,6 +554,8 @@ function apt_add_ppa() {
         [ -z "$ppa" ] && continue || true
 
         i=$(array_search "$ppa" APT_PPA_REGISTRY) || die "Error: unable to find metadata for PPA '$ppa'"
+
+        assert_command_exists add-apt-repository
 
         sudo add-apt-repository -yn "ppa:$ppa" || die
 
