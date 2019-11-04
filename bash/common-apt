@@ -2,6 +2,23 @@
 
 assert_command_exists apt-get
 
+# Reviewed: 2019-11-05
+function apt_check_prerequisites() {
+
+    apt_install_packages "prerequisites" "${APT_PREREQ[*]}" N N
+
+}
+
+# Reviewed: 2019-11-05
+function apt_check_essentials() {
+
+    ! command_exists dmidecode || ! sudo dmidecode -t system | grep -i ThinkPad >/dev/null || APT_ESSENTIALS+=(acpi-call-dkms tp-smapi-dkms)
+    ! command_exists dpkg || ! dpkg -s "linux-generic-hwe-${DISTRIB_RELEASE}" >/dev/null 2>&1 || APT_ESSENTIALS+=("linux-tools-generic-hwe-${DISTRIB_RELEASE}?")
+
+    apt_install_packages "essentials" "${APT_ESSENTIALS[*]}" N N
+
+}
+
 # Reviewed: 2019-11-03
 function apt_refresh_packages() {
 
@@ -243,7 +260,7 @@ EOF
 # Usage: apt_register_repository my-repo-identifier "https://gpg.key.url" "content for my-repo-identifier.list" "value for Pin field in apt preferences" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? (Y/n)]
 function apt_register_repository() {
 
-    command_exists wget || apt_force_install_packages "wget"
+    assert_command_exists wget
 
     local p PREFERENCES=
 
@@ -660,7 +677,7 @@ function apt_add_repo() {
 # Usage: apt_install_deb "http://url.to/package.deb" [queue only? (Y/n)]
 function apt_install_deb() {
 
-    command_exists wget || apt_force_install_packages "wget"
+    assert_command_exists wget
 
     # queue by default
     if [ "${2:-Y}" = "Y" ]; then
@@ -837,12 +854,6 @@ function apt_process_queue() {
 
 }
 
-function apt_force_install_packages() {
-
-    apt_install_packages "prerequisites" "$1" N N
-
-}
-
 function apt_check_sources() {
 
     local APT_PROXY='' PROXY_GOOD PROXY_HOST PROXY_PORT
@@ -922,7 +933,7 @@ function apt_purge() {
 # returns all changed configuration files (note: deleted files aren't detected)
 function apt_get_changed_configuration_files() {
 
-    command_exists debsums || apt_force_install_packages "debsums"
+    assert_command_exists debsums
 
     sudo debsums -ce 2>/dev/null || die
 
@@ -931,7 +942,7 @@ function apt_get_changed_configuration_files() {
 # returns all new files under /etc
 function apt_get_new_configuration_files() {
 
-    command_exists debsums || apt_force_install_packages "debsums"
+    assert_command_exists debsums
 
     sudo find /etc -type f | grep -vFf <(
         # shellcheck disable=SC1090
@@ -963,3 +974,70 @@ APT_PPA_QUEUE=()
 APT_REPO_QUEUE=()
 APT_DEB_QUEUE=()
 APT_SKIPPED=()
+
+APT_PREREQ=(
+    apt-transport-https
+    aptitude
+    debconf-utils
+    debsums
+    distro-info
+    dmidecode
+    software-properties-common
+)
+
+APT_ESSENTIALS=(
+    bc
+    coreutils
+    pv
+    vim
+
+    # FILES
+    attr
+    file
+    mediainfo
+
+    # SHELLS
+    # ksh: needed by some installers, e.g. Db2
+    ksh
+    screen
+    zsh
+
+    # NETWORKING
+    # net-tools: e.g. netstat
+    # radvdump: dumps IPv6 router advertisements
+    cifs-utils
+    curl
+    lftp
+    net-tools
+    ntp
+    ntpdate
+    openssh-server
+    radvdump
+    traceroute
+    wget
+    whois
+
+    # MONITORING
+    # atop: because you never know you need historical performance data--until you do
+    atop
+    glances
+    sysdig
+
+    # HARDWARE
+    hwinfo
+    sysfsutils
+
+    # KERNEL
+    linux-crashdump
+    linux-tools-generic
+
+)
+
+is_virtual || APT_ESSENTIALS+=(
+    intel-gpu-tools
+    lm-sensors
+    powertop
+    smartmontools
+    tlp
+    tlp-rdw
+)

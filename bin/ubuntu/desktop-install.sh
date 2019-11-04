@@ -20,8 +20,8 @@ configure_motd
 # get underway without an immediate index update
 apt_mark_cache_clean
 
-# install prequisites and packages that may be needed to bootstrap others
-apt_force_install_packages "apt-transport-https aptitude debconf-utils distro-info dmidecode software-properties-common"
+apt_check_prerequisites
+apt_check_essentials
 
 # ensure all of Ubuntu's repositories are available (including "backports" and "proposed" archives)
 apt_enable_ubuntu_repository main "updates backports proposed"
@@ -91,59 +91,6 @@ apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb htt
 LOW_RAM=0
 [ "$(get_memory_size)" -lt "8192" ] && LOW_RAM=1
 
-apt_install_packages "essentials" "\
-atop \
-attr \
-cifs-utils \
-curl \
-debsums \
-glances \
-hfsprogs \
-hwinfo \
-kdump-tools \
-ksh \
-lftp \
-linux-crashdump \
-linux-tools-generic \
-mediainfo \
-net-tools \
-ntp \
-ntpdate \
-openssh-server \
-pv \
-radvdump \
-screen \
-sysdig \
-sysfsutils \
-syslinux-utils \
-traceroute \
-vim \
-whois \
-zsh \
-" N
-
-if ! is_virtual; then
-
-    apt_install_packages "hardware management" "\
-intel-gpu-tools \
-lm-sensors \
-powertop \
-smartmontools \
-tlp \
-tlp-rdw \
-"
-
-    if sudo dmidecode -t system | grep -i ThinkPad >/dev/null 2>&1; then
-
-        apt_install_packages "ThinkPad power management" "\
-acpi-call-dkms \
-tp-smapi-dkms \
-"
-
-    fi
-
-fi
-
 apt_install_packages "openconnect dependencies" "\
 libxml2-dev \
 pkg-config \
@@ -208,6 +155,7 @@ guake \
 guvcview \
 handbrake-cli \
 handbrake-gtk \
+hfsprogs \
 indicator-multiload \
 inkscape \
 keepassxc \
@@ -235,6 +183,7 @@ spotify-client \
 sublime-text \
 sxhkd \
 synaptic \
+syslinux-utils \
 t1-xfree86-nonfree \
 tilix \
 transmission \
