@@ -5,7 +5,7 @@ set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
-. "$SCRIPT_DIR/../bash/common"
+. "$SCRIPT_DIR/../../bash/common"
 
 # shellcheck disable=SC2034
 MUST_DIE_HAPPY=Y
@@ -79,9 +79,7 @@ for i in "${!OUTPUTS[@]}"; do
     EDIDS+=("$EDID")
 
     # extract dimensions
-    DIMENSIONS=($(
-        echo "$OUTPUT_INFO_LINES" | head -n1 | gnu_grep -Po '\b[0-9]+(?=mm\b)'
-    )) || DIMENSIONS=()
+    DIMENSIONS=($(echo "$OUTPUT_INFO_LINES" | head -n1 | gnu_grep -Po '\b[0-9]+(?=mm\b)')) || DIMENSIONS=()
 
     if [ "${#DIMENSIONS[@]}" -eq 2 ]; then
 
@@ -227,17 +225,15 @@ if has_argument "--get-qt-exports"; then
 
     ((QT_FONT_DPI = DPI / SCALING_FACTOR))
 
-    echo "export QT_AUTO_SCREEN_SCALE_FACTOR=0"
-    echo "export QT_SCALE_FACTOR=$SCALING_FACTOR"
-    echo "export QT_FONT_DPI=$QT_FONT_DPI"
+    echo "export QT_AUTO_SCREEN_SCALE_FACTOR=\"0\""
+    echo "export QT_SCALE_FACTOR=\"$SCALING_FACTOR\""
+    echo "export QT_FONT_DPI=\"$QT_FONT_DPI\""
 
 fi
 
 if has_argument "--set-dpi-only"; then
 
-    echo -e "\nxrandr --dpi $DPI\n" >&2
-
-    xrandr --dpi "$DPI" >&2
+    echo_run xrandr --dpi "$DPI" >&2
 
 fi
 
@@ -301,10 +297,10 @@ xrandr --dryrun "${RESET_OPTIONS[@]}" >/dev/null || die
 xrandr --dryrun "${OPTIONS[@]}" >/dev/null || die
 
 # apply configuration
-echo -e "\nxrandr ${RESET_OPTIONS[*]}\n" >&2
-xrandr "${RESET_OPTIONS[@]}" || true
-echo -e "xrandr ${OPTIONS[*]}\n" >&2
-xrandr "${OPTIONS[@]}" || die
+echo_run xrandr "${RESET_OPTIONS[@]}" || true
+echo_run xrandr "${OPTIONS[@]}" || die
+
+! has_argument "--lightdm" || die
 
 if ! has_argument "--lightdm" && ! has_argument "--skip-lightdm" && [ -d "/etc/lightdm/lightdm.conf.d" ]; then
 
@@ -315,18 +311,14 @@ EOF
 
 fi
 
-! has_argument "--lightdm" || die
-
 # ok, xrandr is sorted -- look after everything else
 case "${XDG_CURRENT_DESKTOP:-}" in
 
 XFCE)
 
     # prevent Xfce from interfering with our display settings
-    echo -e "xfconf-query -c displays -p / -rR\n" >&2
-    xfconf-query -c displays -p / -rR
-    echo -e "xfconf-query -c displays -p /Notify -n -t bool -s false\n" >&2
-    xfconf-query -c displays -p /Notify -n -t bool -s false
+    echo_run xfconf-query -c displays -p / -rR
+    echo_run xfconf-query -c displays -p /Notify -n -t bool -s false
 
     "$SCRIPT_DIR/xfce-set-dpi.sh" "$DPI" "$@"
     ;;
@@ -339,18 +331,15 @@ XFCE)
 
         if OVERRIDES="$(gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)"; then
 
-            OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Gdk/WindowScalingFactor' "$SCALING_FACTOR")"
-            OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" 'Xft/DPI' "$XFT_DPI")"
+            OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Gdk/WindowScalingFactor" "$SCALING_FACTOR")"
+            OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Xft/DPI" "$XFT_DPI")"
 
-            echo -e "gsettings set org.gnome.settings-daemon.plugins.xsettings overrides \"$OVERRIDES\"\n" >&2
-            gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
+            echo_run gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
 
         fi
 
-        echo -e "gsettings set org.gnome.desktop.interface scaling-factor $SCALING_FACTOR\n" >&2
-        gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
-        echo -e "gsettings set org.gnome.desktop.interface text-scaling-factor $DPI_MULTIPLIER\n" >&2
-        gsettings set org.gnome.desktop.interface text-scaling-factor "$DPI_MULTIPLIER" || true
+        echo_run gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
+        echo_run gsettings set org.gnome.desktop.interface text-scaling-factor "$DPI_MULTIPLIER" || true
 
     fi
 
@@ -362,7 +351,7 @@ if ! is_root; then
 
     if ! is_autostart; then
 
-        command_exists displaycal-apply-profiles && displaycal-apply-profiles || true
+        ! command_exists displaycal-apply-profiles || displaycal-apply-profiles
         "$SCRIPT_DIR/x-release-modifiers.sh"
 
     fi
@@ -372,13 +361,13 @@ if ! is_root; then
 
     if killall quicktile 2>/dev/null; then
 
-        nohup quicktile --daemonize >/dev/null 2>&1 &
+        quicktile --daemonize >/dev/null 2>&1 &
 
     fi
 
     if killall plank 2>/dev/null; then
 
-        nohup plank >/dev/null 2>&1 &
+        plank >/dev/null 2>&1 &
 
     fi
 
