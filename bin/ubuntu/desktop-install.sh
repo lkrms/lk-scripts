@@ -91,7 +91,7 @@ apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb htt
 LOW_RAM=0
 [ "$(get_memory_size)" -lt "8192" ] && LOW_RAM=1
 
-apt_install_packages "essential utilities" "\
+apt_install_packages "essentials" "\
 atop \
 attr \
 cifs-utils \
@@ -103,32 +103,32 @@ hwinfo \
 kdump-tools \
 ksh \
 lftp \
-libsecret-tools \
 linux-crashdump \
 linux-tools-generic \
 mediainfo \
-msmtp \
 net-tools \
 ntp \
 ntpdate \
 openssh-server \
 pv \
 radvdump \
-s-nail \
 screen \
-smartmontools \
 sysdig \
 sysfsutils \
 syslinux-utils \
 traceroute \
-trash-cli \
 vim \
 whois \
+zsh \
 " N
 
 if ! is_virtual; then
 
-    apt_install_packages "power management" "\
+    apt_install_packages "hardware management" "\
+intel-gpu-tools \
+lm-sensors \
+powertop \
+smartmontools \
 tlp \
 tlp-rdw \
 "
@@ -161,11 +161,8 @@ python-xlib \
 
 apt_install_packages "performance monitoring" "\
 auditd \
-intel-gpu-tools \
 iotop \
-lm-sensors \
 nethogs \
-powertop \
 sysstat \
 " N
 
@@ -217,15 +214,18 @@ keepassxc \
 lame \
 libdvd-pkg! \
 libreoffice \
+libsecret-tools \
 makemkv-bin \
 makemkv-oss \
 meld \
 mkvtoolnix \
 mkvtoolnix-gui \
+msmtp \
 nextcloud-client \
 qpdfview \
 recoll \
 remmina \
+s-nail \
 samba \
 scribus \
 seahorse \
@@ -238,6 +238,7 @@ synaptic \
 t1-xfree86-nonfree \
 tilix \
 transmission \
+trash-cli \
 ttf-xfree86-nonfree \
 typora \
 usb-creator-gtk \

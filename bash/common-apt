@@ -48,10 +48,12 @@ function apt_describe_packages() {
     }
 
     IFS='|'
-    PATTERN="^(${PACKAGES[*]})\$"
+    PATTERN="(${PACKAGES[*]})"
     unset IFS
 
-    apt-cache -n search "$PATTERN" | sort | sed -E "s/^([^ ]+) - (.*)\$/${COLOURS}\1:${RESET} \2/"
+    # `apt-cache -n search` includes "Provides" values, hence the additional `grep`
+    # see: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=98695
+    apt-cache -n search "^$PATTERN\$" | grep -E "^$PATTERN - " | sort | sed -E "s/^([^ ]+) - (.*)\$/${COLOURS}\1:${RESET} \2/"
 
 }
 
@@ -391,7 +393,7 @@ function apt_get_package_list() {
 # Usage: apt_install_packages "Description of this group of packages" "package1 package2 ..." [allow user override? (Y/n)] [queue only? (Y/n)]
 function apt_install_packages() {
 
-    local UI="${3:-Y}" QUEUE_ONLY="${4:-Y}" INSTALLED=() INSTALL=() IGNORED=() SUPPRESSED=() SILENCED=() IGNORE SUPPRESS SILENCE PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX OPTIONS QUEUE PROMPT_EXTRA="" INSTALL_QUEUE SILENT_QUEUE PRETTY_QUEUE SUDO_EXTRA=() p q
+    local UI="${3:-Y}" QUEUE_ONLY="${4:-Y}" INSTALLED=() INSTALL=() IGNORED=() SUPPRESSED=() SILENCED=() IGNORE SUPPRESS SILENCE PPA_QUEUE=() PPA_INDEX REPO_QUEUE=() REPO_INDEX QUEUE PROMPT_EXTRA="" INSTALL_QUEUE SILENT_QUEUE PRETTY_QUEUE SUDO_EXTRA=() p q
 
     apt_make_cache_clean
 
@@ -467,8 +469,6 @@ function apt_install_packages() {
 
     if [ "${#INSTALL[@]}" -gt "0" ]; then
 
-        OPTIONS=("${APT_GET_OPTIONS[@]}")
-
         QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}" | sort | uniq))
 
         if [ "$UI" = "Y" ]; then
@@ -483,10 +483,6 @@ function apt_install_packages() {
             }
 
             get_confirmation "Add the $1 $(single_or_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" Y Y || return 0
-
-        else
-
-            [[ "${APT_GET_OPTIONS[*]}" =~ ([[:space:]]|^)(-y|--yes|--assume-yes)([[:space:]]|$) ]] || OPTIONS+=("-y")
 
         fi
 
@@ -517,7 +513,7 @@ function apt_install_packages() {
 
                 if [ "${#QUEUE[@]}" -gt "0" ]; then
 
-                    sudo "${SUDO_EXTRA[@]}" apt-get "${OPTIONS[@]}" install "${QUEUE[@]}" && {
+                    sudo "${SUDO_EXTRA[@]}" apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
                         APT_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
                         APT_JUST_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
                     } || die
@@ -745,7 +741,7 @@ function do_apt_install_deb() {
 
     if [ "${#DEB_PATHS[@]}" -gt "0" ]; then
 
-        if sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -yf install; then
+        if sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -f install; then
 
             APT_INSTALLED+=("${NOT_SKIPPED[@]}")
             APT_JUST_INSTALLED+=("${NOT_SKIPPED[@]}")
@@ -947,7 +943,7 @@ function apt_get_new_configuration_files() {
 
 APT_CACHE_DIRTY=1
 APT_DEB_PATH="$CACHE_DIR/deb"
-APT_GET_OPTIONS=(-y)
+APT_GET_OPTIONS=()
 APT_PPA_REGISTRY=()
 APT_PPA_PACKAGES=()
 APT_PPA_PREFERENCES=()
