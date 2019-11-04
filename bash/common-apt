@@ -3,6 +3,25 @@
 assert_command_exists apt-get
 
 # Reviewed: 2019-11-05
+function apt_apply_preferences() {
+
+    local IFS PREF PREFS=("$@")
+
+    [ "$#" -gt "0" ] || ! [ -d "$CONFIG_DIR/apt" ] || {
+        IFS=$'\n'
+        PREFS=($(find "$CONFIG_DIR/apt" -maxdepth 1 -type f -exec basename '{}' \;))
+        unset IFS
+    }
+
+    for PREF in "${PREFS[@]}"; do
+
+        safe_symlink "$CONFIG_DIR/apt/$PREF" "/etc/apt/preferences.d/linac-$(basename "$PREF")" Y
+
+    done
+
+}
+
+# Reviewed: 2019-11-05
 function apt_check_prerequisites() {
 
     apt_install_packages "prerequisites" "${APT_PREREQ[*]}" N N

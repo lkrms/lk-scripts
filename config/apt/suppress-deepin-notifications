@@ -1,0 +1,3 @@
+Package: deepin-notifications
+Pin: release *
+Pin-Priority: -10

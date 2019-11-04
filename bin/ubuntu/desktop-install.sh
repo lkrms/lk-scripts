@@ -17,11 +17,14 @@ offer_sudo_password_bypass
 
 configure_motd
 
+# apply all available preferences in $CONFIG_DIR/apt
+apt_apply_preferences
+
+safe_symlink "$CONFIG_DIR/apt.conf" "/etc/apt/apt.conf.d/90-linacreative" Y ||
+    safe_symlink "$CONFIG_DIR/apt-default.conf" "/etc/apt/apt.conf.d/90-linacreative" Y
+
 # get underway without an immediate index update
 apt_mark_cache_clean
-
-apt_check_prerequisites
-apt_check_essentials
 
 # ensure all of Ubuntu's repositories are available (including "backports" and "proposed" archives)
 apt_enable_ubuntu_repository main "updates backports proposed"
@@ -29,30 +32,14 @@ apt_enable_ubuntu_repository restricted "updates backports proposed"
 apt_enable_ubuntu_repository universe "updates backports proposed"
 apt_enable_ubuntu_repository multiverse "updates backports proposed"
 
-# prevent "proposed" packages from being installed automatically
-if [ ! -e "/etc/apt/preferences.d/proposed-updates" ]; then
-
-    sudo tee "/etc/apt/preferences.d/proposed-updates" >/dev/null <<EOF
-Package: *
-Pin: release a=${DISTRIB_CODENAME}-proposed
-Pin-Priority: 400
-EOF
-
-fi
-
-{
-
-    [ -e "$CONFIG_DIR/apt.conf" ] &&
-        safe_symlink "$CONFIG_DIR/apt.conf" "/etc/apt/apt.conf.d/90-linacreative" Y ||
-        safe_symlink "$CONFIG_DIR/apt-default.conf" "/etc/apt/apt.conf.d/90-linacreative" Y
-
-} >/dev/null
-
 # seed debconf database with answers
 sudo debconf-set-selections <<EOF
 libc6 libraries/restart-without-asking boolean true
 libpam0g libraries/restart-without-asking boolean true
 EOF
+
+apt_check_prerequisites
+apt_check_essentials
 
 # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
 apt_register_ppa "caffeine-developers/ppa" "caffeine"
@@ -125,7 +112,6 @@ awf \
 beets \
 blueman \
 blueproximity \
-bsd-mailx- \
 btscanner \
 $([ "${XDG_CURRENT_DESKTOP:-}" = "XFCE" ] || printf '%s' "caffeine") \
 catfish \
@@ -133,7 +119,6 @@ code \
 copyq \
 dconf-cli \
 dconf-editor \
-deepin-notifications- \
 deepin-screenshot \
 evolution \
 evtest \
@@ -224,7 +209,6 @@ build-essential \
 cmake \
 dbeaver-ce \
 git \
-libapache2-mod-php*- \
 nodejs \
 php \
 php-bcmath \
@@ -268,7 +252,6 @@ yarn \
 
 [ "$LOW_RAM" -eq "1" ] || apt_install_packages "development services" "\
 apache2 \
-libapache2-mod-php*- \
 mariadb-server \
 mongodb-org \
 "
