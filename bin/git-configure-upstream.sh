@@ -102,7 +102,7 @@ if [ "${#MATCHING_BRANCHES[@]}" -gt "0" ]; then
 
         for BRANCH in "${MATCHING_BRANCHES[@]}"; do
 
-            if array_search "$BRANCH" ORIGIN_BRANCHES >/dev/null; then
+            if in_array "$BRANCH" ORIGIN_BRANCHES; then
 
                 git branch -u "${ORIGIN}/${BRANCH}" "$BRANCH"
 

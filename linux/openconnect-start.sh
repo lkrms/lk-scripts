@@ -50,13 +50,13 @@ if ! VPN_PASSWORD="$(secret-tool lookup "${VPN_USER}@${VPN_HOST}" openconnect-pa
 
 fi
 
-if ! array_search "--protocol*" OPENCONNECT_OPTIONS >/dev/null; then
+if ! in_array "--protocol*" OPENCONNECT_OPTIONS; then
 
     OPENCONNECT_OPTIONS+=(--protocol gp)
 
 fi
 
-if ! array_search "-s" OPENCONNECT_OPTIONS >/dev/null && ! array_search "--script" OPENCONNECT_OPTIONS >/dev/null; then
+if ! in_array "-s" OPENCONNECT_OPTIONS && ! in_array "--script" OPENCONNECT_OPTIONS; then
 
     if [ -z "$HOSTS_TO_ROUTE" ]; then
 
@@ -70,19 +70,19 @@ if ! array_search "-s" OPENCONNECT_OPTIONS >/dev/null && ! array_search "--scrip
 
 fi
 
-if ! array_search "--dump-http-traffic" OPENCONNECT_OPTIONS >/dev/null; then
+if ! in_array "--dump-http-traffic" OPENCONNECT_OPTIONS; then
 
     OPENCONNECT_OPTIONS+=(--dump-http-traffic)
 
 fi
 
-if ! array_search "-v*" OPENCONNECT_OPTIONS >/dev/null; then
+if ! in_array "-v*" OPENCONNECT_OPTIONS; then
 
     OPENCONNECT_OPTIONS+=(-vvv)
 
 fi
 
-if [ -n "$VPN_PASSWORD" ] && ! array_search "--passwd-on-stdin" OPENCONNECT_OPTIONS >/dev/null; then
+if [ -n "$VPN_PASSWORD" ] && ! in_array "--passwd-on-stdin" OPENCONNECT_OPTIONS; then
 
     OPENCONNECT_OPTIONS+=(--passwd-on-stdin)
 

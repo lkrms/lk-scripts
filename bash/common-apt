@@ -766,7 +766,7 @@ function apt_remove_packages() {
     # shellcheck disable=SC2048
     for p in $*; do
 
-        if apt_package_installed "$p" && ! array_search "$p" APT_REMOVE_QUEUE >/dev/null; then
+        if apt_package_installed "$p" && ! in_array "$p" APT_REMOVE_QUEUE; then
 
             APT_REMOVE_QUEUE+=("$p")
 

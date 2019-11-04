@@ -247,7 +247,7 @@ if has_argument "--get-qt-exports" || has_argument "--set-dpi-only"; then
 
 fi
 
-array_search "--dpi" OPTIONS >/dev/null || OPTIONS+=(--dpi "$DPI")
+in_array "--dpi" OPTIONS || OPTIONS+=(--dpi "$DPI")
 
 for i in "${!OUTPUTS[@]}"; do
 
@@ -266,13 +266,13 @@ for i in "${!OUTPUTS[@]}"; do
 
     fi
 
-    if ! array_search "--off" OUTPUT_OPTIONS >/dev/null; then
+    if ! in_array "--off" OUTPUT_OPTIONS; then
 
-        array_search "--mode" OUTPUT_OPTIONS >/dev/null || OPTIONS+=(--preferred)
+        in_array "--mode" OUTPUT_OPTIONS || OPTIONS+=(--preferred)
 
-        array_search "--primary" OPTIONS >/dev/null || [ "$PRIMARY_INDEX" -ne "$i" ] || OPTIONS+=(--primary)
+        in_array "--primary" OPTIONS || [ "$PRIMARY_INDEX" -ne "$i" ] || OPTIONS+=(--primary)
 
-        array_search "Broadcast RGB" OUTPUT_OPTIONS >/dev/null || OPTIONS+=(--set "Broadcast RGB" "Full")
+        in_array "Broadcast RGB" OUTPUT_OPTIONS || OPTIONS+=(--set "Broadcast RGB" "Full")
 
     fi
 
@@ -284,7 +284,7 @@ for i in "${ALL_OUTPUTS[@]}"; do
 
     RESET_OPTIONS+=(--output "$i")
 
-    if ! array_search "$i" OUTPUTS >/dev/null; then
+    if ! in_array "$i" OUTPUTS; then
 
         RESET_OPTIONS+=(--off)
 

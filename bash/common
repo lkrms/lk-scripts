@@ -593,29 +593,57 @@ function upper() {
 # Searches the array (must be global, passed by name) for the given value and outputs the first corresponding key if found.
 # Plays nicely with globs and sparse arrays. Outputs nothing and exits non-zero if the value isn't found.
 #
-# Usage: array_search <needle> <haystack-name>
+# Usage: array_search "needle" HAYSTACK_NAME [allow globbing? (Y/n)]
+# Reviewed: 2019-11-04
 function array_search() {
 
-    local KEYS VALUE i
+    local GLOBBING="${3:-Y}" KEYS VALUE i
 
     eval "KEYS=\"\${!$2[@]}\""
 
-    for i in $KEYS; do
+    # two loops = faster than testing GLOBBING inside the loop
+    if [ "$GLOBBING" = "Y" ]; then
 
-        eval "VALUE=\"\${$2[$i]}\""
+        for i in $KEYS; do
 
-        # $VALUE is left unquoted for globbing purposes
-        # shellcheck disable=SC2053
-        if [[ "$1" == $VALUE ]] || [[ "$VALUE" == $1 ]]; then
+            eval "VALUE=\"\${$2[$i]}\""
 
-            echo "$i"
-            return
+            # shellcheck disable=SC2053
+            if [[ "$1" == $VALUE ]] || [[ "$VALUE" == $1 ]]; then
 
-        fi
+                echo "$i"
+                return
 
-    done
+            fi
+
+        done
+
+    else
+
+        for i in $KEYS; do
+
+            eval "VALUE=\"\${$2[$i]}\""
+
+            if [ "$1" = "$VALUE" ]; then
+
+                echo "$i"
+                return
+
+            fi
+
+        done
+
+    fi
 
     return 1
+
+}
+
+# Usage: in_array "needle" HAYSTACK_NAME [allow globbing? (y/N)]
+# Reviewed: 2019-11-04
+function in_array() {
+
+    array_search "$1" "$2" "${3:-N}" >/dev/null
 
 }
 
@@ -673,7 +701,7 @@ function sort_words() {
 
 function has_argument() {
 
-    array_search "$1" ORIGINAL_ARGUMENTS >/dev/null
+    in_array "$1" ORIGINAL_ARGUMENTS
 
 }
 
