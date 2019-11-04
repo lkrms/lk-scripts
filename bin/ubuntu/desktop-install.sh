@@ -523,7 +523,7 @@ SNAPS_INSTALL=()
 
 for s in twist; do
 
-    array_search "$s" SNAPS_INSTALLED >/dev/null && APT_INSTALLED+=("$s") || SNAPS_INSTALL+=("$s")
+    in_array "$s" SNAPS_INSTALLED && APT_INSTALLED+=("$s") || SNAPS_INSTALL+=("$s")
 
 done
 
