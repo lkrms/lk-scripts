@@ -245,8 +245,8 @@ function dev_apply_system_config() {
 
         if command_exists xrandr; then
 
-            safe_symlink "$ROOT_DIR/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh" &&
-                safe_symlink "$ROOT_DIR/linux/xrandr-auto.sh.desktop" "$HOME/.config/autostart/xrandr-auto.sh.desktop" || true
+            safe_symlink "$ROOT_DIR/bin/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh" &&
+                safe_symlink "$ROOT_DIR/bin/linux/applications/xrandr-auto.sh.desktop" "$HOME/.config/autostart/xrandr-auto.sh.desktop" || true
 
         fi
 

@@ -1,9 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=xrandr-auto
-Comment=
 Exec=xrandr-auto.sh --autostart
 StartupNotify=false
 Terminal=false
 Hidden=false
-

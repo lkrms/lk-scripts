@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2206,SC2207
+# shellcheck disable=SC1090
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -7,8 +7,11 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../bash/common"
 
-command_exists xrandr || die_happy "xrandr command not found"
-command_exists bc || die_happy "bc command not found"
+# shellcheck disable=SC2034
+MUST_DIE_HAPPY=Y
+
+assert_command_exists xrandr
+assert_command_exists bc
 
 if has_argument "-h" || has_argument "--help"; then
 
@@ -22,25 +25,16 @@ fi
 HIDPI_THRESHOLD=144
 
 # get current state with trailing whitespace removed
-XRANDR_OUTPUT="$(
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    xrandr --verbose | sed -E 's/[[:space:]]+$//'
-)" || die_happy "Error: unable to retrieve current RandR state"
+XRANDR_OUTPUT="$(xrandr --verbose | sed -E 's/[[:space:]]+$//')" || die "Unable to retrieve current RandR state"
 
 # convert to single line for upcoming greps
 XRANDR_OUTPUT="\\n${XRANDR_OUTPUT//$'\n'/\\n}\\n"
 
 # extract connected output names
-OUTPUTS=($(
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    echo "$XRANDR_OUTPUT" | grep -Po '(?<=\\n)([^[:space:]]+)(?= connected)'
-)) || die_happy "Error: no connected outputs"
+OUTPUTS=($(echo "$XRANDR_OUTPUT" | gnu_grep -Po '(?<=\\n)([^[:space:]]+)(?= connected)')) || die "No connected outputs"
 
 # and all output names (i.e. connected and disconnected)
-ALL_OUTPUTS=($(
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    echo "$XRANDR_OUTPUT" | grep -Po '(?<=\\n)([^[:space:]]+)(?= (connected|disconnected))'
-))
+ALL_OUTPUTS=($(echo "$XRANDR_OUTPUT" | gnu_grep -Po '(?<=\\n)([^[:space:]]+)(?= (connected|disconnected))'))
 
 # each EDID is stored at the same index as its output name in OUTPUTS
 EDIDS=()
@@ -72,10 +66,7 @@ LARGEST_AREA=0
 for i in "${!OUTPUTS[@]}"; do
 
     # extract everything related to this output
-    OUTPUT_INFO="$(
-        . "$SUBSHELL_SCRIPT_PATH" || exit
-        echo "$XRANDR_OUTPUT" | grep -Po '(?<=\\n)'"${OUTPUTS[$i]}"' connected.*?(?=\\n[^[:space:]])'
-    )"
+    OUTPUT_INFO="$(echo "$XRANDR_OUTPUT" | gnu_grep -Po '(?<=\\n)'"${OUTPUTS[$i]}"' connected.*?(?=\\n[^[:space:]])')"
 
     OUTPUT_INFO_LINES="${OUTPUT_INFO//\\n/$'\n'}"
 
@@ -83,27 +74,20 @@ for i in "${!OUTPUTS[@]}"; do
     OUTPUTS_INFO+=("$OUTPUT_INFO_LINES")
 
     # extract EDID
-    EDID="$(
-        . "$SUBSHELL_SCRIPT_PATH" || exit
-        echo "$OUTPUT_INFO" | grep -Po '(?<=EDID:\\n)(\t{2}[0-9a-fA-F]+\\n)+'
-    )"
+    EDID="$(echo "$OUTPUT_INFO" | gnu_grep -Po '(?<=EDID:\\n)(\t{2}[0-9a-fA-F]+\\n)+')"
     EDID="${EDID//[^0-9a-fA-F]/}"
     EDIDS+=("$EDID")
 
     # extract dimensions
     DIMENSIONS=($(
-        . "$SUBSHELL_SCRIPT_PATH" || exit
-        echo "$OUTPUT_INFO_LINES" | head -n1 | grep -Po '\b[0-9]+(?=mm\b)'
+        echo "$OUTPUT_INFO_LINES" | head -n1 | gnu_grep -Po '\b[0-9]+(?=mm\b)'
     )) || DIMENSIONS=()
 
     if [ "${#DIMENSIONS[@]}" -eq 2 ]; then
 
         ((AREA = DIMENSIONS[0] * DIMENSIONS[1]))
         DIMENSIONS+=("$AREA")
-        DIMENSIONS+=("$(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            echo "scale = 10; size = sqrt(${DIMENSIONS[0]} ^ 2 + ${DIMENSIONS[1]} ^ 2) / 10 / 2.54; scale = 1; size / 1" | bc
-        )")
+        DIMENSIONS+=("$(echo "scale = 10; size = sqrt(${DIMENSIONS[0]} ^ 2 + ${DIMENSIONS[1]} ^ 2) / 10 / 2.54; scale = 1; size / 1" | bc)")
         SIZES+=("${DIMENSIONS[*]}")
 
         if [ "$AREA" -gt "$LARGEST_AREA" ]; then
@@ -120,10 +104,7 @@ for i in "${!OUTPUTS[@]}"; do
     fi
 
     # extract preferred (native) resolution
-    PIXELS=($(
-        . "$SUBSHELL_SCRIPT_PATH" || exit
-        echo "$OUTPUT_INFO_LINES" | grep '[[:space:]]+preferred$' | grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)'
-    )) || PIXELS=()
+    PIXELS=($(echo "$OUTPUT_INFO_LINES" | grep '[[:space:]]+preferred$' | gnu_grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)')) || PIXELS=()
 
     if [ "${#PIXELS[@]}" -eq 2 ]; then
 
@@ -131,10 +112,7 @@ for i in "${!OUTPUTS[@]}"; do
 
         if [ "$PRIMARY_INDEX" -eq "$i" ] && [ "${#DIMENSIONS[@]}" -eq "4" ] && [ "${DIMENSIONS[0]}" -gt "0" ]; then
 
-            ACTUAL_DPI="$(
-                . "$SUBSHELL_SCRIPT_PATH" || exit
-                echo "scale = 10; dpi = ${PIXELS[0]} / ( ${DIMENSIONS[0]} / 10 / 2.54 ); scale = 0; dpi / 1" | bc
-            )"
+            ACTUAL_DPI="$(echo "scale = 10; dpi = ${PIXELS[0]} / ( ${DIMENSIONS[0]} / 10 / 2.54 ); scale = 0; dpi / 1" | bc)"
             PRIMARY_SIZE="${DIMENSIONS[3]}"
 
         fi
@@ -169,26 +147,28 @@ function get_edid_index() {
 
 if [ ! -e "$CONFIG_DIR/xrandr" ] || has_argument "--suggest"; then
 
-    CONFIG_FILE="$CONFIG_DIR/xrandr-suggested"
+    {
 
-    echo -e '#!/bin/bash\n' >"$CONFIG_FILE"
-    echo -e '# This file has been automatically generated. Rename it to "xrandr" before making changes.\n' >>"$CONFIG_FILE"
+        echo '#!/bin/bash'
+        echo
+        echo '# This file has been automatically generated. Rename it to "xrandr" before making changes.'
+        echo
 
-    for i in "${!OUTPUTS[@]}"; do
+        for i in "${!OUTPUTS[@]}"; do
 
-        DIMENSIONS=(${SIZES[$i]})
-        RESOLUTION=(${RESOLUTIONS[$i]})
+            DIMENSIONS=(${SIZES[$i]})
+            RESOLUTION=(${RESOLUTIONS[$i]})
 
-        {
-            echo "# ${DIMENSIONS[3]}\", ${RESOLUTION[0]}x${RESOLUTION[1]}"
-            echo "EDID_DISPLAY_${i}=\"${EDIDS[$i]}\""
-            echo "EDID_DISPLAY_${i}_OPTIONS=()"
-            echo
-        } >>"$CONFIG_FILE"
+            {
+                echo "# ${DIMENSIONS[3]}\", ${RESOLUTION[0]}x${RESOLUTION[1]}"
+                echo "EDID_DISPLAY_${i}=\"${EDIDS[$i]}\""
+                echo "EDID_DISPLAY_${i}_OPTIONS=()"
+                echo
+            }
 
-    done
+        done
 
-    cat <<EOF >>"$CONFIG_FILE"
+        cat <<EOF
 for i in \$(seq 0 $i); do
     eval "EDID_DISPLAY_\${i}_ACTIVE=0"
     if eval "EDID_DISPLAY_\${i}_INDEX=\\"\\\$(get_edid_index \\"\\\$EDID_DISPLAY_\${i}\\")\\""; then
@@ -225,15 +205,16 @@ for i in \$(seq 0 $i); do
 done
 EOF
 
-    has_argument "--suggest" && exit || true
+    } >"$CONFIG_DIR/xrandr-suggested"
+
+    ! has_argument "--suggest" || exit 0
 
 fi
 
 # OPTIONS, OPTIONS_xxx, PRIMARY_INDEX, SCALING_FACTOR, DPI and DPI_MULTIPLIER may be changed here
 if [ -e "$CONFIG_DIR/xrandr" ]; then
 
-    # shellcheck disable=SC1090
-    . "$CONFIG_DIR/xrandr" || die_happy
+    . "$CONFIG_DIR/xrandr" || die
 
 fi
 
@@ -316,14 +297,14 @@ for i in "${ALL_OUTPUTS[@]}"; do
 done
 
 # check that our configuration is valid
-xrandr --dryrun "${RESET_OPTIONS[@]}" >/dev/null || die_happy
-xrandr --dryrun "${OPTIONS[@]}" >/dev/null || die_happy
+xrandr --dryrun "${RESET_OPTIONS[@]}" >/dev/null || die
+xrandr --dryrun "${OPTIONS[@]}" >/dev/null || die
 
 # apply configuration
 echo -e "\nxrandr ${RESET_OPTIONS[*]}\n" >&2
 xrandr "${RESET_OPTIONS[@]}" || true
 echo -e "xrandr ${OPTIONS[*]}\n" >&2
-xrandr "${OPTIONS[@]}" || die_happy
+xrandr "${OPTIONS[@]}" || die
 
 if ! has_argument "--lightdm" && ! has_argument "--skip-lightdm" && [ -d "/etc/lightdm/lightdm.conf.d" ]; then
 
@@ -334,7 +315,7 @@ EOF
 
 fi
 
-! has_argument "--lightdm" || die_happy
+! has_argument "--lightdm" || die
 
 # ok, xrandr is sorted -- look after everything else
 case "${XDG_CURRENT_DESKTOP:-}" in
