@@ -87,6 +87,9 @@ EOF
     apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "release o=vscode stable,l=vscode stable" "code code-*"
     apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "origin dl.yarnpkg.com" "yarn"
 
+    # otherwise pip, pip3, npm, composer packages will be skipped until next run
+    apt_install_packages "development prerequisites" "nodejs php-cli python-pip python3-pip" Y N
+
     DESKTOP_PREREQ=(
 
         # OpenConnect (build) dependencies
