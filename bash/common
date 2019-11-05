@@ -1084,10 +1084,12 @@ function maybe_sudo() {
 }
 
 # Usage: echo_run command [arg1...]
-# Reviewed: 2019-11-01
+# Reviewed: 2019-11-05
 function echo_run() {
 
-    local ARG ARGS=() EXIT_CODE="0" EXIT_COLOR="${GREEN}"
+    local EXTRA_NEWLINE="\n" ARG ARGS=() EXIT_CODE="0" EXIT_COLOR="${GREEN}"
+
+    [ -t 1 ] || EXTRA_NEWLINE=
 
     for ARG in "$@"; do
 
@@ -1095,14 +1097,14 @@ function echo_run() {
 
     done
 
-    printf "${GREY}[%s] ${BOLD}${CYAN}Running command:${RESET}%s\n\n" "$(date_get_log)" "$(printf ' %s' "${ARGS[@]}")" >&2
+    printf "${GREY}[%s] ${BOLD}${CYAN}Running command:${RESET}%s\n${EXTRA_NEWLINE}" "$(date_get_log)" "$(printf ' %s' "${ARGS[@]}")" >&2
 
     time_command "$@" || {
         EXIT_CODE="$?"
         EXIT_COLOR="${RED}"
     }
 
-    printf "\n${GREY}[%s] ${BOLD}${EXIT_COLOR}Exit code:${RESET} %s ${GREY}(after %s)${RESET}\n\n" "$(date_get_log)" "$EXIT_CODE" "$COMMAND_TIME" >&2
+    [ "${ECHO_RUN_EXIT_MESSAGE:-N}" = "N" ] && [ "$EXIT_CODE" -eq "0" ] || printf "${EXTRA_NEWLINE}${GREY}[%s] ${BOLD}${EXIT_COLOR}Exit code:${RESET} %s ${GREY}(after %s)${RESET}\n${EXTRA_NEWLINE}" "$(date_get_log)" "$EXIT_CODE" "$COMMAND_TIME" >&2
 
     return "$EXIT_CODE"
 

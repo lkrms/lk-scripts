@@ -18,7 +18,7 @@ assert_not_root
 
     offer_sudo_password_bypass
 
-    configure_motd
+    disable_update_motd
 
     # apply all available preferences in $CONFIG_DIR/apt
     apt_apply_preferences
@@ -44,10 +44,17 @@ EOF
     apt_check_prerequisites
     apt_check_essentials
 
+    MEMORY_SIZE_MB="$(get_memory_size)"
+    LOW_RAM=0
+
+    [ "$MEMORY_SIZE_MB" -ge "8192" ] || {
+        LOW_RAM=1
+        console_message "Because this system has less than 8GB of RAM, some packages will not be offered" "" "$CYAN"
+    }
+
     # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
     apt_register_ppa "caffeine-developers/ppa" "caffeine"
     apt_register_ppa "flexiondotorg/awf" "awf"
-    apt_register_ppa "giuspen/ppa" "x-tile"
     apt_register_ppa "hda-me/xscreensaver" "xscreensaver*"
     apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
     apt_register_ppa "hluk/copyq" "copyq"
@@ -78,23 +85,20 @@ EOF
     apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "release o=vscode stable,l=vscode stable" "code code-*"
     apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "origin dl.yarnpkg.com" "yarn"
 
-    LOW_RAM=0
-    [ "$(get_memory_size)" -lt "8192" ] && LOW_RAM=1
+    DESKTOP_PREREQ=(
 
-    apt_install_packages "openconnect dependencies" "\
-libxml2-dev \
-pkg-config \
-vpnc-scripts \
-" N
+        # OpenConnect (build) dependencies
+        autoconf automake build-essential gettext libgnutls-dev libproxy-dev libtool libxml2-dev pkg-config vpnc-scripts zlib1g-dev
 
-    apt_install_packages "QuickTile dependencies" "\
-python \
-python-dbus \
-python-gtk2 \
-python-setuptools \
-python-wnck? \
-python-xlib \
-" N
+        # QuickTile dependencies
+        python python-dbus python-gtk2 python-setuptools python-wnck? python-xlib
+
+        # espanso dependencies
+        libxdo3 libxtst6 xclip
+
+    )
+
+    apt_install_packages "application dependencies" "${DESKTOP_PREREQ[*]}" N
 
     apt_install_packages "performance monitoring" "\
 auditd \
@@ -181,7 +185,6 @@ typora \
 usb-creator-gtk \
 vainfo \
 vlc \
-x-tile \
 x11vnc \
 xautomation \
 xclip \

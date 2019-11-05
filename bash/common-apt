@@ -1,4 +1,5 @@
 #!/bin/bash
+# shellcheck disable=SC2015
 
 assert_command_exists apt-get
 
@@ -12,6 +13,8 @@ function apt_apply_preferences() {
         PREFS=($(find "$CONFIG_DIR/apt" -maxdepth 1 -type f -exec basename '{}' \;))
         unset IFS
     }
+
+    [ "${#PREFS[@]}" -eq "0" ] || console_message "Applying apt preferences:" "${PREFS[*]}" "$CYAN"
 
     for PREF in "${PREFS[@]}"; do
 
@@ -34,7 +37,7 @@ function apt_check_essentials() {
     ! command_exists dmidecode || ! sudo dmidecode -t system | grep -i ThinkPad >/dev/null || APT_ESSENTIALS+=(acpi-call-dkms tp-smapi-dkms)
     ! command_exists dpkg || ! dpkg -s "linux-generic-hwe-${DISTRIB_RELEASE}" >/dev/null 2>&1 || APT_ESSENTIALS+=("linux-tools-generic-hwe-${DISTRIB_RELEASE}?")
 
-    apt_install_packages "essentials" "${APT_ESSENTIALS[*]}" N N
+    apt_install_packages "essentials" "${APT_ESSENTIALS[*]}" N
 
 }
 
@@ -334,19 +337,21 @@ EOF
 }
 
 # use this when you don't need the latest package index files
+# Reviewed: 2019-11-05
 function apt_mark_cache_clean() {
 
-    [ "$APT_CACHE_DIRTY" -ne "0" ] && apt_refresh_packages && APT_CACHE_DIRTY=0
+    [ "$APT_CACHE_DIRTY" -eq "0" ] || { apt_refresh_packages && APT_CACHE_DIRTY=0; }
 
 }
 
+# Reviewed: 2019-11-05
 function apt_make_cache_clean() {
 
     if [ "$APT_CACHE_DIRTY" -ne "0" ]; then
 
-        console_message "Updating package lists..." "" "$CYAN"
-
         apt_check_sources
+
+        console_message "Updating apt package indexes" "" "$CYAN"
 
         sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || die
 
