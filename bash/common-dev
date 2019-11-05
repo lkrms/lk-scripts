@@ -254,21 +254,24 @@ function dev_apply_system_config() {
 
         if [ "${XDG_CURRENT_DESKTOP:-}" = "XFCE" ]; then
 
-            if command_exists xscreensaver; then
+            # if command_exists xscreensaver; then
 
-                safe_symlink "$ROOT_DIR/linux/xscreensaver-watch.py" "$HOME/.local/bin/xscreensaver-watch.py" &&
-                    safe_symlink "$ROOT_DIR/linux/xscreensaver-watch.py.desktop" "$HOME/.config/autostart/xscreensaver-watch.py.desktop" || true
+            #     safe_symlink "$ROOT_DIR/linux/xscreensaver-watch.py" "$HOME/.local/bin/xscreensaver-watch.py" &&
+            #         safe_symlink "$ROOT_DIR/linux/xscreensaver-watch.py.desktop" "$HOME/.config/autostart/xscreensaver-watch.py.desktop" || true
 
-            fi
+            # fi
 
             safe_symlink "/usr/share/applications/plank.desktop" "$HOME/.config/autostart/plank.desktop" || true
+
+        else
+
+            freedesktop_disable_autostart caffeine
+            safe_symlink "/usr/share/applications/caffeine-indicator.desktop" "$HOME/.config/autostart/caffeine-indicator.desktop" || true
 
         fi
 
         freedesktop_disable_autostart blueman
-        freedesktop_disable_autostart caffeine
         freedesktop_disable_autostart update-notifier
-        safe_symlink "/usr/share/applications/caffeine-indicator.desktop" "$HOME/.config/autostart/caffeine-indicator.desktop" || true
         safe_symlink "/usr/share/applications/guake.desktop" "$HOME/.config/autostart/guake.desktop" || true
         safe_symlink "/usr/share/applications/stretchly.desktop" "$HOME/.config/autostart/stretchly.desktop" || true
         command_exists rescuetime && safe_symlink "$ROOT_DIR/linux/rescuetime.desktop" "$HOME/.config/autostart/rescuetime.desktop" || true

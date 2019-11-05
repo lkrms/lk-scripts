@@ -20,7 +20,7 @@ assert_not_root
 
     disable_update_motd
 
-    # apply all available preferences in $CONFIG_DIR/apt
+    # apply all available preferences in $CONFIG_DIR/apt/preferences.d
     apt_apply_preferences
 
     safe_symlink "$CONFIG_DIR/apt.conf" "/etc/apt/apt.conf.d/90-linacreative" Y ||
@@ -102,119 +102,119 @@ EOF
 
     apt_install_packages "application dependencies" "${DESKTOP_PREREQ[*]}" N
 
-    apt_install_packages "performance monitoring" "\
-auditd \
-iotop \
-nethogs \
-sysstat \
-" N
+    DESKTOP_ESSENTIALS=(
+        # basics
+        copyq
+        deepin-screenshot
+        evolution
+        firefox
+        galculator
+        geany
+        ghostwriter
+        gimp
+        gnome-calendar
+        google-chrome-stable
+        inkscape
+        keepassxc
+        libreoffice
+        nextcloud-client
+        qpdfview
+        remmina
+        scribus
+        skypeforlinux
+        speedcrunch
+        spotify-client
+        transmission
+        typora
 
-    apt_install_packages "load testing" "\
-fio \
-trickle \
-" N
+        # PDF
+        ghostscript
+        mupdf
+        mupdf-tools
+        pandoc
+        pstoedit
+        texlive
+        texlive-luatex
 
-    apt_install_packages "desktop essentials" "\
-abcde \
-audacity \
-beets \
-blueman \
-btscanner \
-$([ "${XDG_CURRENT_DESKTOP:-}" = "XFCE" ] || printf '%s' "caffeine") \
-catfish \
-code \
-copyq \
-dconf-cli \
-dconf-editor \
-deepin-screenshot \
-evolution \
-evtest \
-eyed3 \
-firefox \
-fonts-symbola \
-galculator \
-gconf-editor \
-geany \
-ghostwriter \
-gimp \
-git-cola \
-glmark2 \
-gnome-calendar \
-google-chrome-stable \
-gparted \
-gssp-recoll \
-guake \
-guvcview \
-handbrake-cli \
-handbrake-gtk \
-hfsprogs \
-indicator-multiload \
-inkscape \
-keepassxc \
-lame \
-libdvd-pkg! \
-libreoffice \
-libsecret-tools \
-makemkv-bin \
-makemkv-oss \
-meld \
-mkvtoolnix \
-mkvtoolnix-gui \
-msmtp \
-nextcloud-client \
-python3-xlib \
-qpdfview \
-recoll \
-remmina \
-s-nail \
-samba \
-scribus \
-seahorse \
-skypeforlinux \
-speedcrunch \
-spotify-client \
-sublime-text \
-sxhkd \
-syslinux-utils \
-t1-xfree86-nonfree \
-transmission \
-ttf-xfree86-nonfree \
-typora \
-usb-creator-gtk \
-vainfo \
-vlc \
-wmctrl \
-x11vnc \
-xautomation \
-xclip \
-xdotool \
-xfonts-100dpi \
-xfonts-75dpi \
-youtube-dl \
-"
+        # search
+        catfish
+        gssp-recoll
+        recoll
 
-    apt_install_packages "PDF tools" "\
-ghostscript \
-mupdf \
-mupdf-tools \
-pandoc \
-pstoedit \
-texlive \
-texlive-luatex \
-"
+        # photography
+        geeqie
+        rapid-photo-downloader
+        trimage
 
-    apt_install_packages "photography" "\
-geeqie \
-rapid-photo-downloader \
-trimage \
-"
+        # multimedia
+        abcde
+        audacity
+        beets
+        eyed3
+        handbrake-cli
+        handbrake-gtk
+        lame
+        libdvd-pkg!
+        makemkv-bin
+        makemkv-oss
+        mkvtoolnix
+        mkvtoolnix-gui
+        vlc
+        youtube-dl
+
+        # system
+        dconf-cli
+        dconf-editor
+        gconf-editor
+        glmark2
+        gparted
+        guake
+        hfsprogs
+        libsecret-tools
+        samba
+        seahorse
+        syslinux-utils
+        usb-creator-gtk
+        vainfo
+        x11vnc
+
+        # hardware
+        blueman
+        btscanner
+        guvcview
+
+        # fonts
+        fonts-symbola
+        t1-xfree86-nonfree
+        ttf-xfree86-nonfree
+        xfonts-100dpi
+        xfonts-75dpi
+
+        # automation
+        evtest
+        python3-xlib
+        sxhkd
+        wmctrl
+        xautomation
+        xclip
+        xdotool
+
+    )
+
+    [ "${XDG_CURRENT_DESKTOP:-}" = "XFCE" ] || DESKTOP_ESSENTIALS+=("caffeine")
+
+    apt_install_packages "desktop essentials" "${DESKTOP_ESSENTIALS[*]}"
 
     apt_install_packages "development" "\
 awf \
 build-essential \
 cmake \
+code \
 dbeaver-ce \
 git \
+git-cola \
+meld \
+msmtp \
 nodejs \
 php \
 php-bcmath \
@@ -251,8 +251,11 @@ python3-mysqldb \
 python3-pip \
 python3-requests \
 ruby \
+s-nail \
 shellcheck \
 sublime-merge \
+sublime-text \
+trickle \
 yarn \
 "
 
@@ -301,69 +304,69 @@ xscreensaver-screensaver-webcollage \
 
         ;;
 
-    Pantheon)
+        #     Pantheon)
 
-        apt_install_packages "elementary OS extras" "com.github.cassidyjames.ideogram gnome-tweaks libgtk-3-dev"
+        #         apt_install_packages "elementary OS extras" "com.github.cassidyjames.ideogram gnome-tweaks libgtk-3-dev"
 
-        if ! has_argument "--skip-debs" && { apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Restore elementary OS system tray indicators?" Y Y; }; then
+        #         if ! has_argument "--skip-debs" && { apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Restore elementary OS system tray indicators?" Y Y; }; then
 
-            # because too many apps don't play by the rules (see: https://www.reddit.com/r/elementaryos/comments/aghyiq/system_tray/)
-            mkdir -p "$HOME/.config/autostart"
-            cp -f "/etc/xdg/autostart/indicator-application.desktop" "$HOME/.config/autostart/"
-            sed "${SED_IN_PLACE_ARGS[@]}" 's/^OnlyShowIn.*/OnlyShowIn=Unity;GNOME;Pantheon;/' "$HOME/.config/autostart/indicator-application.desktop"
+        #             # because too many apps don't play by the rules (see: https://www.reddit.com/r/elementaryos/comments/aghyiq/system_tray/)
+        #             mkdir -p "$HOME/.config/autostart"
+        #             cp -f "/etc/xdg/autostart/indicator-application.desktop" "$HOME/.config/autostart/"
+        #             sed "${SED_IN_PLACE_ARGS[@]}" 's/^OnlyShowIn.*/OnlyShowIn=Unity;GNOME;Pantheon;/' "$HOME/.config/autostart/indicator-application.desktop"
 
-            apt_install_deb "http://ppa.launchpad.net/elementary-os/stable/ubuntu/pool/main/w/wingpanel-indicator-ayatana/wingpanel-indicator-ayatana_2.0.3+r27+pkg17~ubuntu0.4.1.1_amd64.deb"
+        #             apt_install_deb "http://ppa.launchpad.net/elementary-os/stable/ubuntu/pool/main/w/wingpanel-indicator-ayatana/wingpanel-indicator-ayatana_2.0.3+r27+pkg17~ubuntu0.4.1.1_amd64.deb"
 
-            if [ -e "$HOME/.themes/elementary/gtk-3.0/gtk.css" ]; then
+        #             if [ -e "$HOME/.themes/elementary/gtk-3.0/gtk.css" ]; then
 
-                trash-put "$HOME/.themes/elementary/gtk-3.0/gtk.css"
+        #                 trash-put "$HOME/.themes/elementary/gtk-3.0/gtk.css"
 
-            fi
+        #             fi
 
-            mkdir -p "$HOME/.themes/elementary/gtk-3.0"
+        #             mkdir -p "$HOME/.themes/elementary/gtk-3.0"
 
-            cat <<EOF >"$HOME/.themes/elementary/gtk-3.0/gtk.css"
-@import url("/usr/share/themes/elementary/gtk-3.0/gtk.css");
+        #             cat <<EOF >"$HOME/.themes/elementary/gtk-3.0/gtk.css"
+        # @import url("/usr/share/themes/elementary/gtk-3.0/gtk.css");
 
-.composited-indicator.horizontal {
-    padding: 0;
-}
+        # .composited-indicator.horizontal {
+        #     padding: 0;
+        # }
 
-.composited-indicator.horizontal .composited-indicator {
-    padding: 3px;
-}
-EOF
+        # .composited-indicator.horizontal .composited-indicator {
+        #     padding: 3px;
+        # }
+        # EOF
 
-        fi
+        #         fi
 
-        # use a subshell to protect existing D-Bus environment variables
-        (
-            . "$SUBSHELL_SCRIPT_PATH" || exit
+        #         # use a subshell to protect existing D-Bus environment variables
+        #         (
+        #             . "$SUBSHELL_SCRIPT_PATH" || exit
 
-            SUDO_EXTRA=(-nu lightdm -H env -i)
+        #             SUDO_EXTRA=(-nu lightdm -H env -i)
 
-            DBUS_LAUNCH_CODE="$(sudo "${SUDO_EXTRA[@]}" dbus-launch --sh-syntax)"
+        #             DBUS_LAUNCH_CODE="$(sudo "${SUDO_EXTRA[@]}" dbus-launch --sh-syntax)"
 
-            # shellcheck disable=SC1091
-            . /dev/stdin <<<"$DBUS_LAUNCH_CODE"
+        #             # shellcheck disable=SC1091
+        #             . /dev/stdin <<<"$DBUS_LAUNCH_CODE"
 
-            SUDO_EXTRA+=("DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS")
+        #             SUDO_EXTRA+=("DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS")
 
-            SLEEP_INACTIVE_AC_TIMEOUT="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout)"
-            SLEEP_INACTIVE_AC_TYPE="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type)"
+        #             SLEEP_INACTIVE_AC_TIMEOUT="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout)"
+        #             SLEEP_INACTIVE_AC_TYPE="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type)"
 
-            if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" ] && [ "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked and using AC power?" Y Y; then
+        #             if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" ] && [ "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked and using AC power?" Y Y; then
 
-                sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 &&
-                    sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing ||
-                    console_message "Unable to apply power settings for ${BOLD}lightdm${RESET} user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" "$BOLD" "$RED" >&2
+        #                 sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 &&
+        #                     sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing ||
+        #                     console_message "Unable to apply power settings for ${BOLD}lightdm${RESET} user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" "$BOLD" "$RED" >&2
 
-            fi
+        #             fi
 
-            sudo "${SUDO_EXTRA[@]}" kill "$DBUS_SESSION_BUS_PID"
-        )
+        #             sudo "${SUDO_EXTRA[@]}" kill "$DBUS_SESSION_BUS_PID"
+        #         )
 
-        ;;
+        #         ;;
 
     esac
 
@@ -423,7 +426,7 @@ EOF
 
     fi
 
-    if apt_package_installed "samba"; then
+    if false && apt_package_installed "samba"; then
 
         console_message "Configuring Samba..." "" "$CYAN"
 
@@ -446,7 +449,7 @@ EOF
 
     fi
 
-    if apt_package_installed "ntp"; then
+    if false && apt_package_installed "ntp"; then
 
         console_message "Configuring NTP..." "" "$CYAN"
 
@@ -474,7 +477,7 @@ EOF
 
     fi
 
-    if apt_package_installed "apache2"; then
+    if false && apt_package_installed "apache2"; then
 
         console_message "Configuring Apache..." "" "$CYAN"
 
@@ -511,7 +514,7 @@ EOF
 
     fi
 
-    if apt_package_installed "mariadb-server"; then
+    if false && apt_package_installed "mariadb-server"; then
 
         console_message "Configuring MariaDB..." "" "$CYAN"
 
@@ -616,7 +619,7 @@ EOF
     if apt_package_installed "cups-browsed"; then
 
         # prevent AirPrint printers being added automatically
-        sudo systemctl stop cups-browsed >/dev/null 2>&1 && sudo systemctl disable cups-browsed >/dev/null 2>&1 || die "Error disabling cups-browsed service"
+        sudo systemctl disable --now cups-browsed >/dev/null 2>&1 || die "Error disabling cups-browsed service"
 
     fi
 
@@ -626,8 +629,7 @@ EOF
 
         groups | grep -Eq '(\s|^)(vboxusers)(\s|$)' || sudo adduser "$(id -un)" "vboxusers"
 
-        sudo systemctl stop vboxautostart-service >/dev/null 2>&1 &&
-            sudo systemctl disable vboxautostart-service >/dev/null 2>&1 ||
+        sudo systemctl disable --now vboxautostart-service >/dev/null 2>&1 ||
             die "Error disabling vboxautostart-service service"
 
         VBoxManage setproperty loghistorycount 20
@@ -640,11 +642,11 @@ EOF
 
     fi
 
-    if apt_package_installed "libgtk-3-dev"; then
+    # if apt_package_installed "libgtk-3-dev"; then
 
-        gsettings set org.gtk.Settings.Debug enable-inspector-keybinding true
+    #     gsettings set org.gtk.Settings.Debug enable-inspector-keybinding true
 
-    fi
+    # fi
 
     # workaround for Synergy bug: https://github.com/symless/synergy-core/issues/6481
     HOLD_PACKAGES=(libx11-6 libx11-data libx11-dev libx11-doc libx11-xcb-dev libx11-xcb1)
@@ -691,11 +693,11 @@ EOF
 
     "$ROOT_DIR/bash/dev-system-update.sh"
 
-    apt_purge --no-y
+    apt_purge
 
-    ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | grep -Eo '[^/]+$' | sort | uniq))
-    console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "" "$BLUE"
-    COLUMNS="$(tput cols)" && apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")" || apt_pretty_packages "${ALL_PACKAGES[*]}" Y
+    # ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | grep -Eo '[^/]+$' | sort | uniq))
+    # console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "" "$BLUE"
+    # COLUMNS="$(tput cols)" && apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")" || apt_pretty_packages "${ALL_PACKAGES[*]}" Y
 
     if apt_package_available "linux-generic-hwe-$DISTRIB_RELEASE" && apt_package_available "xserver-xorg-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "xserver-xorg-hwe-$DISTRIB_RELEASE"; then
 

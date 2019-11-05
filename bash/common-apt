@@ -8,17 +8,17 @@ function apt_apply_preferences() {
 
     local IFS PREF PREFS=("$@")
 
-    [ "$#" -gt "0" ] || ! [ -d "$CONFIG_DIR/apt" ] || {
+    [ "$#" -gt "0" ] || ! [ -d "$CONFIG_DIR/apt/preferences.d" ] || {
         IFS=$'\n'
-        PREFS=($(find "$CONFIG_DIR/apt" -maxdepth 1 -type f -exec basename '{}' \;))
+        PREFS=($(find "$CONFIG_DIR/apt/preferences.d" -maxdepth 1 -type f -exec basename '{}' \;))
         unset IFS
     }
 
-    [ "${#PREFS[@]}" -eq "0" ] || console_message "Applying apt preferences:" "${PREFS[*]}" "$CYAN"
+    [ "${#PREFS[@]}" -eq "0" ] || console_message "Applying apt preferences:" "${NO_WRAP}${PREFS[*]}${WRAP}" "$CYAN"
 
     for PREF in "${PREFS[@]}"; do
 
-        safe_symlink "$CONFIG_DIR/apt/$PREF" "/etc/apt/preferences.d/linac-$(basename "$PREF")" Y
+        safe_symlink "$CONFIG_DIR/apt/preferences.d/$PREF" "/etc/apt/preferences.d/linac-$(basename "$PREF")" Y
 
     done
 
@@ -438,7 +438,7 @@ function apt_install_packages() {
 
     apt_make_cache_clean
 
-    console_message "Checking $1..." "" "$CYAN"
+    console_message "Checking apt packages:" "$1" "$CYAN"
 
     for p in $2; do
 
@@ -722,7 +722,7 @@ function do_apt_install_deb() {
 
     mkdir -p "$APT_DEB_PATH" && pushd "$APT_DEB_PATH" >/dev/null || die "Error: unable to access $APT_DEB_PATH"
 
-    console_message "Downloading $# deb $(single_or_plural "$#" package packages)..." "" "$CYAN"
+    console_message "Downloading $# deb $(single_or_plural "$#" package packages)" "" "$CYAN"
 
     # allow "429 Too Many Requests"
     # shellcheck disable=SC2034
@@ -930,7 +930,7 @@ function apt_upgrade_all() {
 
     apt_make_cache_clean
 
-    console_message "Installing all available package updates..." "" "$GREEN"
+    console_message "Installing all available apt package updates" "" "$GREEN"
 
     sudo apt-get "${APT_GET_OPTIONS[@]}" --fix-missing dist-upgrade && apt_refresh_packages || die
 
@@ -1044,8 +1044,14 @@ APT_ESSENTIALS=(
     # MONITORING
     # atop: because you never know you need historical performance data--until you do
     atop
+    auditd
     glances
-    sysdig
+    htop
+    iftop
+    iotop
+    nethogs
+    nload
+    sysstat
 
     # HARDWARE
     hwinfo
