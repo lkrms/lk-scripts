@@ -1002,16 +1002,18 @@ APT_SKIPPED=()
 APT_PREREQ=(
     apt-transport-https
     aptitude
+    coreutils
+    curl
     debconf-utils
     debsums
     distro-info
     dmidecode
     software-properties-common
+    wget
 )
 
 APT_ESSENTIALS=(
     bc
-    coreutils
     pv
     vim
 
@@ -1030,7 +1032,6 @@ APT_ESSENTIALS=(
     # net-tools: e.g. netstat
     # radvdump: dumps IPv6 router advertisements
     cifs-utils
-    curl
     lftp
     net-tools
     ntp
@@ -1038,7 +1039,6 @@ APT_ESSENTIALS=(
     openssh-server
     radvdump
     traceroute
-    wget
     whois
 
     # MONITORING
