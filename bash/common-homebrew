@@ -286,6 +286,7 @@ if is_macos; then
         homebrew/cask-fonts
         homebrew/cask-versions
         adoptopenjdk/openjdk
+        federico-terzi/espanso
         mongodb/brew
     )
 

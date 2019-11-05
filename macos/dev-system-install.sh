@@ -12,18 +12,21 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 assert_is_macos
 assert_not_root
 
-offer_sudo_password_bypass
+# allow this script to be changed while it's running
+{
 
-# install Homebrew if needed
-brew_check
+    offer_sudo_password_bypass
 
-# don't force a "brew update" -- Homebrew does this often enough automatically
-brew_mark_cache_clean
+    # install Homebrew if needed
+    brew_check
 
-# add any missing taps
-brew_check_taps
+    # don't force a "brew update" -- Homebrew does this often enough automatically
+    brew_mark_cache_clean
 
-brew_queue_formulae "prerequisites" "\
+    # add any missing taps
+    brew_check_taps
+
+    brew_queue_formulae "prerequisites" "\
 coreutils \
 gawk \
 gnu-sed \
@@ -41,18 +44,19 @@ unison \
 wget \
 " N
 
-brew_process_queue
+    brew_process_queue
 
-brew_formula_installed node || brew link --force --overwrite node@8
+    brew_formula_installed node || brew link --force --overwrite node@8
 
-brew_queue_formulae "essentials" "\
+    brew_queue_formulae "essentials" "\
 exiftool \
+federico-terzi/espanso/espanso \
 imagemagick \
 openconnect \
 youtube-dl \
 "
 
-brew_queue_casks "desktop essentials" "\
+    brew_queue_casks "desktop essentials" "\
 acorn \
 balenaetcher \
 firefox \
@@ -82,9 +86,9 @@ typora \
 vlc \
 "
 
-brew_remove_casks "owncloud"
+    brew_remove_casks "owncloud"
 
-brew_queue_casks "proprietary essentials" "\
+    brew_queue_casks "proprietary essentials" "\
 anylist \
 caprine \
 microsoft-teams \
@@ -95,14 +99,14 @@ spotify \
 twist \
 "
 
-brew_queue_casks "Microsoft Office" "microsoft-office"
+    brew_queue_casks "Microsoft Office" "microsoft-office"
 
-# ghostscript: PDF/PostScript processor
-# mupdf-tools: PDF manipulation tools
-# pandoc: text conversion tool (e.g. Markdown to PDF)
-# poppler: PDF tools like pdfimages
-# pstoedit: converts PDF/PostScript to vector formats
-brew_queue_formulae "PDF tools" "\
+    # ghostscript: PDF/PostScript processor
+    # mupdf-tools: PDF manipulation tools
+    # pandoc: text conversion tool (e.g. Markdown to PDF)
+    # poppler: PDF tools like pdfimages
+    # pstoedit: converts PDF/PostScript to vector formats
+    brew_queue_formulae "PDF tools" "\
 ghostscript \
 mupdf-tools \
 pandoc \
@@ -110,27 +114,27 @@ poppler \
 pstoedit \
 "
 
-if brew_formula_installed_or_queued "pandoc"; then
+    if brew_formula_installed_or_queued "pandoc"; then
 
-    brew_queue_casks "PDF tools" "\
+        brew_queue_casks "PDF tools" "\
 basictex \
 " N
 
-fi
+    fi
 
-brew_queue_formulae "OCR tools" "\
+    brew_queue_formulae "OCR tools" "\
 ocrmypdf \
 tesseract \
 tesseract-lang \
 "
 
-brew_queue_casks "photography" "\
+    brew_queue_casks "photography" "\
 adobe-dng-converter \
 displaycal \
 imageoptim \
 "
 
-brew_queue_formulae "development" "\
+    brew_queue_formulae "development" "\
 ant \
 autoconf \
 cmake \
@@ -141,9 +145,9 @@ shellcheck \
 shfmt \
 "
 
-brew_remove_formulae "composer"
+    brew_remove_formulae "composer"
 
-brew_queue_casks "development" "\
+    brew_queue_casks "development" "\
 android-studio \
 db-browser-for-sqlite \
 dbeaver-community \
@@ -156,53 +160,57 @@ sublime-merge \
 visual-studio-code \
 "
 
-brew_queue_formulae "development services" "\
+    brew_queue_formulae "development services" "\
 httpd \
 mariadb \
 mongodb/brew/mongodb-community@4.0 \
 "
 
-brew_queue_casks "PowerShell" "powershell"
+    brew_queue_casks "PowerShell" "powershell"
 
-brew_queue_casks "VirtualBox" "\
+    brew_queue_casks "VirtualBox" "\
 virtualbox \
 virtualbox-extension-pack \
 "
 
-brew_queue_casks "Brother P-touch Editor" "\
+    brew_queue_casks "Brother P-touch Editor" "\
 brother-p-touch-editor \
 brother-p-touch-update-software \
 "
 
-brew_queue_formulae "Db2 dependencies" "\
+    brew_queue_formulae "Db2 dependencies" "\
 gcc@7 \
 "
 
-if brew_formula_installed_or_queued "httpd"; then
+    if brew_formula_installed_or_queued "httpd"; then
 
-    console_message "Disabling built-in Apache web server..." "" "$CYAN"
-    sudo /usr/sbin/apachectl stop 2>/dev/null || true
+        console_message "Disabling built-in Apache web server..." "" "$CYAN"
+        sudo /usr/sbin/apachectl stop 2>/dev/null || true
 
-fi
+    fi
 
-dev_install_packages Y BREW_INSTALLED
+    dev_install_packages Y BREW_INSTALLED
 
-brew_process_queue
+    brew_process_queue
 
-DEV_JUST_INSTALLED=()
-dev_process_queue DEV_JUST_INSTALLED
+    DEV_JUST_INSTALLED=()
+    dev_process_queue DEV_JUST_INSTALLED
 
-if [ "${#DEV_JUST_INSTALLED[@]}" -gt "0" ]; then
+    if [ "${#DEV_JUST_INSTALLED[@]}" -gt "0" ]; then
 
-    BREW_INSTALLED+=("${DEV_JUST_INSTALLED[@]}")
-    BREW_JUST_INSTALLED+=("${DEV_JUST_INSTALLED[@]}")
+        BREW_INSTALLED+=("${DEV_JUST_INSTALLED[@]}")
+        BREW_JUST_INSTALLED+=("${DEV_JUST_INSTALLED[@]}")
 
-fi
+    fi
 
-# TODO (and same on system update):
-# sudo tlmgr update --self && sudo tlmgr install collection-fontsrecommended || die
-# luaotfload-tool --update || die
+    # TODO (and same on system update):
+    # sudo tlmgr update --self && sudo tlmgr install collection-fontsrecommended || die
+    # luaotfload-tool --update || die
 
-dev_apply_system_config
+    dev_apply_system_config
 
-"$ROOT_DIR/bash/dev-system-update.sh"
+    "$ROOT_DIR/bash/dev-system-update.sh"
+
+    exit
+
+}
