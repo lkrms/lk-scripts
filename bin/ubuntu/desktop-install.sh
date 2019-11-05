@@ -41,6 +41,8 @@ libc6 libraries/restart-without-asking boolean true
 libpam0g libraries/restart-without-asking boolean true
 EOF
 
+    APT_PREREQ+=(trash-cli)
+
     apt_check_prerequisites
     apt_check_essentials
 
@@ -88,7 +90,7 @@ EOF
     DESKTOP_PREREQ=(
 
         # OpenConnect (build) dependencies
-        autoconf automake build-essential gettext libgnutls-dev libproxy-dev libtool libxml2-dev pkg-config vpnc-scripts zlib1g-dev
+        autoconf automake build-essential gettext libgnutls-dev? libgnutls28-dev? libproxy-dev libtool libxml2-dev pkg-config vpnc-scripts zlib1g-dev
 
         # QuickTile dependencies
         python python-dbus python-gtk2 python-setuptools python-wnck? python-xlib
@@ -115,10 +117,8 @@ trickle \
     apt_install_packages "desktop essentials" "\
 abcde \
 audacity \
-awf \
 beets \
 blueman \
-blueproximity \
 btscanner \
 $([ "${XDG_CURRENT_DESKTOP:-}" = "XFCE" ] || printf '%s' "caffeine") \
 catfish \
@@ -162,6 +162,7 @@ mkvtoolnix \
 mkvtoolnix-gui \
 msmtp \
 nextcloud-client \
+python3-xlib \
 qpdfview \
 recoll \
 remmina \
@@ -174,17 +175,15 @@ speedcrunch \
 spotify-client \
 sublime-text \
 sxhkd \
-synaptic \
 syslinux-utils \
 t1-xfree86-nonfree \
-tilix \
 transmission \
-trash-cli \
 ttf-xfree86-nonfree \
 typora \
 usb-creator-gtk \
 vainfo \
 vlc \
+wmctrl \
 x11vnc \
 xautomation \
 xclip \
@@ -211,6 +210,7 @@ trimage \
 "
 
     apt_install_packages "development" "\
+awf \
 build-essential \
 cmake \
 dbeaver-ce \
@@ -287,8 +287,6 @@ plank \
 sox \
 ubuntu-sounds \
 xfce4-battery-plugin \
-xfce4-clipman \
-xfce4-timer-plugin \
 xiccd \
 xscreensaver \
 xscreensaver-data \
@@ -380,69 +378,14 @@ EOF
         apt_install_deb "https://zoom.us/client/latest/zoom_amd64.deb"
 
         DEB_URLS=()
-        IFS=$'\n'
-
-        # AutoKey
-        DEB_URLS+=($(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            get_urls_from_url "https://api.github.com/repos/autokey/autokey/releases/latest" 'autokey-(common|gtk).*\.deb$' | head -n2
-        ))
-
-        # Boostnote
-        DEB_URLS+=("$(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            get_urls_from_url "https://api.github.com/repos/BoostIO/boost-releases/releases/latest" '_amd64\.deb$' | head -n1
-        )")
-
-        # Caprine
-        DEB_URLS+=("$(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            get_urls_from_url "https://api.github.com/repos/sindresorhus/caprine/releases/latest" '_amd64\.deb$' | head -n1
-        )")
-
-        # Caret Beta
-        DEB_URLS+=("$(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1
-        )")
-
-        # Master PDF Editor
-        DEB_URLS+=("$(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1
-        )")
-
-        # Motion
-        DEB_URLS+=("$(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases/latest" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1
-        )")
-
-        # Notable
-        DEB_URLS+=("$(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            get_urls_from_url "https://api.github.com/repos/notable/notable/releases/latest" '_amd64\.deb$' | head -n1
-        )")
-
-        # Slack
-        DEB_URLS+=("$(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1
-        )")
-
-        # stretchly
-        DEB_URLS+=("$(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1
-        )")
-
-        # Teams for Linux
-        DEB_URLS+=("$(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            get_urls_from_url "https://api.github.com/repos/IsmaelMartinez/teams-for-linux/releases/latest" '_amd64\.deb$' | head -n1
-        )")
-
-        unset IFS
+        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/sindresorhus/caprine/releases/latest" '_amd64\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases/latest" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/notable/notable/releases/latest" '_amd64\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/IsmaelMartinez/teams-for-linux/releases/latest" '_amd64\.deb$' | head -n1)")
 
         for DEB_URL in "${DEB_URLS[@]}"; do
 
@@ -454,28 +397,6 @@ EOF
     fi
 
     dev_install_packages Y APT_INSTALLED
-
-    # shellcheck disable=SC2034
-    SNAPS_INSTALLED=($(sudo snap list 2>/dev/null))
-    SNAPS_INSTALL=()
-
-    for s in twist; do
-
-        in_array "$s" SNAPS_INSTALLED && APT_INSTALLED+=("$s") || SNAPS_INSTALL+=("$s")
-
-    done
-
-    if [ "${#SNAPS_INSTALL[@]}" -gt "0" ]; then
-
-        console_message "Missing $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps):" "${SNAPS_INSTALL[*]}" "$BOLD" "$MAGENTA"
-
-        if ! get_confirmation "Add the $(single_or_plural ${#SNAPS_INSTALL[@]} snap snaps) listed above?" Y Y; then
-
-            SNAPS_INSTALL=()
-
-        fi
-
-    fi
 
     # we're about to install ntp
     if command_exists timedatectl; then
@@ -631,6 +552,37 @@ EOF
 
     fi
 
+    ESPANSO_PATH="/usr/local/bin/espanso"
+    ESPANSO_TEMP="$TEMP_DIR/espanso"
+    rm -f "$ESPANSO_TEMP"
+
+    console_message "Downloading latest espanso binary" "" "$CYAN"
+    curl -sSL "https://github.com/federico-terzi/espanso/releases/latest/download/espanso-linux.tar.gz" | tar -xz --overwrite -C "$TEMP_DIR" && [ -x "$ESPANSO_TEMP" ] || die "Error downloading espanso"
+
+    if ! cmp -s "$ESPANSO_PATH" "$ESPANSO_TEMP"; then
+
+        console_message "Installing latest espanso" "" "$CYAN"
+
+        if user_service_running espanso; then
+
+            espanso stop
+            rm -f "$ESPANSO_PATH"
+            mv -v "$ESPANSO_TEMP" "$ESPANSO_PATH"
+            espanso start
+
+        else
+
+            rm -f "$ESPANSO_PATH"
+            mv -v "$ESPANSO_TEMP" "$ESPANSO_PATH"
+
+        fi
+
+    else
+
+        rm -f "$ESPANSO_TEMP"
+
+    fi
+
     if ! sudo -H pip list --format freeze 2>/dev/null | grep -E '^QuickTile==' >/dev/null; then
 
         sudo -H pip install "https://github.com/ssokolow/quicktile/archive/master.zip" && {
@@ -656,16 +608,6 @@ EOF
         APT_INSTALLED+=("vpn-slice")
 
     fi
-
-    for i in "${!SNAPS_INSTALL[@]}"; do
-
-        # tolerate errors because snap can be temperamental
-        sudo snap install "${SNAPS_INSTALL[$i]}" && {
-            APT_INSTALLED+=("${SNAPS_INSTALL[$i]}")
-            APT_JUST_INSTALLED+=("${SNAPS_INSTALL[$i]}")
-        } || true
-
-    done
 
     # final tasks
 
