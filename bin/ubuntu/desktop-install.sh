@@ -8,6 +8,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../../bash/common"
 . "$SCRIPT_DIR/../../bash/common-apt"
 . "$SCRIPT_DIR/../../bash/common-dev"
+. "$SCRIPT_DIR/../../bash/common-homebrew"
 
 assert_is_ubuntu
 assert_has_gui
@@ -44,7 +45,6 @@ EOF
     APT_PREREQ+=(trash-cli)
 
     apt_check_prerequisites
-    apt_check_essentials
 
     MEMORY_SIZE_MB=-1
     LOW_RAM=0
@@ -99,6 +99,8 @@ EOF
 
     # otherwise pip, pip3, npm, composer packages will be skipped until next run
     apt_install_packages "development prerequisites" "nodejs php-cli python-pip python3-pip" Y N
+
+    apt_check_essentials
 
     DESKTOP_PREREQ=(
 
@@ -421,6 +423,14 @@ xscreensaver-screensaver-webcollage \
 
     fi
 
+    brew_check
+    brew_mark_cache_clean
+    brew_check_taps
+
+    brew_queue_formulae "development" "
+shfmt \
+"
+
     apt_process_queue
 
     # critical post-apt tasks
@@ -557,6 +567,8 @@ EOF
     fi
 
     # non-apt installations
+
+    brew_process_queue
 
     DEV_JUST_INSTALLED=()
     dev_process_queue DEV_JUST_INSTALLED
