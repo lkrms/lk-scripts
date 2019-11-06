@@ -42,7 +42,10 @@ libc6 libraries/restart-without-asking boolean true
 libpam0g libraries/restart-without-asking boolean true
 EOF
 
-    APT_PREREQ+=(trash-cli)
+    APT_PREREQ+=(
+        ruby
+        trash-cli
+    )
 
     apt_check_prerequisites
 
