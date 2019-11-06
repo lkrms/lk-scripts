@@ -105,14 +105,11 @@
 
     else
 
-        if ! is_root && [ -d "/home/linuxbrew/.linuxbrew" ]; then
+        if ! is_root && [ -x "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
 
-            echo 'eval $(/home/linuxbrew/.linuxbrew/bin/brew shellenv)'
+            echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"'
 
-            set +u
-            # shellcheck disable=SC2046
-            eval $(/home/linuxbrew/.linuxbrew/bin/brew shellenv)
-            set -u
+            load_linuxbrew || true
 
         fi
 

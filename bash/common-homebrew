@@ -18,7 +18,12 @@ function brew_check() {
 
         elif is_linux; then
 
-            sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)" || die
+            load_linuxbrew || true
+
+            command_exists brew || {
+                sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)" || die
+                load_linuxbrew || die "Unable to bootstrap Homebrew"
+            }
 
         else
 

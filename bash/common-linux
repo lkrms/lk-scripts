@@ -108,3 +108,18 @@ function disable_update_motd() {
     done
 
 }
+
+# Reviewed: 2019-11-06
+function load_linuxbrew() {
+
+    local SHELLENV
+
+    [ -x "/home/linuxbrew/.linuxbrew/bin/brew" ] || return
+
+    SHELLENV="$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" || die
+
+    set +u
+    eval "$SHELLENV"
+    set -u
+
+}
