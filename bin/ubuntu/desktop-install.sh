@@ -46,13 +46,23 @@ EOF
     apt_check_prerequisites
     apt_check_essentials
 
-    MEMORY_SIZE_MB="$(get_memory_size)"
+    MEMORY_SIZE_MB=-1
     LOW_RAM=0
 
-    [ "$MEMORY_SIZE_MB" -ge "8192" ] || {
-        LOW_RAM=1
-        console_message "Because this system has less than 8GB of RAM, some packages will not be offered" "" "$CYAN"
-    }
+    if ! is_virtual; then
+
+        MEMORY_SIZE_MB="$(get_memory_size)"
+
+        [ "$MEMORY_SIZE_MB" -ge "8192" ] || {
+            LOW_RAM=1
+            console_message "Because this system has less than 8GB of RAM, some packages will not be offered" "" "$RED"
+        }
+
+    else
+
+        console_message "Because this is a virtual machine, some packages will not be offered" "" "$RED"
+
+    fi
 
     # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
     apt_register_ppa "caffeine-developers/ppa" "caffeine"
@@ -279,7 +289,7 @@ mongodb-org \
 
     fi
 
-    [ "$LOW_RAM" -eq "1" ] || apt_install_packages "VirtualBox" "virtualbox-6.0"
+    [ "$LOW_RAM" -eq "1" ] || is_virtual || apt_install_packages "VirtualBox" "virtualbox-6.0"
     [ "$LOW_RAM" -eq "1" ] || apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
     case "${XDG_CURRENT_DESKTOP:-}" in

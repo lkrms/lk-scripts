@@ -53,14 +53,14 @@ function apt_refresh_packages() {
 function apt_package_installed() {
 
     apt_make_cache_clean
-    echo "$APT_INSTALLED_PACKAGES" | grep -F "$1" >/dev/null 2>&1
+    echo "$APT_INSTALLED_PACKAGES" | grep -Fx "$1" >/dev/null 2>&1
 
 }
 
 # Reviewed: 2019-11-03
 function apt_package_just_installed() {
 
-    printf '%s\n' "${APT_JUST_INSTALLED[@]}" | grep -F "$1" >/dev/null 2>&1
+    printf '%s\n' "${APT_JUST_INSTALLED[@]}" | grep -Fx "$1" >/dev/null 2>&1
 
 }
 
@@ -68,15 +68,16 @@ function apt_package_just_installed() {
 function apt_package_available() {
 
     apt_make_cache_clean
-    echo "$APT_AVAILABLE_PACKAGES" | grep -F "$1" >/dev/null 2>&1
+    echo "$APT_AVAILABLE_PACKAGES" | grep -Fx "$1" >/dev/null 2>&1
 
 }
 
 # Reviewed: 2019-11-03
 function apt_describe_packages() {
 
-    local IFS PACKAGES COLOURS="$BOLD" PATTERN
+    local IFS PACKAGES COLOURS="$BOLD" PATTERN RESULTS RESULT_NAMES NAME
 
+    # shellcheck disable=SC2206
     PACKAGES=($1) || die
     shift
 
@@ -92,7 +93,17 @@ function apt_describe_packages() {
 
     # `apt-cache -n search` includes "Provides" values, hence the additional `grep`
     # see: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=98695
-    apt-cache -n search "^$PATTERN\$" | grep -E "^$PATTERN - " | sort | sed -E "s/^([^ ]+) - (.*)\$/${COLOURS}\1:${RESET} \2/"
+    RESULTS="$(apt-cache -n search "^$PATTERN\$" | grep -E "^$PATTERN - ")"
+    RESULT_NAMES="$(echo "$RESULTS" | sed -E "s/^([^ ]+) - /\1/")"
+
+    for NAME in $(comm -13 <(echo "$RESULT_NAMES" | sort) <(printf '%s\n' "${PACKAGES[@]}" | sort)); do
+
+        RESULTS="${RESULTS}\
+${NAME} ${GREY}(no description available)${RESET}"
+
+    done
+
+    echo "$RESULTS" | sort | sed -E "s/^([^ ]+)( - (.*))?\$/${COLOURS}\1:${RESET} \3/" || true
 
 }
 

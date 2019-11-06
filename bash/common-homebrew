@@ -73,14 +73,14 @@ function brew_refresh() {
 function brew_formula_installed() {
 
     brew_make_cache_clean
-    echo "$BREW_INSTALLED_FORMULAE" | grep -F "$1" >/dev/null 2>&1
+    echo "$BREW_INSTALLED_FORMULAE" | grep -Fx "$1" >/dev/null 2>&1
 
 }
 
 function brew_cask_installed() {
 
     brew_make_cache_clean
-    echo "$BREW_INSTALLED_CASKS" | grep -F "$1" >/dev/null 2>&1
+    echo "$BREW_INSTALLED_CASKS" | grep -Fx "$1" >/dev/null 2>&1
 
 }
 
@@ -88,7 +88,7 @@ function brew_formula_just_installed() {
 
     if [ "${#BREW_JUST_INSTALLED[@]}" -gt "0" ]; then
 
-        printf '%s\n' "${BREW_JUST_INSTALLED[@]}" | grep -F "$1" >/dev/null 2>&1
+        printf '%s\n' "${BREW_JUST_INSTALLED[@]}" | grep -Fx "$1" >/dev/null 2>&1
 
     else
 
@@ -104,7 +104,7 @@ function brew_formula_installed_or_queued() {
 
         if [ "${#BREW_FORMULA_QUEUE[@]}" -gt "0" ]; then
 
-            printf '%s\n' "${BREW_FORMULA_QUEUE[@]}" | grep -F "$1" >/dev/null 2>&1
+            printf '%s\n' "${BREW_FORMULA_QUEUE[@]}" | grep -Fx "$1" >/dev/null 2>&1
 
         else
 
@@ -123,7 +123,7 @@ function brew_formula_installed_or_queued() {
 function brew_formula_available() {
 
     brew_make_cache_clean
-    echo "$BREW_AVAILABLE_FORMULAE" | grep -F "$1" >/dev/null 2>&1
+    echo "$BREW_AVAILABLE_FORMULAE" | grep -Fx "$1" >/dev/null 2>&1
 
 }
 
