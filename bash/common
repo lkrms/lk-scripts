@@ -112,6 +112,38 @@ function is_virtual() {
 
 }
 
+# Reviewed: 2019-11-06
+function is_desktop() {
+
+    assert_is_linux
+
+    local CHASSIS_TYPE PORTABLE_CHASSIS_TYPES=(
+
+        # Portable
+        8
+
+        # Laptop
+        9
+
+        # Notebook
+        10
+
+        # Hand Held
+        11
+
+        # Sub Notebook
+        14
+
+    )
+
+    CHASSIS_TYPE="$(</sys/class/dmi/id/chassis_type)" || die
+
+    [ -n "$CHASSIS_TYPE" ] || die "No chassis type"
+
+    ! printf '%s\n' "${PORTABLE_CHASSIS_TYPES[@]}" | grep "^${CHASSIS_TYPE}\$" >/dev/null
+
+}
+
 function assert_is_macos() {
 
     is_macos || die "Error: $(basename "$0") is not supported on this platform (macOS required)"
