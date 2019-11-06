@@ -1,3 +1,3 @@
-Package: bsd-mailx
+Package: bsd-mailx mailutils mailx
 Pin: release *
 Pin-Priority: -10

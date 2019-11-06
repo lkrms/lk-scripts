@@ -244,7 +244,10 @@ function apt_enable_partner_repository() {
 # Usage: apt_register_ppa "the/ppa" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? (Y/n)]
 function apt_register_ppa() {
 
-    local p PREFERENCES=
+    local p PIN PREFERENCES=
+
+    PIN="${1/\//-}"
+    PIN="${PIN%-ppa}"
 
     if [ -n "$2" ]; then
 
@@ -253,11 +256,11 @@ function apt_register_ppa() {
             # exits non-zero on EOF
             IFS= read -rd '' PREFERENCES <<EOF || true
 Package: *
-Pin: release o=LP-PPA-${1/\//-}
+Pin: release o=LP-PPA-$PIN
 Pin-Priority: 400
 
 Package: $2
-Pin: release o=LP-PPA-${1/\//-}
+Pin: release o=LP-PPA-$PIN
 Pin-Priority: 500
 EOF
 
