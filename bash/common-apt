@@ -10,6 +10,7 @@ function apt_apply_preferences() {
 
     [ "$#" -gt "0" ] || ! [ -d "$CONFIG_DIR/apt/preferences.d" ] || {
         IFS=$'\n'
+        # shellcheck disable=SC2207
         PREFS=($(find "$CONFIG_DIR/apt/preferences.d" -maxdepth 1 -type f -exec basename '{}' \;))
         unset IFS
     }
@@ -93,17 +94,16 @@ function apt_describe_packages() {
 
     # `apt-cache -n search` includes "Provides" values, hence the additional `grep`
     # see: https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=98695
-    RESULTS="$(apt-cache -n search "^$PATTERN\$" | grep -E "^$PATTERN - ")"
-    RESULT_NAMES="$(echo "$RESULTS" | sed -E "s/^([^ ]+) - /\1/")"
+    RESULTS="$(apt-cache -n search "^$PATTERN\$" | grep -E "^$PATTERN - ")" || true
+    RESULT_NAMES="$(echo "$RESULTS" | sed -E "s/^([^ ]+) - .*\$/\1/")"
 
     for NAME in $(comm -13 <(echo "$RESULT_NAMES" | sort) <(printf '%s\n' "${PACKAGES[@]}" | sort)); do
 
-        RESULTS="${RESULTS}\
-${NAME} ${GREY}(no description available)${RESET}"
+        RESULTS="${RESULTS:+$RESULTS$'\n'}${NAME}"
 
     done
 
-    echo "$RESULTS" | sort | sed -E "s/^([^ ]+)( - (.*))?\$/${COLOURS}\1:${RESET} \3/" || true
+    echo "$RESULTS" | sort | sed -Ee "s/^([^ ]+) - (.*)\$/${COLOURS}\1:${RESET} \2/" -e "s/^([^ ]+)\$/${COLOURS}\1${RESET}/" || true
 
 }
 
