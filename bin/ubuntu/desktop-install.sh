@@ -181,6 +181,7 @@ EOF
         youtube-dl
 
         # system
+        argyll
         dconf-cli
         dconf-editor
         gconf-editor
