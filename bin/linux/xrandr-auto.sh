@@ -66,7 +66,7 @@ LARGEST_AREA=0
 for i in "${!OUTPUTS[@]}"; do
 
     # extract everything related to this output
-    OUTPUT_INFO="$(echo "$XRANDR_OUTPUT" | gnu_grep -Po '(?<=\\n)'"${OUTPUTS[$i]}"' connected.*?(?=\\n[^[:space:]])')"
+    OUTPUT_INFO="$(echo "$XRANDR_OUTPUT" | gnu_grep -Po '(?<=\\n)'"${OUTPUTS[$i]}"' connected.*?(?=(\\n[^[:space:]])|$)')"
 
     OUTPUT_INFO_LINES="${OUTPUT_INFO//\\n/$'\n'}"
 
