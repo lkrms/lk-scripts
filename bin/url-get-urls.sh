@@ -8,6 +8,6 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../bash/common"
 
-[ "$#" -eq "1" ] || die "Usage: $(basename "$0") <http://url.to/page-with-urls>"
+[ "$#" -ge "1" ] || die "Usage: $(basename "$0") <http://url.to/page-with-urls> [regex to limit results...]"
 
 get_urls_from_url "$@"
