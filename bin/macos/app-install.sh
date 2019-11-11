@@ -7,12 +7,6 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../../bash/common"
 
-if [ "${1:-}" = "--run" ]; then
-
-    shift
-
-fi
-
 [ "$#" -gt "0" ] && are_files "$@" || die "Usage: $(basename "$0") [--run] /path/to/file..."
 
 DRYRUN_BY_DEFAULT=Y

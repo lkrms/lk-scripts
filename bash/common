@@ -37,6 +37,15 @@ trap exit_trap EXIT
 shopt -s expand_aliases
 alias pop_return1='{ popd >/dev/null; return 1; }'
 
+ORIGINAL_DRYRUN_ARGUMENT=
+
+if [[ "${1:-}" =~ --(dry)?run ]]; then
+
+    ORIGINAL_DRYRUN_ARGUMENT="$1"
+    shift
+
+fi
+
 ORIGINAL_BASH_SUBSHELL="$BASH_SUBSHELL"
 ORIGINAL_ARGUMENTS=("$@")
 
@@ -907,7 +916,7 @@ function get_urls_from_url() {
     shift
 
     # from: https://daringfireball.net/2009/11/liberal_regex_for_matching_urls
-    URLS="$(grep -Po '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))' "$TEMP_FILE")" || true
+    URLS="$(gnu_grep -Po '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))' "$TEMP_FILE")" || true
 
     rm -f "$TEMP_FILE"
 
@@ -1027,7 +1036,7 @@ function download_urls() {
 
                 if FILENAME="$(
                     . "$SUBSHELL_SCRIPT_PATH" || exit
-                    echo "$HEADER" | grep -Pio '(?<=^filename=).*' | sed -E 's/^[[:space:]]*("?)(.*)\1[[:space:]]*$/\2/g'
+                    echo "$HEADER" | gnu_grep -Pio '(?<=^filename=).*' | sed -E 's/^[[:space:]]*("?)(.*)\1[[:space:]]*$/\2/g'
                 )"; then
 
                     break
@@ -1205,7 +1214,7 @@ function safe_sed() {
 
 function is_dryrun() {
 
-    has_argument "--dryrun" || { [ "${DRYRUN_BY_DEFAULT:-N}" != "N" ] && ! has_argument "--run"; }
+    [ "$ORIGINAL_DRYRUN_ARGUMENT" = "--dryrun" ] || { [ "${DRYRUN_BY_DEFAULT:-N}" != "N" ] && [ "$ORIGINAL_DRYRUN_ARGUMENT" != "--run" ]; }
 
 }
 
