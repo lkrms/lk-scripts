@@ -902,21 +902,22 @@ function url_decode() {
 # Results are returned in document order without de-duplication.
 #
 # Usage: get_urls_from_url "http://url.to/page-with-urls" [regex to limit results...]
+# Reviewed: 2019-11-11
 function get_urls_from_url() {
 
     local TEMP_FILE URLS PATTERN
 
     TEMP_FILE="$(create_temp_file N)"
 
-    wget -qkO "$TEMP_FILE" "$1" || {
-        rm -f "$TEMP_FILE"
+    wget --quiet --convert-links --output-document "$TEMP_FILE" "$1" || {
+        rm -f "$TEMP_FILE" || true
         die
     }
 
     shift
 
-    # from: https://daringfireball.net/2009/11/liberal_regex_for_matching_urls
-    URLS="$(gnu_grep -Po '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))' "$TEMP_FILE")" || true
+    # scheme:// is required (otherwise pretty much everything would be a 'URL')
+    URLS="$(grep -Eo '\b(([a-zA-Z][-a-zA-Z0-9+.]*):)(//(([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+)(:([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]*))?@)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+|\[([0-9a-fA-F:]+)\])(:([0-9]+))?)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@/]+)?(\?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]+))?(#([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]*))?\b' "$TEMP_FILE")" || true
 
     rm -f "$TEMP_FILE"
 
@@ -932,6 +933,7 @@ function get_urls_from_url() {
 
 # Usage: uri_get_parts "any://valid.uri?with=any#parts" <scheme|username|password|host|ipv6_address|port|path|query|fragment...>
 # See: https://en.wikipedia.org/wiki/Uniform_Resource_Identifier
+# Reviewed: 2019-11-11
 function uri_get_parts() {
 
     local URI="$1" FMT=() EXPR=() PART
@@ -989,7 +991,7 @@ function uri_get_parts() {
 
     done
 
-    gnu_awk '{match($0,/^(([a-zA-Z][-a-zA-Z0-9+.]*):)?(\/\/(([^:\/?#\][@]+)(:([^:\/?#\][@]*))?@)?([^:\/?#\][@]+|\[([0-9a-fA-F:]+)\])(:([0-9]+))?)?([^?#\][]+)?(\?([^#\][]+))?(#([^#\][]*))?/,a);printf "'"$(array_join_by '\n' "${FMT[@]}")"'\n",'"$(array_join_by ',' "${EXPR[@]}")"'}' <<<"$URI"
+    gnu_awk '{match($0,/^(([a-zA-Z][-a-zA-Z0-9+.]*):)?(\/\/(([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+)(:([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]*))?@)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+|\[([0-9a-fA-F:]+)\])(:([0-9]+))?)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@/]+)?(\?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]+))?(#([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]*))?$/,a);printf "'"$(array_join_by '\n' "${FMT[@]}")"'\n",'"$(array_join_by ',' "${EXPR[@]}")"'}' <<<"$URI"
 
 }
 
