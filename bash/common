@@ -689,6 +689,7 @@ function in_array() {
 }
 
 # Usage: array_join_by ":" "${MY_ARRAY[@]}"
+# Reviewed: 2019-11-11
 function array_join_by() {
 
     local SEP ARR
@@ -700,7 +701,7 @@ function array_join_by() {
 
         ARR=("${@/#/$SEP}")
         ARR[0]="$1"
-        printf "%s" "${ARR[@]}"
+        printf '%s' "${ARR[@]}"
 
     fi
 

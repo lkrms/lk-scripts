@@ -169,6 +169,7 @@ EOF
         audacity
         beets
         eyed3
+        ffmpeg
         handbrake-cli
         handbrake-gtk
         lame
@@ -177,8 +178,9 @@ EOF
         makemkv-oss
         mkvtoolnix
         mkvtoolnix-gui
+        mpv
+        rtmpdump
         vlc
-        youtube-dl
 
         # system
         argyll
