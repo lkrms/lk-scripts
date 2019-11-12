@@ -28,7 +28,7 @@ HIDPI_THRESHOLD=144
 XRANDR_OUTPUT="$(xrandr --verbose | sed -E 's/[[:space:]]+$//')" || die "Unable to retrieve current RandR state"
 
 # convert to single line for upcoming greps
-XRANDR_OUTPUT="\\n${XRANDR_OUTPUT//$'\n'/\\n}\\n"
+XRANDR_OUTPUT="\\n${XRANDR_OUTPUT//$'\n'/\\n}"
 
 # extract connected output names
 OUTPUTS=($(echo "$XRANDR_OUTPUT" | gnu_grep -Po '(?<=\\n)([^[:space:]]+)(?= connected)')) || die "No connected outputs"
@@ -102,7 +102,9 @@ for i in "${!OUTPUTS[@]}"; do
     fi
 
     # extract preferred (native) resolution
-    PIXELS=($(echo "$OUTPUT_INFO_LINES" | grep '[[:space:]]+preferred$' | gnu_grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)')) || PIXELS=()
+    PIXELS=($(echo "$OUTPUT_INFO_LINES" | grep -E '[[:space:]]+preferred$' | gnu_grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)')) ||
+        PIXELS=($(echo "$OUTPUT_INFO_LINES" | grep -E '^[[:space:]]+[0-9]+x[0-9]+[[:space:]]' | sort -nr | head -n1 | gnu_grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)')) ||
+        PIXELS=()
 
     if [ "${#PIXELS[@]}" -eq 2 ]; then
 
