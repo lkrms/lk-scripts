@@ -153,6 +153,15 @@ function is_desktop() {
 
 }
 
+# Reviewed: 2019-11-12
+function is_lid_closed() {
+
+    assert_is_linux
+
+    grep -q 'closed$' /proc/acpi/button/lid/*/state
+
+}
+
 function assert_is_macos() {
 
     is_macos || die "Error: $(basename "$0") is not supported on this platform (macOS required)"

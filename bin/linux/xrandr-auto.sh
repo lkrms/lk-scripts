@@ -320,32 +320,44 @@ XFCE)
     echo_run xfconf-query -c displays -p / -rR
     echo_run xfconf-query -c displays -p /Notify -n -t bool -s false
 
+    if ! is_desktop; then
+
+        # suspend by default
+        XFCE4_LID_ACTION=1
+
+        # if more than one output is connected, switch off display
+        [ "${#OUTPUTS[@]}" -le "1" ] || XFCE4_LID_ACTION=0
+
+        echo_run xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/lid-action-on-ac -n -t uint -s "$XFCE4_LID_ACTION"
+
+    fi
+
     "$SCRIPT_DIR/xfce-set-dpi.sh" "$DPI" "$@"
     ;;
 
-*GNOME | Pantheon)
+esac
 
-    if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+
+    if OVERRIDES="$(gsettings get org.gnome.settings-daemon.plugins.xsettings overrides 2>/dev/null)"; then
 
         ((XFT_DPI = 1024 * DPI))
 
-        if OVERRIDES="$(gsettings get org.gnome.settings-daemon.plugins.xsettings overrides)"; then
+        OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Gdk/WindowScalingFactor" "$SCALING_FACTOR")"
+        OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Xft/DPI" "$XFT_DPI")"
 
-            OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Gdk/WindowScalingFactor" "$SCALING_FACTOR")"
-            OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Xft/DPI" "$XFT_DPI")"
+        echo_run gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
 
-            echo_run gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
+    fi
 
-        fi
+    if gsettings get org.gnome.desktop.interface scaling-factor >/dev/null 2>&1; then
 
         echo_run gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
         echo_run gsettings set org.gnome.desktop.interface text-scaling-factor "$DPI_MULTIPLIER" || true
 
     fi
 
-    ;;
-
-esac
+fi
 
 if ! is_root; then
 

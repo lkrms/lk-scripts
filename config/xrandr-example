@@ -93,7 +93,11 @@ case "${XDG_CURRENT_DESKTOP:-}" in
         # 1080p also connected?
         if [ "$EDID_DISPLAY_2_ACTIVE" -eq "1" ]; then
 
-            if [ "${XRANDR_ALLOW_SCALING:-0}" -eq "1" ]; then
+            if ! is_desktop && is_lid_closed; then
+
+                EDID_DISPLAY_2_OPTIONS+=(--off)
+
+            elif [ "${XRANDR_ALLOW_SCALING:-0}" -eq "1" ]; then
 
                 # "looks like 1920x1080" - i.e. scale this output to appear normal despite 1.5x scaling
                 # positioned to the left of display 0
