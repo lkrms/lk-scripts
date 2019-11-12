@@ -1,0 +1,1 @@
+hid-disable-power-management.sh
