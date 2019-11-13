@@ -476,6 +476,7 @@ function php_apply_developer_settings() {
     php_apply_setting "$1" error_reporting E_ALL
     php_apply_setting "$1" display_errors On
     php_apply_setting "$1" display_startup_errors On
+    php_apply_setting "$1" error_log php_errors.log
 
     # enforce healthy limits
     php_apply_setting "$1" memory_limit 256M

@@ -259,6 +259,7 @@ php-soap \
 php-xdebug \
 php-xml \
 php-xmlrpc \
+php-zip \
 python \
 python-dateutil \
 python-dev \
@@ -512,7 +513,11 @@ EOF
 
         dir_make_and_own /var/www/virtual
 
-        mkdir -p /var/www/virtual/127.0.0.1
+        mkdir -p "/var/www/virtual/127.0.0.1"
+        safe_symlink "/var/www/virtual/127.0.0.1" "/var/www/virtual/localhost"
+
+        safe_symlink "$CONFIG_DIR/www" "/var/www/virtual/127.0.0.1/html" ||
+            safe_symlink "$CONFIG_DIR/www-default" "/var/www/virtual/127.0.0.1/html"
 
         # TODO: abstract this to a function like is_user_in_group
         groups | grep -Eq '(\s|^)(www-data)(\s|$)' || sudo adduser "$(id -un)" "www-data"
