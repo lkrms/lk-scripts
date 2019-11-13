@@ -9,7 +9,10 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 assert_not_root
 
-USAGE="Usage: $(basename "$0") </path/to/database> [/path/to/another/database...]"
+USAGE="Usage: $(basename "$0") [--daemon] </path/to/database> [/path/to/another/database...]"
+
+DAEMON=1
+[ "${1:-}" = "--daemon" ] && shift || DAEMON=0
 
 [ "$#" -gt "0" ] || die "$USAGE"
 
@@ -51,7 +54,12 @@ for DATABASE_PATH in "$@"; do
 
     if [ "$NO_PASSWORD" -eq "1" ]; then
 
-        echoc "No password for ${BOLD}${DATABASE_PATH}${RESET} found in keyring. Please provide it now."
+        [ -t 1 ] || {
+            echo "No password for $DATABASE_PATH found in keyring. Skipping." >&2
+            continue
+        }
+
+        echo "No password for ${BOLD}${DATABASE_PATH}${RESET} found in keyring. Please provide it now."
         "${SET_SECRET[@]//%DATABASE_PATH%/$DATABASE_PATH}" || die
 
         PASSWORD="$("${GET_SECRET[@]//%DATABASE_PATH%/$DATABASE_PATH}" 2>/dev/null)" || PASSWORD=
@@ -63,4 +71,13 @@ for DATABASE_PATH in "$@"; do
 done
 
 IFS=$'\n\n\n'
-nohup "$KEEPASSXC_PATH" --pw-stdin "$@" >/dev/null 2>&1 <<<"${PASSWORDS[*]}" &
+
+if [ "$DAEMON" -eq "0" ]; then
+
+    nohup "$KEEPASSXC_PATH" --pw-stdin "$@" <<<"${PASSWORDS[*]}" >"/tmp/$(basename "$0").log" 2>&1 &
+
+else
+
+    "$KEEPASSXC_PATH" --pw-stdin "$@" <<<"${PASSWORDS[*]}" &
+
+fi
