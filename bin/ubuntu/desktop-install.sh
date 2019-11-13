@@ -506,7 +506,7 @@ EOF
 
     fi
 
-    if false && apt_package_installed "apache2"; then
+    if apt_package_installed "apache2"; then
 
         console_message "Configuring Apache..." "" "$CYAN"
 
@@ -518,17 +518,8 @@ EOF
         groups | grep -Eq '(\s|^)(www-data)(\s|$)' || sudo adduser "$(id -un)" "www-data"
         groups "www-data" | grep -Eo '[^:]+$' | grep -Eq '(\s|^)'"$(id -gn)"'(\s|$)' || sudo adduser "www-data" "$(id -gn)"
 
-        sudo_function move_file_delete_link "/etc/apache2/sites-available/000-virtual-linacreative.conf"
-
-        if [ -e "$CONFIG_DIR/apache2-virtual.conf" ]; then
-
-            sudo ln -sv "$CONFIG_DIR/apache2-virtual.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf"
-
-        else
-
-            sudo ln -sv "$CONFIG_DIR/apache2-virtual-default.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf"
-
-        fi
+        safe_symlink "$CONFIG_DIR/apache2-virtual.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf" Y ||
+            safe_symlink "$CONFIG_DIR/apache2-virtual-default.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf" Y
 
         sudo rm -f /etc/apache2/sites-enabled/*.conf
         sudo ln -sv ../sites-available/000-virtual-linacreative.conf /etc/apache2/sites-enabled/000-virtual-linacreative.conf
@@ -543,21 +534,12 @@ EOF
 
     fi
 
-    if false && apt_package_installed "mariadb-server"; then
+    if apt_package_installed "mariadb-server"; then
 
         console_message "Configuring MariaDB..." "" "$CYAN"
 
-        sudo_function move_file_delete_link "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
-
-        if [ -e "$CONFIG_DIR/mariadb.cnf" ]; then
-
-            sudo ln -sv "$CONFIG_DIR/mariadb.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
-
-        else
-
-            sudo ln -sv "$CONFIG_DIR/mariadb-default.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf"
-
-        fi
+        safe_symlink "$CONFIG_DIR/mariadb.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf" Y ||
+            safe_symlink "$CONFIG_DIR/mariadb-default.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf" Y
 
         # reload isn't enough
         sudo service mysql restart
