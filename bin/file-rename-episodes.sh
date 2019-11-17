@@ -73,4 +73,4 @@ while read -rd $'\0' FILE_PATH; do
 
     maybe_dryrun mv -vn "$FILE_PATH" "$NEW_PATH" || die
 
-done < <(find "$RENAME_ROOT" -type f \( -name '*.m4v' -o -name '*.mkv' -o -name '*.mp4' \) ! -name '.*' -print0 | sort -z)
+done < <(find "$RENAME_ROOT" -type f \( -name '*.m4v' -o -name '*.mkv' -o -name '*.mp4' \) ! -name '.*' -print0 | sort -zV)
