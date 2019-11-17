@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2015
+# shellcheck disable=SC2015,SC2068,SC2086
 
 assert_command_exists apt-get
 
@@ -17,7 +17,7 @@ function apt_apply_preferences() {
 
     [ "${#PREFS[@]}" -eq "0" ] || console_message "Applying apt preferences:" "${NO_WRAP}${PREFS[*]}${WRAP}" "$CYAN"
 
-    for PREF in "${PREFS[@]}"; do
+    for PREF in ${PREFS[@]+"${PREFS[@]}"}; do
 
         safe_symlink "$CONFIG_DIR/apt/preferences.d/$PREF" "/etc/apt/preferences.d/linac-$(basename "$PREF")" Y
 
@@ -28,6 +28,8 @@ function apt_apply_preferences() {
 # Reviewed: 2019-11-05
 function apt_check_prerequisites() {
 
+    [ "${#APT_PREREQ[@]}" -gt "0" ] || return 0
+
     apt_install_packages "prerequisites" "${APT_PREREQ[*]}" N N
 
 }
@@ -37,6 +39,8 @@ function apt_check_essentials() {
 
     ! command_exists dmidecode || ! sudo dmidecode -t system | grep -i ThinkPad >/dev/null || APT_ESSENTIALS+=(acpi-call-dkms tp-smapi-dkms)
     ! command_exists dpkg || ! dpkg -s "linux-generic-hwe-${DISTRIB_RELEASE}" >/dev/null 2>&1 || APT_ESSENTIALS+=("linux-tools-generic-hwe-${DISTRIB_RELEASE}?")
+
+    [ "${#APT_ESSENTIALS[@]}" -gt "0" ] || return 0
 
     apt_install_packages "essentials" "${APT_ESSENTIALS[*]}" N
 
@@ -61,7 +65,7 @@ function apt_package_installed() {
 # Reviewed: 2019-11-03
 function apt_package_just_installed() {
 
-    printf '%s\n' "${APT_JUST_INSTALLED[@]}" | grep -Fx "$1" >/dev/null 2>&1
+    printf '%s\n' ${APT_JUST_INSTALLED[@]+"${APT_JUST_INSTALLED[@]}"} | grep -Fx "$1" >/dev/null 2>&1
 
 }
 
@@ -80,6 +84,7 @@ function apt_describe_packages() {
 
     # shellcheck disable=SC2206
     PACKAGES=($1) || die
+    [ "${#PACKAGES[@]}" -gt "0" ] || die "At least one package name is required"
     shift
 
     [ "$#" -eq "0" ] || {
@@ -116,7 +121,7 @@ function apt_filter_packages() {
     PACKAGES=($(sort_words "$1"))
 
     # TODO: replace loop with comm-based method (as in apt_pretty_packages)
-    for p in "${PACKAGES[@]}"; do
+    for p in ${PACKAGES[@]+"${PACKAGES[@]}"}; do
 
         if [ "${p:(-1)}" = "-" ]; then
 
@@ -132,7 +137,7 @@ function apt_filter_packages() {
 
     done
 
-    echo "${FILTERED[*]}"
+    echo "${FILTERED[*]+${FILTERED[*]}}"
 
 }
 
@@ -149,7 +154,7 @@ function apt_pretty_packages() {
 
     if [ "$REFLOW" = "N" ]; then
 
-        for p in "${REMOVE_PACKAGES[@]}"; do
+        for p in ${REMOVE_PACKAGES[@]+"${REMOVE_PACKAGES[@]}"}; do
 
             # replace the trailing hyphen with a space to preserve formatting
             FIND="(\s|^)$(sed_escape_search "$p")-(\s|\$)"
@@ -166,13 +171,13 @@ function apt_pretty_packages() {
         # shellcheck disable=SC2086
         REFLOWED=($(printf '%s\n' $1 | grep -E '^.*[^-]+$' | sort | uniq)) || true
 
-        for p in "${REMOVE_PACKAGES[@]}"; do
+        for p in ${REMOVE_PACKAGES[@]+"${REMOVE_PACKAGES[@]}"}; do
 
             REFLOWED+=("${BOLD}${RED}${p}${RESET}")
 
         done
 
-        echo "${REFLOWED[*]}"
+        echo "${REFLOWED[*]+${REFLOWED[*]}}"
 
     fi
 
@@ -367,7 +372,7 @@ function apt_make_cache_clean() {
 
         console_message "Updating apt package indexes" "" "$CYAN"
 
-        sudo apt-get "${APT_GET_OPTIONS[@]}" -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || die
+        sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || die
 
     fi
 
@@ -428,20 +433,20 @@ function apt_get_package_list() {
 
     [ "${#BAD_LIST[@]}" -gt "0" ] && console_message "$(single_or_plural ${#BAD_LIST[@]} Package Packages) unavailable for installation:" "${BAD_LIST[*]}" "$BOLD" "$RED" >&2 && die
 
-    for q in "${REMOVE[@]}"; do
+    for q in ${REMOVE[@]+"${REMOVE[@]}"}; do
 
         apt_package_installed "$q" && LIST+=("${q}-")
 
     done
 
-    [ "${#LIST[@]}" -gt "0" ] && for q in "${SUPPRESSED[@]}"; do
+    [ "${#LIST[@]}" -gt "0" ] && for q in ${SUPPRESSED[@]+"${SUPPRESSED[@]}"}; do
 
         # suppressing doesn't mean removing
         ! apt_package_installed "$q" && LIST+=("${q}-")
 
     done
 
-    echo "${LIST[*]}"
+    echo "${LIST[*]+${LIST[*]}}"
 
 }
 
@@ -520,11 +525,11 @@ function apt_install_packages() {
 
     done
 
-    APT_INSTALLED+=("${INSTALLED[@]}")
+    APT_INSTALLED+=(${INSTALLED[@]+"${INSTALLED[@]}"})
 
     if [ "${#INSTALL[@]}" -gt "0" ]; then
 
-        QUEUE=($(printf '%s\n' "${PPA_QUEUE[@]}" "${REPO_QUEUE[@]}" | sort | uniq))
+        QUEUE=($(printf '%s\n' ${PPA_QUEUE[@]+"${PPA_QUEUE[@]}"} ${REPO_QUEUE[@]+"${REPO_QUEUE[@]}"} | sort | uniq))
 
         if [ "$UI" = "Y" ]; then
 
@@ -557,10 +562,10 @@ function apt_install_packages() {
             done
 
             apt_make_cache_clean
-            INSTALL_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" N))
-            SILENT_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]}" "${SUPPRESSED[*]}" "" "${SILENCED[*]}" Y))
+            INSTALL_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]+${IGNORED[*]}}" "${SUPPRESSED[*]+${SUPPRESSED[*]}}" "" "${SILENCED[*]+${SILENCED[*]}}" N))
+            SILENT_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]+${IGNORED[*]}}" "${SUPPRESSED[*]+${SUPPRESSED[*]}}" "" "${SILENCED[*]+${SILENCED[*]}}" Y))
             PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]} ${SILENT_QUEUE[*]}"))
-            console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y)" "$GREEN"
+            console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]+${PRETTY_QUEUE[*]}}" Y)" "$GREEN"
 
             for q in INSTALL SILENT; do
 
@@ -568,7 +573,7 @@ function apt_install_packages() {
 
                 if [ "${#QUEUE[@]}" -gt "0" ]; then
 
-                    sudo "${SUDO_EXTRA[@]}" apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
+                    sudo ${SUDO_EXTRA[@]+"${SUDO_EXTRA[@]}"} apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} install "${QUEUE[@]}" && {
                         APT_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
                         APT_JUST_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
                     } || die
@@ -584,11 +589,11 @@ function apt_install_packages() {
         else
 
             APT_INSTALL_QUEUE+=("${INSTALL[@]}")
-            APT_IGNORED+=("${IGNORED[@]}")
-            APT_SUPPRESSED+=("${SUPPRESSED[@]}")
-            APT_SILENCED+=("${SILENCED[@]}")
-            APT_PPA_QUEUE+=("${PPA_QUEUE[@]}")
-            APT_REPO_QUEUE+=("${REPO_QUEUE[@]}")
+            APT_IGNORED+=(${IGNORED[@]+"${IGNORED[@]}"})
+            APT_SUPPRESSED+=(${SUPPRESSED[@]+"${SUPPRESSED[@]}"})
+            APT_SILENCED+=(${SILENCED[@]+"${SILENCED[@]}"})
+            APT_PPA_QUEUE+=(${PPA_QUEUE[@]+"${PPA_QUEUE[@]}"})
+            APT_REPO_QUEUE+=(${REPO_QUEUE[@]+"${REPO_QUEUE[@]}"})
 
         fi
 
@@ -798,9 +803,9 @@ function do_apt_install_deb() {
 
         if sudo dpkg -EGi "${DEB_PATHS[@]}" || sudo aptitude -f install; then
 
-            APT_INSTALLED+=("${NOT_SKIPPED[@]}")
-            APT_JUST_INSTALLED+=("${NOT_SKIPPED[@]}")
-            APT_SKIPPED+=("${SKIPPED[@]}")
+            APT_INSTALLED+=(${NOT_SKIPPED[@]+"${NOT_SKIPPED[@]}"})
+            APT_JUST_INSTALLED+=(${NOT_SKIPPED[@]+"${NOT_SKIPPED[@]}"})
+            APT_SKIPPED+=(${SKIPPED[@]+"${SKIPPED[@]}"})
             apt_refresh_packages
 
         else
@@ -837,7 +842,7 @@ function apt_process_queue() {
 
     if [ "${#APT_INSTALL_QUEUE[@]}" -gt "0" ] || [ "${#APT_REMOVE_QUEUE[@]}" -gt "0" ]; then
 
-        QUEUE=($(printf '%s\n' "${APT_PPA_QUEUE[@]}" "${APT_REPO_QUEUE[@]}" | sort | uniq))
+        QUEUE=($(printf '%s\n' ${APT_PPA_QUEUE[@]+"${APT_PPA_QUEUE[@]}"} ${APT_REPO_QUEUE[@]+"${APT_REPO_QUEUE[@]}"} | sort | uniq))
 
         [ "${#QUEUE[@]}" -gt "0" ] && console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$GREEN"
 
@@ -864,7 +869,7 @@ function apt_process_queue() {
 
             if [ "${#QUEUE[@]}" -gt "0" ]; then
 
-                sudo "${SUDO_EXTRA[@]}" apt-get "${APT_GET_OPTIONS[@]}" install "${QUEUE[@]}" && {
+                sudo ${SUDO_EXTRA[@]+"${SUDO_EXTRA[@]}"} apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} install "${QUEUE[@]}" && {
                     APT_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
                     APT_JUST_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
                 } || die
@@ -946,7 +951,7 @@ function apt_upgrade_all() {
 
     console_message "Installing all available apt package updates" "" "$GREEN"
 
-    sudo apt-get "${APT_GET_OPTIONS[@]}" --fix-missing dist-upgrade && apt_refresh_packages || die
+    sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} --fix-missing dist-upgrade && apt_refresh_packages || die
 
 }
 
@@ -954,15 +959,15 @@ function apt_purge() {
 
     local PURGE_PACKAGES IFS
 
-    sudo apt-get "${APT_GET_OPTIONS[@]}" "$@" autoremove || die
+    sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} "$@" autoremove || die
 
     IFS=$'\n'
     PURGE_PACKAGES=($(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W)) || die
     unset IFS
 
-    PURGE_PACKAGES=($(printf '%s\n' "${PURGE_PACKAGES[@]}" | gnu_grep -Po '^.*(?=\tconfig-files$)')) || true
+    PURGE_PACKAGES=($(printf '%s\n' ${PURGE_PACKAGES[@]+"${PURGE_PACKAGES[@]}"} | gnu_grep -Po '^.*(?=\tconfig-files$)')) || true
 
-    [ "${#PURGE_PACKAGES[@]}" -eq "0" ] || sudo apt-get "${APT_GET_OPTIONS[@]}" "$@" purge "${PURGE_PACKAGES[@]}" || die
+    [ "${#PURGE_PACKAGES[@]}" -eq "0" ] || sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} "$@" purge "${PURGE_PACKAGES[@]}" || die
 
     apt_refresh_packages
 
