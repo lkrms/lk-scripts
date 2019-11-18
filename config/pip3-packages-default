@@ -1,5 +1,6 @@
 autopep8
 pylint
+youtube-dl:linux
 
 # CLI Qt installer
 aqtinstall
