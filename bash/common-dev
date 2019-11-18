@@ -1,12 +1,12 @@
 #!/bin/bash
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090,SC2068
 
 . "$ROOT_DIR/bash/common-git"
 
 # Usage: dev_install_packages [queue only? (y/N)] [name of 'already installed' array]
 function dev_install_packages() {
 
-    local QUEUE_ONLY="${1:-N}" UPDATE=N INSTALL_COMMAND ALREADY_INSTALLED_NAME="" SUDO_OR_NOT=""
+    local QUEUE_ONLY="${1:-N}" UPDATE=N INSTALL_COMMAND ALREADY_INSTALLED_NAME="" SUDO_OR_NOT="" PIP_REQUIRED=() PIP3_REQUIRED=() NPM_REQUIRED=() PHP_INI_ROOT COMPOSER_REQUIRED
 
     [ "$QUEUE_ONLY" = "N" ] && UPDATE="${3:-N}" || {
         ALREADY_INSTALLED_NAME="${2:-}"
@@ -27,15 +27,9 @@ function dev_install_packages() {
 
     if command_exists pip; then
 
-        local PIP_REQUIRED=()
-
         file_to_array "$CONFIG_DIR/pip-packages"
-
-        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-            PIP_REQUIRED+=("${FILE_TO_ARRAY[@]}")
-
-        fi
+        PIP_REQUIRED+=(${FILE_TO_ARRAY[@]+"${FILE_TO_ARRAY[@]}"})
+        PIP_REQUIRED=($(array_filter_platform ${PIP_REQUIRED[@]+"${PIP_REQUIRED[@]}"} | sort | uniq))
 
         if [ "${#PIP_REQUIRED[@]}" -gt "0" ]; then
 
@@ -58,15 +52,9 @@ function dev_install_packages() {
 
     if command_exists pip3; then
 
-        local PIP3_REQUIRED=()
-
         file_to_array "$CONFIG_DIR/pip3-packages"
-
-        if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-            PIP3_REQUIRED+=("${FILE_TO_ARRAY[@]}")
-
-        fi
+        PIP3_REQUIRED+=(${FILE_TO_ARRAY[@]+"${FILE_TO_ARRAY[@]}"})
+        PIP3_REQUIRED=($(array_filter_platform ${PIP3_REQUIRED[@]+"${PIP3_REQUIRED[@]}"} | sort | uniq))
 
         if [ "${#PIP3_REQUIRED[@]}" -gt "0" ]; then
 
@@ -93,9 +81,9 @@ function dev_install_packages() {
 
             function npm_install() {
 
-                [ -e "/usr/bin/python" ] && eval "${SUDO_OR_NOT}npm config -g set python /usr/bin/python" || true
-
                 local PACKAGE
+
+                [ -e "/usr/bin/python" ] && eval "${SUDO_OR_NOT}npm config -g set python /usr/bin/python" || true
 
                 for PACKAGE in "$@"; do
 
@@ -104,8 +92,6 @@ function dev_install_packages() {
                 done
 
             }
-
-            local NPM_REQUIRED=()
 
             [ "$IS_MACOS" -eq "1" ] && NPM_REQUIRED+=(yarn) || true
 
@@ -138,11 +124,9 @@ function dev_install_packages() {
 
         if [ "$UPDATE" = "N" ]; then
 
-            local INI_ROOT COMPOSER_REQUIRED
+            for PHP_INI_ROOT in /etc/php /usr/local/etc/php; do
 
-            for INI_ROOT in /etc/php /usr/local/etc/php; do
-
-                [ -d "$INI_ROOT" ] && php_apply_developer_settings "$INI_ROOT" || true
+                [ -d "$PHP_INI_ROOT" ] && php_apply_developer_settings "$PHP_INI_ROOT" || true
 
             done
 

@@ -1,4 +1,3 @@
-autopep8
+# add Python 2 packages here
 ps-mem
-pylint
-youtube-dl
+youtube-dl:linux

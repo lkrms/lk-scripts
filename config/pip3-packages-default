@@ -8,4 +8,4 @@ aqtinstall
 img2pdf
 
 # required by Recoll
-pylzma
+pylzma:linux

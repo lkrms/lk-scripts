@@ -1422,6 +1422,13 @@ function link_settings() {
 
 }
 
+# Reviewed: 2019-11-18
+function array_filter_platform() {
+
+    printf '%s\n' "$@" | gnu_grep -Po "^[^:]+(?=(:([^:|]+\|)*$PLATFORM(\|[^:|]+)*)?\$)"
+
+}
+
 # Usage: install_or_queue "Description of this group" "item1 item2 ..." <allow user override? (y/n)> <singular noun> <plural noun> <name of "installed items" array> <name of "available items" array> <name of "to install" array to fill> [name of "already installed" array to fill]
 function install_or_queue() {
 
