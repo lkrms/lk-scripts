@@ -601,7 +601,7 @@ function file_to_array() {
 
             FILE_TO_ARRAY+=("$LINE")
 
-        done < <("${COMMAND[@]}" "$FILENAME")
+        done < <("${COMMAND[@]}" "$FILENAME" || true)
 
     fi
 
