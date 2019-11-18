@@ -1,8 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC2034
 
-[ "${QT_BEARER_POLL_TIMEOUT:-}" = "-1" ] || export QT_BEARER_POLL_TIMEOUT=-1
-
 function synergy_find_executable() {
 
     command -v "$1" ||
