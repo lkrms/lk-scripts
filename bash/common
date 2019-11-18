@@ -1425,7 +1425,7 @@ function link_settings() {
 # Reviewed: 2019-11-18
 function array_filter_platform() {
 
-    printf '%s\n' "$@" | gnu_grep -Po "^[^:]+(?=(:([^:|]+\|)*$PLATFORM(\|[^:|]+)*)?\$)"
+    printf '%s\n' "$@" | gnu_grep -Po "^[^:]+(?=(:([^:|]+\|)*$PLATFORM(\|[^:|]+)*)?\$)" || true
 
 }
 
