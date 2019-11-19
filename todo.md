@@ -6,8 +6,26 @@
 - [ ] macOS: Add SSH key loading to .bashrc
 - [ ] Ensure empty arrays expand correctly on bash <=4.3
 
-        (?<!\+)"\$\{([a-zA-Z0-9_]+)\[@\]\}"
-        ${$1[@]+$0}
+    1. Search: `(?<!\+)"\$\{([a-zA-Z0-9_]+)\[@\]\}"`  
+    Replace: `${$1[@]+$0}`
 
-        (?<!\+)\$\{([a-zA-Z0-9_]+)\[\*\]\}
-        ${$1[*]+$0}
+    2. Search: `(?<!\+)\$\{([a-zA-Z0-9_]+)\[\*\]\}`  
+    Replace: `${$1[*]+$0}`
+
+- [ ] Add `apt-enable-sources.sh` and `apt-disable-sources.sh`
+
+    ```bash
+    # enable
+    sudo gnu_sed -i 's/^# deb-src /deb-src /' /etc/apt/sources.list
+
+    # disable
+    sudo gnu_sed -i 's/^deb-src /# deb-src /' /etc/apt/sources.list
+    ```
+
+- [ ] Create script like:
+
+    ```bash
+    pushd /tmp
+    mk-build-deps "$1" --install --root-cmd sudo --remove
+    popd
+    ```
