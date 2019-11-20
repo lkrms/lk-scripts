@@ -287,6 +287,7 @@ EOF
 
     [ "$LOW_RAM" -eq "1" ] || apt_install_packages "development services" "\
 apache2 \
+apache2-doc \
 mariadb-server \
 mongodb-org \
 "
@@ -316,6 +317,8 @@ plank \
 sox \
 ubuntu-sounds \
 xfce4-battery-plugin \
+xfce4-cpufreq-plugin \
+xfce4-sensors-plugin \
 xiccd \
 xscreensaver \
 xscreensaver-data \
