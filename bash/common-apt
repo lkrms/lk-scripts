@@ -359,7 +359,10 @@ EOF
 # Reviewed: 2019-11-05
 function apt_mark_cache_clean() {
 
-    [ "$APT_CACHE_DIRTY" -eq "0" ] || { apt_refresh_packages && APT_CACHE_DIRTY=0; }
+    [ "$APT_CACHE_DIRTY" -eq "0" ] || {
+        apt_check_sources
+        apt_refresh_packages && APT_CACHE_DIRTY=0
+    }
 
 }
 
