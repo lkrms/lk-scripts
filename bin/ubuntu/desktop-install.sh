@@ -16,7 +16,6 @@ assert_not_root
 
 # allow this script to be changed while it's running
 {
-
     offer_sudo_password_bypass
 
     disable_update_motd
@@ -24,8 +23,7 @@ assert_not_root
     # apply all available preferences in $CONFIG_DIR/apt/preferences.d
     apt_apply_preferences
 
-    safe_symlink "$CONFIG_DIR/apt.conf" "/etc/apt/apt.conf.d/90-linacreative" Y ||
-        safe_symlink "$CONFIG_DIR/apt-default.conf" "/etc/apt/apt.conf.d/90-linacreative" Y
+    safe_symlink "$CONFIG_DIR/apt.conf" "/etc/apt/apt.conf.d/90-linacreative" Y Y
 
     # get underway without an immediate index update
     apt_mark_cache_clean
@@ -38,6 +36,8 @@ assert_not_root
 
     # seed debconf database with answers
     sudo debconf-set-selections <<EOF
+kdump-tools kdump-tools/use_kdump boolean true
+kexec-tools kexec-tools/load_kexec boolean false
 libc6 libraries/restart-without-asking boolean true
 libpam0g libraries/restart-without-asking boolean true
 EOF
@@ -212,6 +212,7 @@ EOF
         xfonts-75dpi
 
         # automation
+        devilspie2
         evtest
         python3-xlib
         sxhkd
@@ -441,7 +442,11 @@ xscreensaver-screensaver-webcollage \
     brew_mark_cache_clean
     brew_check_taps
 
-    brew_queue_formulae "development" "
+    brew_queue_formulae "essentials" "\
+unison \
+"
+
+    brew_queue_formulae "development" "\
 shfmt \
 "
 
@@ -523,15 +528,13 @@ EOF
         mkdir -p "/var/www/virtual/127.0.0.1"
         safe_symlink "/var/www/virtual/127.0.0.1" "/var/www/virtual/localhost"
 
-        safe_symlink "$CONFIG_DIR/www" "/var/www/virtual/127.0.0.1/html" ||
-            safe_symlink "$CONFIG_DIR/www-default" "/var/www/virtual/127.0.0.1/html"
+        safe_symlink "$CONFIG_DIR/www" "/var/www/virtual/127.0.0.1/html" N Y
 
         # TODO: abstract this to a function like is_user_in_group
         groups | grep -Eq '(\s|^)(www-data)(\s|$)' || sudo adduser "$(id -un)" "www-data"
         groups "www-data" | grep -Eo '[^:]+$' | grep -Eq '(\s|^)'"$(id -gn)"'(\s|$)' || sudo adduser "www-data" "$(id -gn)"
 
-        safe_symlink "$CONFIG_DIR/apache2-virtual.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf" Y ||
-            safe_symlink "$CONFIG_DIR/apache2-virtual-default.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf" Y
+        safe_symlink "$CONFIG_DIR/apache2-virtual.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf" Y Y
 
         sudo rm -f /etc/apache2/sites-enabled/*.conf
         sudo ln -sv ../sites-available/000-virtual-linacreative.conf /etc/apache2/sites-enabled/000-virtual-linacreative.conf
@@ -550,8 +553,7 @@ EOF
 
         console_message "Configuring MariaDB..." "" "$CYAN"
 
-        safe_symlink "$CONFIG_DIR/mariadb.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf" Y ||
-            safe_symlink "$CONFIG_DIR/mariadb-default.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf" Y
+        safe_symlink "$CONFIG_DIR/mariadb.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf" Y Y
 
         # reload isn't enough
         sudo service mysql restart
