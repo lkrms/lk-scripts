@@ -1166,37 +1166,38 @@ function echo_run() {
 
 }
 
-# Usage: safe_symlink /path/to/target /path/to/link [use sudo? (y/N)]
-# Reviewed: 2019-10-28
+# Usage: safe_symlink /path/to/target /path/to/link [use sudo? (y/N)] [add "-default" if target missing? (y/N)]
+# Reviewed: 2019-11-20
 function safe_symlink() {
 
-    local SUDO_OR_NOT="${3:-N}" CURRENT_TARGET
+    local TARGET="${1:-}" LINK="${2:-}" SUDO_OR_NOT="${3:-N}" TRY_DEFAULT="${4:-N}" CURRENT_TARGET
 
-    [ -e "$1" ] || return
+    [ -n "$TARGET" ] || die "No target"
+    [ -n "$LINK" ] || die "No link"
 
-    if [ -L "$2" ]; then
+    [ -e "$TARGET" ] || {
+        [ "$TRY_DEFAULT" = "Y" ] || return
+        TARGET="$(filename_add_suffix "$TARGET" "-default")"
+        [ -e "$TARGET" ] || return
+    }
 
-        CURRENT_TARGET="$(readlink "$2")" || return
+    if [ -L "$LINK" ]; then
 
-        if [ "$CURRENT_TARGET" = "$1" ]; then
+        CURRENT_TARGET="$(readlink "$LINK")" || die
+        [ "$CURRENT_TARGET" != "$TARGET" ] || return 0
+        maybe_sudo "$SUDO_OR_NOT" rm -f "$LINK" || die
 
-            return
+    elif [ -e "$LINK" ]; then
 
-        fi
-
-        maybe_sudo "$SUDO_OR_NOT" rm -f "$2" || return
-
-    elif [ -e "$2" ]; then
-
-        maybe_sudo "$SUDO_OR_NOT" mv -fv "$2" "$2.bak" || return
+        maybe_sudo "$SUDO_OR_NOT" mv -fv "$LINK" "$LINK.bak" || die
 
     else
 
-        maybe_sudo "$SUDO_OR_NOT" mkdir -p "$(dirname "$2")" || return
+        maybe_sudo "$SUDO_OR_NOT" mkdir -p "$(dirname "$LINK")" || die
 
     fi
 
-    maybe_sudo "$SUDO_OR_NOT" ln -sv "$1" "$2"
+    maybe_sudo "$SUDO_OR_NOT" ln -sv "$TARGET" "$LINK" || die
 
 }
 
