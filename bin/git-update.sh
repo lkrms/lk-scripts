@@ -82,7 +82,7 @@ git_load_code_roots
             REPO_NAMES+=("$REPO_NAME")
             REPO_LONG_NAMES+=("$REPO_LONG_NAME")
 
-            WARNINGS_FILE="$(create_temp_file N)"
+            WARNINGS_FILE="$(create_temp_file)"
             DELETE_ON_EXIT+=("$WARNINGS_FILE")
             WARNINGS_FILES+=("$WARNINGS_FILE")
 

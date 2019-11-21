@@ -920,7 +920,7 @@ function get_urls_from_url() {
 
     local TEMP_FILE URLS PATTERN
 
-    TEMP_FILE="$(create_temp_file N)"
+    TEMP_FILE="$(create_temp_file)"
 
     wget --quiet --convert-links --output-document "$TEMP_FILE" "$1" || {
         rm -f "$TEMP_FILE" || true
@@ -1263,50 +1263,45 @@ function maybe_dryrun() {
 
 }
 
-# Usage: create_temp_file [queue for deletion? (Y/n)]
+# Usage: create_temp_file [use $TEMP_DIR? (y/N)]
+# Reviewed: 2019-11-21
 function create_temp_file() {
 
-    local TEMP_PATH
+    local TEMP_ROOT="/tmp" TEMP_PATH
 
-    TEMP_PATH="$(mktemp "/tmp/$(basename "$0").$(date_get_timestamp).XXXXXXXX")" ||
-        die "Error: unable to create temporary file"
+    [ "${1:-N}" = "N" ] || TEMP_ROOT="$TEMP_DIR"
 
-    if [ "${1:-Y}" = "Y" ]; then
-
-        DELETE_ON_EXIT+=("$TEMP_PATH")
-
-        if [ "$ORIGINAL_BASH_SUBSHELL" -ne "$BASH_SUBSHELL" ]; then
-
-            echoc "WARNING: queuing files for deletion doesn't work in subshells" "$BOLD" >&2
-
-        fi
-
-    fi
+    TEMP_PATH="$(mktemp "$TEMP_ROOT/$(basename "$0").$(date_get_timestamp).XXXXXXXX")" ||
+        die "Unable to create temporary file"
 
     echo "$TEMP_PATH"
 
 }
 
-# Usage: create_temp_file [queue for deletion? (Y/n)]
+# Usage: create_temp_dir [use $TEMP_DIR? (y/N)]
+# Reviewed: 2019-11-21
+function create_temp_dir() {
+
+    local TEMP_ROOT="/tmp" TEMP_PATH
+
+    [ "${1:-N}" = "N" ] || TEMP_ROOT="$TEMP_DIR"
+
+    TEMP_PATH="$(mktemp -d "$TEMP_ROOT/$(basename "$0").$(date_get_timestamp).XXXXXXXX")" ||
+        die "Unable to create temporary directory"
+
+    echo "$TEMP_PATH"
+
+}
+
+# Usage: create_temp_fifo [use $TEMP_DIR? (y/N)]
+# Reviewed: 2019-11-21
 function create_temp_fifo() {
 
-    local FIFO_PATH
+    local FIFO_DIR FIFO_PATH
 
-    FIFO_PATH="$(mktemp -u "/tmp/$(basename "$0").$(date_get_timestamp).XXXXXXXX.fifo")" &&
-        mkfifo "$FIFO_PATH" ||
-        die "Error: unable to create temporary FIFO"
-
-    if [ "${1:-Y}" = "Y" ]; then
-
-        DELETE_ON_EXIT+=("$FIFO_PATH")
-
-        if [ "$ORIGINAL_BASH_SUBSHELL" -ne "$BASH_SUBSHELL" ]; then
-
-            echoc "WARNING: queuing files for deletion doesn't work in subshells" "$BOLD" >&2
-
-        fi
-
-    fi
+    FIFO_PATH="$(create_temp_dir "$@")/fifo"
+    mkfifo "$FIFO_PATH" ||
+        die "Unable to create temporary FIFO"
 
     echo "$FIFO_PATH"
 

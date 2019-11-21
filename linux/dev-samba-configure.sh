@@ -64,7 +64,7 @@ else
 
 fi
 
-TEMP_CONF="$(create_temp_file N)"
+TEMP_CONF="$(create_temp_file)"
 DELETE_ON_EXIT+=("$TEMP_CONF")
 
 # create a new configuration file, based on the current (or default) configuration
