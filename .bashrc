@@ -128,6 +128,7 @@
 
     fi
 
+    echo "alias with-repos='find . -type d -exec test -d \"{}/.git\" \; -print0 -prune | sort -z | xargs -0 -n 1'"
     ! command_exists shfmt || echo 'alias shellformat-test="shfmt -i 4 -l ."'
     ! command_exists youtube-dl || echo 'alias youtube-dl-audio="youtube-dl -x --audio-format mp3 --audio-quality 0"'
 
