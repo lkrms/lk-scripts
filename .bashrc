@@ -128,7 +128,6 @@
 
     fi
 
-    echo "alias with-repos='find . -type d -exec test -d \"{}/.git\" \; -print0 -prune | sort -z | xargs -0 -n 1'"
     ! command_exists shfmt || echo 'alias shellformat-test="shfmt -i 4 -l ."'
     ! command_exists youtube-dl || echo 'alias youtube-dl-audio="youtube-dl -x --audio-format mp3 --audio-quality 0"'
 
@@ -195,6 +194,16 @@ function latest-all-dir() {
 function find-all() {
 
     find . -iname "*$1*"
+
+}
+
+function with-repos() {
+
+    local REPO_COMMAND='echo "$1"'
+
+    [ "$#" -eq "0" ] || REPO_COMMAND="$*"
+
+    find . -type d -exec test -d "{}/.git" \; -print0 -prune | sort -z | xargs -0 -n 1 sh -c 'cd "$1" && { echo "Running in: $1"; '"$REPO_COMMAND"'; }' sh
 
 }
 
