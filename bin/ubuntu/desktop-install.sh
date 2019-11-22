@@ -106,6 +106,7 @@ EOF
     apt_check_essentials
 
     DESKTOP_PREREQ=(
+        stow
 
         # OpenConnect (build) dependencies
         autoconf automake build-essential gettext libgnutls-dev? libgnutls28-dev? libproxy-dev libtool libxml2-dev pkg-config vpnc-scripts zlib1g-dev
@@ -304,6 +305,7 @@ mongodb-org \
 
     fi
 
+    [ "$LOW_RAM" -eq "1" ] || is_virtual || apt_install_packages "QEMU/KVM" "bridge-utils libvirt-bin qemu-kvm virt-manager"
     [ "$LOW_RAM" -eq "1" ] || is_virtual || apt_install_packages "VirtualBox" "virtualbox-6.0"
     [ "$LOW_RAM" -eq "1" ] || apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
