@@ -126,6 +126,12 @@
 
         fi
 
+        ! command_exists virsh || is_root || [ -z "$HOME" ] || {
+            mkdir -p "$HOME/.local/var/log" &&
+                echo "export LIBVIRT_DEBUG=1" &&
+                echo "export LIBVIRT_LOG_OUTPUTS=\"1:file:$HOME/.local/var/log/virsh.log\"" || true
+        }
+
     fi
 
     ! command_exists shfmt || echo 'alias shellformat-test="shfmt -i 4 -l ."'
