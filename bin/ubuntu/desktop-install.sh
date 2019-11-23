@@ -471,6 +471,13 @@ EOF
 
     fi
 
+    if apt_package_installed "appimaged" && ! user_service_running appimaged; then
+
+        systemctl --user add-wants default.target appimaged
+        systemctl --user start appimaged
+
+    fi
+
     if false && apt_package_installed "samba"; then
 
         console_message "Configuring Samba..." "" "$CYAN"
