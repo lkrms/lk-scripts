@@ -141,9 +141,9 @@ function is_macos() {
 
 function _latest() {
 
-    local TYPE="${1:-}" COMMAND
+    local TYPE="${1:-}" COMMAND i
 
-    [ "${#TYPE}" -eq "1" ] && shift || TYPE="f"
+    [[ "$TYPE" =~ ^[bcdflps]+$ ]] && shift || TYPE="f"
 
     if is_macos; then
 
@@ -157,15 +157,36 @@ function _latest() {
 
     [ "$#" -eq "0" ] || COMMAND+=("$@")
 
-    COMMAND+=(\( -type "$TYPE" -print0 \) \))
+    COMMAND+=(\()
 
-    if is_macos; then
+    if [ "${#TYPE}" -eq "1" ]; then
 
-        "${COMMAND[@]}" | xargs -0 stat -f '%m :%Sm %N' | sort -nr | cut -d: -f2- | less
+        COMMAND+=(-type "$TYPE")
 
     else
 
-        "${COMMAND[@]}" | xargs -0 stat --format '%Y :%y %n' | sort -nr | cut -d: -f2- | less
+        COMMAND+=(\()
+
+        for i in $(seq "${#TYPE}"); do
+
+            COMMAND+=(-type "${TYPE:$i-1:1}" -o)
+
+        done
+
+        COMMAND[${#COMMAND[@]} - 1]=\)
+
+    fi
+
+    COMMAND+=(-print0 \) \))
+
+    if is_macos; then
+
+        "${COMMAND[@]}" | xargs -0 stat -f '%m :%Sm %N%SY' | sort -nr | cut -d: -f2- | less
+
+    else
+
+        # use sed to remove quotes around file names
+        "${COMMAND[@]}" | xargs -0 stat --format '%Y :%y %N' | sed -Ee "s/( -> )(['\"])(([^\2]|\\\\\2|\2\\\\\2\2)*)\2\$/\1\3/" -e "s/^([^'\"]+)(['\"])(([^\2]|\\\\\2|\2\\\\\2\2)*)\2( -> |\$)/\1\3\5/" -e "s/'\\''//" | sort -nr | cut -d: -f2- | less
 
     fi
 
@@ -173,17 +194,17 @@ function _latest() {
 
 # files after excluding .git directories (and various others we don't care about)
 function latest() {
-    _latest f \! \( \( -type d \( -name .git -o -path "*/.*/google-chrome" -o -path "*/.*/Cache" -o -path "*/.*/GPUCache" -o -path "*/.*/Local Storage" \) -prune \) -o \( -type f -regex '.*/(Cookies|QuotaManager)(-journal)?$' \) \)
+    _latest "${1:-fl}" \! \( \( -type d \( -name .git -o -path "*/.*/google-chrome" -o -path "*/.*/Cache" -o -path "*/.*/GPUCache" -o -path "*/.*/Local Storage" \) -prune \) -o \( -type f -regex '.*/(Cookies|QuotaManager)(-journal)?$' \) \)
 }
 
 # directories after excluding .git directories
 function latest-dir() {
-    _latest d \! \( -type d -name .git -prune \)
+    latest d
 }
 
 # all files
 function latest-all() {
-    _latest f
+    _latest "${1:-fl}"
 }
 
 # all directories
@@ -203,7 +224,7 @@ function with-repos() {
 
     [ "$#" -eq "0" ] || REPO_COMMAND="$*"
 
-    find . -type d -exec test -d "{}/.git" \; -print0 -prune | sort -z | xargs -0 -n 1 sh -c 'cd "$1" && { echo "Running in: $1"; '"$REPO_COMMAND"'; }' sh
+    find . -type d -exec test -d "{}/.git" \; -print0 -prune | sort -z | xargs -0 -n 1 bash -c 'cd "$1" && { printf "\nRunning in: %s\n\n" "$1"; '"$REPO_COMMAND"'; }' bash
 
 }
 
