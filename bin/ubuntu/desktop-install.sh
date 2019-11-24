@@ -497,21 +497,11 @@ EOF
 
     fi
 
-    if false && apt_package_installed "ntp"; then
+    if apt_package_installed "ntp"; then
 
         console_message "Configuring NTP..." "" "$CYAN"
 
-        sudo_function move_file_delete_link "/etc/ntp.conf"
-
-        if [ -e "$CONFIG_DIR/ntp.conf" ]; then
-
-            sudo ln -sv "$CONFIG_DIR/ntp.conf" "/etc/ntp.conf"
-
-        else
-
-            sudo ln -sv "$CONFIG_DIR/ntp-default.conf" "/etc/ntp.conf"
-
-        fi
+        safe_symlink "$CONFIG_DIR/ntp.conf" "/etc/ntp.conf" Y Y
 
         if [ -f "/etc/apparmor.d/usr.sbin.ntpd" ] && ! [ -e "/etc/apparmor.d/disable/usr.sbin.ntpd" ]; then
 
