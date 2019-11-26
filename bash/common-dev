@@ -458,7 +458,7 @@ function php_apply_developer_settings() {
 
     # display all the errors
     php_apply_setting "$1" error_reporting E_ALL
-    php_apply_setting "$1" display_errors On
+    php_apply_setting "$1" display_errors Off
     php_apply_setting "$1" display_startup_errors On
     php_apply_setting "$1" error_log php_errors.log
 
