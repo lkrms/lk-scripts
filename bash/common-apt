@@ -37,7 +37,9 @@ function apt_check_prerequisites() {
 # Reviewed: 2019-11-05
 function apt_check_essentials() {
 
-    ! command_exists dmidecode || ! sudo dmidecode -t system | grep -i ThinkPad >/dev/null || APT_ESSENTIALS+=(acpi-call-dkms tp-smapi-dkms)
+    # deprecated: adding dkms to get "battery charge thresholds and recalibration" for ThinkPads isn't worth it
+    #! command_exists dmidecode || ! sudo dmidecode -t system | grep -i ThinkPad >/dev/null || APT_ESSENTIALS+=(acpi-call-dkms tp-smapi-dkms)
+
     ! command_exists dpkg || ! dpkg -s "linux-generic-hwe-${DISTRIB_RELEASE}" >/dev/null 2>&1 || APT_ESSENTIALS+=("linux-tools-generic-hwe-${DISTRIB_RELEASE}?")
 
     [ "${#APT_ESSENTIALS[@]}" -gt "0" ] || return 0
