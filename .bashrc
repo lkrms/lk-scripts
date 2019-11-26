@@ -288,3 +288,6 @@ function _cloud_check() {
     echo >&2
 
 }
+
+# shellcheck disable=SC2142
+alias files-count="find . -mindepth 1 -maxdepth 1 -type d -exec bash -c 'printf \"%s: %s\\n\" \"\$(find \"\$1\" -type f | wc -l)\" \"\$1\"' bash '{}' \; | sort -n"

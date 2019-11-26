@@ -1,5 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1090
+# Reviewed: 2019-11-27
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -102,7 +103,7 @@ for i in "${!OUTPUTS[@]}"; do
     fi
 
     # extract preferred (native) resolution
-    PIXELS=($(echo "$OUTPUT_INFO_LINES" | grep -E '[[:space:]]+preferred$' | gnu_grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)')) ||
+    PIXELS=($(echo "$OUTPUT_INFO_LINES" | grep -E '[[:space:]]\+preferred$' | gnu_grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)')) ||
         PIXELS=($(echo "$OUTPUT_INFO_LINES" | grep -E '^[[:space:]]+[0-9]+x[0-9]+[[:space:]]' | sort -nr | head -n1 | gnu_grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)')) ||
         PIXELS=()
 
@@ -159,12 +160,10 @@ if [ ! -e "$CONFIG_DIR/xrandr" ] || has_argument "--suggest"; then
             DIMENSIONS=(${SIZES[$i]})
             RESOLUTION=(${RESOLUTIONS[$i]})
 
-            {
-                echo "# ${DIMENSIONS[3]}\", ${RESOLUTION[0]}x${RESOLUTION[1]}"
-                echo "EDID_DISPLAY_${i}=\"${EDIDS[$i]}\""
-                echo "EDID_DISPLAY_${i}_OPTIONS=()"
-                echo
-            }
+            echo "# ${DIMENSIONS[3]}\", ${RESOLUTION[0]}x${RESOLUTION[1]}"
+            echo "EDID_DISPLAY_${i}=\"${EDIDS[$i]}\""
+            echo "EDID_DISPLAY_${i}_OPTIONS=()"
+            echo
 
         done
 
@@ -176,25 +175,15 @@ for i in \$(seq 0 $i); do
     fi
 done
 
-# Here's an example to use as a starting point.
-# In addition to output-specific options, you can also modify: OPTIONS, PRIMARY_INDEX, SCALING_FACTOR, DPI, DPI_MULTIPLIER
+# Modify any of the following variables here:
+# - EDID_DISPLAY_i_OPTIONS (array)
+# - OPTIONS (array)
+# - DPI
+# - DPI_MULTIPLIER
+# - SCALING_FACTOR (integer)
+# - PRIMARY_INDEX
 #
-# # 4K connected?
-# if [ "\$EDID_DISPLAY_0_ACTIVE" -eq "1" ]; then
-#
-#     # "looks like 2560x1440"
-#     EDID_DISPLAY_0_OPTIONS+=(--mode 3840x2160 --scale-from 5120x2880)
-#
-#     # 1080p also connected?
-#     if [ "\$EDID_DISPLAY_1_ACTIVE" -eq "1" ]; then
-#
-#         # "looks like 1536x864" - i.e. use all of i915's (software-limited) 8192x8192 framebuffer
-#         EDID_DISPLAY_1_OPTIONS+=(--mode 1920x1080 --scale-from 3072x1728 --pos 0x576)
-#         EDID_DISPLAY_0_OPTIONS+=(--pos 3072x0)
-#
-#     fi
-#
-# fi
+# See $CONFIG_DIR/xrandr-example and $SCRIPT_PATH for more information
 
 for i in \$(seq 0 $i); do
     eval "EDID_DISPLAY_ACTIVE=\\"\\\$EDID_DISPLAY_\${i}_ACTIVE\\""
@@ -303,8 +292,9 @@ echo_run xrandr "${RESET_OPTIONS[@]}" || true
 echo_run xrandr "${OPTIONS[@]}" || die
 
 ! has_argument "--lightdm" || die
+! is_root || die
 
-if ! has_argument "--lightdm" && ! has_argument "--skip-lightdm" && [ -d "/etc/lightdm/lightdm.conf.d" ]; then
+if ! has_argument "--skip-lightdm" && [ -d "/etc/lightdm/lightdm.conf.d" ]; then
 
     sudo -n tee "/etc/lightdm/lightdm.conf.d/90-xrandr-auto.conf" >/dev/null 2>&1 <<EOF || echo -e "WARNING: unable to configure LightDM\n" >&2
 [Seat:*]
@@ -314,6 +304,14 @@ EOF
 fi
 
 # ok, xrandr is sorted -- look after everything else
+i=0
+while [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; do
+
+    sleep 1
+    [ "$((++i))" -lt "5" ] || die "No dbus daemon after 5 seconds"
+
+done
+
 case "${XDG_CURRENT_DESKTOP:-}" in
 
 XFCE)
@@ -332,6 +330,9 @@ XFCE)
 
         echo_run xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/lid-action-on-ac -n -t uint -s "$XFCE4_LID_ACTION"
 
+        # if logind gets involved in suspending the host, things break
+        echo_run xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/logind-handle-lid-switch -n -t bool -s false
+
     fi
 
     "$SCRIPT_DIR/xfce-set-dpi.sh" "$DPI" "$@"
@@ -339,50 +340,42 @@ XFCE)
 
 esac
 
-if [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ]; then
+if OVERRIDES="$(gsettings get org.gnome.settings-daemon.plugins.xsettings overrides 2>/dev/null)"; then
 
-    if OVERRIDES="$(gsettings get org.gnome.settings-daemon.plugins.xsettings overrides 2>/dev/null)"; then
+    ((XFT_DPI = 1024 * DPI))
 
-        ((XFT_DPI = 1024 * DPI))
+    OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Gdk/WindowScalingFactor" "$SCALING_FACTOR")"
+    OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Xft/DPI" "$XFT_DPI")"
 
-        OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Gdk/WindowScalingFactor" "$SCALING_FACTOR")"
-        OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Xft/DPI" "$XFT_DPI")"
-
-        echo_run gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
-
-    fi
-
-    if gsettings get org.gnome.desktop.interface scaling-factor >/dev/null 2>&1; then
-
-        echo_run gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
-        echo_run gsettings set org.gnome.desktop.interface text-scaling-factor "$DPI_MULTIPLIER" || true
-
-    fi
+    echo_run gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
 
 fi
 
-if ! is_root; then
+if gsettings get org.gnome.desktop.interface scaling-factor >/dev/null 2>&1; then
 
-    if ! is_autostart; then
+    echo_run gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
+    echo_run gsettings set org.gnome.desktop.interface text-scaling-factor "$DPI_MULTIPLIER" || true
 
-        ! command_exists displaycal-apply-profiles || displaycal-apply-profiles
-        "$SCRIPT_DIR/x-release-modifiers.sh"
+fi
 
-    fi
+if ! is_autostart; then
 
-    "$SCRIPT_DIR/xkb-load.sh" "$@" --no-sleep
-    "$SCRIPT_DIR/xinput-load.sh" "$@"
+    ! command_exists displaycal-apply-profiles || displaycal-apply-profiles
+    "$SCRIPT_DIR/x-release-modifiers.sh"
 
-    if killall quicktile 2>/dev/null; then
+fi
 
-        quicktile --daemonize >/dev/null 2>&1 &
+"$SCRIPT_DIR/xkb-load.sh" "$@" --no-sleep
+"$SCRIPT_DIR/xinput-load.sh" "$@"
 
-    fi
+if killall quicktile 2>/dev/null; then
 
-    if killall plank 2>/dev/null; then
+    quicktile --daemonize >/dev/null 2>&1 &
 
-        plank >/dev/null 2>&1 &
+fi
 
-    fi
+if killall plank 2>/dev/null; then
+
+    plank >/dev/null 2>&1 &
 
 fi
