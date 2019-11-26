@@ -49,7 +49,9 @@ function apt_check_essentials() {
 # Reviewed: 2019-11-03
 function apt_refresh_packages() {
 
-    APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po "^.*?(?=(:($(dpkg --print-architecture)))?\tinstalled\$)" | sort | uniq)" || die
+    # `apt-mark showmanual` is more fit for purpose than a comprehensive package list
+    #APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po "^.*?(?=(:($(dpkg --print-architecture)))?\tinstalled\$)" | sort | uniq)" || die
+    APT_INSTALLED_PACKAGES="$(apt-mark showmanual | sort | uniq)" || die
     APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames | sort | uniq)" || die
 
 }

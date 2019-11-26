@@ -106,7 +106,9 @@ EOF
     apt_check_essentials
 
     DESKTOP_PREREQ=(
+        apparmor-utils
         stow
+        xxd
 
         # OpenConnect (build) dependencies
         autoconf automake build-essential gettext libgnutls-dev? libgnutls28-dev? libproxy-dev libtool libxml2-dev pkg-config vpnc-scripts zlib1g-dev
@@ -136,7 +138,7 @@ EOF
         inkscape
         keepassxc
         libreoffice
-        nextcloud-client
+        #nextcloud-client
         qpdfview
         remmina
         scribus
