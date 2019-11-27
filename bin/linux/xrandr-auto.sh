@@ -20,6 +20,8 @@ if has_argument "-h" || has_argument "--help"; then
 
 fi
 
+has_argument "--lightdm" || assert_not_root
+
 ! is_autostart || sleep 2
 
 # if the primary output's actual DPI is above this, enable "Retina" mode
@@ -292,7 +294,6 @@ echo_run xrandr "${RESET_OPTIONS[@]}" || true
 echo_run xrandr "${OPTIONS[@]}" || die
 
 ! has_argument "--lightdm" || die
-! is_root || die
 
 if ! has_argument "--skip-lightdm" && [ -d "/etc/lightdm/lightdm.conf.d" ]; then
 
@@ -304,13 +305,22 @@ EOF
 fi
 
 # ok, xrandr is sorted -- look after everything else
-i=0
+
+SECS=0
+
 while [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; do
 
+    [ "$SECS" -lt "5" ] || die $'\nNo dbus daemon after 5 seconds'
+
+    [ "$SECS" -gt "0" ] || echo -n "Waiting for dbus daemon.." >&2
+    echo -n "." >&2
+    ((++SECS))
+
     sleep 1
-    [ "$((++i))" -lt "5" ] || die "No dbus daemon after 5 seconds"
 
 done
+
+[ "$SECS" -eq "0" ] || echo $'\ndbus daemon started at '"$DBUS_SESSION_BUS_ADDRESS"
 
 case "${XDG_CURRENT_DESKTOP:-}" in
 
@@ -322,16 +332,13 @@ XFCE)
 
     if ! is_desktop; then
 
-        # suspend by default
+        # by default, suspend when laptop lid is closed
         XFCE4_LID_ACTION=1
 
-        # if more than one output is connected, switch off display
+        # unless more than one output is connected (0 = switch off display)
         [ "${#OUTPUTS[@]}" -le "1" ] || XFCE4_LID_ACTION=0
 
         echo_run xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/lid-action-on-ac -n -t uint -s "$XFCE4_LID_ACTION"
-
-        # if logind gets involved in suspending the host, things break
-        echo_run xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/logind-handle-lid-switch -n -t bool -s false
 
     fi
 
