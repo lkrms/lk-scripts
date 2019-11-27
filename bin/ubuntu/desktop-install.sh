@@ -194,6 +194,7 @@ EOF
         gparted
         guake
         hfsprogs
+        libgnome-keyring0
         libsecret-tools
         samba
         seahorse

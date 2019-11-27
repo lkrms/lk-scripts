@@ -41,6 +41,7 @@ function apt_check_essentials() {
     #! command_exists dmidecode || ! sudo dmidecode -t system | grep -i ThinkPad >/dev/null || APT_ESSENTIALS+=(acpi-call-dkms tp-smapi-dkms)
 
     ! command_exists dpkg || ! dpkg -s "linux-generic-hwe-${DISTRIB_RELEASE}" >/dev/null 2>&1 || APT_ESSENTIALS+=("linux-tools-generic-hwe-${DISTRIB_RELEASE}?")
+    ! command_exists check-language-support || APT_ESSENTIALS+=($(check-language-support --show-installed))
 
     [ "${#APT_ESSENTIALS[@]}" -gt "0" ] || return 0
 
@@ -1026,6 +1027,7 @@ APT_DEB_QUEUE=()
 APT_SKIPPED=()
 
 APT_PREREQ=(
+    apt-listchanges
     apt-transport-https
     aptitude
     coreutils
@@ -1034,6 +1036,7 @@ APT_PREREQ=(
     debsums
     distro-info
     dmidecode
+    language-selector-common
     software-properties-common
     wget
 )
