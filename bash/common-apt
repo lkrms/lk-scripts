@@ -62,8 +62,10 @@ function apt_refresh_packages() {
 # Reviewed: 2019-11-03
 function apt_package_installed() {
 
-    apt_make_cache_clean
-    echo "$APT_INSTALLED_PACKAGES" | grep -Fx "$1" >/dev/null 2>&1
+    local STATUS
+
+    STATUS="$(dpkg-query -f '${db:Status-Status}' -W "$1" 2>/dev/null)" || return
+    [ "$STATUS" = "installed" ]
 
 }
 
