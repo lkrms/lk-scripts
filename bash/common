@@ -460,6 +460,14 @@ function die_happy() {
 
 }
 
+# Reviewed: 2019-11-29
+function deprecated_warning() {
+
+    [ "${NO_DEPRECATED_WARNINGS:-N}" = "Y" ] ||
+        echoc -e "\nWARNING: $1 is deprecated${2:+, please use: $2}\n" "$BOLD$YELLOW" >&2
+
+}
+
 # Usage: version_at_least <installed-version> <minimum-version>
 function version_at_least() {
 

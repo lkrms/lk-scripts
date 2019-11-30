@@ -258,9 +258,8 @@ for i in "${!OUTPUTS[@]}"; do
     if ! in_array "--off" OUTPUT_OPTIONS; then
 
         in_array "--mode" OUTPUT_OPTIONS || OPTIONS+=(--preferred)
-
+        in_array "--brightness" OUTPUT_OPTIONS || OPTIONS+=(--brightness 1.0)
         in_array "--primary" OPTIONS || [ "$PRIMARY_INDEX" -ne "$i" ] || OPTIONS+=(--primary)
-
         in_array "Broadcast RGB" OUTPUT_OPTIONS || OPTIONS+=(--set "Broadcast RGB" "Full")
 
     fi
