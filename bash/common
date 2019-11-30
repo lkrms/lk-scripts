@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2034,SC2206,SC2207
+# shellcheck disable=SC2034,SC2206,SC2207,SC1090
 
 set -euo pipefail
 
@@ -410,21 +410,29 @@ function is_url() {
 
 }
 
-# Usage: echoc "My coloured message" "$BOLD" "$BLUE"
-function echoc() {
+# deprecated
+function echocn() {
 
-    echocn "$@"
-    echo
+    deprecated_warning "echocn" "echoc -n [arg ...]"
+    echoc -n "$@"
 
 }
 
-# as above, but no newline afterwards
-function echocn() {
+# Usage: echoc [-neE] message [colour_sequence ...]
+# Reviewed: 2019-11-29
+function echoc() {
 
-    local MESSAGE COLOURS=
+    local ECHO_ARGS=() MESSAGE COLOURS=
 
-    MESSAGE="$1"
-    shift
+    while [[ "${1:-}" =~ ^-[neE]+$ ]]; do
+
+        ECHO_ARGS+=("$1")
+        shift
+
+    done
+
+    MESSAGE="${1:-}"
+    shift || true
 
     if [ "$#" -gt "0" ] && [ -n "$RESET" ]; then
 
@@ -432,11 +440,11 @@ function echocn() {
         COLOURS="$*"
         unset IFS
 
-        MESSAGE="$(search_replace "$RESET" "${RESET}${COLOURS}" "$MESSAGE")"
+        MESSAGE="$(search_replace "$RESET" "$RESET$COLOURS" "$MESSAGE")"
 
     fi
 
-    echo -ne "${COLOURS}${MESSAGE}${RESET}"
+    echo ${ECHO_ARGS[@]+"${ECHO_ARGS[@]}"} "$COLOURS$MESSAGE$RESET"
 
 }
 
@@ -478,19 +486,83 @@ function version_at_least() {
 
 }
 
-# Usage: console_message "Main message" "Secondary message with colour too" "$BOLD" "$BLUE"
+# console_message: console_message message [entity_list [colour_sequence ...] ]
+#
+# Output MESSAGE on the standard output, followed by a list of entities.
+# Apply colour control sequences to improve readability.
+#
+# Output is one of the following:
+#
+# multiple entities
+#     >
+#     > ==> MESSAGE:
+#     > ENTITIES...
+#     >
+#
+# one entity
+#     ==> MESSAGE: ENTITY
+#
+# no entities
+#     ==> MESSAGE
+#
+# On interactive terminals, MESSAGE is bold and colour control sequences
+# are applied to "==>", entities, and any MESSAGE text surrounded by
+# __double underscores__.
+#
+# If MESSAGE contains a trailing colon, it is removed. Entities are
+# piped to `column`.
+#
 function console_message() {
 
-    local MESSAGE1 MESSAGE2
+    local MESSAGE1 MESSAGE2 MESSAGE2_COUNT OUTPUT
 
-    MESSAGE1="$1"
-    MESSAGE2="$2"
-    shift 2
+    MESSAGE1="${1%:}"
+    MESSAGE2=(${2:-})
+    shift || die
+    shift || true
 
-    echocn "==> " "$@"
-    echocn "$MESSAGE1"
-    [ -z "$MESSAGE2" ] || echocn " $MESSAGE2" "$@"
-    echo
+    MESSAGE2_COUNT="${#MESSAGE2[@]}"
+
+    [ "$MESSAGE2_COUNT" -eq "0" ] || MESSAGE1="${MESSAGE1}:"
+
+    OUTPUT=$(
+
+        echoc -n "==> " "$@"
+        echoc -n "$MESSAGE1" "$BOLD"
+
+        # case statements don't parse in Bash 3.2.57 subshells
+        if [ "$MESSAGE2_COUNT" -eq "0" ]; then
+
+            :
+
+        elif [ "$MESSAGE2_COUNT" -eq "1" ]; then
+
+            echoc " ${MESSAGE2[0]}" "$@"
+
+        else
+
+            echo
+            echoc "$(printf '%s\n' "${MESSAGE2[@]}" | column)" "$@"
+
+        fi
+
+    )
+
+    if [ "$MESSAGE2_COUNT" -gt "1" ]; then
+
+        printf '\n%s\n\n' "$OUTPUT"
+
+    else
+
+        echo "$OUTPUT"
+
+    fi
+
+}
+
+function console_warning() {
+
+    console_message "$@" >&2
 
 }
 
@@ -914,6 +986,7 @@ function date_get_timestamp() {
 
 }
 
+# Reviewed: 2019-11-30
 function url_decode() {
 
     echo -e "${*//%/\\x}"
@@ -1017,28 +1090,29 @@ function uri_get_parts() {
 }
 
 # files are downloaded to the current directory, and local filenames are output
+# Reviewed: 2019-11-30
 function download_urls() {
 
-    local i DOWNLOAD_FAILED=0 URL PRETTY_URL HEADERS HEADER HEADER_PARTS IFS FILENAME
+    local URL FILENAME HEADERS DOWNLOAD_FAILED=0 ERROR_MESSAGE HEADER IFS HEADER_PARTS i
 
     for URL in "$@"; do
 
         FILENAME=
-        PRETTY_URL="${NO_WRAP}${URL}${WRAP}"
-        HEADERS="$(wget -SNnv "$URL" 2>&1 >/dev/null)" || DOWNLOAD_FAILED=1
+        HEADERS="$(wget --content-disposition --server-response --timestamping --no-verbose "$URL" 2>&1 >/dev/null)" || DOWNLOAD_FAILED=1
 
         if [ "$DOWNLOAD_FAILED" -eq "1" ]; then
 
-            console_message "Unable to download ($(echo "$HEADERS" | head -n1)):" "$PRETTY_URL" "$BOLD" "$RED" >&2
+            ERROR_MESSAGE="Unable to download ($(echo "$HEADERS" | head -n1)): $URL"
 
             if [ -n "${DOWNLOAD_URLS_SKIP_REGEX:-}" ] && [[ "$(echo "$HEADERS" | head -n1)" =~ $DOWNLOAD_URLS_SKIP_REGEX ]]; then
 
+                echoc "$ERROR_MESSAGE" "$BOLD" "$RED" >&2
                 DOWNLOAD_FAILED=0
                 continue
 
             else
 
-                die
+                die "$ERROR_MESSAGE"
 
             fi
 
@@ -1077,20 +1151,19 @@ function download_urls() {
         if [ -z "$FILENAME" ] || [ ! -e "$FILENAME" ]; then
 
             FILENAME="$(url_decode "$URL")"
-            FILENAME="${FILENAME##*\/}"
+            FILENAME="${FILENAME##*/}"
 
         fi
 
         if [ ! -e "$FILENAME" ]; then
 
-            console_message "Unable to determine filename for:" "$PRETTY_URL" "$BOLD" "$RED" >&2
-            die
+            die "Unable to determine filename for $URL"
 
         fi
 
-        echo "$(pwd)/$FILENAME"
+        echo "$PWD/$FILENAME"
 
-        console_message "Finished downloading:" "$PRETTY_URL" "$CYAN" >&2
+        echoc "Finished downloading $URL" "$CYAN" >&2
 
     done
 
