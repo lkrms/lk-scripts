@@ -55,4 +55,6 @@ for UNISON_PROFILE in "${UNISON_PROFILES[@]}"; do
 
     maybe_dryrun unison "$UNISON_PROFILE" -root "$LOCAL_DIR" -auto "$@" || console_warning "Unison failed with exit code:" "$?" "$BOLD" "$RED"
 
+    echo
+
 done

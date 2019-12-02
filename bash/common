@@ -1441,6 +1441,7 @@ function eval_test() {
 
 }
 
+# Reviewed: 2019-12-02
 function link_settings() {
 
     local i TO
@@ -1453,7 +1454,7 @@ function link_settings() {
 
         if ! command_exists "$COMMAND_CHECK"; then
 
-            die "Error: $APP_NAME isn't installed (command doesn't exist: $COMMAND_CHECK)"
+            die "$APP_NAME isn't installed (command doesn't exist: $COMMAND_CHECK)"
 
         fi
 
@@ -1463,7 +1464,7 @@ function link_settings() {
 
         if eval_test "$RUNNING_CHECK"; then
 
-            die "Error: $APP_NAME is currently running"
+            die "$APP_NAME is currently running"
 
         fi
 
@@ -1473,22 +1474,24 @@ function link_settings() {
 
         if [ ! -d "$DIRECTORY_CHECK" ]; then
 
-            die "Error: $DIRECTORY_CHECK doesn't exist (have you run $APP_NAME yet?)"
+            die "$DIRECTORY_CHECK doesn't exist (have you run $APP_NAME yet?)"
 
         fi
 
     fi
 
-    if [ "$IS_WSL" -eq "1" ] && ! windows_running_as_administrator; then
+    if is_windows && ! windows_running_as_administrator; then
 
-        die "Error: for symbolic links to work, $(basename "$0") must be run as administrator"
+        die "$(basename "$0") must be run as administrator for symbolic links to work"
 
     fi
+
+    console_message "Linking settings files for $APP_NAME" "" "$BOLD" "$CYAN"
 
     for i in "${!LINK_FROM[@]}"; do
 
         [ -e "${LINK_TO[$i]}" ] || {
-            console_message "Missing file:" "${LINK_TO[$i]}" "$BOLD" "$RED"
+            console_warning "Can't link to missing file ${LINK_TO[$i]}" "" "$BOLD" "$RED"
             continue
         }
 
