@@ -69,7 +69,6 @@ EOF
 
     # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
     apt_register_ppa "caffeine-developers/ppa" "caffeine"
-    apt_register_ppa "flexiondotorg/awf" "awf"
     apt_register_ppa "hda-me/xscreensaver" "xscreensaver*"
     apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
     apt_register_ppa "hluk/copyq" "copyq"
@@ -86,17 +85,18 @@ EOF
 
     # ditto for non-PPA repositories
     apt_register_repository dbeaver "https://dbeaver.io/debs/dbeaver.gpg.key" "deb https://dbeaver.io/debs/dbeaver-ce /" "origin dbeaver.io" "dbeaver-ce"
+    apt_register_repository displaycal "https://download.opensuse.org/repositories/home:/fhoech/xUbuntu_18.04/Release.key" "deb https://download.opensuse.org/repositories/home:/fhoech/xUbuntu_$DISTRIB_RELEASE/ /" "release l=home:fhoech" "displaycal"
     apt_register_repository docker "https://download.docker.com/linux/ubuntu/gpg" "deb [arch=amd64] https://download.docker.com/linux/ubuntu $DISTRIB_CODENAME stable" "origin download.docker.com" "docker-ce* containerd.io"
     apt_register_repository google-chrome "https://dl.google.com/linux/linux_signing_key.pub" "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" "origin dl.google.com" "google-chrome-*"
     apt_register_repository microsoft "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/ubuntu/$DISTRIB_RELEASE/prod $DISTRIB_CODENAME main" "release o=microsoft-ubuntu-bionic-prod bionic,l=microsoft-ubuntu-bionic-prod bionic" "powershell*" Y
     apt_register_repository mkvtoolnix "https://mkvtoolnix.download/gpg-pub-moritzbunkus.txt" "deb https://mkvtoolnix.download/ubuntu/ $DISTRIB_CODENAME main" "origin mkvtoolnix.download" "mkvtoolnix*"
     apt_register_repository mongodb-org-4.0 "https://www.mongodb.org/static/pgp/server-4.0.asc" "deb [arch=amd64] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse" "origin repo.mongodb.org" "mongodb-org*"
     apt_register_repository nodesource "https://deb.nodesource.com/gpgkey/nodesource.gpg.key" "deb https://deb.nodesource.com/node_8.x $DISTRIB_CODENAME main" "origin deb.nodesource.com" "nodejs"
+    apt_register_repository signal "https://updates.signal.org/desktop/apt/keys.asc" "deb [arch=amd64] https://updates.signal.org/desktop/apt $DISTRIB_CODENAME main" "origin updates.signal.org" "signal-desktop"
     apt_register_repository skype-stable "https://repo.skype.com/data/SKYPE-GPG-KEY" "deb [arch=amd64] https://repo.skype.com/deb stable main" "origin repo.skype.com" "skypeforlinux"
     apt_register_repository spotify "931FF8E79F0876134EDDBDCCA87FF9DF48BF1C90 2EBF997C15BDA244B6EBF5D84773BD5E130D1D45" "deb http://repository.spotify.com stable non-free" "origin repository.spotify.com" "spotify-client"
     apt_register_repository sublime-text "https://download.sublimetext.com/sublimehq-pub.gpg" "deb https://download.sublimetext.com/ apt/stable/" "origin download.sublimetext.com" "sublime-*"
     apt_register_repository typora "https://typora.io/linux/public-key.asc" "deb https://typora.io/linux ./" "origin typora.io" "typora"
-    apt_register_repository virtualbox "https://www.virtualbox.org/download/oracle_vbox_2016.asc" "deb [arch=amd64] https://download.virtualbox.org/virtualbox/debian $DISTRIB_CODENAME contrib" "origin download.virtualbox.org" "virtualbox-*"
     apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "release o=vscode stable,l=vscode stable" "code code-*"
     apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "origin dl.yarnpkg.com" "yarn"
 
@@ -142,6 +142,7 @@ EOF
         qpdfview
         remmina
         scribus
+        signal-desktop
         skypeforlinux
         speedcrunch
         spotify-client
@@ -189,6 +190,7 @@ EOF
         argyll
         dconf-cli
         dconf-editor
+        displaycal
         gconf-editor
         glmark2
         gparted
@@ -208,16 +210,8 @@ EOF
         btscanner
         guvcview
 
-        # fonts
-        fonts-symbola
-        t1-xfree86-nonfree
-        ttf-xfree86-nonfree
-        xfonts-100dpi
-        xfonts-75dpi
-
         # automation
         devilspie2
-        evtest
         python3-xlib
         sxhkd
         wmctrl
@@ -232,7 +226,6 @@ EOF
     apt_install_packages "desktop essentials" "${DESKTOP_ESSENTIALS[*]}"
 
     DEVELOPMENT=(
-        awf
         build-essential
         cmake
         code
@@ -309,31 +302,35 @@ mongodb-org \
     fi
 
     [ "$LOW_RAM" -eq "1" ] || is_virtual || apt_install_packages "QEMU/KVM" "bridge-utils libvirt-bin qemu-kvm virt-manager"
-    [ "$LOW_RAM" -eq "1" ] || is_virtual || apt_install_packages "VirtualBox" "virtualbox-6.0"
     [ "$LOW_RAM" -eq "1" ] || apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
     case "${XDG_CURRENT_DESKTOP:-}" in
 
     XFCE)
 
-        apt_install_packages "XFCE extras" "\
-libcanberra-gtk-module \
-libcanberra-gtk3-module \
-plank \
-sox \
-ubuntu-sounds \
-xfce4-battery-plugin \
-xfce4-cpufreq-plugin \
-xfce4-sensors-plugin \
-xiccd \
-xscreensaver \
-xscreensaver-data \
-xscreensaver-data-extra \
-xscreensaver-gl \
-xscreensaver-gl-extra \
-xscreensaver-screensaver-bsod \
-xscreensaver-screensaver-webcollage \
-"
+        XFCE_EXTRAS=(
+            # sound
+            libcanberra-gtk-module
+            libcanberra-gtk3-module
+            sox
+            ubuntu-sounds
+
+            # desktop essentials
+            plank
+            xfce4-battery-plugin
+            xfce4-cpufreq-plugin
+            xfce4-sensors-plugin
+            xscreensaver
+            xscreensaver-data
+            xscreensaver-data-extra
+            xscreensaver-gl
+            xscreensaver-gl-extra
+
+            # the version in the repo breaks logout/suspend/etc.
+            #xiccd
+        )
+
+        apt_install_packages "Xfce extras" "${XFCE_EXTRAS[@]}"
 
         apt_remove_packages light-locker
 
@@ -411,9 +408,10 @@ xscreensaver-screensaver-webcollage \
         apt_install_deb "http://ftp.debian.org/debian/pool/contrib/m/msttcorefonts/ttf-mscorefonts-installer_3.7_all.deb"
 
         apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.3-stable-ca35737a/synergy_1.10.3.stable_b24%2Bca35737a_ubuntu18_amd64.deb"
-        apt_install_deb "https://displaycal.net/download/xUbuntu_${DISTRIB_RELEASE}/amd64/DisplayCAL.deb"
         apt_install_deb "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
         apt_install_deb "https://zoom.us/client/latest/zoom_amd64.deb"
+
+        console_message "Looking up deb package URLs" "" "$CYAN"
 
         DEB_URLS=()
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/AppImage/appimaged/releases/tags/continuous" '_amd64\.deb$' | head -n1)")
@@ -421,7 +419,6 @@ xscreensaver-screensaver-webcollage \
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases/latest" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/notable/notable/releases/latest" '_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/IsmaelMartinez/teams-for-linux/releases/latest" '_amd64\.deb$' | head -n1)")
