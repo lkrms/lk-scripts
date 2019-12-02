@@ -10,3 +10,9 @@ if ldconfig -p | grep -E '^\s*libcanberra-gtk3?\.so' >/dev/null; then
     export GTK_MODULES="${GTK_MODULES:+$GTK_MODULES:}canberra-gtk-module"
 
 fi
+
+if [ -d "/usr/local/etc/xdg" ]; then
+
+    export XDG_CONFIG_DIRS="${XDG_CONFIG_DIRS:+$XDG_CONFIG_DIRS:}/usr/local/etc/xdg"
+
+fi

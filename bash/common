@@ -1098,7 +1098,7 @@ function download_urls() {
     for URL in "$@"; do
 
         FILENAME=
-        HEADERS="$(wget --content-disposition --server-response --timestamping --no-verbose "$URL" 2>&1 >/dev/null)" || DOWNLOAD_FAILED=1
+        HEADERS="$(wget --server-response --timestamping --no-verbose "$URL" 2>&1 >/dev/null)" || DOWNLOAD_FAILED=1
 
         if [ "$DOWNLOAD_FAILED" -eq "1" ]; then
 
