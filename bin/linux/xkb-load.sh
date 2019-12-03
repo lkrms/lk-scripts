@@ -14,11 +14,13 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 assert_command_exists xkbcomp
 
-[ ! -f "$CONFIG_DIR/xkbcomp" ] || [ -z "$DISPLAY" ] || {
+[ "${1:-}" != "--no-sleep" ] || shift
+
+[ ! -f "$CONFIG_DIR/${1:-xkbcomp}" ] || [ -z "$DISPLAY" ] || {
 
     # give it a second for keys to be (physically) released
     has_argument "--no-sleep" || sleep 1
 
-    echo_run xkbcomp -I"$SCRIPT_DIR/xkb" "$CONFIG_DIR/xkbcomp" "$DISPLAY"
+    echo_run xkbcomp -I"$SCRIPT_DIR/xkb" "$CONFIG_DIR/${1:-xkbcomp}" "$DISPLAY"
 
 }
