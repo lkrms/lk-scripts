@@ -42,6 +42,10 @@ for j in $(seq -1 8); do
 
         printf 'This is %s on %s. ' "$FG_COLOUR" "$BG_COLOUR"
 
+        tput dim
+
+        printf '%s with dim. ' "$(upper_first "$FG_COLOUR")"
+
         tput bold
 
         printf '%s with bold. ' "$(upper_first "$FG_COLOUR")"
