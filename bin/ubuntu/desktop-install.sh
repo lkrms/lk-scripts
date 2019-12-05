@@ -96,6 +96,7 @@ EOF
     apt_register_repository skype-stable "https://repo.skype.com/data/SKYPE-GPG-KEY" "deb [arch=amd64] https://repo.skype.com/deb stable main" "origin repo.skype.com" "skypeforlinux"
     apt_register_repository spotify "931FF8E79F0876134EDDBDCCA87FF9DF48BF1C90 2EBF997C15BDA244B6EBF5D84773BD5E130D1D45" "deb http://repository.spotify.com stable non-free" "origin repository.spotify.com" "spotify-client"
     apt_register_repository sublime-text "https://download.sublimetext.com/sublimehq-pub.gpg" "deb https://download.sublimetext.com/ apt/stable/" "origin download.sublimetext.com" "sublime-*"
+    apt_register_repository teams "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/ms-teams stable main" "release o=ms-teams stable,l=ms-teams stable" "teams teams-*"
     apt_register_repository typora "https://typora.io/linux/public-key.asc" "deb https://typora.io/linux ./" "origin typora.io" "typora"
     apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "release o=vscode stable,l=vscode stable" "code code-*"
     apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "origin dl.yarnpkg.com" "yarn"
@@ -112,6 +113,11 @@ EOF
 
         # OpenConnect (build) dependencies
         autoconf automake build-essential gettext libgnutls-dev? libgnutls28-dev? libproxy-dev libtool libxml2-dev pkg-config vpnc-scripts zlib1g-dev
+
+        # xiccd (build) dependencies
+        libcolord-dev
+        libxrandr-dev
+        libx11-dev
 
         # QuickTile dependencies
         python python-dbus python-gtk2 python-setuptools python-wnck? python-xlib
@@ -146,6 +152,7 @@ EOF
         skypeforlinux
         speedcrunch
         spotify-client
+        teams-insiders
         transmission
         transmission-cli
         typora
@@ -211,6 +218,7 @@ EOF
         btscanner
         ddcutil
         guvcview
+        nvme-cli
 
         # automation
         devilspie2
@@ -410,7 +418,7 @@ mongodb-org \
         # the Ubuntu package doesn't work
         apt_install_deb "http://ftp.debian.org/debian/pool/contrib/m/msttcorefonts/ttf-mscorefonts-installer_3.7_all.deb"
 
-        apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.3-stable-ca35737a/synergy_1.10.3.stable_b24%2Bca35737a_ubuntu18_amd64.deb"
+        #apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.3-stable-ca35737a/synergy_1.10.3.stable_b24%2Bca35737a_ubuntu18_amd64.deb"
         apt_install_deb "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
         apt_install_deb "https://zoom.us/client/latest/zoom_amd64.deb"
 
@@ -424,7 +432,7 @@ mongodb-org \
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases/latest" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/IsmaelMartinez/teams-for-linux/releases/latest" '_amd64\.deb$' | head -n1)")
+        #DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/IsmaelMartinez/teams-for-linux/releases/latest" '_amd64\.deb$' | head -n1)")
 
         for DEB_URL in "${DEB_URLS[@]}"; do
 
