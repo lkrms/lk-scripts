@@ -14,7 +14,7 @@
     ADD_TO_PATH+=("$ROOT_DIR/bin")
 
     # TODO: move executable scripts into bin and remove this
-    ADD_TO_PATH+=("$ROOT_DIR" "$ROOT_DIR/bash" "$ROOT_DIR/synergy")
+    ADD_TO_PATH+=("$ROOT_DIR" "$ROOT_DIR/bash")
 
     # TODO: remove ROOT_DIR/macos, ROOT_DIR/linux
     ! is_macos || ADD_TO_PATH+=("$ROOT_DIR/bin/macos" "$ROOT_DIR/macos")
@@ -74,13 +74,8 @@
         echo 'alias reset-audio="sudo launchctl unload /System/Library/LaunchDaemons/com.apple.audio.coreaudiod.plist && sudo launchctl load /System/Library/LaunchDaemons/com.apple.audio.coreaudiod.plist"'
         echo 'alias top="top -o cpu"'
 
-        if [ -e "$HOME/Library/LaunchAgents/com.linacreative.Synergy.plist" ]; then
-
-            echo "alias synergy-start='launchctl load \"$HOME/Library/LaunchAgents/com.linacreative.Synergy.plist\"'"
-            echo "alias synergy-stop='launchctl unload \"$HOME/Library/LaunchAgents/com.linacreative.Synergy.plist\"'"
-            echo "alias synergy-restart='synergy-stop; synergy-start'"
-
-        fi
+        command_exists node || [ ! -d "/usr/local/opt/node@8/bin" ] ||
+            echo "export PATH=\"/usr/local/opt/node@8/bin:\$PATH\""
 
         PHP_PATHS=(/usr/local/opt/php*)
 
@@ -116,14 +111,6 @@
 
         ! command_exists gtk-launch || echo 'alias gtk-debug="GTK_DEBUG=interactive "'
         ! command_exists xdg-open || echo 'alias open=xdg-open'
-
-        if system_service_exists "synergy"; then
-
-            echo 'alias synergy-start="sudo systemctl start synergy.service"'
-            echo 'alias synergy-stop="sudo systemctl stop synergy.service"'
-            echo 'alias synergy-restart="sudo systemctl restart synergy.service"'
-
-        fi
 
         ! command_exists virsh || is_root || [ -z "$HOME" ] || {
             mkdir -p "$HOME/.local/var/log" &&

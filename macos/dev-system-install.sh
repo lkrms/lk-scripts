@@ -47,8 +47,7 @@ wget \
     brew_process_queue
 
     brew_formula_installed node || {
-        brew unlink node@8
-        brew link --force --overwrite node@8
+        PATH="/usr/local/opt/node@8/bin:$PATH" /usr/local/opt/node@8/bin/npm update -g
     }
 
     brew_queue_formulae "essentials" "\

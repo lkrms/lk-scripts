@@ -25,8 +25,7 @@ if command_exists brew; then
     brew_upgrade_all
 
     brew_formula_installed node || ! brew_formula_installed node@8 || {
-        brew unlink node@8
-        brew link --force --overwrite node@8
+        PATH="/usr/local/opt/node@8/bin:$PATH" /usr/local/opt/node@8/bin/npm update -g
     }
 
 fi
