@@ -147,6 +147,7 @@ EOF
         speedcrunch
         spotify-client
         transmission
+        transmission-cli
         typora
 
         # PDF
@@ -208,6 +209,7 @@ EOF
         # hardware
         blueman
         btscanner
+        ddcutil
         guvcview
 
         # automation
@@ -229,6 +231,7 @@ EOF
         build-essential
         cmake
         code
+        d-feet
         dbeaver-ce
         devscripts
         equivs

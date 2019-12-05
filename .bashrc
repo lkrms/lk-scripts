@@ -1,6 +1,5 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2016
-# Reviewed: 2019-10-27
 
 # shellcheck disable=SC1091
 . /dev/stdin <<<"$(
@@ -218,9 +217,27 @@ function latest-all-dir() {
     _latest d
 }
 
+# Reviewed: 2019-12-05
 function find-all() {
 
-    find . -iname "*$1*"
+    local FIND="${1:-}"
+
+    [ -n "$FIND" ] || {
+        echo "usage: ${FUNCNAME[0]} search-term [find-arg ...]" >&2
+        return 1
+    }
+
+    shift
+
+    if is_macos; then
+
+        find -x . -iname "*$FIND*" "$@"
+
+    else
+
+        find . -xdev -iname "*$FIND*" "$@"
+
+    fi
 
 }
 

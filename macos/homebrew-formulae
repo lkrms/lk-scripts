@@ -4,6 +4,7 @@ autoconf
 cmake
 coreutils
 exiftool
+federico-terzi/espanso/espanso
 gawk
 gcc@7
 ghostscript
@@ -19,6 +20,7 @@ mas
 media-info
 mongodb/brew/mongodb-community@4.0
 msmtp
+mupdf-tools
 node@8
 ocrmypdf
 openconnect
@@ -33,6 +35,7 @@ rsync
 s-nail
 shellcheck
 shfmt
+stow
 telnet
 terminal-notifier
 tesseract

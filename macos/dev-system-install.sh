@@ -46,7 +46,10 @@ wget \
 
     brew_process_queue
 
-    brew_formula_installed node || brew link --force --overwrite node@8
+    brew_formula_installed node || {
+        brew unlink node@8
+        brew link --force --overwrite node@8
+    }
 
     brew_queue_formulae "essentials" "\
 exiftool \
@@ -59,6 +62,7 @@ youtube-dl \
     brew_queue_casks "desktop essentials" "\
 acorn \
 balenaetcher \
+barrier
 firefox \
 geekbench \
 google-chrome \
@@ -79,7 +83,6 @@ speedcrunch \
 stretchly \
 subler \
 sublime-text \
-synergy \
 the-unarchiver \
 transmission \
 typora \
