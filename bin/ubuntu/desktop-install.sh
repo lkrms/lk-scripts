@@ -267,6 +267,7 @@ EOF
         php-mysql
         php-pear
         php-soap
+        php-sqlite3
         php-xdebug
         php-xml
         php-xmlrpc

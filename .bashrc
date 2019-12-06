@@ -1,6 +1,56 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2016
 
+function lc-before-command() {
+
+    # shellcheck disable=SC2206
+    [ "${LC_PROMPT_DISPLAYED:-0}" -eq "0" ] || [ "$BASH_COMMAND" = "$PROMPT_COMMAND" ] || {
+
+        LC_LAST_COMMAND="$BASH_COMMAND"
+        LC_LAST_COMMAND_START="$(printf '%(%s)T' -1)"
+
+    }
+
+}
+
+function lc-prompt() {
+
+    local EXIT_CODE="$?" PS=() SECS IFS RED GREEN BLUE GREY BOLD NO_WRAP WRAP RESET
+
+    RED="$(tput setaf 1)"
+    GREEN="$(tput setaf 2)"
+    BLUE="$(tput setaf 4)"
+    GREY="$(tput setaf 8)"
+    BOLD="$(tput bold)"
+    NO_WRAP="$(tput rmam)"
+    WRAP="$(tput smam)"
+    RESET="$(tput sgr0)"
+
+    if [ -n "$LC_LAST_COMMAND" ]; then
+
+        ((SECS = $(printf '%(%s)T' -1) - LC_LAST_COMMAND_START)) || true
+        PS+=("\n\[$GREY\]\d \t\[$RESET\] ")
+        [ "$EXIT_CODE" -eq "0" ] && PS+=("\[$GREEN\]✔") || PS+=("\[$RED\]✘ exit status $EXIT_CODE")
+        PS+=(" after ${SECS}s \[$RESET$NO_WRAP$GREY\]( $LC_LAST_COMMAND )\[$WRAP$RESET\]\n")
+        LC_LAST_COMMAND=
+
+    fi
+
+    [ "$EUID" -ne "0" ] && PS+=("\[$BOLD$GREEN\]\u@") || PS+=("\[$BOLD$RED\]\u@")
+    PS+=("\h\[$RESET\]:\[$BOLD$BLUE\]\w\[$RESET\]")
+
+    IFS=
+    PS1="${PS[*]}\\\$ "
+    unset IFS
+
+    LC_PROMPT_DISPLAYED=1
+
+}
+
+trap lc-before-command DEBUG
+PROMPT_COMMAND="lc-prompt"
+LC_LAST_COMMAND=
+
 # shellcheck disable=SC1091
 . /dev/stdin <<<"$(
     set -euo pipefail
