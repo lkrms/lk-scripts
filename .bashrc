@@ -1,12 +1,14 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2016
 
+LC_PROMPT_DISPLAYED=
+
 function lc-before-command() {
 
     # shellcheck disable=SC2206
     [ "${LC_PROMPT_DISPLAYED:-0}" -eq "0" ] || [ "$BASH_COMMAND" = "$PROMPT_COMMAND" ] || {
 
-        LC_LAST_COMMAND="$BASH_COMMAND"
+        LC_LAST_COMMAND=($BASH_COMMAND)
         LC_LAST_COMMAND_START="$(printf '%(%s)T' -1)"
 
     }
@@ -26,13 +28,22 @@ function lc-prompt() {
     WRAP="$(tput smam)"
     RESET="$(tput sgr0)"
 
-    if [ -n "$LC_LAST_COMMAND" ]; then
+    if [ "${#LC_LAST_COMMAND[@]}" -gt "0" ]; then
 
         ((SECS = $(printf '%(%s)T' -1) - LC_LAST_COMMAND_START)) || true
-        PS+=("\n\[$GREY\]\d \t\[$RESET\] ")
-        [ "$EXIT_CODE" -eq "0" ] && PS+=("\[$GREEN\]✔") || PS+=("\[$RED\]✘ exit status $EXIT_CODE")
-        PS+=(" after ${SECS}s \[$RESET$NO_WRAP$GREY\]( $LC_LAST_COMMAND )\[$WRAP$RESET\]\n")
-        LC_LAST_COMMAND=
+
+        if [ "$EXIT_CODE" -ne "0" ] ||
+            [ "$SECS" -gt "1" ] ||
+            [ "$(type -t "${LC_LAST_COMMAND[0]}")" != "builtin" ] ||
+            ! [[ "${LC_LAST_COMMAND[0]}" =~ ^(cd|echo|ls|popd|pushd)$ ]]; then
+
+            PS+=("\n\[$GREY\]\d \t\[$RESET\] ")
+            [ "$EXIT_CODE" -eq "0" ] && PS+=("\[$GREEN\]✔") || PS+=("\[$RED\]✘ exit status $EXIT_CODE")
+            PS+=(" after ${SECS}s \[$RESET$NO_WRAP$GREY\]( ${LC_LAST_COMMAND[*]} )\[$WRAP$RESET\]\n")
+
+        fi
+
+        LC_LAST_COMMAND=()
 
     fi
 
@@ -49,7 +60,7 @@ function lc-prompt() {
 
 trap lc-before-command DEBUG
 PROMPT_COMMAND="lc-prompt"
-LC_LAST_COMMAND=
+LC_LAST_COMMAND=()
 
 # shellcheck disable=SC1091
 . /dev/stdin <<<"$(
