@@ -374,14 +374,5 @@ fi
 "$SCRIPT_DIR/xkb-load.sh" "$@" --no-sleep
 "$SCRIPT_DIR/xinput-load.sh" "$@"
 
-if killall quicktile 2>/dev/null; then
-
-    quicktile --daemonize >/dev/null 2>&1 &
-
-fi
-
-if killall plank 2>/dev/null; then
-
-    plank >/dev/null 2>&1 &
-
-fi
+start_or_restart quicktile --daemonize
+start_or_restart plank

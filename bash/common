@@ -1183,6 +1183,73 @@ function move_file_delete_link() {
 
 }
 
+# get_log_file [suffix]
+#   Outputs the path to a writable log file based on the name of the
+#   running script and the current user's effective ID.
+#
+# Reviewed: 2019-12-08
+function get_log_file() {
+
+    local LOG_ROOTS LOG_ROOT LOG_BASENAME LOG_PATH
+
+    LOG_ROOTS=(
+        "$LOG_DIR"
+        ~/.local/var/log
+        ~
+        /tmp
+    )
+
+    LOG_BASENAME="$(basename "$0")${1:-}.$EUID.log"
+
+    for LOG_ROOT in "${LOG_ROOTS[@]}"; do
+
+        [ -d "$LOG_ROOT" ] ||
+            { [ ! -e "$LOG_ROOT" ] && mkdir -p "$LOG_ROOT" 2>/dev/null; } ||
+            continue
+
+        [ -w "$LOG_ROOT" ] || continue
+
+        LOG_PATH="$LOG_ROOT/$LOG_BASENAME"
+
+        [ -f "$LOG_PATH" ] || [ ! -e "$LOG_PATH" ] || continue
+
+        touch "$LOG_PATH" 2>/dev/null || continue
+
+        echo "$LOG_PATH"
+        return
+
+    done
+
+    die "No writable log file location"
+
+}
+
+# start_or_restart [/path/to/]command [arg ...]
+#   Run command, if it exists, with nohup.
+#   Existing processes matching command are killed first.
+#
+# Reviewed: 2019-12-08
+function start_or_restart() {
+
+    local COMMAND
+
+    COMMAND="$(basename "$1")" || die
+
+    # limit to processes owned by $USER unless running as root
+    is_root || ! pgrep -xu "$USER" "$COMMAND" >/dev/null || echo_run pkill -xu "$USER" "$COMMAND"
+    ! is_root || ! pgrep -x "$COMMAND" >/dev/null || echo_run pkill -x "$COMMAND"
+
+    if command_exists "$1"; then
+
+        # shellcheck disable=SC2119
+        LOG_FILE="$(get_log_file)" || die
+
+        nohup "$@" >"$LOG_FILE" 2>&1 &
+
+    fi
+
+}
+
 # Reviewed: 2019-11-01
 function time_command() {
 
