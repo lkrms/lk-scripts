@@ -1155,6 +1155,8 @@ function download_urls() {
 
         fi
 
+        # TODO: use the final "Location:" header to make an additional filename guess
+        # (this should mean wget's --content-disposition option can be used safely)
         if [ ! -e "$FILENAME" ]; then
 
             die "Unable to determine filename for $URL"
@@ -1246,7 +1248,7 @@ function start_or_restart() {
         LOG_MESSAGE="$(date_get_log) [${FUNCNAME[0]}] Running: $*"
         echo $'\n'"$LOG_MESSAGE" >>"$LOG_FILE"
         echo $'\n'"$LOG_MESSAGE" >>"$LOG_FILE2"
-        "$@" </dev/null >>"$LOG_FILE" 2>&1 &
+        nohup "$@" </dev/null >>"$LOG_FILE" 2>&1 &
         disown
 
     fi
