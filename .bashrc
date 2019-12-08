@@ -19,6 +19,9 @@ function lc-prompt() {
 
     local EXIT_CODE="$?" PS=() SECS IFS RED GREEN BLUE GREY BOLD NO_WRAP WRAP RESET
 
+    history -a
+    history -n
+
     RED="$(tput setaf 1)"
     GREEN="$(tput setaf 2)"
     BLUE="$(tput setaf 4)"
@@ -62,6 +65,8 @@ trap lc-before-command DEBUG
 PROMPT_COMMAND="lc-prompt"
 LC_LAST_COMMAND=()
 
+# keep everything forever
+shopt -s histappend
 HISTCONTROL=
 HISTIGNORE=
 HISTSIZE="-1"
