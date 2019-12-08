@@ -376,3 +376,6 @@ fi
 
 start_or_restart quicktile --daemonize
 start_or_restart plank
+
+# Plank needs a little time
+sleep 2
