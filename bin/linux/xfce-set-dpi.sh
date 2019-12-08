@@ -110,7 +110,7 @@ if PANELS="$(
 
     while IFS= read -r PANEL; do
 
-        # XFCE panel size
+        # Xfce panel size
         echo -e "xfconf-query -c xfce4-panel -p ${PANEL}size -n -t int -s ${_24}\n" >&2
         xfconf-query -c "xfce4-panel" -p "${PANEL}size" -n -t int -s "${_24}"
 

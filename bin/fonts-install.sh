@@ -23,7 +23,7 @@ mkdir -p "$FONT_CACHE_PATH" && [ -w "$FONT_CACHE_PATH" ] && cd "$FONT_CACHE_PATH
 UNPACK_ROOT="$(create_temp_dir Y)"
 DELETE_ON_EXIT+=("$UNPACK_ROOT")
 
-console_message "Downloading ${#FONT_URLS[@]} $(single_or_plural "${#FONT_URLS[@]}" font fonts)"
+console_message "Downloading ${#FONT_URLS[@]} $(single_or_plural "${#FONT_URLS[@]}" font fonts)" "$CYAN"
 
 FONT_PATHS="$(
     . "$SUBSHELL_SCRIPT_PATH" || exit

@@ -62,6 +62,12 @@ trap lc-before-command DEBUG
 PROMPT_COMMAND="lc-prompt"
 LC_LAST_COMMAND=()
 
+HISTCONTROL=
+HISTIGNORE=
+HISTSIZE="-1"
+HISTFILESIZE="-1"
+HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
+
 # shellcheck disable=SC1091
 . /dev/stdin <<<"$(
     set -euo pipefail
