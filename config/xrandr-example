@@ -72,7 +72,7 @@ case "${XDG_CURRENT_DESKTOP:-}" in
     ;;
 
 # Approach #2
-# - best with XFCE
+# - best with Xfce
 # - similar to Windows' display scaling
 # - only impacts system performance if scaling is applied to LoDPI outputs
 #

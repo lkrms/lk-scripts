@@ -3,13 +3,33 @@
 
 LC_PROMPT_DISPLAYED=
 
+if [ "${BASH_VERSINFO[0]}" -eq "4" ] && [ "${BASH_VERSINFO[1]}" -ge "2" ] ||
+    [ "${BASH_VERSINFO[0]}" -gt "4" ]; then
+
+    # take advantage of printf support for strftime in Bash 4.2+
+    function lc-date() {
+
+        printf "%($1)T" -1
+
+    }
+
+else
+
+    function lc-date() {
+
+        date +"$1"
+
+    }
+
+fi
+
 function lc-before-command() {
 
     # shellcheck disable=SC2206
     [ "${LC_PROMPT_DISPLAYED:-0}" -eq "0" ] || [ "$BASH_COMMAND" = "$PROMPT_COMMAND" ] || {
 
         LC_LAST_COMMAND=($BASH_COMMAND)
-        LC_LAST_COMMAND_START="$(printf '%(%s)T' -1)"
+        LC_LAST_COMMAND_START="$(lc-date '%s')"
 
     }
 
@@ -33,7 +53,7 @@ function lc-prompt() {
 
     if [ "${#LC_LAST_COMMAND[@]}" -gt "0" ]; then
 
-        ((SECS = $(printf '%(%s)T' -1) - LC_LAST_COMMAND_START)) || true
+        ((SECS = $(lc-date '%s') - LC_LAST_COMMAND_START)) || true
 
         if [ "$EXIT_CODE" -ne "0" ] ||
             [ "$SECS" -gt "1" ] ||
@@ -69,8 +89,8 @@ LC_LAST_COMMAND=()
 shopt -s histappend
 HISTCONTROL=
 HISTIGNORE=
-HISTSIZE="-1"
-HISTFILESIZE="-1"
+HISTSIZE=
+HISTFILESIZE=
 HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
 
 # shellcheck disable=SC1091
@@ -94,8 +114,6 @@ HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
     ! is_ubuntu || ADD_TO_PATH+=("$ROOT_DIR/bin/ubuntu")
 
     ADD_TO_PATH+=("$HOME/.local/bin")
-    ADD_TO_PATH+=("$HOME/.composer/vendor/bin")
-    ADD_TO_PATH+=("$HOME/.config/composer/vendor/bin")
 
     for KEY in "${!ADD_TO_PATH[@]}"; do
 
@@ -127,20 +145,6 @@ HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
 
     if is_macos; then
 
-        if [ "${TERM_PROGRAM:-}" = "iTerm.app" ]; then
-
-            if [ -f "$HOME/.iterm2_shell_integration.bash" ]; then
-
-                echo '. "$HOME/.iterm2_shell_integration.bash"'
-
-            elif ! is_root; then
-
-                echo 'curl -L "https://iterm2.com/shell_integration/install_shell_integration.sh" | bash && . "$HOME/.iterm2_shell_integration.bash"'
-
-            fi
-
-        fi
-
         echo 'alias duh="du -h -d 1 | sort -h"'
         echo 'alias flush-prefs="killall -u \"\$USER\" cfprefsd"'
         echo 'alias reset-audio="sudo launchctl unload /System/Library/LaunchDaemons/com.apple.audio.coreaudiod.plist && sudo launchctl load /System/Library/LaunchDaemons/com.apple.audio.coreaudiod.plist"'
@@ -149,10 +153,12 @@ HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
         command_exists node || [ ! -d "/usr/local/opt/node@8/bin" ] ||
             echo "export PATH=\"/usr/local/opt/node@8/bin:\$PATH\""
 
+        shopt -s nullglob
         PHP_PATHS=(/usr/local/opt/php*)
+        shopt -u nullglob
 
         [ "${#PHP_PATHS[@]}" -lt "2" ] ||
-            echo -e "WARNING: multiple PHP installations detected and added to PATH:\n$(printf -- '- %s\n' "${PHP_PATHS[@]}")" >&2
+            echo "WARNING: multiple PHP installations detected and added to PATH:$(printf -- '\n- %s' "${PHP_PATHS[@]}")" >&2
 
         for PHP_PATH in "${!PHP_PATHS[@]}"; do
 
@@ -181,7 +187,6 @@ HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
 
         echo 'alias duh="du -h --max-depth 1 | sort -h"'
 
-        ! command_exists gtk-launch || echo 'alias gtk-debug="GTK_DEBUG=interactive "'
         ! command_exists xdg-open || echo 'alias open=xdg-open'
 
         ! command_exists virsh || is_root || [ -z "$HOME" ] || {

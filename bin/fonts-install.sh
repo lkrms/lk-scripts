@@ -44,6 +44,7 @@ case "$PLATFORM" in
 
 linux)
     sudo fc-cache --system-only --force --verbose
+    fc-cache --verbose
     ;;
 
 *)
