@@ -234,6 +234,13 @@ function dev_apply_system_config() {
 
         fi
 
+        if command_exists google-chrome && safe_symlink "$ROOT_DIR/bin/chrome-app.sh" "$HOME/.local/bin/chrome-app.sh"; then
+
+            safe_symlink "$ROOT_DIR/bin/linux/applications/harvest.desktop" "$HOME/.config/autostart/harvest.desktop" &&
+                safe_symlink "$ROOT_DIR/bin/linux/applications/harvest.desktop" "$HOME/.local/share/applications/harvest.desktop" || true
+
+        fi
+
         if [ "${XDG_CURRENT_DESKTOP:-}" = "XFCE" ]; then
 
             # if command_exists xscreensaver; then

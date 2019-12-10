@@ -17,4 +17,4 @@ shift 2
 
 [ -d "${HOME:-}" ] || die "HOME not set"
 
-google-chrome --user-data-dir="$HOME/.config/$INSTANCE_NAME" --no-first-run --app="$URL" "$@"
+google-chrome --user-data-dir="$HOME/.config/$INSTANCE_NAME" --no-first-run --enable-features=OverlayScrollbar --app="$URL" "$@"
