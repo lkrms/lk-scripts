@@ -14,7 +14,11 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 assert_command_exists xkbcomp
 
-[ "${1:-}" != "--no-sleep" ] || shift
+while [[ "${1:-}" =~ ^-- ]]; do
+
+    shift
+
+done
 
 [ ! -f "$CONFIG_DIR/${1:-xkbcomp}" ] || [ -z "$DISPLAY" ] || {
 

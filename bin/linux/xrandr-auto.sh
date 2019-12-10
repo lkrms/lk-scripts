@@ -381,6 +381,7 @@ fi
 "$SCRIPT_DIR/xinput-load.sh" "$@"
 
 start_or_restart quicktile --daemonize
+start_or_restart devilspie2
 start_or_restart plank
 
 # Plank needs a little time
