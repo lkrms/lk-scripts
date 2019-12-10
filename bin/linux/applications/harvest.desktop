@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Harvest
+Exec=chrome-app.sh "https://linacreative.harvestapp.com/time/m" "linacreative.harvestapp.com__time_m"
+StartupNotify=false
+Terminal=false
+Hidden=false
