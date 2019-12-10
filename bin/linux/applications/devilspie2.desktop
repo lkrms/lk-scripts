@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Application
+Name=Devil's Pie 2
+Exec=devilspie2
+StartupNotify=false
+Terminal=false
+Hidden=false

@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090,SC2034
 # Reviewed: 2019-11-27
 
 set -euo pipefail
@@ -8,8 +8,16 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../../bash/common"
 
-# shellcheck disable=SC2034
-MUST_DIE_HAPPY=Y
+if has_argument "--lightdm"; then
+
+    MUST_DIE_HAPPY=Y
+    assert_root
+
+else
+
+    assert_not_root
+
+fi
 
 assert_command_exists xrandr
 assert_command_exists bc
@@ -19,8 +27,6 @@ if has_argument "-h" || has_argument "--help"; then
     die "Usage: $(basename "$0") [--autostart] [--suggest] [--get-qt-exports] [--set-dpi-only] [--skip-lightdm]"
 
 fi
-
-has_argument "--lightdm" || assert_not_root
 
 ! is_autostart || sleep 2
 
@@ -371,7 +377,7 @@ if ! is_autostart; then
 
 fi
 
-"$SCRIPT_DIR/xkb-load.sh" "$@" --no-sleep
+"$SCRIPT_DIR/xkb-load.sh" --no-sleep "$@"
 "$SCRIPT_DIR/xinput-load.sh" "$@"
 
 start_or_restart quicktile --daemonize

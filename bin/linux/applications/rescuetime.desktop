@@ -1,9 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=RescueTime
-Comment=
-Exec=/usr/bin/rescuetime
+Exec=rescuetime
 StartupNotify=false
 Terminal=false
 Hidden=false
-

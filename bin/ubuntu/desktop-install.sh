@@ -68,7 +68,6 @@ EOF
     fi
 
     # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
-    apt_register_ppa "caffeine-developers/ppa" "caffeine"
     apt_register_ppa "hda-me/xscreensaver" "xscreensaver*"
     apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
     apt_register_ppa "hluk/copyq" "copyq"
@@ -230,8 +229,6 @@ EOF
         xdotool
 
     )
-
-    [ "${XDG_CURRENT_DESKTOP:-}" = "XFCE" ] || DESKTOP_ESSENTIALS+=("caffeine")
 
     apt_install_packages "desktop essentials" "${DESKTOP_ESSENTIALS[*]}"
 
