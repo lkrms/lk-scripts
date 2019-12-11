@@ -1790,7 +1790,6 @@ fi
 IS_MACOS=0
 IS_LINUX=0
 IS_UBUNTU=0
-IS_ELEMENTARY_OS=0
 IS_WSL=0
 HAS_GUI=0
 PLATFORM=
@@ -1835,26 +1834,15 @@ Linux)
         else
 
             DISTRIB_ID="$(lsb_release -si)"
-            LSB_RELEASE_EXTRA=
-
-            if [[ "$DISTRIB_ID" == elementary* ]]; then
-
-                DISTRIB_ID="$(lsb_release -siu)"
-                LSB_RELEASE_EXTRA=u
-                IS_ELEMENTARY_OS=1
-
-            fi
-
-            DISTRIB_RELEASE="$(lsb_release -sr$LSB_RELEASE_EXTRA)"
-            DISTRIB_CODENAME="$(lsb_release -sc$LSB_RELEASE_EXTRA)"
-            DISTRIB_DESCRIPTION="$(lsb_release -sd$LSB_RELEASE_EXTRA)"
+            DISTRIB_RELEASE="$(lsb_release -sr)"
+            DISTRIB_CODENAME="$(lsb_release -sc)"
+            DISTRIB_DESCRIPTION="$(lsb_release -sd)"
 
             cat <<EOF >"$CACHE_DIR/.lsb-release"
 DISTRIB_ID="$DISTRIB_ID"
 DISTRIB_RELEASE="$DISTRIB_RELEASE"
 DISTRIB_CODENAME="$DISTRIB_CODENAME"
 DISTRIB_DESCRIPTION="$DISTRIB_DESCRIPTION"
-IS_ELEMENTARY_OS=$IS_ELEMENTARY_OS
 EOF
 
         fi

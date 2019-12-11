@@ -151,7 +151,7 @@ EOF
         skypeforlinux
         speedcrunch
         spotify-client
-        teams-insiders
+        teams
         transmission
         transmission-cli
         typora
@@ -232,6 +232,12 @@ EOF
 
     apt_install_packages "desktop essentials" "${DESKTOP_ESSENTIALS[*]}"
 
+    # buggy (replaced with Rambox)
+    apt_remove_packages caprine
+
+    # replaced with official client
+    apt_remove_packages teams-for-linux teams-insiders
+
     DEVELOPMENT=(
         build-essential
         cmake
@@ -288,6 +294,10 @@ EOF
         sublime-text
         trickle
         yarn
+
+        # Lua
+        lua5.1
+        lua-posix
     )
 
     apt_install_packages "development" "${DEVELOPMENT[*]}"
@@ -345,78 +355,13 @@ mongodb-org \
 
         ;;
 
-        #     Pantheon)
-
-        #         apt_install_packages "elementary OS extras" "com.github.cassidyjames.ideogram gnome-tweaks libgtk-3-dev"
-
-        #         if ! has_argument "--skip-debs" && { apt_package_installed "wingpanel-indicator-ayatana" || get_confirmation "Restore elementary OS system tray indicators?" Y Y; }; then
-
-        #             # because too many apps don't play by the rules (see: https://www.reddit.com/r/elementaryos/comments/aghyiq/system_tray/)
-        #             mkdir -p "$HOME/.config/autostart"
-        #             cp -f "/etc/xdg/autostart/indicator-application.desktop" "$HOME/.config/autostart/"
-        #             sed "${SED_IN_PLACE_ARGS[@]}" 's/^OnlyShowIn.*/OnlyShowIn=Unity;GNOME;Pantheon;/' "$HOME/.config/autostart/indicator-application.desktop"
-
-        #             apt_install_deb "http://ppa.launchpad.net/elementary-os/stable/ubuntu/pool/main/w/wingpanel-indicator-ayatana/wingpanel-indicator-ayatana_2.0.3+r27+pkg17~ubuntu0.4.1.1_amd64.deb"
-
-        #             if [ -e "$HOME/.themes/elementary/gtk-3.0/gtk.css" ]; then
-
-        #                 trash-put "$HOME/.themes/elementary/gtk-3.0/gtk.css"
-
-        #             fi
-
-        #             mkdir -p "$HOME/.themes/elementary/gtk-3.0"
-
-        #             cat <<EOF >"$HOME/.themes/elementary/gtk-3.0/gtk.css"
-        # @import url("/usr/share/themes/elementary/gtk-3.0/gtk.css");
-
-        # .composited-indicator.horizontal {
-        #     padding: 0;
-        # }
-
-        # .composited-indicator.horizontal .composited-indicator {
-        #     padding: 3px;
-        # }
-        # EOF
-
-        #         fi
-
-        #         # use a subshell to protect existing D-Bus environment variables
-        #         (
-        #             . "$SUBSHELL_SCRIPT_PATH" || exit
-
-        #             SUDO_EXTRA=(-nu lightdm -H env -i)
-
-        #             DBUS_LAUNCH_CODE="$(sudo "${SUDO_EXTRA[@]}" dbus-launch --sh-syntax)"
-
-        #             # shellcheck disable=SC1091
-        #             . /dev/stdin <<<"$DBUS_LAUNCH_CODE"
-
-        #             SUDO_EXTRA+=("DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS")
-
-        #             SLEEP_INACTIVE_AC_TIMEOUT="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout)"
-        #             SLEEP_INACTIVE_AC_TYPE="$(sudo "${SUDO_EXTRA[@]}" gsettings get org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type)"
-
-        #             if [ "$SLEEP_INACTIVE_AC_TIMEOUT" = "0" ] && [ "$SLEEP_INACTIVE_AC_TYPE" = "'nothing'" ] || get_confirmation "Prevent elementary OS from sleeping when locked and using AC power?" Y Y; then
-
-        #                 sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-timeout 0 &&
-        #                     sudo "${SUDO_EXTRA[@]}" gsettings set org.gnome.settings-daemon.plugins.power sleep-inactive-ac-type nothing ||
-        #                     console_message "Unable to apply power settings for ${BOLD}lightdm${RESET} user:" "sleep-inactive-ac-timeout sleep-inactive-ac-type" "$BOLD" "$RED" >&2
-
-        #             fi
-
-        #             sudo "${SUDO_EXTRA[@]}" kill "$DBUS_SESSION_BUS_PID"
-        #         )
-
-        #         ;;
-
     esac
 
     if ! has_argument "--skip-debs"; then
 
         # the Ubuntu package doesn't work
-        apt_install_deb "http://ftp.debian.org/debian/pool/contrib/m/msttcorefonts/ttf-mscorefonts-installer_3.7_all.deb"
+        apt_package_installed ttf-mscorefonts-installer || apt_install_deb "http://ftp.debian.org/debian/pool/contrib/m/msttcorefonts/ttf-mscorefonts-installer_3.7_all.deb"
 
-        #apt_install_deb "https://binaries.symless.com/synergy/v1-core-standard/v1.10.3-stable-ca35737a/synergy_1.10.3.stable_b24%2Bca35737a_ubuntu18_amd64.deb"
         apt_install_deb "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
         apt_install_deb "https://zoom.us/client/latest/zoom_amd64.deb"
 
@@ -424,13 +369,13 @@ mongodb-org \
 
         DEB_URLS=()
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/AppImage/appimaged/releases/tags/continuous" '_amd64\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/sindresorhus/caprine/releases/latest" '_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases/latest" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/ramboxapp/community-edition/releases/latest" '-amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1)")
-        #DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/IsmaelMartinez/teams-for-linux/releases/latest" '_amd64\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/KryDos/todoist-linux/releases/latest" '_amd64\.deb$' | head -n1)")
 
         for DEB_URL in "${DEB_URLS[@]}"; do
 

@@ -40,7 +40,7 @@ function lc-prompt() {
     local EXIT_CODE="$?" PS=() SECS IFS RED GREEN BLUE GREY BOLD NO_WRAP WRAP RESET
 
     history -a
-    history -n
+    [ "${LC_HISTORY_READ_NEW:-N}" = "N" ] || history -n
 
     RED="$(tput setaf 1)"
     GREEN="$(tput setaf 2)"

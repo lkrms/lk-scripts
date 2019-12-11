@@ -1,14 +1,15 @@
 #!/bin/bash
 # shellcheck disable=SC2034
+# Reviewed: 2019-12-12
 
 #SCREENSHOT_DIR="$HOME/Pictures/Screenshots"
 
-#SAMBA_WORKGROUP="LINAC"
+SAMBA_WORKGROUP="WORKGROUP"
 
-#GIT_URL_REPLACEMENTS=(
-#    's/https:\/\/github\.com\//github.com:/'
-#    's/ssh:\/\/([^/]+)\//\1:/'
-#)
+GIT_URL_REPLACEMENTS=(
+    's/https:\/\/github\.com\//github.com:/'
+    's/ssh:\/\/([^/]+)\//\1:/'
+)
 
 # by default, update this repo and any repos in ~/Code
 DEFAULT_CODE_ROOTS=("$ROOT_DIR")
