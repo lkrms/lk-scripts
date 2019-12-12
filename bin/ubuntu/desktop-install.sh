@@ -372,7 +372,7 @@ mongodb-org \
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases/latest" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/ramboxapp/community-edition/releases/latest" '-amd64\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/ramboxapp/community-edition/releases/latest" '.*-amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/KryDos/todoist-linux/releases/latest" '_amd64\.deb$' | head -n1)")
