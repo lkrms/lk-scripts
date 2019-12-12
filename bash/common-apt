@@ -64,6 +64,8 @@ function apt_package_installed() {
 
     local STATUS
 
+    [ "${FORCE_INSTALL:-N}" = "N" ] || return 1
+
     STATUS="$(dpkg-query -f '${db:Status-Status}' -W "$1" 2>/dev/null)" || return
     [ "$STATUS" = "installed" ]
 

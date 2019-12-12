@@ -349,7 +349,7 @@ mongodb-org \
             #xiccd
         )
 
-        apt_install_packages "Xfce extras" "${XFCE_EXTRAS[@]}"
+        apt_install_packages "Xfce extras" "${XFCE_EXTRAS[*]}"
 
         apt_remove_packages light-locker
 
