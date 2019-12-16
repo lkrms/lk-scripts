@@ -124,7 +124,7 @@ if PANEL_PLUGINS="$(
     xfconf-query -c "xfce4-panel" -p "/plugins" -lv 2>/dev/null | grep -E '^/plugins/[^/]+\s+'
 )"; then
 
-    ((PANEL_ICON_SIZE = _24 - _GAP))
+    ((PANEL_ICON_SIZE = _24 - _GAP - 4))
 
     while IFS=' ' read -r PLUGIN_ID PLUGIN_NAME; do
 
