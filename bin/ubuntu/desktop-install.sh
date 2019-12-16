@@ -543,12 +543,14 @@ EOF
 
         console_message "Installing latest espanso" "" "$CYAN"
 
-        if user_service_running espanso; then
+        if pgrep -x espanso >/dev/null; then
 
             espanso stop
+            espanso unregister || true
             rm -f "$ESPANSO_PATH"
             mv -v "$ESPANSO_TEMP" "$ESPANSO_PATH"
-            espanso start
+            nohup espanso daemon </dev/null >/dev/null 2>&1 &
+            disown
 
         else
 
