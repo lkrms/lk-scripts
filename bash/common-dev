@@ -218,7 +218,8 @@ function dev_apply_system_config() {
 
         if [ -n "$MERGETOOL" ]; then
 
-            git_add_global_setting merge.guitool "$MERGETOOL" Y
+            git_add_global_setting diff.tool "$MERGETOOL" Y
+            git_add_global_setting merge.tool "$MERGETOOL" Y
             git_add_global_setting mergetool.prompt false N --bool
 
         fi
@@ -241,22 +242,12 @@ function dev_apply_system_config() {
 
         fi
 
-        if [ "${XDG_CURRENT_DESKTOP:-}" = "XFCE" ]; then
-
-            # if command_exists xscreensaver; then
-
-            #     safe_symlink "$ROOT_DIR/linux/xscreensaver-watch.py" "$HOME/.local/bin/xscreensaver-watch.py" &&
-            #         safe_symlink "$ROOT_DIR/linux/xscreensaver-watch.py.desktop" "$HOME/.config/autostart/xscreensaver-watch.py.desktop" || true
-
-            # fi
-
-            safe_symlink "/usr/share/applications/plank.desktop" "$HOME/.config/autostart/plank.desktop" || true
-
-        fi
-
         ! command_exists update-notifier || freedesktop_disable_autostart update-notifier
 
+        safe_symlink "/usr/share/applications/caffeine-indicator.desktop" "$HOME/.config/autostart/caffeine-indicator.desktop" || true
+        safe_symlink "/usr/share/applications/caffeine.desktop" "$HOME/.config/autostart/caffeine.desktop" || true
         safe_symlink "/usr/share/applications/guake.desktop" "$HOME/.config/autostart/guake.desktop" || true
+        safe_symlink "/usr/share/applications/plank.desktop" "$HOME/.config/autostart/plank.desktop" || true
         safe_symlink "/usr/local/share/applications/quicktile.desktop" "$HOME/.config/autostart/quicktile.desktop" || true
         safe_symlink "/usr/share/applications/stretchly.desktop" "$HOME/.config/autostart/stretchly.desktop" || true
 
@@ -270,16 +261,9 @@ function dev_apply_system_config() {
 
         if command_exists sxhkd; then
 
-            safe_symlink "$ROOT_DIR/linux/sxhkd/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc"
-            safe_symlink "$ROOT_DIR/linux/sxhkd/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py"
-
-            if user_service_exists "sxhkd"; then
-
-                systemctl --user disable --now "sxhkd.service" 2>/dev/null || true
-
-            fi
-
-            safe_symlink "$ROOT_DIR/bin/linux/applications/sxhkd.desktop" "$HOME/.config/autostart/sxhkd.desktop" || true
+            safe_symlink "$ROOT_DIR/linux/sxhkd/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc" &&
+                safe_symlink "$ROOT_DIR/linux/sxhkd/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py" &&
+                safe_symlink "$ROOT_DIR/bin/linux/applications/sxhkd.desktop" "$HOME/.config/autostart/sxhkd.desktop" || true
 
         fi
 
