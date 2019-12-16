@@ -486,6 +486,15 @@ function version_at_least() {
 
 }
 
+# Reviewed: 2019-12-16
+function pause() {
+
+    # shellcheck disable=SC2162
+    read -sN 1 -p "${1:-Press any key to continue . . . }"
+    echo
+
+}
+
 # console_message: console_message message [entity_list [colour_sequence ...] ]
 #
 # Output MESSAGE on the standard output, followed by a list of entities.
