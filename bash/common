@@ -198,43 +198,39 @@ function is_linux() {
 
 }
 
+# Reviewed: 2019-12-18
 function assert_is_ubuntu() {
-
-    is_ubuntu || die "Error: $(basename "$0") is not supported on this platform (Ubuntu required)"
-
+    is_ubuntu || die "$(basename "$0") requires Ubuntu"
 }
 
 function is_ubuntu() {
-
     [ "$IS_UBUNTU" -eq "1" ]
-
 }
 
-function assert_has_gui() {
+# Reviewed: 2019-12-18
+function assert_is_desktop() {
+    has_gui || die "$(basename "$0") requires a desktop environment"
+}
 
-    has_gui || die "Error: $(basename "$0") requires a desktop environment"
-
+# Reviewed: 2019-12-18
+function assert_is_server() {
+    ! has_gui || die "$(basename "$0") requires a server environment"
 }
 
 function has_gui() {
-
     [ "$HAS_GUI" -eq "1" ]
-
 }
 
+# Reviewed: 2019-12-18
 function assert_is_ubuntu_lts() {
-
-    is_ubuntu_lts || die "Error: $(basename "$0") is only supported on LTS releases of Ubuntu"
-
+    is_ubuntu_lts || die "$(basename "$0") is only supported on LTS releases of Ubuntu"
 }
 
+# Reviewed: 2019-12-18
 function is_ubuntu_lts() {
-
-    assert_is_ubuntu
+    is_ubuntu || return
     assert_command_exists ubuntu-distro-info
-
-    ubuntu-distro-info --supported-esm | grep "^${DISTRIB_CODENAME}\$" >/dev/null 2>&1
-
+    ubuntu-distro-info --supported-esm | grep ^"$DISTRIB_CODENAME"$ >/dev/null 2>&1
 }
 
 function assert_root() {
@@ -1494,7 +1490,7 @@ function flush_fifo() {
 
 function get_x_displays() {
 
-    assert_has_gui
+    assert_is_desktop
 
     local X
 

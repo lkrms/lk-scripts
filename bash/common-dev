@@ -245,7 +245,6 @@ function dev_apply_system_config() {
         ! command_exists update-notifier || freedesktop_disable_autostart update-notifier
 
         safe_symlink "/usr/share/applications/caffeine-indicator.desktop" "$HOME/.config/autostart/caffeine-indicator.desktop" || true
-        safe_symlink "/usr/share/applications/caffeine.desktop" "$HOME/.config/autostart/caffeine.desktop" || true
         safe_symlink "/usr/share/applications/guake.desktop" "$HOME/.config/autostart/guake.desktop" || true
         safe_symlink "/usr/share/applications/plank.desktop" "$HOME/.config/autostart/plank.desktop" || true
         safe_symlink "/usr/local/share/applications/quicktile.desktop" "$HOME/.config/autostart/quicktile.desktop" || true

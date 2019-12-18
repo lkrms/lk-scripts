@@ -11,7 +11,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../../bash/common-homebrew"
 
 assert_is_ubuntu
-assert_has_gui
+assert_is_desktop
 assert_not_root
 
 # allow this script to be changed while it's running
@@ -43,7 +43,6 @@ libpam0g libraries/restart-without-asking boolean true
 EOF
 
     APT_PREREQ+=(
-        ruby
         trash-cli
     )
 
@@ -90,8 +89,6 @@ EOF
     apt_register_repository google-chrome "https://dl.google.com/linux/linux_signing_key.pub" "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" "origin dl.google.com" "google-chrome-*"
     apt_register_repository microsoft "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/ubuntu/$DISTRIB_RELEASE/prod $DISTRIB_CODENAME main" "release o=microsoft-ubuntu-bionic-prod bionic,l=microsoft-ubuntu-bionic-prod bionic" "powershell*" Y
     apt_register_repository mkvtoolnix "https://mkvtoolnix.download/gpg-pub-moritzbunkus.txt" "deb https://mkvtoolnix.download/ubuntu/ $DISTRIB_CODENAME main" "origin mkvtoolnix.download" "mkvtoolnix*"
-    apt_register_repository mongodb-org-4.0 "https://www.mongodb.org/static/pgp/server-4.0.asc" "deb [arch=amd64] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse" "origin repo.mongodb.org" "mongodb-org*"
-    apt_register_repository nodesource "https://deb.nodesource.com/gpgkey/nodesource.gpg.key" "deb https://deb.nodesource.com/node_8.x $DISTRIB_CODENAME main" "origin deb.nodesource.com" "nodejs"
     apt_register_repository signal "https://updates.signal.org/desktop/apt/keys.asc" "deb [arch=amd64] https://updates.signal.org/desktop/apt xenial main" "origin updates.signal.org" "signal-desktop"
     apt_register_repository skype-stable "https://repo.skype.com/data/SKYPE-GPG-KEY" "deb [arch=amd64] https://repo.skype.com/deb stable main" "origin repo.skype.com" "skypeforlinux"
     apt_register_repository spotify "931FF8E79F0876134EDDBDCCA87FF9DF48BF1C90 2EBF997C15BDA244B6EBF5D84773BD5E130D1D45" "deb http://repository.spotify.com stable non-free" "origin repository.spotify.com" "spotify-client"
@@ -99,16 +96,21 @@ EOF
     apt_register_repository teams "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/ms-teams stable main" "release o=ms-teams stable,l=ms-teams stable" "teams teams-*"
     apt_register_repository typora "https://typora.io/linux/public-key.asc" "deb https://typora.io/linux ./" "origin typora.io" "typora"
     apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "release o=vscode stable,l=vscode stable" "code code-*"
-    apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "origin dl.yarnpkg.com" "yarn"
 
     # otherwise pip, pip3, npm, composer packages will be skipped until next run
-    apt_install_packages "development prerequisites" "nodejs php-cli python-pip python3-pip" Y N
+    APT_ESSENTIALS+=(
+        nodejs
+        php-cli
+        python-pip
+        python3-pip
+    )
+
+    ! command_exists check-language-support || APT_ESSENTIALS+=($(check-language-support --show-installed))
 
     apt_check_essentials
 
     DESKTOP_PREREQ=(
         apparmor-utils
-        stow
         xxd
 
         # OpenConnect (build) dependencies

@@ -41,7 +41,6 @@ function apt_check_essentials() {
     #! command_exists dmidecode || ! sudo dmidecode -t system | grep -i ThinkPad >/dev/null || APT_ESSENTIALS+=(acpi-call-dkms tp-smapi-dkms)
 
     ! command_exists dpkg || ! dpkg -s "linux-generic-hwe-${DISTRIB_RELEASE}" >/dev/null 2>&1 || APT_ESSENTIALS+=("linux-tools-generic-hwe-${DISTRIB_RELEASE}?")
-    ! command_exists check-language-support || APT_ESSENTIALS+=($(check-language-support --show-installed))
 
     [ "${#APT_ESSENTIALS[@]}" -gt "0" ] || return 0
 
@@ -1041,6 +1040,7 @@ APT_PREREQ=(
     distro-info
     dmidecode
     language-selector-common
+    ruby
     software-properties-common
     wget
 )
@@ -1048,6 +1048,7 @@ APT_PREREQ=(
 APT_ESSENTIALS=(
     bc
     pv
+    stow
     vim
 
     # FILES
@@ -1093,7 +1094,6 @@ APT_ESSENTIALS=(
     # KERNEL
     linux-crashdump
     linux-tools-generic
-
 )
 
 is_virtual || APT_ESSENTIALS+=(
@@ -1104,3 +1104,7 @@ is_virtual || APT_ESSENTIALS+=(
     tlp
     tlp-rdw
 )
+
+apt_register_repository mongodb-org-4.0 "https://www.mongodb.org/static/pgp/server-4.0.asc" "deb [arch=amd64] https://repo.mongodb.org/apt/ubuntu bionic/mongodb-org/4.0 multiverse" "origin repo.mongodb.org" "mongodb-org*"
+apt_register_repository nodesource "https://deb.nodesource.com/gpgkey/nodesource.gpg.key" "deb https://deb.nodesource.com/node_8.x $DISTRIB_CODENAME main" "origin deb.nodesource.com" "nodejs"
+apt_register_repository yarn "https://dl.yarnpkg.com/debian/pubkey.gpg" "deb https://dl.yarnpkg.com/debian/ stable main" "origin dl.yarnpkg.com" "yarn"
