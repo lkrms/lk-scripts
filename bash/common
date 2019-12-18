@@ -320,6 +320,23 @@ function filename_add_suffix() {
 
 }
 
+# filename_get_next_backup: filename_get_next_backup filename [backup-identifier]
+function filename_get_next_backup() {
+
+    local i=0 BACKUP_PATH
+
+    BACKUP_PATH="$(filename_add_suffix "$1" "${2:+_$2}_backup")"
+
+    while [ -e "$BACKUP_PATH" ]; do
+
+        BACKUP_PATH="$(filename_add_suffix "$1" "${2:+_$2}_$((++i))_backup")"
+
+    done
+
+    echo "$BACKUP_PATH"
+
+}
+
 function file_mime_type() {
 
     [ -f "$1" ] || die "$1 isn't a file"
