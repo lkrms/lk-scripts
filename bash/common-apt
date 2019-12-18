@@ -214,7 +214,7 @@ function do_apt_enable_ubuntu_repository() {
 
         assert_command_exists add-apt-repository
 
-        sudo add-apt-repository -yn "deb $(apt_ubuntu_archive_url) $1 $2" || die
+        sudo add-apt-repository "$ADD_APT_REPOSITORY_EXTRA" "deb $(apt_ubuntu_archive_url) $1 $2" || die
 
         APT_CACHE_DIRTY=1
 
@@ -246,7 +246,7 @@ function apt_enable_partner_repository() {
 
         assert_command_exists add-apt-repository
 
-        sudo add-apt-repository -yn "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner" || die
+        sudo add-apt-repository "$ADD_APT_REPOSITORY_EXTRA" "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner" || die
 
         APT_CACHE_DIRTY=1
 
@@ -624,7 +624,7 @@ function apt_add_ppa() {
 
         assert_command_exists add-apt-repository
 
-        sudo add-apt-repository -yn "ppa:$ppa" || die
+        sudo add-apt-repository "$ADD_APT_REPOSITORY_EXTRA" "ppa:$ppa" || die
 
         PREFERENCES="${APT_PPA_PREFERENCES[$i]}"
 
@@ -1028,6 +1028,9 @@ APT_PPA_QUEUE=()
 APT_REPO_QUEUE=()
 APT_DEB_QUEUE=()
 APT_SKIPPED=()
+
+ADD_APT_REPOSITORY_EXTRA="-yn"
+version_at_least "$DISTRIB_RELEASE" "18.04" || ADD_APT_REPOSITORY_EXTRA="-y"
 
 APT_PREREQ=(
     apt-listchanges
