@@ -234,6 +234,12 @@ EOF
 
     )
 
+    is_virtual || DESKTOP_ESSENTIALS+=(
+        intel-gpu-tools
+        tlp
+        tlp-rdw
+    )
+
     apt_install_packages "desktop essentials" "${DESKTOP_ESSENTIALS[*]}"
 
     # buggy (replaced with Rambox)
