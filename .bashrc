@@ -177,13 +177,7 @@ HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
 
     else
 
-        if ! is_root && [ -x "/home/linuxbrew/.linuxbrew/bin/brew" ]; then
-
-            echo 'eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"'
-
-            load_linuxbrew || true
-
-        fi
+        is_root || load_linuxbrew Y Y || true
 
         echo 'alias duh="du -h --max-depth 1 | sort -h"'
 
@@ -191,8 +185,7 @@ HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
 
         ! command_exists virsh || is_root || [ -z "$HOME" ] || {
             mkdir -p "$HOME/.local/var/log" &&
-                echo "export LIBVIRT_DEBUG=1" &&
-                echo "export LIBVIRT_LOG_OUTPUTS=\"1:file:$HOME/.local/var/log/virsh.log\"" || true
+                echo 'alias debug-libvirt="export LIBVIRT_DEBUG=1;export LIBVIRT_LOG_OUTPUTS=\"1:file:\$HOME/.local/var/log/virsh.log\""' || true
         }
 
     fi

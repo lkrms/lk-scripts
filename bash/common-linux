@@ -109,6 +109,7 @@ function disable_update_motd() {
 
 }
 
+# Usage: load_linuxbrew [eval? (Y/n)] [echo? (y/N)]
 # Reviewed: 2019-11-06
 function load_linuxbrew() {
 
@@ -116,10 +117,25 @@ function load_linuxbrew() {
 
     [ -x "/home/linuxbrew/.linuxbrew/bin/brew" ] || return
 
-    SHELLENV="$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)" || die
+    SHELLENV="$(/home/linuxbrew/.linuxbrew/bin/brew shellenv | grep -Ev '\b(PATH|MANPATH|INFOPATH)=' || exit "${PIPESTATUS[0]}")" || die
 
-    set +u
-    eval "$SHELLENV"
-    set -u
+    SHELLENV="$SHELLENV
+export PATH=\"\${PATH:+\$PATH:}/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin\";
+export MANPATH=\"\${MANPATH:+\$MANPATH:}/home/linuxbrew/.linuxbrew/share/man\";
+export INFOPATH=\"\${INFOPATH:+\$INFOPATH:}/home/linuxbrew/.linuxbrew/share/info\";"
+
+    if [ "${1:-Y}" = "Y" ]; then
+
+        set +u
+        eval "$SHELLENV"
+        set -u
+
+    fi
+
+    if [ "${2:-N}" = "Y" ]; then
+
+        echo "$SHELLENV"
+
+    fi
 
 }

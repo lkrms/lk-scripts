@@ -21,7 +21,7 @@ assert_not_root
     disable_update_motd
 
     # apply all available preferences in $CONFIG_DIR/apt/preferences.d
-    apt_apply_preferences
+    apt_apply_preferences suppress-bsd-mailx suppress-deepin-notifications suppress-libapache2-mod-php suppress-youtube-dl withhold-proposed-packages
 
     safe_symlink "$CONFIG_DIR/apt.conf" "/etc/apt/apt.conf.d/90-linacreative" Y Y
 
@@ -248,6 +248,9 @@ EOF
     # replaced with official client
     apt_remove_packages teams-for-linux teams-insiders
 
+    # replaced with Evolution (better calendar and CPU utilisation)
+    apt_remove_packages thunderbird
+
     DEVELOPMENT=(
         build-essential
         cmake
@@ -307,6 +310,7 @@ EOF
 
         # Lua
         lua5.1
+        lua-penlight
         lua-posix
     )
 
@@ -361,7 +365,7 @@ mongodb-org \
 
         apt_install_packages "Xfce extras" "${XFCE_EXTRAS[*]}"
 
-        apt_remove_packages light-locker
+        apt_remove_packages light-locker xfce4-indicator-plugin
 
         ;;
 
