@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=RescueTime
-Exec=rescuetime
+Exec=sh -c "sleep 30;rescuetime"
 StartupNotify=false
 Terminal=false
 Hidden=false
