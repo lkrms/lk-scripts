@@ -13,7 +13,7 @@ assert_command_exists bc
 
 [ -n "${1:-}" ] || die "Usage: $(basename "$0") <effective dpi>"
 
-[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] || die "Error: DBUS_SESSION_BUS_ADDRESS not set"
+[ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] || die "DBUS_SESSION_BUS_ADDRESS not set"
 
 RESTART_PANEL=0
 
@@ -77,30 +77,22 @@ else
 fi
 
 # disable Appearance > Fonts > Custom DPI setting
-echo -e "xfconf-query -c xsettings -p /Xft/DPI -n -t int -s -1\n" >&2
-xfconf-query -c "xsettings" -p "/Xft/DPI" -n -t int -s "-1"
+echo_run xfconf-query -c "xsettings" -p "/Xft/DPI" -n -t int -s "-1"
 
 # mouse cursor size
-echo -e "xfconf-query -c xsettings -p /Gtk/CursorThemeSize -n -t int -s ${_24}\n" >&2
-xfconf-query -c "xsettings" -p "/Gtk/CursorThemeSize" -n -t int -s "${_24}"
+echo_run xfconf-query -c "xsettings" -p "/Gtk/CursorThemeSize" -n -t int -s "${_24}"
 
-echo -e "xfconf-query -c xsettings -p /Gtk/IconSizes -n -t string -s gtk-button=${_16},${_16}:gtk-dialog=${_48},${_48}:gtk-dnd=${_32},${_32}:gtk-large-toolbar=${_24},${_24}:gtk-menu=${_16},${_16}:gtk-small-toolbar=${_16},${_16}\n" >&2
-xfconf-query -c "xsettings" -p "/Gtk/IconSizes" -n -t string -s "gtk-button=${_16},${_16}:gtk-dialog=${_48},${_48}:gtk-dnd=${_32},${_32}:gtk-large-toolbar=${_24},${_24}:gtk-menu=${_16},${_16}:gtk-small-toolbar=${_16},${_16}"
+echo_run xfconf-query -c "xsettings" -p "/Gtk/IconSizes" -n -t string -s "gtk-button=${_16},${_16}:gtk-dialog=${_48},${_48}:gtk-dnd=${_32},${_32}:gtk-large-toolbar=${_24},${_24}:gtk-menu=${_16},${_16}:gtk-small-toolbar=${_16},${_16}"
 
-echo -e "xfconf-query -c thunar -p /shortcuts-icon-size -n -t string -s $THUNAR_ICON_SIZE_24\n" >&2
-xfconf-query -c "thunar" -p "/shortcuts-icon-size" -n -t string -s "$THUNAR_ICON_SIZE_24"
+echo_run xfconf-query -c "thunar" -p "/shortcuts-icon-size" -n -t string -s "$THUNAR_ICON_SIZE_24"
 
-echo -e "xfconf-query -c thunar -p /tree-icon-size -n -t string -s $THUNAR_ICON_SIZE_32\n" >&2
-xfconf-query -c "thunar" -p "/tree-icon-size" -n -t string -s "$THUNAR_ICON_SIZE_32"
+echo_run xfconf-query -c "thunar" -p "/tree-icon-size" -n -t string -s "$THUNAR_ICON_SIZE_32"
 
-echo -e "xfconf-query -c thunar -p /last-icon-view-zoom-level -n -t string -s $THUNAR_ZOOM_LEVEL_75\n" >&2
-xfconf-query -c "thunar" -p "/last-icon-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_75"
+echo_run xfconf-query -c "thunar" -p "/last-icon-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_75"
 
-echo -e "xfconf-query -c thunar -p /last-details-view-zoom-level -n -t string -s $THUNAR_ZOOM_LEVEL_38\n" >&2
-xfconf-query -c "thunar" -p "/last-details-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_38"
+echo_run xfconf-query -c "thunar" -p "/last-details-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_38"
 
-echo -e "xfconf-query -c thunar -p /last-compact-view-zoom-level -n -t string -s $THUNAR_ZOOM_LEVEL_25\n" >&2
-xfconf-query -c "thunar" -p "/last-compact-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_25"
+echo_run xfconf-query -c "thunar" -p "/last-compact-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_25"
 
 if PANELS="$(
     # shellcheck disable=SC1090
@@ -111,8 +103,7 @@ if PANELS="$(
     while IFS= read -r PANEL; do
 
         # Xfce panel size
-        echo -e "xfconf-query -c xfce4-panel -p ${PANEL}size -n -t int -s ${_24}\n" >&2
-        xfconf-query -c "xfce4-panel" -p "${PANEL}size" -n -t int -s "${_24}"
+        echo_run xfconf-query -c "xfce4-panel" -p "${PANEL}size" -n -t int -s "${_24}"
 
     done < <(echo "$PANELS")
 
@@ -131,13 +122,11 @@ if PANEL_PLUGINS="$(
         case "$PLUGIN_NAME" in
 
         systray)
-            echo -e "xfconf-query -c xfce4-panel -p ${PLUGIN_ID}/size-max -n -t int -s $PANEL_ICON_SIZE\n" >&2
-            xfconf-query -c "xfce4-panel" -p "${PLUGIN_ID}/size-max" -n -t int -s "$PANEL_ICON_SIZE"
+            echo_run xfconf-query -c "xfce4-panel" -p "${PLUGIN_ID}/size-max" -n -t int -s "$PANEL_ICON_SIZE"
             ;;
 
         statusnotifier)
-            echo -e "xfconf-query -c xfce4-panel -p ${PLUGIN_ID}/icon-size -n -t int -s $PANEL_ICON_SIZE\n" >&2
-            xfconf-query -c "xfce4-panel" -p "${PLUGIN_ID}/icon-size" -n -t int -s "$PANEL_ICON_SIZE"
+            echo_run xfconf-query -c "xfce4-panel" -p "${PLUGIN_ID}/icon-size" -n -t int -s "$PANEL_ICON_SIZE"
             ;;
 
         esac
