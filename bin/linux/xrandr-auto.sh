@@ -1,6 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2034
-# Reviewed: 2019-11-27
+# Reviewed: 2019-12-28
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -34,7 +34,7 @@ fi
 HIDPI_THRESHOLD=144
 
 # get current state with trailing whitespace removed
-XRANDR_OUTPUT="$(xrandr --verbose | sed -E 's/[[:space:]]+$//')" || die "Unable to retrieve current RandR state"
+XRANDR_OUTPUT="$(xrandr --verbose | gnu_sed -E 's/[[:space:]]+$//')" || die "Unable to retrieve current RandR state"
 
 # convert to single line for upcoming greps
 XRANDR_OUTPUT="\\n${XRANDR_OUTPUT//$'\n'/\\n}"
@@ -90,11 +90,10 @@ for i in "${!OUTPUTS[@]}"; do
     # extract dimensions
     DIMENSIONS=($(echo "$OUTPUT_INFO_LINES" | head -n1 | gnu_grep -Po '\b[0-9]+(?=mm\b)')) || DIMENSIONS=()
 
-    if [ "${#DIMENSIONS[@]}" -eq 2 ]; then
+    if [ "${#DIMENSIONS[@]}" -eq 2 ] && ((AREA = DIMENSIONS[0] * DIMENSIONS[1])); then
 
-        ((AREA = DIMENSIONS[0] * DIMENSIONS[1]))
         DIMENSIONS+=("$AREA")
-        DIMENSIONS+=("$(echo "scale = 10; size = sqrt(${DIMENSIONS[0]} ^ 2 + ${DIMENSIONS[1]} ^ 2) / 10 / 2.54; scale = 1; size / 1" | bc)")
+        DIMENSIONS+=("$(echo "scale=10;size=sqrt(${DIMENSIONS[0]}^2+${DIMENSIONS[1]}^2)/10/2.54;scale=1;size/1" | bc)")
         SIZES+=("${DIMENSIONS[*]}")
 
         if [ "$AREA" -gt "$LARGEST_AREA" ]; then
@@ -112,7 +111,7 @@ for i in "${!OUTPUTS[@]}"; do
 
     # extract preferred (native) resolution
     PIXELS=($(echo "$OUTPUT_INFO_LINES" | grep -E '[[:space:]]\+preferred$' | gnu_grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)')) ||
-        PIXELS=($(echo "$OUTPUT_INFO_LINES" | grep -E '^[[:space:]]+[0-9]+x[0-9]+[[:space:]]' | sort -nr | head -n1 | gnu_grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)')) ||
+        PIXELS=($(echo "$OUTPUT_INFO_LINES" | grep -E '^[[:space:]]+[0-9]+x[0-9]+[[:space:]]' | sort -Vr | head -n1 | gnu_grep -Po '(?<=[[:space:]]|x)[0-9]+(?=[[:space:]]|x)')) ||
         PIXELS=()
 
     if [ "${#PIXELS[@]}" -eq 2 ]; then
@@ -121,7 +120,7 @@ for i in "${!OUTPUTS[@]}"; do
 
         if [ "$PRIMARY_INDEX" -eq "$i" ] && [ "${#DIMENSIONS[@]}" -eq "4" ] && [ "${DIMENSIONS[0]}" -gt "0" ]; then
 
-            ACTUAL_DPI="$(echo "scale = 10; dpi = ${PIXELS[0]} / ( ${DIMENSIONS[0]} / 10 / 2.54 ); scale = 0; dpi / 1" | bc)"
+            ACTUAL_DPI="$(echo "scale=10;dpi=${PIXELS[0]}/(${DIMENSIONS[0]}/10/2.54);scale=0;dpi/1" | bc)"
             PRIMARY_SIZE="${DIMENSIONS[3]}"
 
         fi
@@ -215,7 +214,7 @@ if [ -e "$CONFIG_DIR/xrandr" ]; then
 
 fi
 
-DPI="$(echo "scale = 10; dpi = $DPI * $DPI_MULTIPLIER; scale = 0; dpi / 1" | bc)"
+DPI="$(echo "scale=10;dpi=$DPI*$DPI_MULTIPLIER;scale=0;dpi/1" | bc)"
 
 echo "Scaling factor: $SCALING_FACTOR" >&2
 echo "Effective DPI: $DPI" >&2
@@ -264,6 +263,7 @@ for i in "${!OUTPUTS[@]}"; do
     if ! in_array "--off" OUTPUT_OPTIONS; then
 
         in_array "--mode" OUTPUT_OPTIONS || OPTIONS+=(--preferred)
+        in_array "--pos" OUTPUT_OPTIONS || OPTIONS+=(--pos 0x0)
         in_array "--brightness" OUTPUT_OPTIONS || OPTIONS+=(--brightness 1.0)
         in_array "--primary" OPTIONS || [ "$PRIMARY_INDEX" -ne "$i" ] || OPTIONS+=(--primary)
         in_array "Broadcast RGB" OUTPUT_OPTIONS || OPTIONS+=(--set "Broadcast RGB" "Full")
@@ -298,14 +298,24 @@ xrandr --dryrun "${OPTIONS[@]}" >/dev/null || die
 echo_run xrandr "${RESET_OPTIONS[@]}" || true
 echo_run xrandr "${OPTIONS[@]}" || die
 
-! has_argument "--lightdm" || die
+! has_argument "--lightdm" || exit 0
 
-if ! has_argument "--skip-lightdm" && [ -d "/etc/lightdm/lightdm.conf.d" ]; then
+function get_lightdm_conf() {
 
-    sudo -n tee "/etc/lightdm/lightdm.conf.d/90-xrandr-auto.conf" >/dev/null 2>&1 <<EOF || echo -e "WARNING: unable to configure LightDM\n" >&2
+    cat <<EOF
 [Seat:*]
 display-setup-script='$SCRIPT_PATH' --lightdm
 EOF
+
+}
+
+LIGHTDM_CONF_FILE="/etc/lightdm/lightdm.conf.d/90-xrandr-auto.conf"
+
+if ! has_argument "--skip-lightdm" &&
+    [ -d "/etc/lightdm/lightdm.conf.d" ] &&
+    { [ ! -e "$LIGHTDM_CONF_FILE" ] || diff "$LIGHTDM_CONF_FILE" <(get_lightdm_conf) >/dev/null; }; then
+
+    get_lightdm_conf | sudo -n tee "$LIGHTDM_CONF_FILE" >/dev/null 2>&1 || echo $'WARNING: unable to configure LightDM\n' >&2
 
 fi
 
@@ -347,7 +357,7 @@ XFCE)
 
     fi
 
-    "$SCRIPT_DIR/xfce4-set-dpi.sh" "${XFCE4_DPI:-$DPI}" "$@"
+    echo_run "$SCRIPT_DIR/xfce4-set-dpi.sh" "${XFCE4_DPI:-$DPI}" "$ACTUAL_DPI" "$@"
     ;;
 
 esac
@@ -372,13 +382,13 @@ fi
 
 if ! is_autostart; then
 
-    ! command_exists displaycal-apply-profiles || displaycal-apply-profiles
-    "$SCRIPT_DIR/x-release-modifiers.sh"
+    ! command_exists displaycal-apply-profiles || echo_run displaycal-apply-profiles
+    echo_run "$SCRIPT_DIR/x-release-modifiers.sh"
 
 fi
 
-"$SCRIPT_DIR/xkb-load.sh" --no-sleep "$@"
-"$SCRIPT_DIR/xinput-load.sh" "$@"
+echo_run "$SCRIPT_DIR/xkb-load.sh" --no-sleep "$@"
+echo_run "$SCRIPT_DIR/xinput-load.sh" "$@"
 
 start_or_restart quicktile --daemonize
 start_or_restart devilspie2

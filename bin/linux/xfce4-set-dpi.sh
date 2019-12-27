@@ -1,5 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2034
+# Reviewed: 2019-12-28
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -11,11 +12,9 @@ assert_command_exists xfce4-panel
 assert_command_exists xfconf-query
 assert_command_exists bc
 
-[ -n "${1:-}" ] || die "Usage: $(basename "$0") <effective dpi>"
+[ -n "${1:-}" ] || die "Usage: $(basename "$0") <effective dpi> [actual dpi]"
 
 [ -n "${DBUS_SESSION_BUS_ADDRESS:-}" ] || die "DBUS_SESSION_BUS_ADDRESS not set"
-
-RESTART_PANEL=0
 
 _MULTIPLIER="$(bc <<<"scale = 10; $1 / 96")"
 _MULTIPLIERx10="$(bc <<<"scale = 10; v = $1 * 10 / 96; scale = 0; v / 1")"
@@ -153,10 +152,8 @@ for FILE in "$HOME/.config/xfce4/panel/"whiskermenu*.rc; do
     if ! diff <(sort "$FILE" | grep -Ev '^\s*$') <(echo "$NEW_SETTINGS" | sort | grep -Ev '^\s*$') >/dev/null; then
 
         cp -pf "$FILE" "$FILE.bak"
-        echo -e "Setting ${WHISKER_SETTINGS[*]} in $FILE\n" >&2
         echo "$NEW_SETTINGS" >"$FILE"
         echo >>"$FILE"
-        RESTART_PANEL=1
 
     fi
 
@@ -170,8 +167,7 @@ if command_exists dconf; then
         while IFS= read -r PLANK_DOCK; do
 
             # Plank icon size
-            echo -e "dconf write /net/launchpad/plank/docks/${PLANK_DOCK}icon-size ${_48}\n" >&2
-            dconf write "/net/launchpad/plank/docks/${PLANK_DOCK}icon-size" "${_48}"
+            echo_run dconf write "/net/launchpad/plank/docks/${PLANK_DOCK}icon-size" "${_48}"
 
         done < <(echo "$PLANK_DOCKS")
 
@@ -183,9 +179,5 @@ else
 
 fi
 
-if [ "$RESTART_PANEL" -eq "1" ]; then
-
-    echo -e "xfce4-panel -r\n" >&2
-    nohup xfce4-panel -r >/dev/null 2>&1 &
-
-fi
+nohup xfce4-panel -r </dev/null >/dev/null 2>&1 &
+disown
