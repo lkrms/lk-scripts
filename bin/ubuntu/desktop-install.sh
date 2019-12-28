@@ -147,7 +147,7 @@ EOF
         inkscape
         keepassxc
         libreoffice
-        #nextcloud-client
+        nextcloud-client
         qpdfview
         remmina
         scribus
