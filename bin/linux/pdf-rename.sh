@@ -1,6 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2015
-# Reviewed: 2020-01-04
+# Reviewed: 2020-01-05
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -14,7 +14,6 @@ assert_command_exists qpdfview
 
 command_exists wmctrl && WINDOW_ID="$(xdotool getactivewindow 2>/dev/null)" || WINDOW_ID=
 
-FILE_COUNT="$#"
 FILE_NUMBER=0
 
 for FILE_PATH in "$@"; do
@@ -23,7 +22,7 @@ for FILE_PATH in "$@"; do
 
     echo
 
-    lc_console_message "Opening file ${BOLD}$FILE_NUMBER${RESET} of ${BOLD}$FILE_COUNT${RESET}:" "$FILE_PATH" "$CYAN"
+    lc_console_item "Opening file $FILE_NUMBER of $#" "$FILE_PATH"
 
     nohup qpdfview --unique --instance pdf_rename "$FILE_PATH" >/dev/null 2>&1 &
     disown
@@ -59,11 +58,11 @@ for FILE_PATH in "$@"; do
 
     if [ "$NEW_PATH" = "$NEW_PATH_CLEAN" ]; then
 
-        lc_console_message "Renamed to:" "$(basename "$NEW_PATH")" "$BOLD$GREEN"
+        lc_console_item "Renamed to" "$(basename "$NEW_PATH")" "$BOLD$GREEN"
 
     else
 
-        lc_console_message "$(basename "$NEW_PATH_CLEAN") already exists, renamed to:" "$(basename "$NEW_PATH")" "$BOLD$YELLOW"
+        lc_console_item "$(basename "$NEW_PATH_CLEAN") already exists, renamed to" "$(basename "$NEW_PATH")" "$BOLD$YELLOW"
 
     fi
 

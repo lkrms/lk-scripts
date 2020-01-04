@@ -1,0 +1,10 @@
+#!/bin/bash
+
+set -euo pipefail
+
+PULL_FROM="${PWD%/.git}"
+
+cd "/opt/linac-scripts"
+
+unset GIT_DIR
+git pull "$PULL_FROM" "master"

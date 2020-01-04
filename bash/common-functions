@@ -69,6 +69,11 @@ function lc_console_message() {
 
 }
 
+# lc_console_item message item [colour_sequence]
+function lc_console_item() {
+    lc_console_message "${1%:}:" "$2" "${3:-}"
+}
+
 # lc_console_list message [single_noun plural_noun] [colour_sequence]
 function lc_console_list() {
 

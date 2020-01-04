@@ -60,7 +60,7 @@ for i in "${!UNISON_PROFILES[@]}"; do
 
     [ "$i" -eq "0" ] || echo
 
-    lc_console_message "Syncing local directory:" '~'"${LOCAL_DIR#$HOME}" "$CYAN"
+    lc_console_item "Syncing local directory" '~'"${LOCAL_DIR#$HOME}"
 
     if maybe_dryrun unison "$UNISON_PROFILE" -root "$LOCAL_DIR" -auto -logfile "$UNISON_ROOT/unison.$(hostname -s | tr "[:upper:]" "[:lower:]").log" "$@"; then
 

@@ -30,7 +30,7 @@ echo
 mutool merge -o "$PDF_PATH" "$@" &&
     touch -r "$NEWEST_PATH" "$PDF_PATH" && {
 
-    lc_console_message "Successfully combined to:" "$PDF_PATH" "$BOLD$GREEN"
+    lc_console_item "Successfully combined to" "$PDF_PATH" "$BOLD$GREEN"
     echo
 
     lc_console_message "Moving original files out of the way"

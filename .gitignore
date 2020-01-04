@@ -8,3 +8,5 @@
 !/config/*-default*
 !/config/*-example*
 !/config/README.md
+
+.githooks/*.sample
