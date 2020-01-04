@@ -1,6 +1,6 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2034,SC2068
-# Reviewed: 2019-12-16
+# shellcheck disable=SC1090,SC2034
+# Reviewed: 2020-01-04
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -39,10 +39,9 @@ PROCESSED=()
 FAILED=()
 SKIPPED=()
 
-i=0
+for i in "${!UNISON_PROFILES[@]}"; do
 
-for UNISON_PROFILE in "${UNISON_PROFILES[@]}"; do
-
+    UNISON_PROFILE="${UNISON_PROFILES[$i]}"
     UNISON_PROFILE="$(basename "${UNISON_PROFILE%.prf}")"
     LOCAL_DIR="$HOME/$(upper_first "$UNISON_PROFILE")"
 
@@ -59,9 +58,9 @@ for UNISON_PROFILE in "${UNISON_PROFILES[@]}"; do
         continue
     }
 
-    ((i++)) && echo || true
+    [ "$i" -eq "0" ] || echo
 
-    console_message "Syncing local directory:" '~'"${LOCAL_DIR#$HOME}" "$CYAN"
+    lc_console_message "Syncing local directory:" '~'"${LOCAL_DIR#$HOME}" "$CYAN"
 
     if maybe_dryrun unison "$UNISON_PROFILE" -root "$LOCAL_DIR" -auto -logfile "$UNISON_ROOT/unison.$(hostname -s | tr "[:upper:]" "[:lower:]").log" "$@"; then
 
@@ -75,12 +74,19 @@ for UNISON_PROFILE in "${UNISON_PROFILES[@]}"; do
 
 done
 
-echo
+[ "${#SKIPPED[@]}" -eq "0" ] || {
+    echo
+    lc_echo_array "${SKIPPED[@]}" | lc_console_list "${#SKIPPED[@]} $(single_or_plural "${#SKIPPED[@]}" profile profiles) skipped:"
+}
 
-[ "${#SKIPPED[@]}" -eq "0" ] || console_message "${#SKIPPED[@]} $(single_or_plural "${#SKIPPED[@]}" profile profiles) skipped:" "${SKIPPED[*]}" "$CYAN"
-[ "${#PROCESSED[@]}" -eq "0" ] || console_message "${#PROCESSED[@]} $(single_or_plural "${#PROCESSED[@]}" profile profiles) synchronised:" "${PROCESSED[*]}" "$BOLD$GREEN"
+[ "${#PROCESSED[@]}" -eq "0" ] || {
+    echo
+    lc_echo_array "${PROCESSED[@]}" | lc_console_list "${#PROCESSED[@]} $(single_or_plural "${#PROCESSED[@]}" profile profiles) synchronised:" "$BOLD$GREEN"
+}
+
 [ "${#FAILED[@]}" -eq "0" ] || {
-    console_message "${#FAILED[@]} $(single_or_plural "${#FAILED[@]}" profile profiles) failed:" "${FAILED[*]}" "$BOLD$RED"
+    echo
+    lc_echo_array "${FAILED[@]}" | lc_console_list "${#FAILED[@]} $(single_or_plural "${#FAILED[@]}" profile profiles) failed:" "$BOLD$RED"
     echo
     pause
     exit 1

@@ -8,6 +8,7 @@
 # - function die()
 # - function search_replace()
 # - function single_or_plural()
+# - function gnu_*()
 # - $CYAN etc.
 
 function lc_echo_array() {
@@ -91,6 +92,18 @@ function lc_console_list() {
     lc_console_message "${MESSAGE%:}:" "$COLOURS"
     [ "${#ITEMS[@]}" -eq "0" ] || lc_echoc "$(printf '%s\n' "${ITEMS[@]}" | column)" "$COLOURS"
     [ -z "${SINGLE_NOUN:-}" ] || echo "(${#ITEMS[@]} $(single_or_plural "${#ITEMS[@]}" "$SINGLE_NOUN" "$PLURAL_NOUN"))"
+
+}
+
+function lc_sort_files_by_date() {
+
+    gnu_stat --printf '%Y :%n\0' "$@" | sort -zn | gnu_sed -zE 's/[0-9]+ ://' | xargs -0 printf '%s\n'
+
+}
+
+function lc_sort_files_by_date_reverse() {
+
+    gnu_stat --printf '%Y :%n\0' "$@" | sort -znr | gnu_sed -zE 's/[0-9]+ ://' | xargs -0 printf '%s\n'
 
 }
 
