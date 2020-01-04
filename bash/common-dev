@@ -228,6 +228,8 @@ function dev_apply_system_config() {
 
     if is_linux; then
 
+        safe_symlink "$ROOT_DIR/bin/pdf-combine.sh" "$HOME/.local/bin/pdf-combine.sh"
+
         if command_exists xrandr; then
 
             safe_symlink "$ROOT_DIR/bin/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh" &&
