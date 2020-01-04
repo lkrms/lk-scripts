@@ -168,7 +168,7 @@ HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
 
         done
 
-        if [ -z "${JAVA_HOME:-}" ] && [ -x "/usr/libexec/java_home" ]; then
+        if [ -z "${JAVA_HOME:-}" ] && [ -x "/usr/libexec/java_home" ] && /usr/libexec/java_home >/dev/null 2>&1; then
 
             JAVA_HOME="$(/usr/libexec/java_home)" &&
                 echo "export JAVA_HOME=\"$JAVA_HOME\""

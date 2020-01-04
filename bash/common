@@ -10,10 +10,6 @@ function error_trap() {
 
 }
 
-trap 'error_trap "$?" "${BASH_SOURCE[0]}" "$LINENO"' ERR
-
-set -E
-
 function exit_trap() {
 
     local i
@@ -31,23 +27,6 @@ function exit_trap() {
     done
 
 }
-
-trap exit_trap EXIT
-
-shopt -s expand_aliases
-alias pop_return1='{ popd >/dev/null; return 1; }'
-
-ORIGINAL_DRYRUN_ARGUMENT=
-
-if [[ "${1:-}" =~ --(dry)?run ]]; then
-
-    ORIGINAL_DRYRUN_ARGUMENT="$1"
-    shift
-
-fi
-
-ORIGINAL_BASH_SUBSHELL="$BASH_SUBSHELL"
-ORIGINAL_ARGUMENTS=("$@")
 
 # Reviewed: 2019-10-28
 function gnu_command() {
@@ -431,34 +410,8 @@ function echocn() {
 
 }
 
-# Usage: echoc [-neE] message [colour_sequence ...]
-# Reviewed: 2019-11-29
 function echoc() {
-
-    local ECHO_ARGS=() MESSAGE COLOURS=
-
-    while [[ "${1:-}" =~ ^-[neE]+$ ]]; do
-
-        ECHO_ARGS+=("$1")
-        shift
-
-    done
-
-    MESSAGE="${1:-}"
-    shift || true
-
-    if [ "$#" -gt "0" ] && [ -n "$RESET" ]; then
-
-        local IFS=
-        COLOURS="$*"
-        unset IFS
-
-        MESSAGE="$(search_replace "$RESET" "$RESET$COLOURS" "$MESSAGE")"
-
-    fi
-
-    echo ${ECHO_ARGS[@]+"${ECHO_ARGS[@]}"} "$COLOURS$MESSAGE$RESET"
-
+    lc_echoc "$@"
 }
 
 # Reviewed: 2019-11-04
@@ -1725,8 +1678,11 @@ function get_memory_size() {
 }
 
 COMMON_SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || COMMON_SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-ROOT_DIR="$(dirname "$COMMON_SCRIPT_PATH")/.."
-ROOT_DIR="$(realpath "$ROOT_DIR" 2>/dev/null)" || ROOT_DIR="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "$ROOT_DIR")"
+ROOT_DIR_RELATIVE="$(dirname "$COMMON_SCRIPT_PATH")/.."
+ROOT_DIR="$(realpath "$ROOT_DIR_RELATIVE" 2>/dev/null)" || ROOT_DIR="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "$ROOT_DIR_RELATIVE")"
+
+. "$ROOT_DIR/bash/common-functions"
+
 CONFIG_DIR="$ROOT_DIR/config"
 CACHE_DIR="$ROOT_DIR/cache"
 LOCAL_DIR="$ROOT_DIR/local"
@@ -1739,6 +1695,28 @@ FONTPATH=
 
 DELETE_ON_EXIT=()
 KILL_ON_EXIT=()
+
+trap 'error_trap "$?" "${BASH_SOURCE[0]}" "$LINENO"' ERR
+
+set -E
+
+trap exit_trap EXIT
+
+shopt -s expand_aliases
+alias pop_return1='{ popd >/dev/null; return 1; }'
+alias basename='basename --'
+
+ORIGINAL_DRYRUN_ARGUMENT=
+
+if [[ "${1:-}" =~ --(dry)?run ]]; then
+
+    ORIGINAL_DRYRUN_ARGUMENT="$1"
+    shift
+
+fi
+
+ORIGINAL_BASH_SUBSHELL="$BASH_SUBSHELL"
+ORIGINAL_ARGUMENTS=("$@")
 
 register_gnu_commands awk date grep nc sed sort stat
 

@@ -1,6 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1090
-# Reviewed: 2019-10-25
+# Reviewed: 2020-01-04
 
 function service_get_property() {
 
@@ -10,12 +9,12 @@ function service_get_property() {
     PROPERTY_NAME="$2"
     shift 2
 
-    [ -n "$SERVICE_NAME" ] || die
-    [ -n "$PROPERTY_NAME" ] || die
+    [ -n "$SERVICE_NAME" ] || die "No service name"
+    [ -n "$PROPERTY_NAME" ] || die "No property name"
 
     PROPS="$(systemctl "$@" show --property="$PROPERTY_NAME" "$SERVICE_NAME.service")" || die
     IFS="=" read -r PROP VAL <<<"$PROPS" || true
-    [ "$PROP" = "$PROPERTY_NAME" ] || die
+    [ "$PROP" = "$PROPERTY_NAME" ] || die "Couldn't retrieve property $PROPERTY_NAME for service $SERVICE_NAME"
 
     echo "$VAL"
 
@@ -30,10 +29,7 @@ function service_property_is() {
     EXPECTED_VALUE="$3"
     shift 3
 
-    VALUE="$(
-        . "$SUBSHELL_SCRIPT_PATH" || exit
-        service_get_property "$SERVICE_NAME" "$PROPERTY_NAME" "$@"
-    )" || die
+    VALUE="$(service_get_property "$SERVICE_NAME" "$PROPERTY_NAME" "$@")" || die
 
     [ "$VALUE" = "$EXPECTED_VALUE" ]
 
@@ -47,6 +43,19 @@ function service_exists() {
     shift
 
     ! service_property_is "$SERVICE_NAME" "LoadState" "not-found" "$@"
+
+}
+
+function service_running() {
+
+    local SERVICE_NAME
+
+    SERVICE_NAME="$1"
+    shift
+
+    [ -n "$SERVICE_NAME" ] || die "No service name"
+
+    systemctl "$@" --quiet is-active "$SERVICE_NAME.service"
 
 }
 
@@ -64,53 +73,60 @@ function user_service_exists() {
 
 function system_service_running() {
 
-    systemctl --quiet is-active "$1.service"
+    service_running "$1"
 
 }
 
 function user_service_running() {
 
-    systemctl --user --quiet is-active "$1.service"
+    service_running "$1" --user
 
 }
 
 function freedesktop_disable_autostart() {
 
+    [ -n "${HOME:-}" ] || return
+
     if [ ! -e "$HOME/.config/autostart/$1.desktop" ]; then
+
+        mkdir -p "$HOME/.config/autostart" || die
 
         cat <<EOF >"$HOME/.config/autostart/$1.desktop"
 [Desktop Entry]
 Hidden=true
-
 EOF
 
     fi
 
 }
 
-# Reviewed: 2019-11-05
 function disable_update_motd() {
 
-    local FILE DISABLE=(10-help-text 50-motd-news 80-esm 80-livepatch 90-updates-available 91-release-upgrade 95-hwe-eol)
+    local DISABLE FILE
+
+    DISABLE=(
+        10-help-text
+        50-motd-news
+        80-esm
+        80-livepatch
+        90-updates-available
+        91-release-upgrade
+        95-hwe-eol
+    )
 
     [ "$#" -eq "0" ] || DISABLE=("$@")
 
-    [ "${#DISABLE[@]}" -eq "0" ] || console_message "Disabling update-motd.d entries:" "${DISABLE[*]}" "$CYAN"
+    lc_echo_array "${DISABLE[@]}" | lc_console_list "Disabling in /etc/update-motd.d" "entry" "entries"
 
     for FILE in "${DISABLE[@]}"; do
 
-        if [ -x "/etc/update-motd.d/$FILE" ]; then
-
-            maybe_dryrun sudo chmod -v a-x "/etc/update-motd.d/$FILE"
-
-        fi
+        [ ! -x "/etc/update-motd.d/$FILE" ] || maybe_dryrun sudo chmod -v a-x "/etc/update-motd.d/$FILE"
 
     done
 
 }
 
-# Usage: load_linuxbrew [eval? (Y/n)] [echo? (y/N)]
-# Reviewed: 2019-11-06
+# load_linuxbrew [eval? (Y/n)] [echo? (y/N)]
 function load_linuxbrew() {
 
     local SHELLENV
@@ -121,7 +137,7 @@ function load_linuxbrew() {
 
     SHELLENV="$SHELLENV
 export PATH=\"\${PATH:+\$PATH:}/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin\";
-export MANPATH=\"\${MANPATH:+\$MANPATH:}/home/linuxbrew/.linuxbrew/share/man\";
+export MANPATH=\"\${MANPATH:+\$MANPATH:}/home/linuxbrew/.linuxbrew/share/man:\";
 export INFOPATH=\"\${INFOPATH:+\$INFOPATH:}/home/linuxbrew/.linuxbrew/share/info\";"
 
     if [ "${1:-Y}" = "Y" ]; then

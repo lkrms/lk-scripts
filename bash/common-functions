@@ -1,0 +1,97 @@
+#!/bin/bash
+# shellcheck disable=SC2068
+
+# common-functions
+#   Provide various portable, self-contained Bash functions.
+
+# TBA:
+# - function die()
+# - function search_replace()
+# - function single_or_plural()
+# - $CYAN etc.
+
+function lc_echo_array() {
+    printf '%s\n' "$@"
+}
+
+# lc_echoc [-neE] message [colour_sequence ...]
+function lc_echoc() {
+
+    local ECHO_ARGS=() MESSAGE IFS COLOURS=
+
+    while [[ "${1:-}" =~ ^-[neE]+$ ]]; do
+
+        ECHO_ARGS+=("$1")
+        shift
+
+    done
+
+    MESSAGE="${1:-}"
+    shift || true
+
+    if [ "$#" -gt "0" ] && [ -n "$RESET" ]; then
+
+        IFS=
+        COLOURS="$*"
+        unset IFS
+
+        MESSAGE="$(search_replace "$RESET" "$RESET$COLOURS" "$MESSAGE")"
+
+    fi
+
+    echo ${ECHO_ARGS[@]+"${ECHO_ARGS[@]}"} "$COLOURS$MESSAGE$RESET"
+
+}
+
+# lc_console_message message [[secondary_message] colour_sequence]
+function lc_console_message() {
+
+    local MESSAGE COLOURS MESSAGE2=
+
+    MESSAGE="$1" || die
+    shift
+    [ "$#" -le "1" ] || {
+        MESSAGE2="$1"
+        shift
+    }
+    COLOURS="${1:-${!LC_DEFAULT_CONSOLE_COLOUR}}"
+
+    # - atomic unless larger than buffer (smaller of PIPE_BUF, BUFSIZ)
+    # - there's no portable way to determine buffer size
+    # - writing <=512 bytes with echo or printf should be atomic on all
+    #   platforms, but this can't be guaranteed
+    echo "$(
+        lc_echoc -n "==> " "$COLOURS"
+        lc_echoc -n "$MESSAGE" "$BOLD"
+        [ -z "$MESSAGE2" ] || lc_echoc -n " $MESSAGE2" "$COLOURS"
+    )"
+
+}
+
+# lc_console_list message [single_noun plural_noun] [colour_sequence]
+function lc_console_list() {
+
+    local MESSAGE SINGLE_NOUN PLURAL_NOUN COLOURS ITEM ITEMS=()
+
+    MESSAGE="$1" || die
+    shift
+    [ "$#" -le "1" ] || {
+        SINGLE_NOUN="$1"
+        PLURAL_NOUN="$2"
+        shift 2
+    }
+    COLOURS="${1:-${!LC_DEFAULT_CONSOLE_COLOUR}}"
+
+    while IFS= read -rd "${DELIM:-$'\n'}" ITEM || [ -n "$ITEM" ]; do
+
+        [ -z "$ITEM" ] || ITEMS+=("${ITEM//$'\n'/ }")
+
+    done
+
+    lc_console_message "${MESSAGE%:}:" "$COLOURS"
+    [ "${#ITEMS[@]}" -eq "0" ] || lc_echoc "$(printf '%s\n' "${ITEMS[@]}" | column)" "$COLOURS"
+    [ -z "${SINGLE_NOUN:-}" ] || echo "(${#ITEMS[@]} $(single_or_plural "${#ITEMS[@]}" "$SINGLE_NOUN" "$PLURAL_NOUN"))"
+
+}
+
+LC_DEFAULT_CONSOLE_COLOUR="CYAN"
