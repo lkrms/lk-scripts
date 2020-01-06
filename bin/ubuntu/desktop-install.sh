@@ -29,10 +29,10 @@ assert_not_root
     apt_mark_cache_clean
 
     # ensure all of Ubuntu's repositories are available (including "backports" and "proposed" archives)
-    apt_enable_ubuntu_repository main "updates backports proposed"
-    apt_enable_ubuntu_repository restricted "updates backports proposed"
-    apt_enable_ubuntu_repository universe "updates backports proposed"
-    apt_enable_ubuntu_repository multiverse "updates backports proposed"
+    apt_enable_ubuntu_repository main updates backports proposed
+    apt_enable_ubuntu_repository restricted updates backports proposed
+    apt_enable_ubuntu_repository universe updates backports proposed
+    apt_enable_ubuntu_repository multiverse updates backports proposed
 
     # seed debconf database with answers
     sudo debconf-set-selections <<EOF

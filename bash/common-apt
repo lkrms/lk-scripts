@@ -1,31 +1,32 @@
 #!/bin/bash
-# shellcheck disable=SC2015,SC2068,SC2086
+# shellcheck disable=SC2015,SC2034,SC2206,SC2207,SC2046
 
 assert_command_exists apt-get
 
-# Reviewed: 2019-11-05
+# Reviewed: 2020-01-05
 function apt_apply_preferences() {
 
-    local IFS PREF PREFS=("$@")
+    local PREF PREFS=("$@")
 
-    [ "$#" -gt "0" ] || ! [ -d "$CONFIG_DIR/apt/preferences.d" ] || {
-        IFS=$'\n'
-        # shellcheck disable=SC2207
-        PREFS=($(find "$CONFIG_DIR/apt/preferences.d" -maxdepth 1 -type f -exec basename '{}' \;))
-        unset IFS
+    [ "$#" -gt "0" ] || {
+        shopt -s nullglob
+        PREFS=("$CONFIG_DIR/apt/preferences.d/"*)
+        shopt -u nullglob
     }
 
-    [ "${#PREFS[@]}" -eq "0" ] || console_message "Applying apt preferences:" "${NO_WRAP}${PREFS[*]}${WRAP}" "$CYAN"
+    [ "${#PREFS[@]}" -eq "0" ] || lc_console_message "Applying apt preferences"
 
     for PREF in ${PREFS[@]+"${PREFS[@]}"}; do
 
-        safe_symlink "$CONFIG_DIR/apt/preferences.d/$PREF" "/etc/apt/preferences.d/linac-$(basename "$PREF")" Y
+        [ -e "$PREF" ] || PREF="$CONFIG_DIR/apt/preferences.d/$PREF"
+
+        safe_symlink "$PREF" "/etc/apt/preferences.d/linac-$(basename "$PREF")" Y
 
     done
 
 }
 
-# Reviewed: 2019-11-05
+# Reviewed: 2020-01-05
 function apt_check_prerequisites() {
 
     [ "${#APT_PREREQ[@]}" -gt "0" ] || return 0
@@ -34,13 +35,15 @@ function apt_check_prerequisites() {
 
 }
 
-# Reviewed: 2019-11-05
+# Reviewed: 2020-01-05
 function apt_check_essentials() {
 
-    # deprecated: adding dkms to get "battery charge thresholds and recalibration" for ThinkPads isn't worth it
-    #! command_exists dmidecode || ! sudo dmidecode -t system | grep -i ThinkPad >/dev/null || APT_ESSENTIALS+=(acpi-call-dkms tp-smapi-dkms)
+    local i
 
-    apt_package_available radvdump || APT_ESSENTIALS+=(radvd)
+    # radvdump wasn't packaged separately until Ubuntu 18.04
+    ! i="$(array_search radvdump APT_ESSENTIALS)" ||
+        apt_package_available radvdump ||
+        APT_ESSENTIALS[$i]=radvd
 
     ! command_exists dpkg || ! dpkg -s "linux-generic-hwe-${DISTRIB_RELEASE}" >/dev/null 2>&1 || APT_ESSENTIALS+=("linux-tools-generic-hwe-${DISTRIB_RELEASE}?")
 
@@ -50,49 +53,63 @@ function apt_check_essentials() {
 
 }
 
-# Reviewed: 2019-11-03
-function apt_refresh_packages() {
-
-    # `apt-mark showmanual` is more fit for purpose than a comprehensive package list
-    #APT_INSTALLED_PACKAGES="$(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po "^.*?(?=(:($(dpkg --print-architecture)))?\tinstalled\$)" | sort | uniq)" || die
-    APT_INSTALLED_PACKAGES="$(apt-mark showmanual | sort | uniq)" || die
-    APT_AVAILABLE_PACKAGES="$(apt-cache pkgnames | sort | uniq)" || die
-
-}
-
-# Reviewed: 2019-11-03
+# Reviewed: 2020-01-05
 function apt_package_installed() {
 
     local STATUS
 
-    [ "${FORCE_INSTALL:-N}" = "N" ] || return 1
+    [ "${FORCE_INSTALL:-N}" = "N" ] || return
 
     STATUS="$(dpkg-query -f '${db:Status-Status}' -W "$1" 2>/dev/null)" || return
     [ "$STATUS" = "installed" ]
 
 }
 
-# Reviewed: 2019-11-03
+# Reviewed: 2020-01-05
 function apt_package_just_installed() {
 
     printf '%s\n' ${APT_JUST_INSTALLED[@]+"${APT_JUST_INSTALLED[@]}"} | grep -Fx "$1" >/dev/null 2>&1
 
 }
 
-# Reviewed: 2019-11-03
+# Reviewed: 2020-01-05
 function apt_package_available() {
 
     apt_make_cache_clean
-    echo "$APT_AVAILABLE_PACKAGES" | grep -Fx "$1" >/dev/null 2>&1
+    apt-cache pkgnames | grep -Fx "$1" >/dev/null 2>&1
 
 }
 
-# Reviewed: 2019-11-03
+# Reviewed: 2020-01-05
+function apt_list_available_packages() {
+
+    apt_make_cache_clean
+    apt-cache pkgnames | sort | uniq
+
+}
+
+# Reviewed: 2020-01-05
+function apt_list_installed_packages() {
+
+    dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po "^.*?(?=(:($(array_join_by "|" $(
+        dpkg --print-architecture
+        dpkg --print-foreign-architectures
+    ))))?\tinstalled\$)" | sort | uniq
+
+}
+
+# Reviewed: 2020-01-05
+function apt_list_manually_installed_packages() {
+
+    apt-mark showmanual | sort | uniq
+
+}
+
+# Reviewed: 2020-01-05
 function apt_describe_packages() {
 
-    local IFS PACKAGES COLOURS="$BOLD" PATTERN RESULTS RESULT_NAMES NAME
+    local IFS PACKAGES COLOURS="$BOLD" RESET_COLOURS PATTERN RESULTS RESULT_NAMES NAME
 
-    # shellcheck disable=SC2206
     PACKAGES=($1) || die
     [ "${#PACKAGES[@]}" -gt "0" ] || die "At least one package name is required"
     shift
@@ -118,7 +135,10 @@ function apt_describe_packages() {
 
     done
 
-    echo "$RESULTS" | sort | sed -Ee "s/^([^ ]+) - (.*)\$/${COLOURS}\1:${RESET} \2/" -e "s/^([^ ]+)\$/${COLOURS}\1${RESET}/" || true
+    COLOURS="$(sed_escape_replace "$COLOURS")"
+    RESET_COLOURS="$(sed_escape_replace "$RESET")"
+
+    echo "$RESULTS" | sort | sed -Ee "s/^([^ ]+) - (.*)\$/${COLOURS}\1:${RESET_COLOURS} \2/" -e "s/^([^ ]+)\$/${COLOURS}\1${RESET_COLOURS}/"
 
 }
 
@@ -193,70 +213,59 @@ function apt_pretty_packages() {
 
 }
 
+# Reviewed: 2020-01-05
 function apt_ubuntu_archive_url() {
 
-    # attempt to identify a local archive URL
-    if [ -z "${UBUNTU_ARCHIVE_URL:-}" ]; then
-
-        UBUNTU_ARCHIVE_URL="$(
-            # shellcheck disable=SC1090
-            . "$SUBSHELL_SCRIPT_PATH" || exit
-            grep -Eo '\bhttps?://([[:alnum:]]+\.)archive\.ubuntu\.com/ubuntu\b' /etc/apt/sources.list | head -n1
-        )/" || UBUNTU_ARCHIVE_URL="http://archive.ubuntu.com/ubuntu/"
-
-    fi
+    # attempt to return a local URL
+    [ -n "${UBUNTU_ARCHIVE_URL:-}" ] ||
+        UBUNTU_ARCHIVE_URL="$(gnu_grep -Po '(?<=\s)https?://(\w+\.)archive\.ubuntu\.com/ubuntu(?=/?\s)' /etc/apt/sources.list | head -n1)/" ||
+        UBUNTU_ARCHIVE_URL="http://archive.ubuntu.com/ubuntu/"
 
     echo "$UBUNTU_ARCHIVE_URL"
 
 }
 
+# Reviewed: 2020-01-05
 function do_apt_enable_ubuntu_repository() {
 
-    if ! grep -E '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.ubuntu\.com/ubuntu/?[[:space:]]+'"$1"'[[:space:]]+.*\b'"$2"'\b' </etc/apt/sources.list >/dev/null 2>&1; then
-
+    gnu_grep -Pq "^deb\s+https?://(\w+\.)?archive\.ubuntu\.com/ubuntu/?\s+$1\s+.*(?<=\s)$2(\s|\$)" /etc/apt/sources.list || {
         assert_command_exists add-apt-repository
-
         sudo add-apt-repository "$ADD_APT_REPOSITORY_EXTRA" "deb $(apt_ubuntu_archive_url) $1 $2" || die
-
         APT_CACHE_DIRTY=1
-
-    fi
+    }
 
 }
 
+# Reviewed: 2020-01-05
 function apt_enable_ubuntu_repository() {
 
-    assert_is_ubuntu
+    local SUITE
 
-    do_apt_enable_ubuntu_repository "$DISTRIB_CODENAME" "$1"
+    SUITE="$1"
+    shift
 
-    local suffix
+    do_apt_enable_ubuntu_repository "$DISTRIB_CODENAME" "$SUITE"
 
-    [ -n "${2:-}" ] && for suffix in $2; do
+    while [ -n "${1:-}" ]; do
 
-        do_apt_enable_ubuntu_repository "${DISTRIB_CODENAME}-${suffix}" "$1"
+        do_apt_enable_ubuntu_repository "${DISTRIB_CODENAME}-$1" "$SUITE"
+        shift
 
     done
 
 }
 
-function apt_enable_partner_repository() {
+# Reviewed: 2020-01-05
+function apt_cat_sources() {
 
-    assert_is_ubuntu
-
-    if ! grep -E '^deb[[:space:]]+https?://([[:alnum:]]+\.)?archive\.canonical\.com/ubuntu/?[[:space:]]+'"$DISTRIB_CODENAME"'[[:space:]]+.*\bpartner\b' </etc/apt/sources.list >/dev/null 2>&1; then
-
-        assert_command_exists add-apt-repository
-
-        sudo add-apt-repository "$ADD_APT_REPOSITORY_EXTRA" "deb http://archive.canonical.com/ubuntu $DISTRIB_CODENAME partner" || die
-
-        APT_CACHE_DIRTY=1
-
-    fi
+    shopt -s nullglob
+    cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list || die
+    shopt -u nullglob
 
 }
 
-# Usage: apt_register_ppa "the/ppa" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? (Y/n)]
+# apt_register_ppa "the/ppa" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? (Y/n)]
+# Reviewed: 2020-01-05
 function apt_register_ppa() {
 
     local p PIN PREFERENCES=
@@ -264,12 +273,7 @@ function apt_register_ppa() {
     PIN="${1/\//-}"
     PIN="${PIN%-ppa}"
 
-    if [ -n "$2" ]; then
-
-        if [ "${4:-Y}" = "Y" ]; then
-
-            # exits non-zero on EOF
-            IFS= read -rd '' PREFERENCES <<EOF || true
+    [ -z "$2" ] || [ "${4:-Y}" != "Y" ] || PREFERENCES="\
 Package: *
 Pin: release o=LP-PPA-$PIN
 Pin-Priority: 400
@@ -277,28 +281,19 @@ Pin-Priority: 400
 Package: $2
 Pin: release o=LP-PPA-$PIN
 Pin-Priority: 500
-EOF
+"
 
-        fi
-
-    fi
-
-    if ! cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list 2>/dev/null | grep "^[^#]*/$1" >/dev/null 2>&1; then
+    if ! apt_cat_sources | grep -E "^deb\s+https?://ppa\.launchpad\.net/$1/" >/dev/null; then
 
         for p in $2; do
 
-            # without BASH 4+, we have to kludge our associative arrays
             APT_PPA_REGISTRY+=("$1")
             APT_PPA_PACKAGES+=("$p")
             APT_PPA_PREFERENCES+=("$PREFERENCES")
 
         done
 
-        if [ "${3:-N}" = "Y" ]; then
-
-            apt_add_ppa "$1"
-
-        fi
+        [ "${3:-N}" != "Y" ] || apt_add_ppa "$1"
 
     elif [ -n "$PREFERENCES" ]; then
 
@@ -365,29 +360,24 @@ EOF
 
 }
 
-# use this when you don't need the latest package index files
-# Reviewed: 2019-11-05
+# Reviewed: 2020-01-05
 function apt_mark_cache_clean() {
 
     [ "$APT_CACHE_DIRTY" -eq "0" ] || {
         apt_check_sources
-        apt_refresh_packages && APT_CACHE_DIRTY=0
+        APT_CACHE_DIRTY=0
     }
 
 }
 
-# Reviewed: 2019-11-05
+# Reviewed: 2020-01-05
 function apt_make_cache_clean() {
 
-    if [ "$APT_CACHE_DIRTY" -ne "0" ]; then
-
+    [ "$APT_CACHE_DIRTY" -eq "0" ] || {
         apt_check_sources
-
-        console_message "Updating apt package indexes" "" "$CYAN"
-
-        sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} -qq update && apt_refresh_packages && APT_CACHE_DIRTY=0 || die
-
-    fi
+        lc_console_message "Updating apt package indexes"
+        sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} -qq update && APT_CACHE_DIRTY=0 || die
+    }
 
 }
 
@@ -444,7 +434,10 @@ function apt_get_package_list() {
 
     done
 
-    [ "${#BAD_LIST[@]}" -gt "0" ] && console_message "$(single_or_plural ${#BAD_LIST[@]} Package Packages) unavailable for installation:" "${BAD_LIST[*]}" "$BOLD" "$RED" >&2 && die
+    [ "${#BAD_LIST[@]}" -eq "0" ] || {
+        lc_echo_array "${BAD_LIST[@]}" | lc_console_list "$(single_or_plural "${#BAD_LIST[@]}" Package Packages) unavailable for installation" "$BOLD$RED"
+        die
+    }
 
     for q in ${REMOVE[@]+"${REMOVE[@]}"}; do
 
@@ -470,7 +463,7 @@ function apt_install_packages() {
 
     apt_make_cache_clean
 
-    console_message "Checking apt packages:" "$1" "$CYAN"
+    lc_console_item "Checking apt packages" "$1"
 
     for p in $2; do
 
@@ -546,12 +539,12 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "" "$BOLD" "$MAGENTA"
+            lc_console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$BOLD$MAGENTA"
 
-            apt_describe_packages "${INSTALL[*]}" "$BOLD" "$MAGENTA"
+            apt_describe_packages "${INSTALL[*]}" "$BOLD$MAGENTA"
 
             [ "${#QUEUE[@]}" -gt "0" ] && {
-                console_message "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$BOLD" "$MAGENTA"
+                lc_echo_array "${QUEUE[@]}" | lc_console_list "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories)" "$BOLD$MAGENTA"
                 PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
             }
 
@@ -561,7 +554,7 @@ function apt_install_packages() {
 
         if [ "$QUEUE_ONLY" = "N" ]; then
 
-            [ "${#QUEUE[@]}" -gt "0" ] && console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$GREEN"
+            [ "${#QUEUE[@]}" -gt "0" ] && lc_echo_array "${QUEUE[@]}" | lc_console_list "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories)" "$GREEN"
 
             for q in PPA REPO; do
 
@@ -578,7 +571,8 @@ function apt_install_packages() {
             INSTALL_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]+${IGNORED[*]}}" "${SUPPRESSED[*]+${SUPPRESSED[*]}}" "" "${SILENCED[*]+${SILENCED[*]}}" N))
             SILENT_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]+${IGNORED[*]}}" "${SUPPRESSED[*]+${SUPPRESSED[*]}}" "" "${SILENCED[*]+${SILENCED[*]}}" Y))
             PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]+${INSTALL_QUEUE[*]}} ${SILENT_QUEUE[*]+${SILENT_QUEUE[*]}}"))
-            console_message "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]+${PRETTY_QUEUE[*]}}" Y)" "$GREEN"
+
+            lc_console_item "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]+${PRETTY_QUEUE[*]}}" Y)" "$GREEN"
 
             for q in INSTALL SILENT; do
 
@@ -596,8 +590,6 @@ function apt_install_packages() {
                 SUDO_EXTRA+=("DEBIAN_FRONTEND=noninteractive")
 
             done
-
-            apt_refresh_packages
 
         else
 
@@ -754,7 +746,7 @@ function do_apt_install_deb() {
 
     mkdir -p "$APT_DEB_PATH" && pushd "$APT_DEB_PATH" >/dev/null || die "Error: unable to access $APT_DEB_PATH"
 
-    console_message "Downloading $# deb $(single_or_plural "$#" package packages)" "" "$CYAN"
+    lc_console_message "Downloading $# deb $(single_or_plural "$#" package packages)"
 
     # allow "429 Too Many Requests"
     # shellcheck disable=SC2034
@@ -810,7 +802,7 @@ function do_apt_install_deb() {
 
     done
 
-    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && console_message "Installing deb $(single_or_plural "${#NOT_SKIPPED[@]}" package packages):" "${NOT_SKIPPED[*]}" "$GREEN"
+    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && lc_console_item "Installing deb $(single_or_plural "${#NOT_SKIPPED[@]}" package packages):" "${NOT_SKIPPED[*]}" "$GREEN"
 
     if [ "${#DEB_PATHS[@]}" -gt "0" ]; then
 
@@ -819,7 +811,6 @@ function do_apt_install_deb() {
             APT_INSTALLED+=(${NOT_SKIPPED[@]+"${NOT_SKIPPED[@]}"})
             APT_JUST_INSTALLED+=(${NOT_SKIPPED[@]+"${NOT_SKIPPED[@]}"})
             APT_SKIPPED+=(${SKIPPED[@]+"${SKIPPED[@]}"})
-            apt_refresh_packages
 
         else
 
@@ -857,7 +848,7 @@ function apt_process_queue() {
 
         QUEUE=($(printf '%s\n' ${APT_PPA_QUEUE[@]+"${APT_PPA_QUEUE[@]}"} ${APT_REPO_QUEUE[@]+"${APT_REPO_QUEUE[@]}"} | sort | uniq))
 
-        [ "${#QUEUE[@]}" -gt "0" ] && console_message "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$GREEN"
+        [ "${#QUEUE[@]}" -gt "0" ] && lc_console_item "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$GREEN"
 
         for q in PPA REPO; do
 
@@ -874,7 +865,7 @@ function apt_process_queue() {
         INSTALL_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]+${APT_IGNORED[*]}}" "${APT_SUPPRESSED[*]+${APT_SUPPRESSED[*]}}" "${APT_REMOVE_QUEUE[*]+${APT_REMOVE_QUEUE[*]}}" "${APT_SILENCED[*]+${APT_SILENCED[*]}}" N))
         SILENT_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]+${APT_IGNORED[*]}}" "${APT_SUPPRESSED[*]+${APT_SUPPRESSED[*]}}" "" "${APT_SILENCED[*]+${APT_SILENCED[*]}}" Y))
         PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]+${INSTALL_QUEUE[*]}} ${SILENT_QUEUE[*]+${SILENT_QUEUE[*]}}"))
-        console_message "Applying ${#PRETTY_QUEUE[@]} package $(single_or_plural ${#PRETTY_QUEUE[@]} change changes):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y)" "$GREEN"
+        lc_console_item "Applying ${#PRETTY_QUEUE[@]} package $(single_or_plural ${#PRETTY_QUEUE[@]} change changes):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y)" "$GREEN"
 
         for q in INSTALL SILENT; do
 
@@ -895,7 +886,6 @@ function apt_process_queue() {
 
         APT_INSTALL_QUEUE=()
         APT_REMOVE_QUEUE=()
-        apt_refresh_packages
 
     fi
 
@@ -903,7 +893,6 @@ function apt_process_queue() {
 
         do_apt_install_deb "${APT_DEB_QUEUE[@]}" && {
             APT_DEB_QUEUE=()
-            apt_refresh_packages
         }
 
     fi
@@ -937,7 +926,7 @@ function apt_check_sources() {
         fi
 
         [ "$PROXY_GOOD" -eq "1" ] || {
-            console_message "APT proxy disabled (unreachable):" "$APT_PROXY" "$BOLD" "$YELLOW"
+            lc_console_item "APT proxy disabled (unreachable):" "$APT_PROXY" "$BOLD$YELLOW"
             echo 'Acquire::http::Proxy "";' | sudo tee "/etc/apt/apt.conf.d/99noproxy" >/dev/null
             APT_PROXY=
         }
@@ -962,9 +951,9 @@ function apt_upgrade_all() {
 
     apt_make_cache_clean
 
-    console_message "Installing all available apt package updates" "" "$GREEN"
+    lc_console_message "Installing all available apt package updates" "$GREEN"
 
-    sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} --fix-missing dist-upgrade && apt_refresh_packages || die
+    sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} --fix-missing dist-upgrade || die
 
 }
 
@@ -981,8 +970,6 @@ function apt_purge() {
     PURGE_PACKAGES=($(printf '%s\n' ${PURGE_PACKAGES[@]+"${PURGE_PACKAGES[@]}"} | gnu_grep -Po '^.*(?=\tconfig-files$)')) || true
 
     [ "${#PURGE_PACKAGES[@]}" -eq "0" ] || sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} "$@" purge "${PURGE_PACKAGES[@]}" || die
-
-    apt_refresh_packages
 
 }
 
@@ -1003,7 +990,7 @@ function apt_get_new_configuration_files() {
     sudo find /etc -type f | grep -vFf <(
         # shellcheck disable=SC1090
         . "$SUBSHELL_SCRIPT_PATH" || exit
-        sudo debsums -e 2>/dev/null | sed -E 's/[[:space:]]*[A-Z]+$//' || die
+        sudo debsums -e 2>/dev/null | sed -E 's/\s*[A-Z]+$//' || die
     ) || die
 
 }
@@ -1076,7 +1063,7 @@ APT_ESSENTIALS=(
     ntp
     ntpdate
     openssh-server
-    radvdump?
+    radvdump
     traceroute
     whois
 

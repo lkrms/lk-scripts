@@ -13,12 +13,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../../bash/common"
 . "$SCRIPT_DIR/../../bash/common-apt"
 
-apt_refresh_packages
-
-APT_GUI_PACKAGES="$(
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances libwayland-client0 libwayland-server0 libx11-6 x11-common | grep -v " " | sort | uniq
-)" || die
+APT_GUI_PACKAGES="$(apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances libwayland-client0 libwayland-server0 libx11-6 x11-common | grep -v " " | sort | uniq)" || die
 
 if [ "$#" -gt "0" ]; then
 
@@ -26,12 +21,12 @@ if [ "$#" -gt "0" ]; then
 
 else
 
-    PACKAGES="$APT_INSTALLED_PACKAGES"
+    PACKAGES="$(apt_list_manually_installed_packages)"
 
 fi
 
 GUI_PACKAGES=($(comm -12 <(echo "$APT_GUI_PACKAGES") <(echo "$PACKAGES")))
-UNKNOWN_PACKAGES=($(comm -13 <(echo "$APT_AVAILABLE_PACKAGES") <(echo "$PACKAGES")))
+UNKNOWN_PACKAGES=($(comm -13 <(apt_list_available_packages) <(echo "$PACKAGES")))
 
 if [ "${#GUI_PACKAGES[@]}" -gt "0" ]; then
 
