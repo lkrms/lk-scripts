@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1090
+# shellcheck disable=SC1090,SC2015
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -18,33 +18,53 @@ FONT_URLS=(
 )
 
 FONT_CACHE_PATH="$CACHE_DIR/fonts"
-mkdir -p "$FONT_CACHE_PATH" && [ -w "$FONT_CACHE_PATH" ] && cd "$FONT_CACHE_PATH" || die "Can't write to $FONT_CACHE_PATH"
+mkdir -p "$FONT_CACHE_PATH" &&
+    [ -w "$FONT_CACHE_PATH" ] &&
+    cd "$FONT_CACHE_PATH" || die "Can't write to $FONT_CACHE_PATH"
 
 UNPACK_ROOT="$(create_temp_dir Y)"
 DELETE_ON_EXIT+=("$UNPACK_ROOT")
 
-console_message "Downloading ${#FONT_URLS[@]} $(single_or_plural "${#FONT_URLS[@]}" font fonts)" "$CYAN"
+lc_console_message "Downloading ${#FONT_URLS[@]} $(single_or_plural "${#FONT_URLS[@]}" font fonts)"
 
-FONT_PATHS="$(
-    . "$SUBSHELL_SCRIPT_PATH" || exit
-    download_urls "${FONT_URLS[@]}"
-)"
+FONT_PATHS="$(download_urls "${FONT_URLS[@]}")"
 
 while IFS= read -r FONT_PATH; do
 
-    console_message "Extracting:" "$(basename "$FONT_PATH")" "$CYAN"
+    lc_console_item "Extracting" "$(basename "$FONT_PATH")"
 
-    EXTRACT_PATH="$UNPACK_ROOT/$(basename "$FONT_PATH")"
-    EXTRACT_PATH="${EXTRACT_PATH%.zip}"
+    EXTRACT_PATH="$UNPACK_ROOT/$(basename "${FONT_PATH%.zip}")"
     unzip -qq -d "$EXTRACT_PATH" "$FONT_PATH" || die "unzip exit code: $?"
 
 done < <(echo "$FONT_PATHS")
 
+# do_fonts_install file_ext subdir_name
+function do_fonts_install() {
+
+    local FILENAME TARGET_PATH
+
+    while IFS= read -rd $'\0' FILENAME; do
+
+        TARGET_PATH="$TARGET_DIR/$2/${FILENAME#$UNPACK_ROOT/}"
+
+        mkdir -p "$(dirname "$TARGET_PATH")" &&
+            mv -fv "$FILENAME" "$TARGET_PATH" || die
+
+    done < <(find "$UNPACK_ROOT" -type f -iname "*.$1" -print0)
+
+}
+
 case "$PLATFORM" in
 
 linux)
-    sudo fc-cache --system-only --force --verbose
-    fc-cache --verbose
+    TARGET_DIR="/usr/local/share/fonts"
+
+    dir_make_and_own "$TARGET_DIR"
+
+    do_fonts_install "ttf" "lc-truetype"
+    do_fonts_install "otf" "lc-opentype"
+
+    sudo fc-cache --force --verbose
     ;;
 
 *)

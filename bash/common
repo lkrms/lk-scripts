@@ -16,7 +16,7 @@ function exit_trap() {
 
     for i in "${!DELETE_ON_EXIT[@]}"; do
 
-        rm -f "${DELETE_ON_EXIT[$i]}" || true
+        rm -Rf "${DELETE_ON_EXIT[$i]}" || true
 
     done
 
