@@ -72,6 +72,7 @@ EOF
     apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
     apt_register_ppa "hluk/copyq" "copyq"
     apt_register_ppa "inkscape.dev/stable" "inkscape"
+    apt_register_ppa "intel-opencl/intel-opencl" "intel-opencl-icd" N N
     apt_register_ppa "libreoffice/ppa" "libreoffice*" N N
     apt_register_ppa "linrunner/tlp" "tlp tlp-rdw"
     apt_register_ppa "nextcloud-devs/client" "nextcloud-client"
@@ -238,6 +239,7 @@ EOF
 
     is_virtual || DESKTOP_ESSENTIALS+=(
         intel-gpu-tools
+        intel-opencl-icd
         tlp
         tlp-rdw
     )
