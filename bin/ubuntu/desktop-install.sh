@@ -238,6 +238,7 @@ EOF
     )
 
     is_virtual || DESKTOP_ESSENTIALS+=(
+        clinfo
         intel-gpu-tools
         intel-opencl-icd
         tlp
