@@ -183,6 +183,7 @@ EOF
         abcde
         audacity
         beets
+        clementine
         eyed3
         ffmpeg
         handbrake-cli
@@ -221,6 +222,7 @@ EOF
         btscanner
         ddcutil
         guvcview
+        linssid
         nvme-cli
 
         # automation
@@ -259,9 +261,6 @@ EOF
         dbeaver-ce
         devscripts
         equivs
-        git
-        git-cola
-        meld
         msmtp
         nodejs
         php
@@ -303,15 +302,23 @@ EOF
         ruby
         s-nail
         shellcheck
-        sublime-merge
         sublime-text
         trickle
         yarn
+
+        # version control
+        git
+        git-cola
+        meld
+        sublime-merge
 
         # Lua
         lua5.1
         lua-penlight
         lua-posix
+
+        # GTK
+        gtk-3-examples
     )
 
     apt_install_packages "development" "${DEVELOPMENT[*]}"

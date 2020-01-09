@@ -237,6 +237,8 @@ function dev_apply_system_config() {
 
         fi
 
+        command_exists xkbcomp && safe_symlink "$ROOT_DIR/bin/linux/xkb-load.sh" "$HOME/.local/bin/xkb-load.sh" || true
+
         if command_exists google-chrome && safe_symlink "$ROOT_DIR/bin/chrome-app.sh" "$HOME/.local/bin/chrome-app.sh"; then
 
             safe_symlink "$ROOT_DIR/bin/linux/applications/harvest.desktop" "$HOME/.config/autostart/harvest.desktop" &&

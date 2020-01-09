@@ -64,7 +64,7 @@ linux)
     do_fonts_install "ttf" "lc-truetype"
     do_fonts_install "otf" "lc-opentype"
 
-    sudo fc-cache --force --verbose
+    sudo -H fc-cache --force --verbose
     ;;
 
 *)
