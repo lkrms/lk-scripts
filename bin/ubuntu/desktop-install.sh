@@ -148,7 +148,6 @@ EOF
         inkscape
         keepassxc
         libreoffice
-        nextcloud-client
         qpdfview
         remmina
         scribus

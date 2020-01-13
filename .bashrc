@@ -37,7 +37,7 @@ function lc-before-command() {
 
 function lc-prompt() {
 
-    local EXIT_CODE="$?" PS=() SECS IFS RED GREEN BLUE GREY BOLD NO_WRAP WRAP RESET
+    local EXIT_CODE="$?" PS=() SECS COMMAND IFS RED GREEN BLUE GREY BOLD NO_WRAP WRAP RESET
 
     history -a
     [ "${LC_HISTORY_READ_NEW:-N}" = "N" ] || history -n
@@ -60,9 +60,13 @@ function lc-prompt() {
             [ "$(type -t "${LC_LAST_COMMAND[0]}")" != "builtin" ] ||
             ! [[ "${LC_LAST_COMMAND[0]}" =~ ^(cd|echo|ls|popd|pushd)$ ]]; then
 
+            eval "COMMAND=(${LC_LAST_COMMAND[*]})"
+            COMMAND=("${COMMAND[@]//$'\r\n'/ }")
+            COMMAND=("${COMMAND[@]//$'\n'/ }")
+
             PS+=("\n\[$GREY\]\d \t\[$RESET\] ")
             [ "$EXIT_CODE" -eq "0" ] && PS+=("\[$GREEN\]✔") || PS+=("\[$RED\]✘ exit status $EXIT_CODE")
-            PS+=(" after ${SECS}s \[$RESET$NO_WRAP$GREY\]( ${LC_LAST_COMMAND[*]} )\[$WRAP$RESET\]\n")
+            PS+=(" after ${SECS}s \[$RESET$NO_WRAP$GREY\]( ${COMMAND[*]} )\[$WRAP$RESET\]\n")
 
         fi
 
