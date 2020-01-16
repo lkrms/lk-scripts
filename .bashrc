@@ -60,8 +60,7 @@ function lc-prompt() {
             [ "$(type -t "${LC_LAST_COMMAND[0]}")" != "builtin" ] ||
             ! [[ "${LC_LAST_COMMAND[0]}" =~ ^(cd|echo|ls|popd|pushd)$ ]]; then
 
-            eval "COMMAND=(${LC_LAST_COMMAND[*]})"
-            COMMAND=("${COMMAND[@]//$'\r\n'/ }")
+            COMMAND=("${LC_LAST_COMMAND[@]//$'\r\n'/ }")
             COMMAND=("${COMMAND[@]//$'\n'/ }")
 
             PS+=("\n\[$GREY\]\d \t\[$RESET\] ")
@@ -84,6 +83,8 @@ function lc-prompt() {
     LC_PROMPT_DISPLAYED=1
 
 }
+
+shopt -u promptvars
 
 trap lc-before-command DEBUG
 PROMPT_COMMAND="lc-prompt"
