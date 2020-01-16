@@ -112,15 +112,35 @@ EOF
 
     DESKTOP_PREREQ=(
         apparmor-utils
+        build-essential
         xxd
 
         # OpenConnect (build) dependencies
-        autoconf automake build-essential gettext libgnutls-dev? libgnutls28-dev? libproxy-dev libtool libxml2-dev pkg-config vpnc-scripts zlib1g-dev
+        autoconf
+        automake
+        gettext
+        libgnutls-dev?
+        libgnutls28-dev?
+        libproxy-dev
+        libtool
+        libxml2-dev
+        pkg-config
+        vpnc-scripts
+        zlib1g-dev
+
+        # barrier (build) dependencies
+        libavahi-compat-libdnssd-dev
+        libcurl4-openssl-dev
+        libqt4-dev
+        libssl-dev
+        libx11-dev
+        libxtst-dev
+        qtbase5-dev
 
         # xiccd (build) dependencies
         libcolord-dev
         libxrandr-dev
-        libx11-dev
+        #libx11-dev
 
         # QuickTile dependencies
         python python-dbus python-gtk2 python-setuptools python-wnck? python-xlib
