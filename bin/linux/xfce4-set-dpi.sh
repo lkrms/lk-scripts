@@ -179,5 +179,7 @@ else
 
 fi
 
-nohup xfce4-panel -r </dev/null >/dev/null 2>&1 &
-disown
+is_autostart || {
+    nohup xfce4-panel -r </dev/null >/dev/null 2>&1 &
+    disown
+}

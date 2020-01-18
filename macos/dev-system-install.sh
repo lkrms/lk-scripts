@@ -30,6 +30,7 @@ assert_not_root
 coreutils \
 gawk \
 gnu-sed \
+gnu-tar \
 grep \
 lftp \
 msmtp \

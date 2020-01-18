@@ -72,7 +72,7 @@ GS_OPTIONS=(
     -dSAFER
     "-sDEVICE=pdfwrite"
     "-dPDFSETTINGS=${PDFSETTINGS:-/screen}"
-    -c ".setpdfwrite << ${DISTILLER_PARAMS[*]} >> setdistillerparams"
+    -c "3000000 setvmthreshold << ${DISTILLER_PARAMS[*]} >> setdistillerparams"
 )
 
 ERRORS=()

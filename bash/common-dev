@@ -196,7 +196,7 @@ function dev_update_packages() {
 
 function dev_apply_system_config() {
 
-    install_gnu_commands awk grep sed sort stat
+    install_gnu_commands awk grep sed sort stat tar
 
     if command_exists git; then
 

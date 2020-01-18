@@ -266,14 +266,8 @@ EOF
 
     apt_install_packages "desktop essentials" "${DESKTOP_ESSENTIALS[*]}"
 
-    # buggy (replaced with Rambox)
-    apt_remove_packages caprine
-
     # replaced with official client
     apt_remove_packages teams-for-linux teams-insiders
-
-    # replaced with Evolution (better calendar and CPU utilisation)
-    apt_remove_packages thunderbird
 
     DEVELOPMENT=(
         build-essential
@@ -412,15 +406,17 @@ mongodb-org \
 
         DEB_URLS=()
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/AppImage/appimaged/releases/tags/continuous" '_amd64\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/sindresorhus/caprine/releases/latest" '_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases/latest" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/ramboxapp/community-edition/releases/latest" '.*-amd64\.deb$' | head -n1)")
+        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/KryDos/todoist-linux/releases/latest" '_amd64\.deb$' | head -n1)")
 
         for DEB_URL in "${DEB_URLS[@]}"; do
+
+            [ -n "$DEB_URL" ] || continue
 
             apt_install_deb "$DEB_URL"
             console_message "Queued for download:" "${NO_WRAP}${DEB_URL}${WRAP}" "$BOLD" "$YELLOW"

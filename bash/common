@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2034,SC2206,SC2207,SC1090
+# shellcheck disable=SC2034,SC2206,SC2207,SC1090,SC2162
 
 set -euo pipefail
 
@@ -1718,7 +1718,7 @@ fi
 ORIGINAL_BASH_SUBSHELL="$BASH_SUBSHELL"
 ORIGINAL_ARGUMENTS=("$@")
 
-register_gnu_commands awk date grep nc sed sort stat
+register_gnu_commands awk date grep nc sed sort stat tar
 
 mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOCAL_DIR" "$LOG_DIR" "$TEMP_DIR"
 
