@@ -1,6 +1,6 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2034
-# Reviewed: 2019-11-11
+# Reviewed: 2020-01-18
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -53,7 +53,7 @@ while read -rd $'\0' FILE_PATH; do
     [ "$FILE_EXT" != "mp4" ] || FILE_EXT="m4v"
 
     ! [[ "${FILE_NAME#${SERIES_NAME}${SEASON_NAME}_E}" =~ ^[0-9]{2}\."$FILE_EXT"$ ]] || {
-        console_message "Skipping (already renamed):" "$FILE_PATH" "$BOLD" "$RED"
+        lc_console_item "Skipping (already renamed)" "$FILE_PATH" "$BOLD$RED"
         continue
     }
 
@@ -69,7 +69,7 @@ while read -rd $'\0' FILE_PATH; do
 
     done
 
-    [[ "$FILE_NAME" =~ [^0-9]"$COUNT"[^0-9] ]] || console_message "WARNING: this doesn't look like an episode $COUNT:" "$FILE_PATH" "$BOLD" "$RED"
+    [[ "$FILE_NAME" =~ [^0-9]"$COUNT"[^0-9] ]] || lc_console_item "WARNING: this doesn't look like an episode $COUNT:" "$FILE_PATH" "$BOLD$RED"
 
     maybe_dryrun mv -vn "$FILE_PATH" "$NEW_PATH" || die
 
