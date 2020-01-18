@@ -1356,32 +1356,35 @@ function safe_sed() {
 
 }
 
+# Reviewed: 2020-01-18
 function is_dryrun() {
 
     [ "$ORIGINAL_DRYRUN_ARGUMENT" = "--dryrun" ] || { [ "${DRYRUN_BY_DEFAULT:-N}" != "N" ] && [ "$ORIGINAL_DRYRUN_ARGUMENT" != "--run" ]; }
 
 }
 
+# Reviewed: 2020-01-18
 function dryrun_message() {
 
     local EXTRA=
 
     if is_dryrun; then
 
-        [ "${DRYRUN_BY_DEFAULT:-N}" = "N" ] || EXTRA=" (add ${BOLD}--run${RESET} argument to run skipped commands)"
+        [ "${DRYRUN_BY_DEFAULT:-N}" = "N" ] || EXTRA=" (use \"--run\" as the first argument to override)"
 
-        console_message "${BOLD}$(basename "$0") is in dry run mode${RESET}${EXTRA}" "" "$BOLD" "$RED" >&2
+        lc_console_message "$(basename "$0") is in dry run mode${EXTRA}" "$BOLD$RED" >&2
 
     fi
 
 }
 
 # Usage: maybe_dryrun command [argument1...]
+# Reviewed: 2020-01-18
 function maybe_dryrun() {
 
     if is_dryrun; then
 
-        console_message "Command skipped (${BOLD}dry run${RESET}):" "$*" "$YELLOW" >&2
+        lc_console_item "Command skipped (dry run):" "$*" "$YELLOW" >&2
 
     else
 
