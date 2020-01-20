@@ -1050,6 +1050,7 @@ APT_ESSENTIALS=(
 
     # SHELLS
     # ksh: needed by some installers, e.g. Db2
+    byobu
     ksh
     screen
     zsh
@@ -1088,6 +1089,7 @@ APT_ESSENTIALS=(
 )
 
 is_virtual || APT_ESSENTIALS+=(
+    dkms
     lm-sensors
     powertop
     smartmontools
