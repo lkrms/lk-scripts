@@ -6,14 +6,14 @@
 # Usage: dev_install_packages [queue only? (y/N)] [name of 'already installed' array]
 function dev_install_packages() {
 
-    local QUEUE_ONLY="${1:-N}" UPDATE=N INSTALL_COMMAND ALREADY_INSTALLED_NAME="" SUDO_OR_NOT="" PIP_REQUIRED=() PIP3_REQUIRED=() NPM_REQUIRED=() PHP_INI_ROOT COMPOSER_REQUIRED
+    local QUEUE_ONLY="${1:-N}" UPDATE=N INSTALL_COMMAND ALREADY_INSTALLED_NAME="" SUDO_OR_NOT="" \
+        PIP_REQUIRED=() PIP3_REQUIRED=() NPM_REQUIRED=() PHP_INI_ROOT
 
     [ "$QUEUE_ONLY" = "N" ] && UPDATE="${3:-N}" || {
         ALREADY_INSTALLED_NAME="${2:-}"
         variable_exists PIP_INSTALL_QUEUE || PIP_INSTALL_QUEUE=()
         variable_exists PIP3_INSTALL_QUEUE || PIP3_INSTALL_QUEUE=()
         variable_exists NPM_INSTALL_QUEUE || NPM_INSTALL_QUEUE=()
-        variable_exists COMPOSER_INSTALL_QUEUE || COMPOSER_INSTALL_QUEUE=()
     }
 
     dir_make_and_own "/usr/local/bin"
@@ -130,57 +130,21 @@ function dev_install_packages() {
 
             done
 
-            dir_make_and_own "/usr/local/lib/composer"
+            [ -e "/usr/local/bin/composer" ] || {
 
-            mkdir -p "$LOCAL_DIR/composer"
+                pushd "$TEMP_DIR" >/dev/null || die
 
-            pushd "$LOCAL_DIR/composer" >/dev/null || die
+                "$ROOT_DIR/bin/composer-install.sh" --quiet &&
+                    mv "composer.phar" "/usr/local/bin/composer" ||
+                    die
 
-            if [ ! -e "composer.phar" ]; then
+                popd >/dev/null
 
-                "$ROOT_DIR/bin/composer-install.sh" --quiet || die
+            }
 
-            fi
+        elif [ -e "/usr/local/bin/composer" ]; then
 
-            if [ ! -e "composer.json" ]; then
-
-                cat <<EOF >"composer.json"
-{
-    "config": {
-        "vendor-dir": "/usr/local/lib/composer",
-        "bin-dir": "/usr/local/bin"
-    }
-}
-EOF
-
-            fi
-
-            COMPOSER_REQUIRED=("composer/composer")
-
-            file_to_array "$CONFIG_DIR/composer-packages"
-
-            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-                COMPOSER_REQUIRED+=("${FILE_TO_ARRAY[@]}")
-
-            fi
-
-            INSTALL_COMMAND="./composer.phar require"
-            [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="COMPOSER_INSTALL_QUEUE"
-
-            # if needed: it's slow, but "./composer.phar show -aN" returns a list of all available composer packages
-            install_or_queue "composer" "${COMPOSER_REQUIRED[*]}" Y package packages "./composer.phar show -ND" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
-
-            popd >/dev/null
-
-        elif [ -e "$LOCAL_DIR/composer/composer.phar" ] && [ -e "$LOCAL_DIR/composer/composer.json" ]; then
-
-            pushd "$LOCAL_DIR/composer" >/dev/null || die
-
-            ./composer.phar self-update
-            ./composer.phar update --with-dependencies
-
-            popd >/dev/null
+            /usr/local/bin/composer self-update || die
 
         fi
 
@@ -277,7 +241,6 @@ function dev_process_queue() {
     assert_variable_exists PIP_INSTALL_QUEUE
     assert_variable_exists PIP3_INSTALL_QUEUE
     assert_variable_exists NPM_INSTALL_QUEUE
-    assert_variable_exists COMPOSER_INSTALL_QUEUE
 
     local JUST_INSTALLED="${1:-}" SUDO_OR_NOT=
 
@@ -311,19 +274,6 @@ function dev_process_queue() {
 
         [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED"'+=("${NPM_INSTALL_QUEUE[@]}")'
         NPM_INSTALL_QUEUE=()
-
-    fi
-
-    if [ "${#COMPOSER_INSTALL_QUEUE[@]}" -gt "0" ]; then
-
-        pushd "$LOCAL_DIR/composer" >/dev/null || die
-
-        eval "./composer.phar require" "${COMPOSER_INSTALL_QUEUE[@]}" || die
-
-        [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED"'+=("${COMPOSER_INSTALL_QUEUE[@]}")'
-        COMPOSER_INSTALL_QUEUE=()
-
-        popd >/dev/null
 
     fi
 

@@ -98,7 +98,7 @@ EOF
     apt_register_repository typora "https://typora.io/linux/public-key.asc" "deb https://typora.io/linux ./" "origin typora.io" "typora"
     apt_register_repository vscode "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/repos/vscode stable main" "release o=vscode stable,l=vscode stable" "code code-*"
 
-    # otherwise pip, pip3, npm, composer packages will be skipped until next run
+    # otherwise pip, pip3, npm packages (and composer) will be skipped until next run
     APT_ESSENTIALS+=(
         nodejs
         php-cli
