@@ -48,6 +48,7 @@ set +E
 for DATABASE_PATH in "$@"; do
 
     [ -f "$DATABASE_PATH" ] || die "$USAGE"
+    DATABASE_PATH="$(realpath "$DATABASE_PATH")"
 
     NO_PASSWORD=0
     PASSWORD="$("${GET_SECRET[@]//%DATABASE_PATH%/$DATABASE_PATH}" 2>/dev/null)" || NO_PASSWORD=1

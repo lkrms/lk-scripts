@@ -19,7 +19,7 @@ assert_not_root
 
     disable_update_motd
 
-    apt_apply_preferences suppress-bsd-mailx suppress-libapache2-mod-php suppress-youtube-dl withhold-proposed-packages
+    apt_apply_preferences suppress-bsd-mailx suppress-libapache2-mod-php suppress-virt-viewer suppress-youtube-dl withhold-proposed-packages
 
     # get underway without an immediate index update
     apt_mark_cache_clean

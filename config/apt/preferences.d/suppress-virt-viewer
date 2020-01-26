@@ -1,0 +1,3 @@
+Package: virt-viewer
+Pin: release *
+Pin-Priority: -10
