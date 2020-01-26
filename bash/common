@@ -1688,7 +1688,6 @@ ROOT_DIR="$(realpath "$ROOT_DIR_RELATIVE" 2>/dev/null)" || ROOT_DIR="$(python -c
 
 CONFIG_DIR="$ROOT_DIR/config"
 CACHE_DIR="$ROOT_DIR/cache"
-LOCAL_DIR="$ROOT_DIR/local"
 LOG_DIR="$ROOT_DIR/log"
 TEMP_DIR="$ROOT_DIR/tmp"
 
@@ -1723,7 +1722,7 @@ ORIGINAL_ARGUMENTS=("$@")
 
 register_gnu_commands awk date grep nc sed sort stat tar
 
-mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOCAL_DIR" "$LOG_DIR" "$TEMP_DIR"
+mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOG_DIR" "$TEMP_DIR"
 
 if [ -t 1 ]; then
 

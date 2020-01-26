@@ -1039,6 +1039,7 @@ APT_PREREQ=(
 
 APT_ESSENTIALS=(
     bc
+    build-essential
     pv
     stow
     vim
@@ -1090,6 +1091,7 @@ APT_ESSENTIALS=(
 
 is_virtual || APT_ESSENTIALS+=(
     dkms
+    hddtemp
     lm-sensors
     powertop
     smartmontools

@@ -19,7 +19,7 @@ assert_not_root
 
     disable_update_motd
 
-    apt_apply_preferences suppress-bsd-mailx suppress-libapache2-mod-php withhold-proposed-packages
+    apt_apply_preferences suppress-bsd-mailx suppress-libapache2-mod-php suppress-youtube-dl withhold-proposed-packages
 
     # get underway without an immediate index update
     apt_mark_cache_clean
@@ -31,6 +31,10 @@ assert_not_root
     apt_enable_ubuntu_repository multiverse updates backports proposed
 
     apt_check_prerequisites
+
+    brew_check
+    brew_mark_cache_clean
+    brew_check_taps
 
     apt_register_repository webmin "http://www.webmin.com/jcameron-key.asc" "deb https://download.webmin.com/download/repository sarge contrib" "origin Jamie Cameron" "webmin"
 
@@ -48,9 +52,21 @@ assert_not_root
 
     apt_check_essentials
 
+    is_virtual || apt_install_packages "QEMU/KVM" "bridge-utils libvirt-bin libvirt-doc qemu-kvm virtinst"
+
     apt_install_packages "Webmin" "webmin"
+    apt_install_packages "Samba server" "samba"
+    apt_install_packages "DHCP server" "dnsmasq"
+    apt_install_packages "APT proxy server" "apt-cacher-ng"
+    apt_install_packages "BitTorrent client" "transmission-cli"
+    apt_install_packages "youtube-dl dependencies" "ffmpeg rtmpdump"
+
+    brew_queue_formulae "Unison" "unison"
+    brew_queue_formulae "Shell script formatter" "shfmt"
 
     apt_process_queue
+
+    brew_process_queue
 
     exit
 
