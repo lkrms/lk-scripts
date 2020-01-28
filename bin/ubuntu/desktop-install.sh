@@ -68,7 +68,6 @@ EOF
 
     # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
     apt_register_ppa "caffeine-developers/ppa" "caffeine"
-    apt_register_ppa "hda-me/xscreensaver" "xscreensaver*"
     apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
     apt_register_ppa "hluk/copyq" "copyq"
     apt_register_ppa "inkscape.dev/stable" "inkscape"
@@ -369,11 +368,6 @@ mongodb-org \
             xfce4-battery-plugin
             xfce4-cpufreq-plugin
             xfce4-sensors-plugin
-            xscreensaver
-            xscreensaver-data
-            xscreensaver-data-extra
-            xscreensaver-gl
-            xscreensaver-gl-extra
 
             # the version in the repo breaks logout/suspend/etc.
             #xiccd
@@ -406,6 +400,19 @@ mongodb-org \
         DEB_URLS+=("$(get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/KryDos/todoist-linux/releases/latest" '_amd64\.deb$' | head -n1)")
+
+        if [ "${XDG_CURRENT_DESKTOP:-}" = "XFCE" ]; then
+
+            DEB_URLS+=(
+                "http://ftp.debian.org/debian/pool/main/libj/libjpeg-turbo/libjpeg62-turbo_1.5.2-2+b1_amd64.deb"
+                "http://ftp.debian.org/debian/pool/main/x/xscreensaver/xscreensaver_5.42+dfsg1-1_amd64.deb"
+                "http://ftp.debian.org/debian/pool/main/x/xscreensaver/xscreensaver-data_5.42+dfsg1-1_amd64.deb"
+                "http://ftp.debian.org/debian/pool/main/x/xscreensaver/xscreensaver-data-extra_5.42+dfsg1-1_amd64.deb"
+                "http://ftp.debian.org/debian/pool/main/x/xscreensaver/xscreensaver-gl_5.42+dfsg1-1_amd64.deb"
+                "http://ftp.debian.org/debian/pool/main/x/xscreensaver/xscreensaver-gl-extra_5.42+dfsg1-1_amd64.deb"
+            )
+
+        fi
 
         for DEB_URL in "${DEB_URLS[@]}"; do
 
