@@ -1038,11 +1038,16 @@ APT_PREREQ=(
 )
 
 APT_ESSENTIALS=(
+    apparmor-utils
     bc
     build-essential
+    devscripts
+    equivs
+    p7zip-full
     pv
     stow
     vim
+    xxd
 
     # FILES
     attr

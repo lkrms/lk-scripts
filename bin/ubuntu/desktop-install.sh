@@ -111,10 +111,6 @@ EOF
     apt_check_essentials
 
     DESKTOP_PREREQ=(
-        apparmor-utils
-        build-essential
-        xxd
-
         # OpenConnect (build) dependencies
         autoconf
         automake
@@ -270,13 +266,10 @@ EOF
     apt_remove_packages teams-for-linux teams-insiders
 
     DEVELOPMENT=(
-        build-essential
         cmake
         code
         d-feet
         dbeaver-ce
-        devscripts
-        equivs
         msmtp
         nodejs
         php
