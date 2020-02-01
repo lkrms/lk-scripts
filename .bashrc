@@ -37,7 +37,7 @@ function lc-before-command() {
 
 function lc-prompt() {
 
-    local EXIT_CODE="$?" PS=() SECS COMMAND IFS RED GREEN BLUE GREY BOLD NO_WRAP WRAP RESET
+    local EXIT_CODE="$?" PS=() SECS COMMAND IFS RED GREEN BLUE BOLD DIM RESET NO_WRAP WRAP
 
     history -a
     [ "${LC_HISTORY_READ_NEW:-N}" = "N" ] || history -n
@@ -45,11 +45,15 @@ function lc-prompt() {
     RED="$(tput setaf 1)"
     GREEN="$(tput setaf 2)"
     BLUE="$(tput setaf 4)"
-    GREY="$(tput setaf 8)"
     BOLD="$(tput bold)"
-    NO_WRAP="$(tput rmam)"
-    WRAP="$(tput smam)"
+    DIM="$(tput dim)"
     RESET="$(tput sgr0)"
+    NO_WRAP="$(tput rmam 2>/dev/null)" &&
+        WRAP="$(tput smam 2>/dev/null)" ||
+        {
+            NO_WRAP=
+            WRAP=
+        }
 
     if [ "${#LC_LAST_COMMAND[@]}" -gt "0" ]; then
 
@@ -63,9 +67,9 @@ function lc-prompt() {
             COMMAND=("${LC_LAST_COMMAND[@]//$'\r\n'/ }")
             COMMAND=("${COMMAND[@]//$'\n'/ }")
 
-            PS+=("\n\[$GREY\]\d \t\[$RESET\] ")
+            PS+=("\n\[$DIM\]\d \t\[$RESET\] ")
             [ "$EXIT_CODE" -eq "0" ] && PS+=("\[$GREEN\]✔") || PS+=("\[$RED\]✘ exit status $EXIT_CODE")
-            PS+=(" after ${SECS}s \[$RESET$NO_WRAP$GREY\]( ${COMMAND[*]} )\[$WRAP$RESET\]\n")
+            PS+=(" after ${SECS}s \[$RESET$NO_WRAP$DIM\]( ${COMMAND[*]} )\[$WRAP$RESET\]\n")
 
         fi
 

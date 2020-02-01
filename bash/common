@@ -1750,13 +1750,18 @@ if [ -t 1 ]; then
 
     # other "formatting"
     BOLD="$(tput bold)"
+    DIM="$(tput dim)"
     UNDERLINE="$(tput smul)"
     NO_UNDERLINE="$(tput rmul)"
     STANDOUT="$(tput smso)"
     NO_STANDOUT="$(tput rmso)"
-    NO_WRAP="$(tput rmam)"
-    WRAP="$(tput smam)"
     RESET="$(tput sgr0)"
+    NO_WRAP="$(tput rmam 2>/dev/null)" &&
+        WRAP="$(tput smam 2>/dev/null)" ||
+        {
+            NO_WRAP=
+            WRAP=
+        }
 
 else
 
@@ -1779,13 +1784,14 @@ else
     WHITE_BG=
     GREY_BG=
     BOLD=
+    DIM=
     UNDERLINE=
     NO_UNDERLINE=
     STANDOUT=
     NO_STANDOUT=
+    RESET=
     NO_WRAP=
     WRAP=
-    RESET=
 
 fi
 
