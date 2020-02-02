@@ -37,7 +37,7 @@ mutool merge -o "$PDF_PATH" "$@" &&
 
     for FILE in "$@"; do
 
-        if has_argument "--trash" && command_exists trash-put; then
+        if command_exists trash-put; then
 
             trash-put "$FILE" || die
 

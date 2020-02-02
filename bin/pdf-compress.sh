@@ -79,23 +79,18 @@ ERRORS=()
 
 for FILE in "$@"; do
 
-    RFILE="$(realpath "$FILE")"
-    cd "$(dirname "$RFILE")"
-    PDF_PATH="$(basename "$RFILE")"
-    BACKUP_PATH="$(filename_get_next_backup "$PDF_PATH" "gs")"
+    PDF_PATH="$(create_temp_file)"
+    DELETE_ON_EXIT+=("$PDF_PATH")
 
-    mv "$PDF_PATH" "$BACKUP_PATH"
+    lc_console_item "Compressing" "$FILE"
 
-    console_message "Compressing" "$FILE" "$CYAN"
-
-    time_command gs -q -o "$PDF_PATH" "${GS_OPTIONS[@]}" -f "$BACKUP_PATH" &&
-        touch -r "$BACKUP_PATH" "$PDF_PATH" || {
-        mv -f "$BACKUP_PATH" "$PDF_PATH" || die
+    time_command gs -q -o "$PDF_PATH" "${GS_OPTIONS[@]}" -f "$FILE" &&
+        touch -r "$FILE" "$PDF_PATH" || {
         ERRORS+=("$FILE")
         continue
     }
 
-    OLD_SIZE="$(gnu_stat -Lc %s "$BACKUP_PATH")"
+    OLD_SIZE="$(gnu_stat -Lc %s "$FILE")"
     NEW_SIZE="$(gnu_stat -Lc %s "$PDF_PATH")"
     ((SAVED = OLD_SIZE - NEW_SIZE)) || true
 
@@ -109,18 +104,30 @@ for FILE in "$@"; do
     fi
 
     if [ "$PERCENT_SAVED" -lt "$PERCENT_SAVED_THRESHOLD" ]; then
-        echoc "[ $COMMAND_TIME ] Compression was ineffective ($PERCENT_TEXT) so the original will be kept" "$RED"
-        mv -f "$BACKUP_PATH" "$PDF_PATH" || die
+        lc_echoc "[ $COMMAND_TIME ] Compression was ineffective ($PERCENT_TEXT) so the original will be kept" "$RED"
         continue
     fi
 
-    echoc "[ $COMMAND_TIME ] Compressed successfully ($PERCENT_TEXT)" "$GREEN"
+    if command_exists trash-put; then
+
+        trash-put "$FILE" || die
+
+    else
+
+        BACKUP_FILE="$(filename_get_next_backup "$FILE" "gs")"
+        mv -v "$FILE" "$BACKUP_FILE" || die
+
+    fi
+
+    mv "$PDF_PATH" "$FILE" || die
+
+    lc_echoc "[ $COMMAND_TIME ] Compressed successfully ($PERCENT_TEXT)" "$GREEN"
 
 done
 
 [ "${#ERRORS[@]}" -eq "0" ] || {
 
-    console_warning "Unable to process ${#ERRORS[@]} PDF $(single_or_plural ${#ERRORS[@]} file files)" "" "$BOLD$RED"
+    lc_console_message "Unable to process ${#ERRORS[@]} PDF $(single_or_plural ${#ERRORS[@]} file files)" "$BOLD$RED" >&2
     printf '%s\n' "${ERRORS[@]}" >&2
     die
 
