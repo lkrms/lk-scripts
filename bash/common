@@ -1750,7 +1750,7 @@ if [ -t 1 ]; then
 
     # other "formatting"
     BOLD="$(tput bold)"
-    DIM="$(tput dim)"
+    DIM="$(tput dim 2>/dev/null)" || DIM=
     UNDERLINE="$(tput smul)"
     NO_UNDERLINE="$(tput rmul)"
     STANDOUT="$(tput smso)"

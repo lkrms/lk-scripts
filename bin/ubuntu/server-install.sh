@@ -52,7 +52,7 @@ assert_not_root
 
     apt_check_essentials
 
-    is_virtual || apt_install_packages "QEMU/KVM" "bridge-utils libvirt-bin libvirt-doc qemu-kvm virtinst"
+    is_virtual || apt_install_packages "QEMU/KVM" "libvirt-bin libvirt-doc qemu-kvm virtinst"
 
     apt_install_packages "Webmin" "webmin"
     apt_install_packages "Samba server" "samba"

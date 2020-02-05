@@ -349,7 +349,7 @@ mongodb-org \
 
     fi
 
-    [ "$LOW_RAM" -eq "1" ] || is_virtual || apt_install_packages "QEMU/KVM" "bridge-utils libvirt-bin libvirt-doc qemu-kvm virt-manager virtinst"
+    [ "$LOW_RAM" -eq "1" ] || is_virtual || apt_install_packages "QEMU/KVM" "libvirt-bin libvirt-doc qemu-kvm virt-manager virtinst"
     [ "$LOW_RAM" -eq "1" ] || apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
     case "${XDG_CURRENT_DESKTOP:-}" in

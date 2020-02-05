@@ -1064,6 +1064,7 @@ APT_ESSENTIALS=(
     # NETWORKING
     # net-tools: e.g. netstat
     # radvdump: dumps IPv6 router advertisements
+    bridge-utils
     cifs-utils
     lftp
     net-tools
