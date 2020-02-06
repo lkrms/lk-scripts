@@ -34,6 +34,12 @@ assert_not_root
     apt_enable_ubuntu_repository universe updates backports proposed
     apt_enable_ubuntu_repository multiverse updates backports proposed
 
+    APT_PREREQ+=(
+        trash-cli
+    )
+
+    apt_check_prerequisites
+
     # seed debconf database with answers
     sudo debconf-set-selections <<EOF
 kdump-tools kdump-tools/use_kdump boolean true
@@ -41,12 +47,6 @@ kexec-tools kexec-tools/load_kexec boolean false
 libc6 libraries/restart-without-asking boolean true
 libpam0g libraries/restart-without-asking boolean true
 EOF
-
-    APT_PREREQ+=(
-        trash-cli
-    )
-
-    apt_check_prerequisites
 
     MEMORY_SIZE_MB=-1
     LOW_RAM=0
@@ -57,12 +57,12 @@ EOF
 
         [ "$MEMORY_SIZE_MB" -ge "8192" ] || {
             LOW_RAM=1
-            console_message "Because this system has less than 8GB of RAM, some packages will not be offered" "" "$RED"
+            lc_console_message "Because this system has less than 8GB of RAM, some packages will not be offered" "$RED"
         }
 
     else
 
-        console_message "Because this is a virtual machine, some packages will not be offered" "" "$RED"
+        lc_console_message "Because this is a virtual machine, some packages will not be offered" "$RED"
 
     fi
 
@@ -74,7 +74,6 @@ EOF
     apt_register_ppa "intel-opencl/intel-opencl" "intel-opencl-icd" N N
     apt_register_ppa "libreoffice/ppa" "libreoffice*" N N
     apt_register_ppa "linrunner/tlp" "tlp tlp-rdw"
-    apt_register_ppa "nextcloud-devs/client" "nextcloud-client"
     apt_register_ppa "phoerious/keepassxc" "keepassxc"
     apt_register_ppa "recoll-backports/recoll-1.15-on" "recoll *-recoll"
     apt_register_ppa "scribus/ppa" "scribus*"
@@ -87,7 +86,7 @@ EOF
     apt_register_repository displaycal "https://download.opensuse.org/repositories/home:/fhoech/xUbuntu_18.04/Release.key" "deb https://download.opensuse.org/repositories/home:/fhoech/xUbuntu_$DISTRIB_RELEASE/ /" "release l=home:fhoech" "displaycal"
     apt_register_repository docker "https://download.docker.com/linux/ubuntu/gpg" "deb [arch=amd64] https://download.docker.com/linux/ubuntu $DISTRIB_CODENAME stable" "origin download.docker.com" "docker-ce* containerd.io"
     apt_register_repository google-chrome "https://dl.google.com/linux/linux_signing_key.pub" "deb [arch=amd64] http://dl.google.com/linux/chrome/deb/ stable main" "origin dl.google.com" "google-chrome-*"
-    apt_register_repository microsoft "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/ubuntu/$DISTRIB_RELEASE/prod $DISTRIB_CODENAME main" "release o=microsoft-ubuntu-bionic-prod bionic,l=microsoft-ubuntu-bionic-prod bionic" "powershell*" Y
+    apt_register_repository microsoft "https://packages.microsoft.com/keys/microsoft.asc" "deb [arch=amd64] https://packages.microsoft.com/ubuntu/$DISTRIB_RELEASE/prod $DISTRIB_CODENAME main" "release o=microsoft-ubuntu-$DISTRIB_CODENAME-prod $DISTRIB_CODENAME,l=microsoft-ubuntu-$DISTRIB_CODENAME-prod $DISTRIB_CODENAME" "powershell*" Y
     apt_register_repository mkvtoolnix "https://mkvtoolnix.download/gpg-pub-moritzbunkus.txt" "deb https://mkvtoolnix.download/ubuntu/ $DISTRIB_CODENAME main" "origin mkvtoolnix.download" "mkvtoolnix*"
     apt_register_repository signal "https://updates.signal.org/desktop/apt/keys.asc" "deb [arch=amd64] https://updates.signal.org/desktop/apt xenial main" "origin updates.signal.org" "signal-desktop"
     apt_register_repository skype-stable "https://repo.skype.com/data/SKYPE-GPG-KEY" "deb [arch=amd64] https://repo.skype.com/deb stable main" "origin repo.skype.com" "skypeforlinux"
@@ -134,15 +133,21 @@ EOF
 
         # xiccd (build) dependencies
         libcolord-dev
+        libx11-dev
         libxrandr-dev
-        #libx11-dev
 
         # QuickTile dependencies
-        python python-dbus python-gtk2 python-setuptools python-wnck? python-xlib
+        python
+        python-dbus
+        python-gtk2
+        python-setuptools
+        python-wnck?
+        python-xlib
 
         # espanso dependencies
-        libxdo3 libxtst6 xclip
-
+        libxdo3
+        libxtst6
+        xclip
     )
 
     apt_install_packages "application dependencies" "${DESKTOP_PREREQ[*]}" N
@@ -232,14 +237,6 @@ EOF
         vainfo
         x11vnc
 
-        # hardware
-        blueman
-        btscanner
-        ddcutil
-        guvcview
-        linssid
-        nvme-cli
-
         # automation
         devilspie2
         python3-xlib
@@ -252,9 +249,15 @@ EOF
     )
 
     is_virtual || DESKTOP_ESSENTIALS+=(
+        blueman
+        btscanner
         clinfo
+        ddcutil
+        guvcview
         intel-gpu-tools
         intel-opencl-icd
+        linssid
+        nvme-cli
         tlp
         tlp-rdw
     )
@@ -264,13 +267,18 @@ EOF
     # replaced with official client
     apt_remove_packages teams-for-linux teams-insiders
 
+    # NB: ruby is installed as a prerequisite
     DEVELOPMENT=(
-        cmake
+        # IDEs
         code
-        d-feet
         dbeaver-ce
-        msmtp
+        sublime-text
+
+        # Node.js
         nodejs
+        yarn
+
+        # PHP
         php
         php-bcmath
         php-cli
@@ -295,24 +303,32 @@ EOF
         php-xml
         php-xmlrpc
         php-zip
+
+        # Python 2
         python
         python-dateutil
         python-dev
         python-mysqldb
         python-pip
         python-requests
+
+        # Python 3
         python3
         python3-dateutil
         python3-dev
         python3-mysqldb
         python3-pip
         python3-requests
-        ruby
-        s-nail
+
+        # Bash et al.
         shellcheck
-        sublime-text
+
+        # email delivery
+        msmtp
+        s-nail
+
+        # testing
         trickle
-        yarn
 
         # version control
         git
@@ -327,16 +343,21 @@ EOF
 
         # GTK
         gtk-3-examples
+
+        # Linux-specific
+        d-feet
+    )
+
+    DEVELOPMENT_SERVICES=(
+        apache2
+        apache2-doc
+        mariadb-server
+        mongodb-org
     )
 
     apt_install_packages "development" "${DEVELOPMENT[*]}"
 
-    [ "$LOW_RAM" -eq "1" ] || apt_install_packages "development services" "\
-apache2 \
-apache2-doc \
-mariadb-server \
-mongodb-org \
-"
+    [ "$LOW_RAM" -eq "1" ] || apt_install_packages "development services" "${DEVELOPMENT_SERVICES[*]}"
 
     if apt_package_available powershell; then
 
@@ -350,7 +371,7 @@ mongodb-org \
     fi
 
     [ "$LOW_RAM" -eq "1" ] || is_virtual || apt_install_packages "QEMU/KVM" "libvirt-bin libvirt-doc qemu-kvm virt-manager virtinst"
-    [ "$LOW_RAM" -eq "1" ] || apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
+    [ "$LOW_RAM" -eq "1" ] || is_virtual || apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
     case "${XDG_CURRENT_DESKTOP:-}" in
 
@@ -383,15 +404,16 @@ mongodb-org \
 
     if ! has_argument "--skip-debs"; then
 
+        DEB_URLS=(
+            "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
+            "https://zoom.us/client/latest/zoom_amd64.deb"
+        )
+
         # the Ubuntu package doesn't work
-        apt_package_installed ttf-mscorefonts-installer || apt_install_deb "http://ftp.debian.org/debian/pool/contrib/m/msttcorefonts/ttf-mscorefonts-installer_3.7_all.deb"
+        apt_package_installed ttf-mscorefonts-installer || DEB_URLS+=("http://ftp.debian.org/debian/pool/contrib/m/msttcorefonts/ttf-mscorefonts-installer_3.7_all.deb")
 
-        apt_install_deb "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
-        apt_install_deb "https://zoom.us/client/latest/zoom_amd64.deb"
+        lc_console_message "Looking up deb package URLs"
 
-        console_message "Looking up deb package URLs" "" "$CYAN"
-
-        DEB_URLS=()
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/AppImage/appimaged/releases/tags/continuous" '_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/sindresorhus/caprine/releases/latest" '_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1)")
@@ -414,14 +436,20 @@ mongodb-org \
 
         fi
 
-        for DEB_URL in "${DEB_URLS[@]}"; do
+        for i in "${!DEB_URLS[@]}"; do
 
-            [ -n "$DEB_URL" ] || continue
+            DEB_URL="${DEB_URLS[$i]}"
+
+            [ -n "$DEB_URL" ] || {
+                unset "DEB_URLS[$i]"
+                continue
+            }
 
             apt_install_deb "$DEB_URL"
-            console_message "Queued for download:" "${NO_WRAP}${DEB_URL}${WRAP}" "$BOLD" "$YELLOW"
 
         done
+
+        lc_echo_array "${DEB_URLS[@]}" | lc_console_list "Packages queued to download and install" "$BOLD$YELLOW"
 
     fi
 

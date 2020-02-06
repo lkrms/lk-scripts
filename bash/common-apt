@@ -1041,6 +1041,7 @@ APT_ESSENTIALS=(
     apparmor-utils
     bc
     build-essential
+    cmake
     devscripts
     equivs
     p7zip-full

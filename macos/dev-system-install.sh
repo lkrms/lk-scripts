@@ -28,6 +28,7 @@ assert_not_root
 
     brew_queue_formulae "prerequisites" "\
 coreutils \
+findutils \
 gawk \
 gnu-sed \
 gnu-tar \

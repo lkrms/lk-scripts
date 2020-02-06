@@ -112,4 +112,10 @@ function lc_sort_files_by_date_reverse() {
 
 }
 
+function lc_largest() {
+
+    gnu_find . -xdev -type f ${@+\( "$@" \)} -print0 | xargs -0 gnu_stat --format '%14s %N' | sort -nr | less
+
+}
+
 LC_DEFAULT_CONSOLE_COLOUR="CYAN"

@@ -1720,7 +1720,7 @@ fi
 ORIGINAL_BASH_SUBSHELL="$BASH_SUBSHELL"
 ORIGINAL_ARGUMENTS=("$@")
 
-register_gnu_commands awk date grep nc sed sort stat tar
+register_gnu_commands awk date find grep nc sed sort stat tar
 
 mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOG_DIR" "$TEMP_DIR"
 
