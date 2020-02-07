@@ -226,7 +226,7 @@ function assert_not_root() {
 
 function assert_command_exists() {
 
-    command_exists "$1" || die "Error: $(basename "$0") requires $1"
+    command_exists "$1" || die "$(basename "$0") requires '$1'"
 
 }
 
