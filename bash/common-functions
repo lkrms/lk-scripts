@@ -102,7 +102,7 @@ function lc_console_list() {
 
 function lc_relative_ln() {
 
-    local ARGS=() TARGET_PATH
+    local i ARGS=() RELATIVE_TO SOURCE_PATHS TARGET_PATH=()
 
     while [[ "${1:-}" =~ ^- ]]; do
         ARGS+=("$1")
@@ -112,9 +112,40 @@ function lc_relative_ln() {
         }
     done
 
-    TARGET_PATH="$(realpath --relative-to=. "$1")" &&
-        shift &&
-        ln "${ARGS[@]}" "$TARGET_PATH" "$@"
+    case "$#" in
+    0)
+        ln
+        return
+        ;;
+
+    1)
+        RELATIVE_TO="."
+        SOURCE_PATHS=("$1")
+        ;;
+
+    2)
+        [ -d "$2" ] &&
+            RELATIVE_TO="$2" ||
+            RELATIVE_TO="$(dirname "$2")"
+        SOURCE_PATHS=("$1")
+        TARGET_PATH=("$2")
+        ;;
+
+    *)
+        RELATIVE_TO="${*: -1}"
+        SOURCE_PATHS=("${@:1:$#-1}")
+        TARGET_PATH=("$RELATIVE_TO")
+        ;;
+
+    esac
+
+    for i in "${!SOURCE_PATHS[@]}"; do
+
+        SOURCE_PATHS[$i]="$(realpath --relative-to="$RELATIVE_TO" "${SOURCE_PATHS[$i]}")" || return
+
+    done
+
+    ln ${ARGS[@]+"${ARGS[@]}"} "${SOURCE_PATHS[@]}" ${TARGET_PATH[@]+"${TARGET_PATH[@]}"}
 
 }
 
