@@ -124,24 +124,24 @@ HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
 
     ADD_TO_PATH+=("$HOME/.local/bin")
 
-    for KEY in "${!ADD_TO_PATH[@]}"; do
+    for i in "${!ADD_TO_PATH[@]}"; do
 
-        if [[ ":$PATH:" == *":${ADD_TO_PATH[$KEY]}:"* ]] || [ ! -d "${ADD_TO_PATH[$KEY]}" ]; then
-
-            unset "ADD_TO_PATH[$KEY]"
-
-        fi
+        ! [[ ":$PATH:" == *":${ADD_TO_PATH[$i]}:"* ]] &&
+            [ -d "${ADD_TO_PATH[$i]}" ] ||
+            unset "ADD_TO_PATH[$i]"
 
     done
 
     # shellcheck disable=SC2016
     if [ "${#ADD_TO_PATH[@]}" -gt "0" ]; then
 
-        echo 'export PATH="$PATH:'"$(array_join_by ":" "${ADD_TO_PATH[@]}")"'"'
-        PATH="$PATH:$(array_join_by ":" "${ADD_TO_PATH[@]}")"
-        export PATH
+        EXPORT_PATH="export PATH=\"\$PATH:$(array_join_by ":" "${ADD_TO_PATH[@]}")\""
+        echo "$EXPORT_PATH"
+        eval "$EXPORT_PATH"
 
     fi
+
+    echo ". \"$ROOT_DIR/bash/common-functions\""
 
     echo "export LINAC_ROOT_DIR=\"$ROOT_DIR\""
 
@@ -374,3 +374,4 @@ function _cloud_check() {
 
 # shellcheck disable=SC2142
 alias files-count="find . -mindepth 1 -maxdepth 1 -type d -exec bash -c 'printf \"%s: %s\\n\" \"\$(find \"\$1\" -type f | wc -l)\" \"\$1\"' bash '{}' \; | sort -n"
+alias rln="lc_relative_ln"

@@ -100,6 +100,24 @@ function lc_console_list() {
 
 }
 
+function lc_relative_ln() {
+
+    local ARGS=() TARGET_PATH
+
+    while [[ "${1:-}" =~ ^- ]]; do
+        ARGS+=("$1")
+        [ "$1" != "--" ] && shift || {
+            shift
+            break
+        }
+    done
+
+    TARGET_PATH="$(realpath --relative-to=. "$1")" &&
+        shift &&
+        ln "${ARGS[@]}" "$TARGET_PATH" "$@"
+
+}
+
 function lc_sort_files_by_date() {
 
     gnu_stat --printf '%Y :%n\0' "$@" | sort -zn | gnu_sed -zE 's/[0-9]+ ://' | xargs -0 printf '%s\n'
