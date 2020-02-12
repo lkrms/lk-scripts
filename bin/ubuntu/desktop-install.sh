@@ -273,6 +273,7 @@ EOF
         code
         dbeaver-ce
         sublime-text
+        tidy
 
         # Node.js
         nodejs
@@ -343,6 +344,7 @@ EOF
 
         # GTK
         gtk-3-examples
+        libgtk-3-dev
 
         # Linux-specific
         d-feet
@@ -585,6 +587,8 @@ EOF
 
     fi
 
+    ! apt_package_installed "tidy" || safe_symlink "$CONFIG_DIR/tidy.conf" "/etc/tidy.conf" Y Y
+
     # non-apt installations
 
     brew_process_queue
@@ -684,55 +688,6 @@ EOF
     if apt_package_installed "docker-ce"; then
 
         sudo groupadd -f docker >/dev/null 2>&1 && sudo adduser "$USER" docker >/dev/null 2>&1 || die "Error adding $USER to docker group"
-
-    fi
-
-    # if apt_package_installed "libgtk-3-dev"; then
-
-    #     gsettings set org.gtk.Settings.Debug enable-inspector-keybinding true
-
-    # fi
-
-    # workaround for Synergy bug: https://github.com/symless/synergy-core/issues/6481
-    HOLD_PACKAGES=(libx11-6 libx11-data libx11-dev libx11-doc libx11-xcb-dev libx11-xcb1)
-
-    for i in "${!HOLD_PACKAGES[@]}"; do
-
-        if ! apt_package_installed "${HOLD_PACKAGES[$i]}"; then
-
-            unset "HOLD_PACKAGES[$i]"
-
-        fi
-
-    done
-
-    if [ "${#HOLD_PACKAGES[@]}" -gt "0" ]; then
-
-        if system_service_exists "synergy"; then
-
-            if dpkg-query -f '${Version}\n' -W "${HOLD_PACKAGES[@]}" | grep -Eq "$(sed_escape_search "2:1.6.4-3ubuntu0.2")"; then
-
-                VERSIONED_HOLD_PACKAGES=()
-
-                for p in "${HOLD_PACKAGES[@]}"; do
-
-                    VERSIONED_HOLD_PACKAGES+=("$p=2:1.6.4-3ubuntu0.1")
-
-                done
-
-                console_message "Downgrading from ${BOLD}2:1.6.4-3ubuntu0.2${RESET} to ${BOLD}2:1.6.4-3ubuntu0.1${RESET} and marking as held:" "${HOLD_PACKAGES[*]}" "$BOLD" "$RED"
-
-                sudo apt-get "${APT_GET_OPTIONS[@]}" --allow-downgrades install "${VERSIONED_HOLD_PACKAGES[@]}"
-
-                sudo apt-mark hold "${HOLD_PACKAGES[@]}" >/dev/null
-
-            fi
-
-        else
-
-            sudo apt-mark unhold "${HOLD_PACKAGES[@]}" >/dev/null
-
-        fi
 
     fi
 

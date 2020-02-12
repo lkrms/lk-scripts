@@ -1,2 +1,5 @@
 bash-language-server
 eslint
+
+# Salesforce CLI
+sfdx-cli
