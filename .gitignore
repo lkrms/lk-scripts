@@ -8,5 +8,6 @@
 !/config/*-default*
 !/config/*-example*
 !/config/README.md
+sxhkdrc
 
 .githooks/*.sample
