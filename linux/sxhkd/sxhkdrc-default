@@ -1,5 +1,5 @@
-super + {a-z,0-9,comma,period,slash,minus,equal,BackSpace,bracketleft,bracketright,backslash,Return}
-    sxhkd-do-map.py super+{a-z,0-9,comma,period,slash,minus,equal,BackSpace,bracketleft,bracketright,backslash,Return}
+super + {a-l,n-z,0-9,comma,period,slash,minus,equal,BackSpace,bracketleft,bracketright,backslash,Return}
+    sxhkd-do-map.py super+{a-l,n-z,0-9,comma,period,slash,minus,equal,BackSpace,bracketleft,bracketright,backslash,Return}
 
 super + shift + {a-z,comma,period,slash,minus,equal,BackSpace,bracketleft,bracketright,backslash,Return}
     sxhkd-do-map.py super+shift+{a-z,comma,period,slash,minus,equal,BackSpace,bracketleft,bracketright,backslash,Return}

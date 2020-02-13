@@ -226,7 +226,7 @@ function dev_apply_system_config() {
 
         if command_exists sxhkd; then
 
-            safe_symlink "$ROOT_DIR/linux/sxhkd/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc" &&
+            safe_symlink "$ROOT_DIR/linux/sxhkd/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc" N Y &&
                 safe_symlink "$ROOT_DIR/linux/sxhkd/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py" &&
                 safe_symlink "$ROOT_DIR/bin/linux/applications/sxhkd.desktop" "$HOME/.config/autostart/sxhkd.desktop" || true
 
