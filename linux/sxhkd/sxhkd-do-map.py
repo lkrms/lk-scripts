@@ -64,7 +64,6 @@ logging.info("window name: {0}".format(window_name))
 
 is_unknown = window_class == "" and window_name == ""
 is_chrome = bool(re.search(r"^google-chrome\.Google-chrome$", window_class))
-is_dbeaver = bool(re.search(r"^DBeaver\.DBeaver$", window_class))
 is_terminal = bool(
     re.search(r"^(guake|io\.elementary\.terminal|tilix|xfce4-terminal)\.", window_class))
 is_todoist = bool(re.search(
@@ -72,7 +71,7 @@ is_todoist = bool(re.search(
 is_vscode = bool(re.search(r"^code\.Code$", window_class))
 
 skip = is_unknown
-quit_alt_f4 = is_chrome or is_dbeaver or is_todoist
+quit_alt_f4 = is_chrome or is_todoist
 
 args = sys.argv[1].split("+")
 
