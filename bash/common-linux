@@ -138,9 +138,13 @@ function load_linuxbrew() {
     SHELLENV="$SHELLENV
 export PATH=\"\${PATH:+\$PATH:}/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin\";
 export MANPATH=\"\${MANPATH:+\$MANPATH:}/home/linuxbrew/.linuxbrew/share/man:\";
-export INFOPATH=\"\${INFOPATH:+\$INFOPATH:}/home/linuxbrew/.linuxbrew/share/info\";"
+export INFOPATH=\"\${INFOPATH:+\$INFOPATH:}/home/linuxbrew/.linuxbrew/share/info\";
+$(declare -f brew_wrapper);
+alias brew=brew_wrapper;"
 
     if [ "${1:-Y}" = "Y" ]; then
+
+        shopt -s expand_aliases
 
         set +u
         eval "$SHELLENV"
@@ -154,4 +158,11 @@ export INFOPATH=\"\${INFOPATH:+\$INFOPATH:}/home/linuxbrew/.linuxbrew/share/info
 
     fi
 
+}
+
+function brew_wrapper() {
+    (
+        eval "$(/home/linuxbrew/.linuxbrew/bin/brew shellenv)"
+        /home/linuxbrew/.linuxbrew/bin/brew "$@"
+    )
 }
