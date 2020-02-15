@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=espanso
-Exec=espanso daemon
+Exec=sh -c "espanso stop;espanso daemon"
 StartupNotify=false
 Terminal=false
 Hidden=false

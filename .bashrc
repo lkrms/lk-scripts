@@ -1,43 +1,29 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2016
+# shellcheck disable=SC1090,SC1091,SC2015,SC2016
 
 LC_PROMPT_DISPLAYED=
 
+# take advantage of printf support for strftime in Bash 4.2+
 if [ "${BASH_VERSINFO[0]}" -eq "4" ] && [ "${BASH_VERSINFO[1]}" -ge "2" ] ||
     [ "${BASH_VERSINFO[0]}" -gt "4" ]; then
-
-    # take advantage of printf support for strftime in Bash 4.2+
-    function lc-date() {
-
+    function lc_date() {
         printf "%($1)T" -1
-
     }
-
 else
-
-    function lc-date() {
-
+    function lc_date() {
         date +"$1"
-
     }
-
 fi
 
-function lc-before-command() {
-
-    # shellcheck disable=SC2206
+function lc_before_command() {
     [ "${LC_PROMPT_DISPLAYED:-0}" -eq "0" ] || [ "$BASH_COMMAND" = "$PROMPT_COMMAND" ] || {
-
         LC_LAST_COMMAND=($BASH_COMMAND)
-        LC_LAST_COMMAND_START="$(lc-date '%s')"
-
+        LC_LAST_COMMAND_START="$(lc_date "%s")"
     }
-
 }
 
-function lc-prompt() {
-
-    local EXIT_CODE="$?" PS=() SECS COMMAND IFS RED GREEN BLUE BOLD DIM RESET NO_WRAP WRAP
+function lc_prompt() {
+    local EXIT_CODE="$?" PS=() SECS COMMAND IFS RED GREEN BLUE BOLD RESET DIM STR LEN=25
 
     history -a
     [ "${LC_HISTORY_READ_NEW:-N}" = "N" ] || history -n
@@ -46,30 +32,40 @@ function lc-prompt() {
     GREEN="$(tput setaf 2)"
     BLUE="$(tput setaf 4)"
     BOLD="$(tput bold)"
-    DIM="$(tput dim)"
     RESET="$(tput sgr0)"
-    NO_WRAP="$(tput rmam 2>/dev/null)" &&
-        WRAP="$(tput smam 2>/dev/null)" ||
-        {
-            NO_WRAP=
-            WRAP=
-        }
+
+    # if terminal doesn't support dim, use grey
+    DIM="$(tput dim 2>/dev/null)" || DIM="$(tput setaf 8)"
 
     if [ "${#LC_LAST_COMMAND[@]}" -gt "0" ]; then
 
-        ((SECS = $(lc-date '%s') - LC_LAST_COMMAND_START)) || true
+        ((SECS = $(lc_date "%s") - LC_LAST_COMMAND_START)) || true
 
         if [ "$EXIT_CODE" -ne "0" ] ||
             [ "$SECS" -gt "1" ] ||
             [ "$(type -t "${LC_LAST_COMMAND[0]}")" != "builtin" ] ||
             ! [[ "${LC_LAST_COMMAND[0]}" =~ ^(cd|echo|ls|popd|pushd)$ ]]; then
 
-            COMMAND=("${LC_LAST_COMMAND[@]//$'\r\n'/ }")
-            COMMAND=("${COMMAND[@]//$'\n'/ }")
+            COMMAND="${LC_LAST_COMMAND[*]}"
+            COMMAND="${COMMAND//$'\r\n'/ }"
+            COMMAND="${COMMAND//$'\n'/ }"
+            COMMAND="${COMMAND//\\/\\\\}"
 
             PS+=("\n\[$DIM\]\d \t\[$RESET\] ")
-            [ "$EXIT_CODE" -eq "0" ] && PS+=("\[$GREEN\]✔") || PS+=("\[$RED\]✘ exit status $EXIT_CODE")
-            PS+=(" after ${SECS}s \[$RESET$NO_WRAP$DIM\]( ${COMMAND[*]} )\[$WRAP$RESET\]\n")
+
+            [ "$EXIT_CODE" -eq "0" ] && {
+                PS+=("\[$GREEN\]✔")
+            } || {
+                STR=" exit status $EXIT_CODE"
+                ((LEN += ${#STR}))
+                PS+=("\[$RED\]✘$STR")
+            }
+
+            STR=" after ${SECS}s "
+            PS+=("$STR\[$RESET$DIM\]")
+            ((LEN = $(tput cols) - LEN - ${#STR}))
+            [ "$LEN" -le "0" ] || PS+=("( ${COMMAND:0:$LEN} )")
+            PS+=("\[$RESET\]\n")
 
         fi
 
@@ -90,8 +86,8 @@ function lc-prompt() {
 
 shopt -u promptvars
 
-trap lc-before-command DEBUG
-PROMPT_COMMAND="lc-prompt"
+trap lc_before_command DEBUG
+PROMPT_COMMAND="lc_prompt"
 LC_LAST_COMMAND=()
 
 # keep everything forever
@@ -102,7 +98,6 @@ HISTSIZE=
 HISTFILESIZE=
 HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
 
-# shellcheck disable=SC1091
 . /dev/stdin <<<"$(
     set -euo pipefail
     SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
