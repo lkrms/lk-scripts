@@ -182,7 +182,9 @@ function lc_is_identifier() {
 }
 
 function lc_variable_set() {
-    eval "[ -n \"\${$1+s}\" ]"
+    # the second test works with empty arrays
+    eval "[ -n \"\${$1+s}\" ]" ||
+        declare -p "$1" >/dev/null 2>/dev/null
 }
 
 function lc_return_cached() {
