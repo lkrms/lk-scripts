@@ -1,6 +1,5 @@
 #!/bin/bash
 # shellcheck disable=SC1090
-# Reviewed: 2019-12-10
 
 # Recommended:
 # - create file: config/xkbcomp (an example is provided)

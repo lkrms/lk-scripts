@@ -3,7 +3,6 @@
 
 assert_command_exists apt-get
 
-# Reviewed: 2020-01-05
 function apt_apply_preferences() {
 
     local PREF PREFS=("$@")
@@ -26,7 +25,6 @@ function apt_apply_preferences() {
 
 }
 
-# Reviewed: 2020-01-05
 function apt_check_prerequisites() {
 
     [ "${#APT_PREREQ[@]}" -gt "0" ] || return 0
@@ -35,7 +33,6 @@ function apt_check_prerequisites() {
 
 }
 
-# Reviewed: 2020-01-05
 function apt_check_essentials() {
 
     local i
@@ -53,7 +50,6 @@ function apt_check_essentials() {
 
 }
 
-# Reviewed: 2020-01-05
 function apt_package_installed() {
 
     local STATUS
@@ -65,14 +61,12 @@ function apt_package_installed() {
 
 }
 
-# Reviewed: 2020-01-05
 function apt_package_just_installed() {
 
     printf '%s\n' ${APT_JUST_INSTALLED[@]+"${APT_JUST_INSTALLED[@]}"} | grep -Fx "$1" >/dev/null 2>&1
 
 }
 
-# Reviewed: 2020-01-05
 function apt_package_available() {
 
     apt_make_cache_clean
@@ -80,7 +74,6 @@ function apt_package_available() {
 
 }
 
-# Reviewed: 2020-01-05
 function apt_list_available_packages() {
 
     apt_make_cache_clean
@@ -88,7 +81,6 @@ function apt_list_available_packages() {
 
 }
 
-# Reviewed: 2020-01-05
 function apt_list_installed_packages() {
 
     dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po "^.*?(?=(:($(array_join_by "|" $(
@@ -98,14 +90,12 @@ function apt_list_installed_packages() {
 
 }
 
-# Reviewed: 2020-01-05
 function apt_list_manually_installed_packages() {
 
     apt-mark showmanual | sort | uniq
 
 }
 
-# Reviewed: 2020-01-05
 function apt_describe_packages() {
 
     local IFS PACKAGES COLOURS="$BOLD" RESET_COLOURS PATTERN RESULTS RESULT_NAMES NAME
@@ -213,7 +203,6 @@ function apt_pretty_packages() {
 
 }
 
-# Reviewed: 2020-01-05
 function apt_ubuntu_archive_url() {
 
     # attempt to return a local URL
@@ -225,7 +214,6 @@ function apt_ubuntu_archive_url() {
 
 }
 
-# Reviewed: 2020-01-05
 function do_apt_enable_ubuntu_repository() {
 
     gnu_grep -Pq "^deb\s+https?://(\w+\.)?archive\.ubuntu\.com/ubuntu/?\s+$1\s+.*(?<=\s)$2(\s|\$)" /etc/apt/sources.list || {
@@ -236,7 +224,6 @@ function do_apt_enable_ubuntu_repository() {
 
 }
 
-# Reviewed: 2020-01-05
 function apt_enable_ubuntu_repository() {
 
     local SUITE
@@ -255,7 +242,6 @@ function apt_enable_ubuntu_repository() {
 
 }
 
-# Reviewed: 2020-01-05
 function apt_cat_sources() {
 
     shopt -s nullglob
@@ -265,7 +251,6 @@ function apt_cat_sources() {
 }
 
 # apt_register_ppa "the/ppa" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? (Y/n)]
-# Reviewed: 2020-01-05
 function apt_register_ppa() {
 
     local p PIN PREFERENCES=
@@ -360,7 +345,6 @@ EOF
 
 }
 
-# Reviewed: 2020-01-05
 function apt_mark_cache_clean() {
 
     [ "$APT_CACHE_DIRTY" -eq "0" ] || {
@@ -370,7 +354,6 @@ function apt_mark_cache_clean() {
 
 }
 
-# Reviewed: 2020-01-05
 function apt_make_cache_clean() {
 
     [ "$APT_CACHE_DIRTY" -eq "0" ] || {

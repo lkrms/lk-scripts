@@ -28,46 +28,10 @@ function exit_trap() {
 
 }
 
-# Reviewed: 2019-10-28
-function gnu_command() {
-
-    local COMMAND
-
-    COMMAND="$1"
-    shift
-
-    if is_macos; then
-
-        if command_exists "g${COMMAND}"; then
-
-            COMMAND="g${COMMAND}"
-
-        else
-
-            die "$(basename "$0") requires g${COMMAND} (have you installed Homebrew coreutils?)"
-
-        fi
-
-    fi
-
-    "$COMMAND" "$@"
-
-}
-
-# Reviewed: 2019-10-28
 function register_gnu_commands() {
-
-    local COMMAND
-
-    for COMMAND in "$@"; do
-
-        eval 'function gnu_'"$COMMAND"'() { gnu_command '"$COMMAND"' "$@"; }'
-
-    done
-
+    lc_register_gnu_commands "$@"
 }
 
-# Reviewed: 2019-10-28
 function install_gnu_commands() {
 
     local COMMAND GNU_COMMAND COMMAND_PATH
@@ -100,7 +64,6 @@ function is_virtual() {
 
 }
 
-# Reviewed: 2019-11-06
 function is_desktop() {
 
     assert_is_linux
@@ -132,7 +95,6 @@ function is_desktop() {
 
 }
 
-# Reviewed: 2019-11-12
 function is_lid_closed() {
 
     assert_is_linux
@@ -148,9 +110,7 @@ function assert_is_macos() {
 }
 
 function is_macos() {
-
-    [ "$IS_MACOS" -eq "1" ]
-
+    lc_is_macos
 }
 
 function assert_is_windows() {
@@ -177,7 +137,6 @@ function is_linux() {
 
 }
 
-# Reviewed: 2019-12-18
 function assert_is_ubuntu() {
     is_ubuntu || die "$(basename "$0") requires Ubuntu"
 }
@@ -186,12 +145,10 @@ function is_ubuntu() {
     [ "$IS_UBUNTU" -eq "1" ]
 }
 
-# Reviewed: 2019-12-18
 function assert_is_desktop() {
     has_gui || die "$(basename "$0") requires a desktop environment"
 }
 
-# Reviewed: 2019-12-18
 function assert_is_server() {
     ! has_gui || die "$(basename "$0") requires a server environment"
 }
@@ -200,12 +157,10 @@ function has_gui() {
     [ "$HAS_GUI" -eq "1" ]
 }
 
-# Reviewed: 2019-12-18
 function assert_is_ubuntu_lts() {
     is_ubuntu_lts || die "$(basename "$0") is only supported on LTS releases of Ubuntu"
 }
 
-# Reviewed: 2019-12-18
 function is_ubuntu_lts() {
     is_ubuntu || return
     assert_command_exists ubuntu-distro-info
@@ -372,9 +327,7 @@ function function_exists() {
 }
 
 function variable_exists() {
-
-    declare -p "$1" >/dev/null 2>&1
-
+    lc_is_identifier "$1" && lc_variable_set "$1"
 }
 
 function user_exists() {
@@ -414,7 +367,6 @@ function echoc() {
     lc_echoc "$@"
 }
 
-# Reviewed: 2019-11-04
 function die() {
 
     [ "$#" -eq "0" ] || echoc "$@" >&2
@@ -425,7 +377,6 @@ function die() {
 
 }
 
-# Reviewed: 2019-11-04
 function die_happy() {
 
     [ "$#" -eq "0" ] || echoc "$@" >&2
@@ -434,7 +385,6 @@ function die_happy() {
 
 }
 
-# Reviewed: 2019-11-29
 function deprecated_warning() {
 
     [ "${NO_DEPRECATED_WARNINGS:-N}" = "Y" ] ||
@@ -452,7 +402,6 @@ function version_at_least() {
 
 }
 
-# Reviewed: 2019-12-16
 function pause() {
 
     # shellcheck disable=SC2162
@@ -699,7 +648,6 @@ function upper() {
 # Plays nicely with globs and sparse arrays. Outputs nothing and exits non-zero if the value isn't found.
 #
 # Usage: array_search "needle" HAYSTACK_NAME [allow globbing? (Y/n)]
-# Reviewed: 2019-11-04
 function array_search() {
 
     local GLOBBING="${3:-Y}" KEYS VALUE i
@@ -745,7 +693,6 @@ function array_search() {
 }
 
 # Usage: in_array "needle" HAYSTACK_NAME [allow globbing? (y/N)]
-# Reviewed: 2019-11-04
 function in_array() {
 
     array_search "$1" "$2" "${3:-N}" >/dev/null
@@ -753,7 +700,6 @@ function in_array() {
 }
 
 # Usage: array_join_by ":" "${MY_ARRAY[@]}"
-# Reviewed: 2019-11-11
 function array_join_by() {
 
     local SEP ARR
@@ -794,7 +740,6 @@ function array_join_oxford() {
 
 # Usage: sort_words "these words need sorting"
 # (output would be "need sorting these words")
-# Reviewed: 2019-11-18
 function sort_words() {
 
     local WORDS
@@ -876,7 +821,6 @@ function offer_sudo_password_bypass() {
 
 }
 
-# Reviewed: 2019-11-01
 function escape_separators() {
 
     local ARG
@@ -892,7 +836,6 @@ function escape_separators() {
 }
 
 # Usage: sed_escape_search "text to escape" [extended regular expressions? (Y/n)]
-# Reviewed: 2019-11-01
 function sed_escape_search() {
 
     local ESCAPE EXTENDED="${2:-Y}"
@@ -912,7 +855,6 @@ function sed_escape_search() {
 
 }
 
-# Reviewed: 2019-11-01
 function sed_escape_replace() {
 
     local ESCAPE ESCAPED
@@ -925,7 +867,6 @@ function sed_escape_replace() {
 }
 
 # Usage: search_replace "find" "replace with" "string"
-# Reviewed: 2019-11-01
 function search_replace() {
 
     local FIND REPLACE
@@ -961,7 +902,6 @@ function date_get_timestamp() {
 
 }
 
-# Reviewed: 2019-11-30
 function url_decode() {
 
     echo -e "${*//%/\\x}"
@@ -971,7 +911,6 @@ function url_decode() {
 # Results are returned in document order without de-duplication.
 #
 # Usage: get_urls_from_url "http://url.to/page-with-urls" [regex to limit results...]
-# Reviewed: 2019-11-11
 function get_urls_from_url() {
 
     local TEMP_FILE URLS PATTERN
@@ -1002,7 +941,6 @@ function get_urls_from_url() {
 
 # Usage: uri_get_parts "any://valid.uri?with=any#parts" <scheme|username|password|host|ipv6_address|port|path|query|fragment...>
 # See: https://en.wikipedia.org/wiki/Uniform_Resource_Identifier
-# Reviewed: 2019-11-11
 function uri_get_parts() {
 
     local URI="$1" FMT=() EXPR=() PART
@@ -1065,7 +1003,6 @@ function uri_get_parts() {
 }
 
 # files are downloaded to the current directory, and local filenames are output
-# Reviewed: 2019-11-30
 function download_urls() {
 
     local URL FILENAME HEADERS DOWNLOAD_FAILED=0 ERROR_MESSAGE HEADER IFS HEADER_PARTS i
@@ -1164,7 +1101,6 @@ function move_file_delete_link() {
 #   Outputs the path to a writable log file based on the name of the
 #   running script and the current user's effective ID.
 #
-# Reviewed: 2019-12-08
 function get_log_file() {
 
     local LOG_ROOTS LOG_ROOT LOG_BASENAME LOG_PATH
@@ -1205,7 +1141,6 @@ function get_log_file() {
 #   Kill any running COMMAND processes, then run COMMAND in the
 #   background and disown it.
 #
-# Reviewed: 2019-12-08
 function start_or_restart() {
 
     local COMMAND LOG_FILE LOG_FILE2 LOG_MESSAGE
@@ -1230,7 +1165,6 @@ function start_or_restart() {
 
 }
 
-# Reviewed: 2019-11-01
 function time_command() {
 
     local EXIT_CODE=0
@@ -1246,29 +1180,11 @@ function time_command() {
 
 }
 
-# Usage: maybe_sudo <use sudo? (Y/N)> command [arg1...]
-# Reviewed: 2019-10-28
 function maybe_sudo() {
-
-    local SUDO_OR_NOT
-
-    SUDO_OR_NOT="$1"
-    shift
-
-    if [ "$SUDO_OR_NOT" = "Y" ]; then
-
-        sudo -H "$@"
-
-    else
-
-        "$@"
-
-    fi
-
+    lc_maybe_sudo "$@"
 }
 
 # Usage: echo_run command [arg1...]
-# Reviewed: 2019-11-05
 function echo_run() {
 
     local EXTRA_NEWLINE="\n" ARG ARGS=() EXIT_CODE="0" EXIT_COLOR="${GREEN}"
@@ -1294,43 +1210,11 @@ function echo_run() {
 
 }
 
-# Usage: safe_symlink /path/to/target /path/to/link [use sudo? (y/N)] [add "-default" if target missing? (y/N)]
-# Reviewed: 2019-11-20
 function safe_symlink() {
-
-    local TARGET="${1:-}" LINK="${2:-}" SUDO_OR_NOT="${3:-N}" TRY_DEFAULT="${4:-N}" CURRENT_TARGET
-
-    [ -n "$TARGET" ] || die "No target"
-    [ -n "$LINK" ] || die "No link"
-
-    [ -e "$TARGET" ] || {
-        [ "$TRY_DEFAULT" = "Y" ] || return
-        TARGET="$(filename_add_suffix "$TARGET" "-default")"
-        [ -e "$TARGET" ] || return
-    }
-
-    if [ -L "$LINK" ]; then
-
-        CURRENT_TARGET="$(readlink "$LINK")" || die
-        [ "$CURRENT_TARGET" != "$TARGET" ] || return 0
-        maybe_sudo "$SUDO_OR_NOT" rm -f "$LINK" || die
-
-    elif [ -e "$LINK" ]; then
-
-        maybe_sudo "$SUDO_OR_NOT" mv -fv "$LINK" "$LINK.bak" || die
-
-    else
-
-        maybe_sudo "$SUDO_OR_NOT" mkdir -p "$(dirname "$LINK")" || die
-
-    fi
-
-    maybe_sudo "$SUDO_OR_NOT" ln -sv "$TARGET" "$LINK" || die
-
+    lc_safe_symlink "$@"
 }
 
 # Usage: safe_sed /path/to/file sed_command1 [sed_command2...]
-# Reviewed: 2019-10-27
 function safe_sed() {
 
     local FILENAME COMMAND COMMANDS=() CHANGED
@@ -1356,14 +1240,12 @@ function safe_sed() {
 
 }
 
-# Reviewed: 2020-01-18
 function is_dryrun() {
 
     [ "$ORIGINAL_DRYRUN_ARGUMENT" = "--dryrun" ] || { [ "${DRYRUN_BY_DEFAULT:-N}" != "N" ] && [ "$ORIGINAL_DRYRUN_ARGUMENT" != "--run" ]; }
 
 }
 
-# Reviewed: 2020-01-18
 function dryrun_message() {
 
     local EXTRA=
@@ -1379,7 +1261,6 @@ function dryrun_message() {
 }
 
 # Usage: maybe_dryrun command [argument1...]
-# Reviewed: 2020-01-18
 function maybe_dryrun() {
 
     if is_dryrun; then
@@ -1395,7 +1276,6 @@ function maybe_dryrun() {
 }
 
 # Usage: create_temp_file [use $TEMP_DIR? (y/N)]
-# Reviewed: 2019-11-21
 function create_temp_file() {
 
     local TEMP_ROOT="/tmp" TEMP_PATH
@@ -1410,7 +1290,6 @@ function create_temp_file() {
 }
 
 # Usage: create_temp_dir [use $TEMP_DIR? (y/N)]
-# Reviewed: 2019-11-21
 function create_temp_dir() {
 
     local TEMP_ROOT="/tmp" TEMP_PATH
@@ -1425,7 +1304,6 @@ function create_temp_dir() {
 }
 
 # Usage: create_temp_fifo [use $TEMP_DIR? (y/N)]
-# Reviewed: 2019-11-21
 function create_temp_fifo() {
 
     local FIFO_DIR FIFO_PATH
@@ -1491,7 +1369,6 @@ function eval_test() {
 
 }
 
-# Reviewed: 2019-12-02
 function link_settings() {
 
     local i TO
@@ -1552,7 +1429,6 @@ function link_settings() {
 
 }
 
-# Reviewed: 2019-11-18
 function array_filter_platform() {
 
     printf '%s\n' "$@" | gnu_grep -Po "^[^:]+(?=(:([^:|]+\|)*$PLATFORM(\|[^:|]+)*)?\$)" || true
@@ -1649,7 +1525,6 @@ function install_or_queue() {
 }
 
 # Usage: test_host_port my.host.address port-number
-# Reviewed: 2019-10-28
 function test_host_port() {
 
     # 1-second timeout -- intended for LAN service availability checks
@@ -1720,7 +1595,7 @@ fi
 ORIGINAL_BASH_SUBSHELL="$BASH_SUBSHELL"
 ORIGINAL_ARGUMENTS=("$@")
 
-register_gnu_commands awk date find grep nc sed sort stat tar
+register_gnu_commands awk date find grep ln nc sed sort stat tar
 
 mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOG_DIR" "$TEMP_DIR"
 

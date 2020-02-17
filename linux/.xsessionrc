@@ -1,5 +1,4 @@
 #!/bin/bash
-# Reviewed: 2019-11-03
 
 # shellcheck disable=SC1091
 LINAC_QT_EXPORTS="$(xrandr-auto.sh --get-qt-exports --set-dpi-only)" &&

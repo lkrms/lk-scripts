@@ -1,6 +1,5 @@
 #!/bin/bash
 # shellcheck disable=SC2034,SC2206,SC2207
-# Reviewed: 2019-11-04
 
 function brew_check() {
 

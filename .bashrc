@@ -278,7 +278,6 @@ function latest-all-dir() {
     _latest d
 }
 
-# Reviewed: 2019-12-05
 function find-all() {
 
     local FIND="${1:-}"
@@ -369,4 +368,4 @@ function _cloud_check() {
 
 # shellcheck disable=SC2142
 alias files-count="find . -mindepth 1 -maxdepth 1 -type d -exec bash -c 'printf \"%s: %s\\n\" \"\$(find \"\$1\" -type f | wc -l)\" \"\$1\"' bash '{}' \; | sort -n"
-alias rln="lc_relative_ln"
+alias rln="gnu_ln -r"

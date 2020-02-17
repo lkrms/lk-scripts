@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2068
+# shellcheck disable=SC2016,SC2034,SC2068
 
 # common-functions
 #   Provide various portable, self-contained Bash functions.
@@ -8,8 +8,16 @@
 # - function die()
 # - function search_replace()
 # - function single_or_plural()
-# - function gnu_*()
+# - function filename_add_suffix()
 # - $CYAN etc.
+
+function lc_is_yes() {
+    [[ "$1" =~ ^[yY]$ ]]
+}
+
+function lc_is_true() {
+    [[ "$1" =~ ^([yY1])$ ]]
+}
 
 function lc_echo_array() {
     printf '%s\n' "$@"
@@ -100,53 +108,55 @@ function lc_console_list() {
 
 }
 
-function lc_relative_ln() {
+# SUDO_OR_NOT=<Y|N> lc_maybe_sudo command [arg1...]
+function lc_maybe_sudo() {
+    if lc_is_yes "${SUDO_OR_NOT:-N}"; then
+        sudo -H "$@"
+    else
+        "$@"
+    fi
+}
 
-    local i ARGS=() RELATIVE_TO SOURCE_PATHS TARGET_PATH=()
+# lc_safe_symlink target_path link_path [use_sudo [try_default]]
+function lc_safe_symlink() {
 
-    while [[ "${1:-}" =~ ^- ]]; do
-        ARGS+=("$1")
-        [ "$1" != "--" ] && shift || {
-            shift
-            break
+    local TARGET="${1:-}" LINK="${2:-}" SUDO_OR_NOT="${3:-N}" TRY_DEFAULT="${4:-N}" CURRENT_TARGET
+
+    LC_SAFE_SYMLINK_NO_CHANGE=
+
+    [ -n "$TARGET" ] || die "No target"
+    [ -n "$LINK" ] || die "No link"
+
+    [ -e "$TARGET" ] || {
+        lc_is_yes "$TRY_DEFAULT" || return
+        TARGET="$(filename_add_suffix "$TARGET" "-default")"
+        [ -e "$TARGET" ] || return
+    }
+
+    if [ -L "$LINK" ]; then
+        CURRENT_TARGET="$(readlink "$LINK")" || die
+        [ "$CURRENT_TARGET" != "$TARGET" ] || {
+            LC_SAFE_SYMLINK_NO_CHANGE=1
+            return
         }
+        lc_maybe_sudo rm -f "$LINK" || return
+    elif [ -e "$LINK" ]; then
+        lc_maybe_sudo mv -fv "$LINK" "$LINK.bak" || return
+    else
+        lc_maybe_sudo mkdir -p "$(dirname "$LINK")" || return
+    fi
+
+    lc_maybe_sudo ln -sv "$TARGET" "$LINK"
+
+}
+
+function lc_register_gnu_commands() {
+    local COMMAND PREFIX=
+
+    ! lc_is_macos || PREFIX="g"
+    for COMMAND in "$@"; do
+        eval "function gnu_$COMMAND() { $PREFIX$COMMAND \"\$@\"; }"
     done
-
-    case "$#" in
-    0)
-        ln
-        return
-        ;;
-
-    1)
-        RELATIVE_TO="."
-        SOURCE_PATHS=("$1")
-        ;;
-
-    2)
-        [ -d "$2" ] &&
-            RELATIVE_TO="$2" ||
-            RELATIVE_TO="$(dirname "$2")"
-        SOURCE_PATHS=("$1")
-        TARGET_PATH=("$2")
-        ;;
-
-    *)
-        RELATIVE_TO="${*: -1}"
-        SOURCE_PATHS=("${@:1:$#-1}")
-        TARGET_PATH=("$RELATIVE_TO")
-        ;;
-
-    esac
-
-    for i in "${!SOURCE_PATHS[@]}"; do
-
-        SOURCE_PATHS[$i]="$(realpath --relative-to="$RELATIVE_TO" "${SOURCE_PATHS[$i]}")" || return
-
-    done
-
-    ln ${ARGS[@]+"${ARGS[@]}"} "${SOURCE_PATHS[@]}" ${TARGET_PATH[@]+"${TARGET_PATH[@]}"}
-
 }
 
 function lc_sort_files_by_date() {
@@ -167,4 +177,25 @@ function lc_largest() {
 
 }
 
+function lc_is_identifier() {
+    [[ "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]
+}
+
+function lc_variable_set() {
+    eval "[ -n \"\${$1+s}\" ]"
+}
+
+function lc_return_cached() {
+    lc_variable_set "$1" || {
+        eval "$2;$1=\"\$?\""
+    }
+    eval "return \"\$$1\""
+}
+
+function lc_is_macos() {
+    lc_return_cached LC_IS_MACOS '[ "$(uname -s)" = "Darwin" ]'
+}
+
 LC_DEFAULT_CONSOLE_COLOUR="CYAN"
+
+lc_register_gnu_commands find sed stat

@@ -6,7 +6,7 @@
 # Usage: dev_install_packages [queue only? (y/N)] [name of 'already installed' array]
 function dev_install_packages() {
 
-    local QUEUE_ONLY="${1:-N}" UPDATE=N INSTALL_COMMAND ALREADY_INSTALLED_NAME="" SUDO_OR_NOT="" \
+    local QUEUE_ONLY="${1:-N}" UPDATE=N INSTALL_COMMAND ALREADY_INSTALLED_NAME="" SUDO_OR_NOT="N" \
         PIP_REQUIRED=() PIP3_REQUIRED=() NPM_REQUIRED=() PHP_INI_ROOT
 
     [ "$QUEUE_ONLY" = "N" ] && UPDATE="${3:-N}" || {
@@ -19,11 +19,7 @@ function dev_install_packages() {
     dir_make_and_own "/usr/local/bin"
 
     # on macOS, global pip and npm management doesn't require sudo (courtesy of Homebrew)
-    if ! is_macos; then
-
-        SUDO_OR_NOT="sudo -H "
-
-    fi
+    is_macos || SUDO_OR_NOT="Y"
 
     if command_exists pip; then
 
@@ -35,14 +31,14 @@ function dev_install_packages() {
 
             if [ "$UPDATE" = "N" ]; then
 
-                INSTALL_COMMAND="${SUDO_OR_NOT}pip install"
+                INSTALL_COMMAND="maybe_sudo pip install"
                 [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="PIP_INSTALL_QUEUE"
 
-                install_or_queue "pip" "${PIP_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+                install_or_queue "pip" "${PIP_REQUIRED[*]}" Y package packages "maybe_sudo pip list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
 
             else
 
-                eval "${SUDO_OR_NOT}pip install --upgrade --upgrade-strategy eager" "${PIP_REQUIRED[@]}"
+                eval "maybe_sudo pip install --upgrade --upgrade-strategy eager" "${PIP_REQUIRED[@]}"
 
             fi
 
@@ -60,14 +56,14 @@ function dev_install_packages() {
 
             if [ "$UPDATE" = "N" ]; then
 
-                INSTALL_COMMAND="${SUDO_OR_NOT}pip3 install"
+                INSTALL_COMMAND="maybe_sudo pip3 install"
                 [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="PIP3_INSTALL_QUEUE"
 
-                install_or_queue "pip3" "${PIP3_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}pip3 list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+                install_or_queue "pip3" "${PIP3_REQUIRED[*]}" Y package packages "maybe_sudo pip3 list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
 
             else
 
-                eval "${SUDO_OR_NOT}pip3 install --upgrade --upgrade-strategy eager" "${PIP3_REQUIRED[@]}"
+                eval "maybe_sudo pip3 install --upgrade --upgrade-strategy eager" "${PIP3_REQUIRED[@]}"
 
             fi
 
@@ -77,44 +73,38 @@ function dev_install_packages() {
 
     if command_exists npm; then
 
-        if [ "$UPDATE" = "N" ]; then
+        file_to_array "$CONFIG_DIR/npm-packages"
+        NPM_REQUIRED+=(${FILE_TO_ARRAY[@]+"${FILE_TO_ARRAY[@]}"})
+        NPM_REQUIRED=($(array_filter_platform ${NPM_REQUIRED[@]+"${NPM_REQUIRED[@]}"} | sort | uniq))
+
+        if [ "${#NPM_REQUIRED[@]}" -gt "0" ]; then
 
             function npm_install() {
 
                 local PACKAGE
 
-                [ -e "/usr/bin/python" ] && eval "${SUDO_OR_NOT}npm config -g set python /usr/bin/python" || true
+                [ ! -e "/usr/bin/python" ] || maybe_sudo npm config -g set python /usr/bin/python
 
                 for PACKAGE in "$@"; do
 
-                    eval "${SUDO_OR_NOT}npm install -g" "$PACKAGE" || eval "${SUDO_OR_NOT}npm install -g --unsafe-perm" "$PACKAGE"
+                    maybe_sudo npm "${NPM_COMMAND:-install}" -g "$PACKAGE" || true
 
                 done
 
             }
 
-            [ "$IS_MACOS" -eq "1" ] && NPM_REQUIRED+=(yarn) || true
-
-            file_to_array "$CONFIG_DIR/npm-packages"
-
-            if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
-
-                NPM_REQUIRED+=("${FILE_TO_ARRAY[@]}")
-
-            fi
-
-            if [ "${#NPM_REQUIRED[@]}" -gt "0" ]; then
+            if [ "$UPDATE" = "N" ]; then
 
                 INSTALL_COMMAND="npm_install"
                 [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="NPM_INSTALL_QUEUE"
 
-                install_or_queue "npm" "${NPM_REQUIRED[*]}" Y package packages "${SUDO_OR_NOT}npm list -g --depth=0 --parseable | tail -n +2 | gnu_grep -Po '(?<=/)[^/]*$'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+                install_or_queue "npm" "${NPM_REQUIRED[*]}" Y package packages "maybe_sudo npm list -g --depth=0 --parseable | tail -n +2 | gnu_grep -Po '(?<=/)[^/]*$'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+
+            else
+
+                NPM_COMMAND=update npm_install "${NPM_REQUIRED[@]}"
 
             fi
-
-        else
-
-            eval "${SUDO_OR_NOT}npm update -g"
 
         fi
 
@@ -160,7 +150,7 @@ function dev_update_packages() {
 
 function dev_apply_system_config() {
 
-    install_gnu_commands awk date find grep nc sed sort stat tar
+    install_gnu_commands awk date find grep ln nc sed sort stat tar
 
     if command_exists git; then
 
@@ -239,21 +229,19 @@ function dev_apply_system_config() {
 # Usage: dev_process_queue [name of 'installed' array]
 function dev_process_queue() {
 
+    local NPM_PACKAGE
+
     assert_variable_exists PIP_INSTALL_QUEUE
     assert_variable_exists PIP3_INSTALL_QUEUE
     assert_variable_exists NPM_INSTALL_QUEUE
 
-    local JUST_INSTALLED="${1:-}" SUDO_OR_NOT=
+    local JUST_INSTALLED="${1:-}" SUDO_OR_NOT="N"
 
-    if [ "$IS_MACOS" -ne "1" ]; then
-
-        SUDO_OR_NOT="sudo -H "
-
-    fi
+    is_macos || SUDO_OR_NOT="Y"
 
     if [ "${#PIP_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
-        eval "${SUDO_OR_NOT}pip install" "${PIP_INSTALL_QUEUE[@]}" || die
+        eval "maybe_sudo pip install" "${PIP_INSTALL_QUEUE[@]}" || die
 
         [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED"'+=("${PIP_INSTALL_QUEUE[@]}")'
         PIP_INSTALL_QUEUE=()
@@ -262,7 +250,7 @@ function dev_process_queue() {
 
     if [ "${#PIP3_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
-        eval "${SUDO_OR_NOT}pip3 install" "${PIP3_INSTALL_QUEUE[@]}" || die
+        eval "maybe_sudo pip3 install" "${PIP3_INSTALL_QUEUE[@]}" || die
 
         [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED"'+=("${PIP3_INSTALL_QUEUE[@]}")'
         PIP3_INSTALL_QUEUE=()
@@ -271,9 +259,16 @@ function dev_process_queue() {
 
     if [ "${#NPM_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
-        eval "npm_install" "${NPM_INSTALL_QUEUE[@]}" || die
+        [ ! -e "/usr/bin/python" ] || maybe_sudo npm config -g set python /usr/bin/python
 
-        [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED"'+=("${NPM_INSTALL_QUEUE[@]}")'
+        for NPM_PACKAGE in "${NPM_REQUIRED[@]}"; do
+
+            maybe_sudo npm install -g "$NPM_PACKAGE" &&
+                { [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED+=(\"\$NPM_PACKAGE\")"; } ||
+                true
+
+        done
+
         NPM_INSTALL_QUEUE=()
 
     fi
@@ -412,7 +407,7 @@ function php_apply_developer_settings() {
     php_apply_setting "$1" xdebug.remote_enable 1
     php_apply_setting "$1" xdebug.remote_autostart 1
 
-    if [ "$IS_MACOS" -eq "1" ]; then
+    if is_macos; then
 
         # support MariaDB via Homebrew
         php_apply_setting "$1" pdo_mysql.default_socket /tmp/mysql.sock

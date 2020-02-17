@@ -1,6 +1,5 @@
 #!/bin/bash
 # shellcheck disable=SC2034
-# Reviewed: 2019-12-12
 
 #SCREENSHOT_DIR="$HOME/Pictures/Screenshots"
 #SCRATCHPAD_DIR="$HOME/Documents/Notes/Daily"

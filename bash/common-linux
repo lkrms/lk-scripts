@@ -1,5 +1,4 @@
 #!/bin/bash
-# Reviewed: 2020-01-04
 
 function service_get_property() {
 
