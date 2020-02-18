@@ -157,13 +157,11 @@ EOF
         caffeine
         copyq
         deepin-screenshot
-        evolution
         firefox
         galculator
         geany
         ghostwriter
         gimp
-        gnome-calendar
         google-chrome-stable
         inkscape
         keepassxc
@@ -176,9 +174,11 @@ EOF
         speedcrunch
         spotify-client
         teams
+        thunderbird
         transmission
         transmission-cli
         typora
+        xul-ext-lightning
 
         # PDF
         ghostscript

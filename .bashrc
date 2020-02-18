@@ -84,8 +84,7 @@ function lc_prompt() {
 
 }
 
-shopt -u promptvars
-
+shopt -u promptvars checkwinsize
 trap lc_before_command DEBUG
 PROMPT_COMMAND="lc_prompt"
 LC_LAST_COMMAND=()
@@ -97,6 +96,8 @@ HISTIGNORE=
 HISTSIZE=
 HISTFILESIZE=
 HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
+
+[ ! -f "/etc/bash_completion" ] || . "/etc/bash_completion"
 
 . /dev/stdin <<<"$(
     set -euo pipefail

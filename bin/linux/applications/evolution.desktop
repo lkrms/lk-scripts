@@ -1,7 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Evolution
-Exec=evolution
-StartupNotify=false
-Terminal=false
-Hidden=false

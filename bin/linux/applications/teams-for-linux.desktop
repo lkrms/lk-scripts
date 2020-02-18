@@ -1,7 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Microsoft Teams for Linux
-Exec=teams-for-linux
-StartupNotify=false
-Terminal=false
-Hidden=false
