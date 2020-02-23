@@ -150,8 +150,6 @@ function dev_update_packages() {
 
 function dev_apply_system_config() {
 
-    install_gnu_commands awk date find grep ln nc sed sort stat tar
-
     if command_exists git; then
 
         file_to_array "$CONFIG_DIR/gitignore"
@@ -292,12 +290,12 @@ function php_do_apply_setting() {
     if grep -Eq '^\s*'"${SEARCH}"'\s*=' "$INI_FILE"; then
 
         # we have a defined setting to replace
-        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE" || die
+        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE" || die
 
     elif grep -Eq '^\s*;\s*'"${SEARCH}"'\s*=' "$INI_FILE"; then
 
         # we have a commented-out setting to replace
-        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*;\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE" || die
+        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*;\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE" || die
 
     else
 
@@ -332,12 +330,12 @@ function php_do_enable_extension() {
     if grep -Eq '^\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$' "$INI_FILE"; then
 
         # we have a defined setting to replace
-        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE" || die
+        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE" || die
 
     elif grep -Eq '^\s*;\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$' "$INI_FILE"; then
 
         # we have a commented-out setting to replace
-        "${PREFIX[@]}" sed -E "${SED_IN_PLACE_ARGS[@]}" 's/^\s*;\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE" || die
+        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*;\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE" || die
 
     else
 

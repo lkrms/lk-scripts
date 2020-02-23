@@ -43,20 +43,14 @@ git config push.default current
 console_message "Checking remote branches..." "" "$CYAN"
 
 ORIGIN_BRANCHES=($(
-    # shellcheck disable=SC1090
-    . "$SUBSHELL_SCRIPT_PATH" || exit
     git ls-remote --heads "$ORIGIN" | gnu_grep -Po '(?<=refs/heads/).*$' | sort
 )) || die
 
 UPSTREAM_BRANCHES=($(
-    # shellcheck disable=SC1090
-    . "$SUBSHELL_SCRIPT_PATH" || exit
     git ls-remote --heads "$UPSTREAM" | gnu_grep -Po '(?<=refs/heads/).*$' | sort
 )) || die
 
 LOCAL_BRANCHES=($(
-    # shellcheck disable=SC1090
-    . "$SUBSHELL_SCRIPT_PATH" || exit
     git for-each-ref --format='%(refname:short)' refs/heads/ | sort
 )) || die
 

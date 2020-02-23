@@ -1,203 +1,515 @@
 #!/bin/bash
-# shellcheck disable=SC2016,SC2034,SC2068
+# shellcheck disable=SC2016,SC2024,SC2034,SC2068
 
 # common-functions
 #   Provide various portable, self-contained Bash functions.
 
-# TBA:
-# - function die()
-# - function search_replace()
-# - function single_or_plural()
-# - function filename_add_suffix()
-# - $CYAN etc.
+# lk_warn message
+function lk_warn() {
+    local EXIT_STATUS="$?"
+    echo "$(basename "$0"): $1" >&2
+    return "$EXIT_STATUS"
+}
 
-function lc_is_yes() {
+# lk_die [message]
+#   Output optional MESSAGE to stderr and exit with a non-zero status.
+function lk_die() {
+    local EXIT_STATUS="$?"
+    [ "$EXIT_STATUS" -ne "0" ] || EXIT_STATUS="1"
+    [ "$#" -eq "0" ] || echo "$(basename "$0"): $1" >&2
+    lk_is_true "${LK_DIE_HAPPY:-0}" || exit "$EXIT_STATUS"
+    exit 0
+}
+
+function lk_trap_err() {
+    function lk_err_trap() {
+        lk_die "unhandled error at $1:$2"
+    }
+    trap 'lk_err_trap "${BASH_SOURCE[0]}" "$LINENO"' ERR
+}
+
+function lk_trap_exit() {
+    function lk_exit_trap() {
+        local i
+        for i in ${LK_EXIT_DELETE[@]+"${LK_EXIT_DELETE[@]}"}; do
+            rm -Rf -- "$i" || true
+        done
+        for i in ${LK_EXIT_KILL[@]+"${LK_EXIT_KILL[@]}"}; do
+            kill "$i" || true
+        done
+    }
+    LK_EXIT_DELETE=()
+    LK_EXIT_KILL=()
+    trap 'lk_exit_trap' EXIT
+}
+
+function lk_delete_on_exit() {
+    if ! lk_variable_set "LK_EXIT_DELETE"; then
+        lk_trap_exit
+    fi
+    LK_EXIT_DELETE+=("$@")
+}
+
+function lk_kill_on_exit() {
+    if ! lk_variable_set "LK_EXIT_KILL"; then
+        lk_trap_exit
+    fi
+    LK_EXIT_KILL+=("$@")
+}
+
+function lk_mktemp_file() {
+    TMPDIR="${TMPDIR:-/tmp}" gnu_mktemp -t "$(basename "$0").$(lk_timestamp).XXX"
+}
+
+function lk_command_exists() {
+    while [ "$#" -gt "0" ]; do
+        command -v "$1" >/dev/null 2>&1 || return
+        shift
+    done
+}
+
+# lk_bash_at_least major minor
+function lk_bash_at_least() {
+    [ "${BASH_VERSINFO[0]}" -eq "$1" ] &&
+        [ "${BASH_VERSINFO[1]}" -ge "$2" ] ||
+        [ "${BASH_VERSINFO[0]}" -gt "$1" ]
+}
+
+if lk_bash_at_least 4 2; then
+    function lk_date() {
+        # take advantage of printf support for strftime in Bash 4.2+
+        printf "%($1)T\n" -1
+    }
+else
+    function lk_date() {
+        date +"$1"
+    }
+fi
+
+# shellcheck disable=SC2162
+if lk_bash_at_least 4 1; then
+    function lk_pause() {
+        read -sN 1 -p "${1:-Press any key to continue . . . }"
+        echo
+    }
+else
+    function lk_pause() {
+        read -sp "${1:-Press return to continue . . . }"
+        echo
+    }
+fi
+
+function lk_timestamp() {
+    lk_date "%s"
+}
+
+function lk_is_root() {
+    [ "$EUID" -eq "0" ]
+}
+
+function lk_is_yes() {
     [[ "$1" =~ ^[yY]$ ]]
 }
 
-function lc_is_true() {
+function lk_is_true() {
     [[ "$1" =~ ^([yY1])$ ]]
 }
 
-function lc_echo_array() {
+# [ESCAPE=escape_with] lk_escape string [escape_char1...]
+function lk_escape() {
+    local i=0 STRING="$1" ESCAPE="${ESCAPE:-\\}" SPECIAL SEARCH REPLACE
+    shift
+    SPECIAL=("$ESCAPE" "$@")
+    [ "$ESCAPE" != "\\" ] || ESCAPE="\\\\"
+    for REPLACE in "${SPECIAL[@]}"; do
+        # ensure ESCAPE itself is only escaped once
+        [ "$i" -eq "0" ] || [ "$REPLACE" != "${SPECIAL[0]}" ] || continue
+        SEARCH="\\$REPLACE"
+        [ "$REPLACE" != "\\" ] || REPLACE="\\\\"
+        eval "STRING=\"\${STRING//$SEARCH/$ESCAPE$REPLACE}\""
+        ((++i))
+    done
+    echo "$STRING"
+}
+
+# lk_replace find replace_with string
+#   Replace all occurrences of FIND in STRING with REPLACE_WITH.
+function lk_replace() {
+    echo "${3//$(lk_escape "$1" '*' '?' '[' ']' '(')/$2}"
+}
+
+function lk_safe_tput() {
+    # to improve performance, scripts running without a terminal can set LK_ON_TERMINAL=0
+    if lk_is_true "${LK_ON_TERMINAL:-1}" && tput "$@" >/dev/null 2>&1; then
+        tput "$@"
+    fi
+}
+
+function lk_get_colours() {
+    local PREFIX="${1-LK_}"
+    # foreground
+    echo "${PREFIX}BLACK=\"\$(lk_safe_tput setaf 0)\""
+    echo "${PREFIX}RED=\"\$(lk_safe_tput setaf 1)\""
+    echo "${PREFIX}GREEN=\"\$(lk_safe_tput setaf 2)\""
+    echo "${PREFIX}YELLOW=\"\$(lk_safe_tput setaf 3)\""
+    echo "${PREFIX}BLUE=\"\$(lk_safe_tput setaf 4)\""
+    echo "${PREFIX}MAGENTA=\"\$(lk_safe_tput setaf 5)\""
+    echo "${PREFIX}CYAN=\"\$(lk_safe_tput setaf 6)\""
+    echo "${PREFIX}WHITE=\"\$(lk_safe_tput setaf 7)\""
+    echo "${PREFIX}GREY=\"\$(lk_safe_tput setaf 8)\""
+    # background
+    echo "${PREFIX}BLACK_BG=\"\$(lk_safe_tput setab 0)\""
+    echo "${PREFIX}RED_BG=\"\$(lk_safe_tput setab 1)\""
+    echo "${PREFIX}GREEN_BG=\"\$(lk_safe_tput setab 2)\""
+    echo "${PREFIX}YELLOW_BG=\"\$(lk_safe_tput setab 3)\""
+    echo "${PREFIX}BLUE_BG=\"\$(lk_safe_tput setab 4)\""
+    echo "${PREFIX}MAGENTA_BG=\"\$(lk_safe_tput setab 5)\""
+    echo "${PREFIX}CYAN_BG=\"\$(lk_safe_tput setab 6)\""
+    echo "${PREFIX}WHITE_BG=\"\$(lk_safe_tput setab 7)\""
+    echo "${PREFIX}GREY_BG=\"\$(lk_safe_tput setab 8)\""
+    # other
+    echo "${PREFIX}BOLD=\"\$(lk_safe_tput bold)\""
+    echo "${PREFIX}DIM=\"\$(lk_safe_tput dim)\""
+    echo "${PREFIX}STANDOUT=\"\$(lk_safe_tput smso)\""
+    echo "${PREFIX}STANDOUT_OFF=\"\$(lk_safe_tput rmso)\""
+    echo "${PREFIX}WRAP=\"\$(lk_safe_tput smam)\""
+    echo "${PREFIX}WRAP_OFF=\"\$(lk_safe_tput rmam)\""
+    echo "${PREFIX}RESET=\"\$(lk_safe_tput sgr0)\""
+}
+
+function lk_maybe_plural() {
+    [ "$1" -eq "1" ] && echo "$2" || echo "$3"
+}
+
+function lk_echo_array() {
     printf '%s\n' "$@"
 }
 
-# lc_echoc [-neE] message [colour_sequence ...]
-function lc_echoc() {
-
-    local ECHO_ARGS=() MESSAGE IFS COLOURS=
-
+# lk_echoc [-neE] message [colour_sequence...]
+function lk_echoc() {
+    local ECHO_ARGS=() MESSAGE RESET IFS COLOURS=
+    RESET="$(lk_safe_tput sgr0)"
     while [[ "${1:-}" =~ ^-[neE]+$ ]]; do
-
         ECHO_ARGS+=("$1")
         shift
-
     done
-
     MESSAGE="${1:-}"
     shift || true
-
     if [ "$#" -gt "0" ] && [ -n "$RESET" ]; then
-
         IFS=
         COLOURS="$*"
         unset IFS
-
-        MESSAGE="$(search_replace "$RESET" "$RESET$COLOURS" "$MESSAGE")"
-
+        MESSAGE="$(lk_replace "$RESET" "$RESET$COLOURS" "$MESSAGE")"
     fi
-
     echo ${ECHO_ARGS[@]+"${ECHO_ARGS[@]}"} "$COLOURS$MESSAGE$RESET"
-
 }
 
-# lc_console_message message [[secondary_message] colour_sequence]
-function lc_console_message() {
-
+# lk_console_message message [[secondary_message] colour_sequence]
+function lk_console_message() {
     local MESSAGE COLOURS MESSAGE2=
-
-    MESSAGE="$1" || die
-    shift
+    MESSAGE="${1:-}"
+    shift || true
     [ "$#" -le "1" ] || {
         MESSAGE2="$1"
         shift
     }
-    COLOURS="${1:-${!LC_DEFAULT_CONSOLE_COLOUR}}"
-
-    # - atomic unless larger than buffer (smaller of PIPE_BUF, BUFSIZ)
-    # - there's no portable way to determine buffer size
-    # - writing <=512 bytes with echo or printf should be atomic on all
-    #   platforms, but this can't be guaranteed
+    COLOURS="${1-$LK_DEFAULT_CONSOLE_COLOUR}"
     echo "$(
-        lc_echoc -n "==> " "$COLOURS"
-        lc_echoc -n "$MESSAGE" "$BOLD"
-        [ -z "$MESSAGE2" ] || lc_echoc -n " $MESSAGE2" "$COLOURS"
+        # - atomic unless larger than buffer (smaller of PIPE_BUF, BUFSIZ)
+        # - there's no portable way to determine buffer size
+        # - writing <=512 bytes with echo or printf should be atomic on all
+        #   platforms, but this can't be guaranteed
+        lk_echoc -n "==> " "$COLOURS"
+        lk_echoc -n "$MESSAGE" "${BOLD:-$(lk_safe_tput bold)}"
+        [ -z "$MESSAGE2" ] || lk_echoc -n " $MESSAGE2" "$COLOURS"
     )"
-
 }
 
-# lc_console_item message item [colour_sequence]
-function lc_console_item() {
-    lc_console_message "${1%:}:" "$2" "${3:-}"
+# lk_console_item message item [colour_sequence]
+function lk_console_item() {
+    lk_console_message "${1%:}:" "$2" "${3-$LK_DEFAULT_CONSOLE_COLOUR}"
 }
 
-# lc_console_list message [single_noun plural_noun] [colour_sequence]
-function lc_console_list() {
-
+# lk_console_list message [single_noun plural_noun] [colour_sequence]
+function lk_console_list() {
     local MESSAGE SINGLE_NOUN PLURAL_NOUN COLOURS ITEM ITEMS=()
-
-    MESSAGE="$1" || die
-    shift
+    MESSAGE="${1:-}"
+    shift || true
     [ "$#" -le "1" ] || {
         SINGLE_NOUN="$1"
         PLURAL_NOUN="$2"
         shift 2
     }
-    COLOURS="${1:-${!LC_DEFAULT_CONSOLE_COLOUR}}"
-
-    while IFS= read -rd "${DELIM:-$'\n'}" ITEM || [ -n "$ITEM" ]; do
-
-        [ -z "$ITEM" ] || ITEMS+=("${ITEM//$'\n'/ }")
-
+    COLOURS="${1-$LK_DEFAULT_CONSOLE_COLOUR}"
+    while IFS= read -r ITEM || [ -n "$ITEM" ]; do
+        [ -z "$ITEM" ] || ITEMS+=("$ITEM")
     done
-
-    lc_console_message "${MESSAGE%:}:" "$COLOURS"
-    [ "${#ITEMS[@]}" -eq "0" ] || lc_echoc "$(printf '%s\n' "${ITEMS[@]}" | column)" "$COLOURS"
-    [ -z "${SINGLE_NOUN:-}" ] || echo "(${#ITEMS[@]} $(single_or_plural "${#ITEMS[@]}" "$SINGLE_NOUN" "$PLURAL_NOUN"))"
-
+    lk_console_message "${MESSAGE%:}:" "$COLOURS"
+    [ "${#ITEMS[@]}" -eq "0" ] || lk_echoc "$(printf '%s\n' "${ITEMS[@]}" | column)" "$COLOURS"
+    [ -z "${SINGLE_NOUN:-}" ] || echo "(${#ITEMS[@]} $(lk_maybe_plural "${#ITEMS[@]}" "$SINGLE_NOUN" "$PLURAL_NOUN"))"
 }
 
-# SUDO_OR_NOT=<Y|N> lc_maybe_sudo command [arg1...]
-function lc_maybe_sudo() {
-    if lc_is_yes "${SUDO_OR_NOT:-N}"; then
+# lk_add_file_suffix file_path suffix [ext]
+#   Add SUFFIX to FILE_PATH without changing FILE_PATH's extension.
+#   Use EXT for special extensions like ".tar.gz".
+function lk_add_file_suffix() {
+    local BASENAME
+    BASENAME="$(basename "$1")" || return
+    if [ -z "${3:-}" ] && [[ "$BASENAME" =~ .+\..+ ]]; then
+        echo "${1%.*}${2}.${1##*.}"
+    elif [ -n "${3:-}" ] && eval "[[ \"$BASENAME\" =~ .+${3//./\\.}\$ ]]"; then
+        echo "${1%$3}${2}${3}"
+    else
+        echo "${1}${2}"
+    fi
+}
+
+# SUDO_OR_NOT=<1|0|Y|N> lk_maybe_sudo command [arg1...]
+function lk_maybe_sudo() {
+    if lk_is_true "${SUDO_OR_NOT:-0}"; then
         sudo -H "$@"
     else
         "$@"
     fi
 }
 
-# lc_safe_symlink target_path link_path [use_sudo [try_default]]
-function lc_safe_symlink() {
-
-    local TARGET="${1:-}" LINK="${2:-}" SUDO_OR_NOT="${3:-N}" TRY_DEFAULT="${4:-N}" CURRENT_TARGET
-
-    LC_SAFE_SYMLINK_NO_CHANGE=
-
-    [ -n "$TARGET" ] || die "No target"
-    [ -n "$LINK" ] || die "No link"
-
+# lk_safe_symlink target_path link_path [use_sudo [try_default]]
+function lk_safe_symlink() {
+    local TARGET LINK SUDO_OR_NOT="${3:-${SUDO_OR_NOT:-0}}" TRY_DEFAULT="${4:-0}" CURRENT_TARGET
+    TARGET="$1"
+    LINK="$2"
+    [ -n "$LINK" ] || return
     [ -e "$TARGET" ] || {
-        lc_is_yes "$TRY_DEFAULT" || return
-        TARGET="$(filename_add_suffix "$TARGET" "-default")"
+        lk_is_true "$TRY_DEFAULT" || return
+        TARGET="$(lk_add_file_suffix "$TARGET" "-default")"
         [ -e "$TARGET" ] || return
     }
-
+    ! lk_command_exists realpath || TARGET="$(realpath "$TARGET")"
+    LK_SAFE_SYMLINK_NO_CHANGE=
     if [ -L "$LINK" ]; then
-        CURRENT_TARGET="$(readlink "$LINK")" || die
+        CURRENT_TARGET="$(readlink "$LINK")" || return
         [ "$CURRENT_TARGET" != "$TARGET" ] || {
-            LC_SAFE_SYMLINK_NO_CHANGE=1
+            LK_SAFE_SYMLINK_NO_CHANGE=1
             return
         }
-        lc_maybe_sudo rm -f "$LINK" || return
+        lk_maybe_sudo rm -f "$LINK" || return
     elif [ -e "$LINK" ]; then
-        lc_maybe_sudo mv -fv "$LINK" "$LINK.bak" || return
+        lk_maybe_sudo mv -fv "$LINK" "$LINK.bak" || return
     else
-        lc_maybe_sudo mkdir -p "$(dirname "$LINK")" || return
+        lk_maybe_sudo mkdir -p "$(dirname "$LINK")" || return
     fi
-
-    lc_maybe_sudo ln -sv "$TARGET" "$LINK"
-
+    lk_maybe_sudo ln -sv "$TARGET" "$LINK"
 }
 
-function lc_register_gnu_commands() {
+function lk_register_gnu_commands() {
     local COMMAND PREFIX=
-
-    ! lc_is_macos || PREFIX="g"
+    ! lk_is_macos || PREFIX="g"
     for COMMAND in "$@"; do
         eval "function gnu_$COMMAND() { $PREFIX$COMMAND \"\$@\"; }"
     done
+    LK_GNU_COMMANDS=($(printf '%s\n' ${LK_GNU_COMMANDS[@]+"${LK_GNU_COMMANDS[@]}"} "$@" | sort | uniq))
 }
 
-function lc_sort_files_by_date() {
-
-    gnu_stat --printf '%Y :%n\0' "$@" | sort -zn | gnu_sed -zE 's/[0-9]+ ://' | xargs -0 printf '%s\n'
-
+function lk_install_gnu_commands() {
+    local COMMANDS=("$@") COMMAND GCOMMAND COMMAND_PATH EXIT_STATUS=0 PREFIX=
+    ! lk_is_macos || PREFIX="g"
+    [ "$#" -gt "0" ] || COMMANDS=(${LK_GNU_COMMANDS[@]+"${LK_GNU_COMMANDS[@]}"})
+    for COMMAND in ${COMMANDS[@]+"${COMMANDS[@]}"}; do
+        GCOMMAND="$PREFIX$COMMAND"
+        lk_command_exists "$GCOMMAND" ||
+            {
+                EXIT_STATUS="$?"
+                echo "$GCOMMAND: command not found" >&2
+                continue
+            }
+        COMMAND_PATH="$(command -v "$GCOMMAND" 2>/dev/null)" &&
+            lk_safe_symlink "$COMMAND_PATH" "${GNU_PATH:-/usr/local/bin}/gnu_$COMMAND" ||
+            EXIT_STATUS="$?"
+    done
+    return "$EXIT_STATUS"
 }
 
-function lc_sort_files_by_date_reverse() {
-
-    gnu_stat --printf '%Y :%n\0' "$@" | sort -znr | gnu_sed -zE 's/[0-9]+ ://' | xargs -0 printf '%s\n'
-
+function lk_test_many() {
+    local TEST="$1" VALUE
+    shift
+    for VALUE in "$@"; do
+        test "$TEST" "$VALUE" || return
+    done
 }
 
-function lc_largest() {
-
-    gnu_find . -xdev -type f ${@+\( "$@" \)} -print0 | xargs -0 gnu_stat --format '%14s %N' | sort -nr | less
-
+function lk_paths_exist() {
+    [ "$#" -gt "0" ] && lk_test_many "-e" "$@"
 }
 
-function lc_is_identifier() {
+function lk_files_exist() {
+    [ "$#" -gt "0" ] && lk_test_many "-f" "$@"
+}
+
+function lk_dirs_exist() {
+    [ "$#" -gt "0" ] && lk_test_many "-d" "$@"
+}
+
+function lk_sort_paths_by_date() {
+    gnu_stat --printf '%Y :%n\0' "$@" | sort -zn | sed -zE 's/^[0-9]+ ://' | xargs -0 printf '%s\n'
+}
+
+function lk_sort_paths_by_date_reverse() {
+    gnu_stat --printf '%Y :%n\0' "$@" | sort -znr | sed -zE 's/^[0-9]+ ://' | xargs -0 printf '%s\n'
+}
+
+function lk_is_identifier() {
     [[ "$1" =~ ^[a-zA-Z_][a-zA-Z0-9_]*$ ]]
 }
 
-function lc_variable_set() {
-    # the second test works with empty arrays
-    eval "[ -n \"\${$1+s}\" ]" ||
-        declare -p "$1" >/dev/null 2>&1
+function lk_variable_set() {
+    declare -p "$1" >/dev/null 2>&1
 }
 
-function lc_return_cached() {
-    lc_variable_set "$1" || {
+# lk_version_at_least installed_version minimum_version
+function lk_version_at_least() {
+    local MIN
+    MIN="$(printf '%s\n' "$1" "$2" | gnu_sort --version-sort | head -n1 || lk_warn "lk_version_at_least: error sorting versions")" &&
+        [ "$MIN" = "$2" ]
+}
+
+function lk_return_cached() {
+    lk_variable_set "$1" || {
         eval "$2;$1=\"\$?\""
     }
-    eval "return \"\$$1\""
+    return "${!1}"
 }
 
-function lc_is_macos() {
-    lc_return_cached LC_IS_MACOS '[ "$(uname -s)" = "Darwin" ]'
+function lk_is_macos() {
+    lk_return_cached LK_IS_MACOS '[ "$(uname -s)" = "Darwin" ]'
 }
 
-LC_DEFAULT_CONSOLE_COLOUR="CYAN"
+function lk_is_linux() {
+    lk_return_cached LK_IS_LINUX '[ "$(uname -s)" = "Linux" ]'
+}
 
-lc_register_gnu_commands find sed stat
+function lk_is_wsl() {
+    lk_return_cached LK_IS_WSL 'lk_is_linux && grep -qi microsoft /proc/version >/dev/null 2>&1'
+}
+
+function lk_is_ubuntu() {
+    lk_return_cached LK_IS_UBUNTU 'lk_is_linux && lk_command_exists lsb_release && [ "$(lsb_release -si)" = "Ubuntu" ]'
+}
+
+function lk_is_ubuntu_lts() {
+    lk_return_cached LK_IS_UBUNTU_LTS 'lk_is_ubuntu && lk_command_exists ubuntu-distro-info && ubuntu-distro-info --supported-esm | grep -Fx "$(lsb_release -sc)" >/dev/null 2>&1'
+}
+
+function lk_ubuntu_at_least() {
+    lk_is_ubuntu && lk_version_at_least "$(lsb_release -sr)" "$1"
+}
+
+# lk_make_iso path1...
+function lk_make_iso() {
+    local ISOFILE
+    lk_paths_exist "$@" || lk_warn "lk_make_iso path1..." || return
+    ISOFILE="$(basename "$1").iso" &&
+        [ ! -e "$ISOFILE" ] ||
+        lk_warn "$ISOFILE already exists" ||
+        return
+    mkisofs -r -o "$ISOFILE" "$@"
+}
+
+# lk_openconnect user host [routes...]
+function lk_openconnect() {
+    local VPN_USER="$1" VPN_HOST="$2" VPN_PASSWD COMMAND
+    shift 2 || return
+    ! pgrep -x openconnect >/dev/null ||
+        lk_warn "openconnect is already running" ||
+        return
+    lk_secret "$VPN_USER@$VPN_HOST" "$VPN_HOST (OpenConnect)" openconnect &&
+        VPN_PASSWD="$LK_SECRET_PASSWORD" &&
+        [ -n "$VPN_PASSWD" ] ||
+        lk_warn "password required" ||
+        return
+    COMMAND=(
+        openconnect
+        --background
+        --script "vpn-slice ${*:---route-internal}"
+        --verbose
+        --dump-http-traffic
+        --passwd-on-stdin
+        --protocol "${VPN_PROTOCOL:-gp}"
+        --user "$VPN_USER"
+        "$VPN_HOST"
+    )
+    echo "$VPN_PASSWD" | sudo "${COMMAND[@]}" >>"/tmp/openconnect.$USER.log" 2>&1
+}
+
+set -o pipefail
+
+# coreutils
+#   [ arch b2sum base32 base64 basename cat chcon chgrp chmod chown
+#   chroot cksum comm cp csplit cut date dd df dir dircolors dirname du
+#   echo env expand expr factor false fmt fold groups head hostid id
+#   install join link ln logname ls md5sum md5sum.textutils mkdir mkfifo
+#   mknod mktemp mv nice nl nohup nproc numfmt od paste pathchk pinky pr
+#   printenv printf ptx pwd readlink realpath rm rmdir runcon seq
+#   sha1sum sha224sum sha256sum sha384sum sha512sum shred shuf sleep
+#   sort split stat stdbuf stty sum sync tac tail tee test timeout touch
+#   tr true truncate tsort tty uname unexpand uniq unlink users vdir wc
+#   who whoami yes
+lk_register_gnu_commands date ln mktemp sort stat
+
+# gawk, findutils, grep, netcat, sed, tar
+lk_register_gnu_commands awk find grep nc sed tar
+
+! lk_is_linux || {
+
+    function lk_load_linuxbrew() {
+        local PREFIX="${1:-/home/linuxbrew/.linuxbrew}"
+        [ -d "$PREFIX" ] || return
+        cat <<EOF
+export HOMEBREW_PREFIX="$PREFIX"
+export HOMEBREW_CELLAR="$PREFIX/Cellar"
+export HOMEBREW_REPOSITORY="$PREFIX/Homebrew"
+export PATH="\${PATH:+\$PATH:}$PREFIX/bin:$PREFIX/sbin"
+export MANPATH="\${MANPATH:+\$MANPATH:}$PREFIX/share/man:"
+export INFOPATH="\${INFOPATH:+\$INFOPATH:}$PREFIX/share/info"
+function lk_brew_wrap() (
+    eval "\$("$PREFIX/bin/brew" shellenv)"
+    "\$@"
+)
+function brew() {
+    lk_brew_wrap "$PREFIX/bin/brew" "\$@"
+}
+EOF
+    }
+
+    # lk_secret value label [namespace]
+    function lk_secret() {
+        local NAMESPACE
+        NAMESPACE="${3:-$(basename "$0")}"
+        lk_command_exists secret-tool || lk_warn "secret-tool: command not found" || return
+        if ! LK_SECRET_PASSWORD="$(secret-tool lookup "$NAMESPACE" "$1" 2>/dev/null)"; then
+            lk_console_item "Password not found in keychain" "$NAMESPACE:$1" "${RED:-$(lk_safe_tput setaf 1)}" >&2
+            [ -t 0 ] &&
+                [ -t 1 ] &&
+                lk_console_message "Please enter the password for $2 now" &&
+                secret-tool store --label="$2" "$NAMESPACE" "$1" &&
+                LK_SECRET_PASSWORD="$(secret-tool lookup "$NAMESPACE" "$1")" ||
+                {
+                    LK_SECRET_PASSWORD=
+                    return 1
+                }
+        fi
+    }
+
+    function lk_ext4_check() {
+        local PAIRS SOURCE TARGET FSTYPE SIZE AVAIL
+        findmnt -Pt ext4,ext3,ext2 -o SOURCE,TARGET,FSTYPE,SIZE,AVAIL | while IFS= read -r PAIRS; do
+            eval "$PAIRS"
+            lk_console_item "Mounted $FSTYPE filesystem found at:" "$SOURCE"
+            sudo tune2fs -l "$SOURCE" | command grep -Ei '(filesystem state|mount count|last checked):'
+            lk_echoc "($SIZE with $AVAIL available, mounted at $TARGET)" "${YELLOW:-$(lk_safe_tput setaf 3)}"
+            echo
+        done
+    }
+
+}
+
+LK_DEFAULT_CONSOLE_COLOUR="$(lk_safe_tput setaf 6)"

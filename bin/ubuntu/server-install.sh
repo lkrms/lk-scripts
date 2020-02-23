@@ -68,6 +68,8 @@ assert_not_root
 
     brew_process_queue
 
+    lk_install_gnu_commands
+
     exit
 
 }

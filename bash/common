@@ -1,60 +1,7 @@
 #!/bin/bash
-# shellcheck disable=SC2034,SC2206,SC2207,SC1090,SC2162
+# shellcheck disable=SC1090,SC2015,SC2034,SC2119,SC2120,SC2162
 
 set -euo pipefail
-
-function error_trap() {
-
-    echo "Error: $(basename "$0") failed with exit code $1 in $2 at line $3" >&2
-    exit "$1"
-
-}
-
-function exit_trap() {
-
-    local i
-
-    for i in "${!DELETE_ON_EXIT[@]}"; do
-
-        rm -Rf "${DELETE_ON_EXIT[$i]}" || true
-
-    done
-
-    for i in "${!KILL_ON_EXIT[@]}"; do
-
-        kill "${KILL_ON_EXIT[$i]}" || true
-
-    done
-
-}
-
-function register_gnu_commands() {
-    lc_register_gnu_commands "$@"
-}
-
-function install_gnu_commands() {
-
-    local COMMAND GNU_COMMAND COMMAND_PATH
-
-    for COMMAND in "$@"; do
-
-        GNU_COMMAND="gnu_${COMMAND}"
-
-        ! is_macos || COMMAND="g${COMMAND}"
-
-        if COMMAND_PATH="$(command -v "$COMMAND" 2>/dev/null)"; then
-
-            safe_symlink "$COMMAND_PATH" "/usr/local/bin/$GNU_COMMAND" || return
-
-        else
-
-            echo "WARNING: GNU command ${BOLD}${COMMAND}${RESET} doesn't exist" >&2
-
-        fi
-
-    done
-
-}
 
 function is_virtual() {
 
@@ -104,115 +51,71 @@ function is_lid_closed() {
 }
 
 function assert_is_macos() {
-
-    is_macos || die "Error: $(basename "$0") is not supported on this platform (macOS required)"
-
+    lk_is_macos || lk_die "macOS required"
 }
 
 function is_macos() {
-    lc_is_macos
+    lk_is_macos
 }
 
 function assert_is_windows() {
-
-    is_windows || die "Error: $(basename "$0") is not supported on this platform (Windows required)"
-
+    lk_is_wsl || lk_die "Windows required"
 }
 
 function is_windows() {
-
-    [ "$IS_WSL" -eq "1" ]
-
+    lk_is_wsl
 }
 
 function assert_is_linux() {
-
-    is_linux || die "Error: $(basename "$0") is not supported on this platform (Linux required)"
-
+    lk_is_linux || lk_die "Linux required"
 }
 
 function is_linux() {
-
-    [ "$IS_LINUX" -eq "1" ]
-
+    lk_is_linux
 }
 
 function assert_is_ubuntu() {
-    is_ubuntu || die "$(basename "$0") requires Ubuntu"
+    lk_is_ubuntu || lk_die "Ubuntu required"
 }
 
 function is_ubuntu() {
-    [ "$IS_UBUNTU" -eq "1" ]
+    lk_is_ubuntu
 }
 
 function assert_is_desktop() {
-    has_gui || die "$(basename "$0") requires a desktop environment"
+    lk_is_macos || lk_command_exists X || lk_die "desktop required"
 }
 
 function assert_is_server() {
-    ! has_gui || die "$(basename "$0") requires a server environment"
-}
-
-function has_gui() {
-    [ "$HAS_GUI" -eq "1" ]
+    ! { lk_is_macos || lk_command_exists X; } || lk_die "server required"
 }
 
 function assert_is_ubuntu_lts() {
-    is_ubuntu_lts || die "$(basename "$0") is only supported on LTS releases of Ubuntu"
+    lk_is_ubuntu_lts || lk_die "Ubuntu LTS required"
 }
 
 function is_ubuntu_lts() {
-    is_ubuntu || return
-    assert_command_exists ubuntu-distro-info
-    ubuntu-distro-info --supported-esm | grep ^"$DISTRIB_CODENAME"$ >/dev/null 2>&1
+    lk_is_ubuntu_lts
 }
 
 function assert_root() {
-
-    is_root || die "Error: $(basename "$0") must be run as the superuser"
-
+    lk_is_root || lk_die "not running as superuser"
 }
 
 function assert_not_root() {
-
-    ! is_root || die "Error: $(basename "$0") can't be run as the superuser"
-
+    ! lk_is_root || lk_die "running as superuser"
 }
 
 function assert_command_exists() {
-
-    command_exists "$1" || die "$(basename "$0") requires '$1'"
-
-}
-
-function assert_function_exists() {
-
-    function_exists "$1" || die "Error: $(basename "$0") requires Bash function $1"
-
+    lk_command_exists "$@" || lk_die "$*: $(lk_maybe_plural "$#" "command" "one or more commands") not found"
 }
 
 function assert_variable_exists() {
-
-    variable_exists "$1" || die "Error: $(basename "$0") requires variable $1"
-
+    variable_exists "$1" || lk_die "$1: variable not defined"
 }
 
 function is_root() {
-
-    [ "$EUID" -eq "0" ]
-
-}
-
-# the relevant function mustn't depend on other functions
-function sudo_function() {
-
-    local FUNCTION
-
-    FUNCTION="$1"
-    shift
-
-    sudo bash -c "$(declare -f "$FUNCTION"); $FUNCTION \"\$@\"" "$0" "$@"
-
+    lk_is_root
 }
 
 # Usage: filename_maybe_add_extension "/path/to/file" ".pdf"
@@ -230,24 +133,8 @@ function filename_maybe_add_extension() {
 
 }
 
-# Usage: filename_add_suffix "/path/to/file.ext" "_backup"
-# (output would be "/path/to/file_backup.ext")
 function filename_add_suffix() {
-
-    local BASENAME
-
-    BASENAME="$(basename "$1")" || die
-
-    if [[ "$BASENAME" =~ .+\..+ ]]; then
-
-        echo "${1%.*}${2}.${1##*.}"
-
-    else
-
-        echo "${1}${2}"
-
-    fi
-
+    lk_add_file_suffix "$@"
 }
 
 # filename_get_next_backup: filename_get_next_backup filename [backup-identifier]
@@ -315,19 +202,11 @@ function are_files() {
 }
 
 function command_exists() {
-
-    command -v "$1" >/dev/null 2>&1
-
-}
-
-function function_exists() {
-
-    declare -F "$1" >/dev/null 2>&1
-
+    lk_command_exists "$@"
 }
 
 function variable_exists() {
-    lc_is_identifier "$1" && lc_variable_set "$1"
+    lk_is_identifier "$1" && lk_variable_set "$1"
 }
 
 function user_exists() {
@@ -355,59 +234,24 @@ function is_url() {
 
 }
 
-# deprecated
-function echocn() {
-
-    deprecated_warning "echocn" "echoc -n [arg ...]"
-    echoc -n "$@"
-
-}
-
 function echoc() {
-    lc_echoc "$@"
+    lk_echoc "$@"
 }
 
 function die() {
-
-    [ "$#" -eq "0" ] || echoc "$@" >&2
-
-    [ "${MUST_DIE_HAPPY:-N}" = "Y" ] || exit 1
-
-    exit 0
-
+    lk_die "$@"
 }
 
 function die_happy() {
-
-    [ "$#" -eq "0" ] || echoc "$@" >&2
-
-    exit 0
-
+    LK_DIE_HAPPY=1 lk_die "$@"
 }
 
-function deprecated_warning() {
-
-    [ "${NO_DEPRECATED_WARNINGS:-N}" = "Y" ] ||
-        echoc -e "\nWARNING: $1 is deprecated${2:+, please use: $2}\n" "$BOLD$YELLOW" >&2
-
-}
-
-# Usage: version_at_least <installed-version> <minimum-version>
 function version_at_least() {
-
-    local MINIMUM
-
-    MINIMUM="$(printf '%s\n' "$1" "$2" | gnu_sort -V | head -n1)" || die
-    [ "$MINIMUM" = "$2" ]
-
+    lk_version_at_least "$@"
 }
 
 function pause() {
-
-    # shellcheck disable=SC2162
-    read -sN 1 -p "${1:-Press any key to continue . . . }"
-    echo
-
+    lk_pause "$@"
 }
 
 # console_message: console_message message [entity_list [colour_sequence ...] ]
@@ -487,15 +331,6 @@ function console_message() {
 function console_warning() {
 
     console_message "$@" >&2
-
-}
-
-function get_enter() {
-
-    local PROMPT REPLY
-
-    PROMPT="${1:-Press Enter to continue}"
-    read -rsp "$PROMPT"
 
 }
 
@@ -611,19 +446,8 @@ function file_to_array() {
 
 }
 
-# Usage: single_or_plural <number> "singular noun" "plural noun"
 function single_or_plural() {
-
-    if [ "$1" -eq "1" ]; then
-
-        echo "$2"
-
-    else
-
-        echo "$3"
-
-    fi
-
+    lk_maybe_plural "$@"
 }
 
 function upper_first() {
@@ -868,14 +692,7 @@ function sed_escape_replace() {
 
 # Usage: search_replace "find" "replace with" "string"
 function search_replace() {
-
-    local FIND REPLACE
-
-    FIND="$(sed_escape_search "$1")"
-    REPLACE="$(sed_escape_replace "$2")"
-
-    gnu_sed -E "s/${FIND}/${REPLACE}/g" <<<"$3"
-
+    lk_replace "$@"
 }
 
 function date_get_log() {
@@ -1031,7 +848,6 @@ function download_urls() {
         fi
 
         if HEADER="$(
-            . "$SUBSHELL_SCRIPT_PATH" || exit
             echo "$HEADERS" | grep -Ei '^[[:space:]]*Content-Disposition:' | tail -n1 | sed -E 's/(^[[:space:]]*Content-Disposition:)//ig'
         )"; then
 
@@ -1044,7 +860,6 @@ function download_urls() {
                 HEADER="${HEADER_PARTS[$i]}"
 
                 if FILENAME="$(
-                    . "$SUBSHELL_SCRIPT_PATH" || exit
                     echo "$HEADER" | gnu_grep -Pio '(?<=^filename=).*' | sed -E 's/^[[:space:]]*("?)(.*)\1[[:space:]]*$/\2/g'
                 )"; then
 
@@ -1080,20 +895,6 @@ function download_urls() {
         echoc "Finished downloading $URL" "$CYAN" >&2
 
     done
-
-}
-
-function move_file_delete_link() {
-
-    if [ -L "$1" ]; then
-
-        rm -f "$1"
-
-    elif [ -e "$1" ]; then
-
-        mv -f "$1" "$1.bak"
-
-    fi
 
 }
 
@@ -1181,7 +982,7 @@ function time_command() {
 }
 
 function maybe_sudo() {
-    lc_maybe_sudo "$@"
+    lk_maybe_sudo "$@"
 }
 
 # Usage: echo_run command [arg1...]
@@ -1211,7 +1012,7 @@ function echo_run() {
 }
 
 function safe_symlink() {
-    lc_safe_symlink "$@"
+    lk_safe_symlink "$@"
 }
 
 # Usage: safe_sed /path/to/file sed_command1 [sed_command2...]
@@ -1254,7 +1055,7 @@ function dryrun_message() {
 
         [ "${DRYRUN_BY_DEFAULT:-N}" = "N" ] || EXTRA=" (use \"--run\" as the first argument to override)"
 
-        lc_console_message "$(basename "$0") is in dry run mode${EXTRA}" "$BOLD$RED" >&2
+        lk_console_message "$(basename "$0") is in dry run mode${EXTRA}" "$BOLD$RED" >&2
 
     fi
 
@@ -1265,7 +1066,7 @@ function maybe_dryrun() {
 
     if is_dryrun; then
 
-        lc_console_item "Command skipped (dry run):" "$*" "$YELLOW" >&2
+        lk_console_item "Command skipped (dry run):" "$*" "$YELLOW" >&2
 
     else
 
@@ -1561,23 +1362,14 @@ ROOT_DIR="$(realpath "$ROOT_DIR_RELATIVE" 2>/dev/null)" || ROOT_DIR="$(python -c
 
 . "$ROOT_DIR/bash/common-functions"
 
+lk_trap_err
+
 CONFIG_DIR="$ROOT_DIR/config"
 CACHE_DIR="$ROOT_DIR/cache"
 LOG_DIR="$ROOT_DIR/log"
 TEMP_DIR="$ROOT_DIR/tmp"
 
-SUBSHELL_SCRIPT_PATH="$ROOT_DIR/bash/common-subshell"
-SED_IN_PLACE_ARGS=(-i)
 FONTPATH=
-
-DELETE_ON_EXIT=()
-KILL_ON_EXIT=()
-
-trap 'error_trap "$?" "${BASH_SOURCE[0]}" "$LINENO"' ERR
-
-set -E
-
-trap exit_trap EXIT
 
 shopt -s expand_aliases
 alias pop_return1='{ popd >/dev/null; return 1; }'
@@ -1592,162 +1384,28 @@ if [[ "${1:-}" =~ --(dry)?run ]]; then
 
 fi
 
-ORIGINAL_BASH_SUBSHELL="$BASH_SUBSHELL"
 ORIGINAL_ARGUMENTS=("$@")
-
-register_gnu_commands awk date find grep ln nc sed sort stat tar
 
 mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOG_DIR" "$TEMP_DIR"
 
-if [ -t 1 ]; then
+eval "$(lk_get_colours '')"
 
-    # foreground colours
-    BLACK="$(tput setaf 0)"
-    RED="$(tput setaf 1)"
-    GREEN="$(tput setaf 2)"
-    YELLOW="$(tput setaf 3)"
-    BLUE="$(tput setaf 4)"
-    MAGENTA="$(tput setaf 5)"
-    CYAN="$(tput setaf 6)"
-    WHITE="$(tput setaf 7)"
-    GREY="$(tput setaf 8)"
-
-    # background colours
-    BLACK_BG="$(tput setab 0)"
-    RED_BG="$(tput setab 1)"
-    GREEN_BG="$(tput setab 2)"
-    YELLOW_BG="$(tput setab 3)"
-    BLUE_BG="$(tput setab 4)"
-    MAGENTA_BG="$(tput setab 5)"
-    CYAN_BG="$(tput setab 6)"
-    WHITE_BG="$(tput setab 7)"
-    GREY_BG="$(tput setab 8)"
-
-    # other "formatting"
-    BOLD="$(tput bold)"
-    DIM="$(tput dim 2>/dev/null)" || DIM=
-    UNDERLINE="$(tput smul)"
-    NO_UNDERLINE="$(tput rmul)"
-    STANDOUT="$(tput smso)"
-    NO_STANDOUT="$(tput rmso)"
-    RESET="$(tput sgr0)"
-    NO_WRAP="$(tput rmam 2>/dev/null)" &&
-        WRAP="$(tput smam 2>/dev/null)" ||
-        {
-            NO_WRAP=
-            WRAP=
-        }
-
-else
-
-    BLACK=
-    RED=
-    GREEN=
-    YELLOW=
-    BLUE=
-    MAGENTA=
-    CYAN=
-    WHITE=
-    GREY=
-    BLACK_BG=
-    RED_BG=
-    GREEN_BG=
-    YELLOW_BG=
-    BLUE_BG=
-    MAGENTA_BG=
-    CYAN_BG=
-    WHITE_BG=
-    GREY_BG=
-    BOLD=
-    DIM=
-    UNDERLINE=
-    NO_UNDERLINE=
-    STANDOUT=
-    NO_STANDOUT=
-    RESET=
-    NO_WRAP=
-    WRAP=
-
-fi
-
-IS_MACOS=0
-IS_LINUX=0
-IS_UBUNTU=0
-IS_WSL=0
-HAS_GUI=0
-PLATFORM=
-
-case "$(uname -s)" in
-
-Darwin)
-
-    IS_MACOS=1
+if lk_is_macos; then
     PLATFORM=mac
-    HAS_GUI=1
-    SED_IN_PLACE_ARGS+=("")
     FONTPATH="${HOME:+$HOME/Library/Fonts:}/Library/Fonts"
     . "$ROOT_DIR/bash/common-macos"
-    ;;
-
-Linux)
-
-    IS_LINUX=1
-
-    if [ -e /proc/version ] && grep -q Microsoft /proc/version; then
-
-        IS_WSL=1
+elif lk_is_linux; then
+    if lk_is_wsl; then
         PLATFORM=wsl
-        FONTPATH="/mnt/c/Windows/Fonts"
-
+        FONTPATH="/mnt/c/Windows/Fonts:${HOME:+$HOME/.local/share/fonts:}/usr/share/fonts"
     else
-
         PLATFORM=linux
-        command_exists X && HAS_GUI=1
         FONTPATH="${HOME:+$HOME/.local/share/fonts:}/usr/share/fonts"
-
     fi
-
-    if command_exists lsb_release; then
-
-        if [ -e "$CACHE_DIR/.lsb-release" ]; then
-
-            # shellcheck disable=SC1090
-            . "$CACHE_DIR/.lsb-release"
-
-        else
-
-            DISTRIB_ID="$(lsb_release -si)"
-            DISTRIB_RELEASE="$(lsb_release -sr)"
-            DISTRIB_CODENAME="$(lsb_release -sc)"
-            DISTRIB_DESCRIPTION="$(lsb_release -sd)"
-
-            cat <<EOF >"$CACHE_DIR/.lsb-release"
-DISTRIB_ID="$DISTRIB_ID"
-DISTRIB_RELEASE="$DISTRIB_RELEASE"
-DISTRIB_CODENAME="$DISTRIB_CODENAME"
-DISTRIB_DESCRIPTION="$DISTRIB_DESCRIPTION"
-EOF
-
-        fi
-
-        if [ "$DISTRIB_ID" = "Ubuntu" ]; then
-
-            IS_UBUNTU=1
-
-        fi
-
-    fi
-
+    [ -f /etc/lsb-release ] && . /etc/lsb-release
     . "$ROOT_DIR/bash/common-linux"
+else
+    die "unknown platform"
+fi
 
-    ;;
-
-*)
-
-    die "Error: unknown platform"
-    ;;
-
-esac
-
-[ -e "$CONFIG_DIR/settings-default" ] && . "$CONFIG_DIR/settings-default" || true
-[ -e "$CONFIG_DIR/settings" ] && . "$CONFIG_DIR/settings" || true
+[ ! -e "$CONFIG_DIR/settings" ] || . "$CONFIG_DIR/settings"

@@ -124,7 +124,7 @@ function git_format_remotes() {
 
     done
 
-    echo "${NO_WRAP}${REMOTES[*]}${WRAP}"
+    echo "${WRAP_OFF}${REMOTES[*]}${WRAP}"
 
 }
 
@@ -156,7 +156,7 @@ function git_add_global_ignore() {
 
     for i in "$@"; do
 
-        if ! grep -q '^'"$(sed_escape_search "$i" N)"'$' "$IGNORE_FILE"; then
+        if ! grep -Eq '^'"$(sed_escape_search "$i")"'$' "$IGNORE_FILE"; then
 
             echo "$i" >>"$IGNORE_FILE"
 

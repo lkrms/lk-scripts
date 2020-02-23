@@ -80,9 +80,9 @@ ERRORS=()
 for FILE in "$@"; do
 
     PDF_PATH="$(create_temp_file)"
-    DELETE_ON_EXIT+=("$PDF_PATH")
+    lk_delete_on_exit "$PDF_PATH"
 
-    lc_console_item "Compressing" "$FILE"
+    lk_console_item "Compressing" "$FILE"
 
     time_command gs -q -o "$PDF_PATH" "${GS_OPTIONS[@]}" -f "$FILE" &&
         touch -r "$FILE" "$PDF_PATH" || {
@@ -104,7 +104,7 @@ for FILE in "$@"; do
     fi
 
     if [ "$PERCENT_SAVED" -lt "$PERCENT_SAVED_THRESHOLD" ]; then
-        lc_echoc "[ $COMMAND_TIME ] Compression was ineffective ($PERCENT_TEXT) so the original will be kept" "$RED"
+        lk_echoc "[ $COMMAND_TIME ] Compression was ineffective ($PERCENT_TEXT) so the original will be kept" "$RED"
         continue
     fi
 
@@ -121,13 +121,13 @@ for FILE in "$@"; do
 
     mv "$PDF_PATH" "$FILE" || die
 
-    lc_echoc "[ $COMMAND_TIME ] Compressed successfully ($PERCENT_TEXT)" "$GREEN"
+    lk_echoc "[ $COMMAND_TIME ] Compressed successfully ($PERCENT_TEXT)" "$GREEN"
 
 done
 
 [ "${#ERRORS[@]}" -eq "0" ] || {
 
-    lc_console_message "Unable to process ${#ERRORS[@]} PDF $(single_or_plural ${#ERRORS[@]} file files)" "$BOLD$RED" >&2
+    lk_console_message "Unable to process ${#ERRORS[@]} PDF $(single_or_plural ${#ERRORS[@]} file files)" "$BOLD$RED" >&2
     printf '%s\n' "${ERRORS[@]}" >&2
     die
 

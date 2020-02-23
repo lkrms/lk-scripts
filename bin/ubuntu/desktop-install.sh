@@ -57,17 +57,18 @@ EOF
 
         [ "$MEMORY_SIZE_MB" -ge "8192" ] || {
             LOW_RAM=1
-            lc_console_message "Because this system has less than 8GB of RAM, some packages will not be offered" "$RED"
+            lk_console_message "Because this system has less than 8GB of RAM, some packages will not be offered" "$RED"
         }
 
     else
 
-        lc_console_message "Because this is a virtual machine, some packages will not be offered" "$RED"
+        lk_console_message "Because this is a virtual machine, some packages will not be offered" "$RED"
 
     fi
 
     # register PPAs (note: this doesn't add them to the system straightaway; they are added on-demand if/when the relevant packages are actually installed)
     apt_register_ppa "caffeine-developers/ppa" "caffeine"
+    apt_register_ppa "git-core/ppa" "git" N N
     apt_register_ppa "heyarje/makemkv-beta" "makemkv-*"
     apt_register_ppa "hluk/copyq" "copyq"
     apt_register_ppa "inkscape.dev/stable" "inkscape"
@@ -414,7 +415,7 @@ EOF
         # the Ubuntu package doesn't work
         apt_package_installed ttf-mscorefonts-installer || DEB_URLS+=("http://ftp.debian.org/debian/pool/contrib/m/msttcorefonts/ttf-mscorefonts-installer_3.7_all.deb")
 
-        lc_console_message "Looking up deb package URLs"
+        lk_console_message "Looking up deb package URLs"
 
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/AppImage/appimaged/releases/tags/continuous" '_amd64\.deb$' | head -n1)")
         DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/sindresorhus/caprine/releases/latest" '_amd64\.deb$' | head -n1)")
@@ -451,7 +452,7 @@ EOF
 
         done
 
-        lc_echo_array "${DEB_URLS[@]}" | lc_console_list "Packages queued to download and install" "$BOLD$YELLOW"
+        lk_echo_array "${DEB_URLS[@]}" | lk_console_list "Packages queued to download and install" "$BOLD$YELLOW"
 
     fi
 
@@ -473,6 +474,7 @@ unison \
 "
 
     brew_queue_formulae "development" "\
+git-filter-repo \
 shfmt \
 "
 
@@ -592,6 +594,8 @@ EOF
     # non-apt installations
 
     brew_process_queue
+
+    lk_install_gnu_commands
 
     DEV_JUST_INSTALLED=()
     dev_process_queue DEV_JUST_INSTALLED

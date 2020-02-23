@@ -9,7 +9,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 if has_argument "--lightdm"; then
 
-    MUST_DIE_HAPPY=Y
+    LK_DIE_HAPPY=Y
     assert_root
 
 else

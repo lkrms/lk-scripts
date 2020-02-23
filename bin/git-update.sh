@@ -83,13 +83,10 @@ git_load_code_roots
             REPO_LONG_NAMES+=("$REPO_LONG_NAME")
 
             WARNINGS_FILE="$(create_temp_file)"
-            DELETE_ON_EXIT+=("$WARNINGS_FILE")
+            lk_delete_on_exit "$WARNINGS_FILE"
             WARNINGS_FILES+=("$WARNINGS_FILE")
 
         done < <(
-
-            # shellcheck disable=SC1090
-            . "$SUBSHELL_SCRIPT_PATH" || exit
 
             find "$CODE_ROOT" -type d -exec test -d '{}/.git' \; -prune -print0 | sort -z
 
@@ -109,9 +106,6 @@ git_load_code_roots
             WARNINGS_FILE="${WARNINGS_FILES[$i]}"
 
             (
-
-                # shellcheck disable=SC1090
-                . "$SUBSHELL_SCRIPT_PATH" || exit
 
                 pushd "$REPO_ROOT" >/dev/null || die
 
@@ -235,7 +229,7 @@ git_load_code_roots
                             echo
                             console_message "${BOLD}${AHEAD_PUSH} $(single_or_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(single_or_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${RESET}" "" "$BOLD" "$YELLOW"
                             echo
-                            echo "${NO_WRAP}$(git log "-$GIT_LOG_LIMIT" --oneline --decorate --color=always "${PUSH_COMMIT}..${LOCAL_COMMIT}")${WRAP}"
+                            echo "${WRAP_OFF}$(git log "-$GIT_LOG_LIMIT" --oneline --decorate --color=always "${PUSH_COMMIT}..${LOCAL_COMMIT}")${WRAP}"
 
                             if [ "$AHEAD_PUSH" -gt "$GIT_LOG_LIMIT" ]; then
 
@@ -267,9 +261,6 @@ git_load_code_roots
                 fi
 
             done 4< <(
-
-                # shellcheck disable=SC1090
-                . "$SUBSHELL_SCRIPT_PATH" || exit
 
                 git for-each-ref --format='
 BRANCH="%(refname:short)"

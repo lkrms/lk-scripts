@@ -42,8 +42,6 @@ function xinput_set_sign() {
 
     # shellcheck disable=SC2207
     if VALUES=($(
-        # shellcheck disable=SC1090
-        . "$SUBSHELL_SCRIPT_PATH" || exit
         xinput list-props "$1" | grep -E "$2"'\s+\([0-9]+\):\s+((,\s*)?-?[0-9]+)+\s*$' | head -n1 | grep -Eo '((,\s*)?-?[0-9]+)+\s*$' | grep -Eo '[0-9]+'
     )); then
 

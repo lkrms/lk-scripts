@@ -93,8 +93,6 @@ echo_run xfconf-query -c "thunar" -p "/last-details-view-zoom-level" -n -t strin
 echo_run xfconf-query -c "thunar" -p "/last-compact-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_25"
 
 if PANELS="$(
-    # shellcheck disable=SC1090
-    . "$SUBSHELL_SCRIPT_PATH" || exit
     xfconf-query -c "xfce4-panel" -p "/panels" -lv 2>/dev/null | grep -Eo '^/panels/[^/]+/' | sort | uniq
 )"; then
 
@@ -108,8 +106,6 @@ if PANELS="$(
 fi
 
 if PANEL_PLUGINS="$(
-    # shellcheck disable=SC1090
-    . "$SUBSHELL_SCRIPT_PATH" || exit
     xfconf-query -c "xfce4-panel" -p "/plugins" -lv 2>/dev/null | grep -E '^/plugins/[^/]+\s+'
 )"; then
 

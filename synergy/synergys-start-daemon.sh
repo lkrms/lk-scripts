@@ -1,1 +1,0 @@
-synergys-start.sh

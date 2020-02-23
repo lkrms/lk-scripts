@@ -115,7 +115,7 @@ function disable_update_motd() {
 
     [ "$#" -eq "0" ] || DISABLE=("$@")
 
-    lc_echo_array "${DISABLE[@]}" | lc_console_list "Disabling in /etc/update-motd.d" "entry" "entries"
+    lk_echo_array "${DISABLE[@]}" | lk_console_list "Disabling in /etc/update-motd.d" "entry" "entries"
 
     for FILE in "${DISABLE[@]}"; do
 

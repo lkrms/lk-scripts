@@ -52,7 +52,7 @@ while read -rd $'\0' FILE_PATH; do
     [ "$FILE_EXT" != "mp4" ] || FILE_EXT="m4v"
 
     ! [[ "${FILE_NAME#${SERIES_NAME}${SEASON_NAME}_E}" =~ ^[0-9]{2}\."$FILE_EXT"$ ]] || {
-        lc_console_item "Skipping (already renamed)" "$FILE_PATH" "$BOLD$RED"
+        lk_console_item "Skipping (already renamed)" "$FILE_PATH" "$BOLD$RED"
         continue
     }
 
@@ -68,7 +68,7 @@ while read -rd $'\0' FILE_PATH; do
 
     done
 
-    [[ "$FILE_NAME" =~ [^0-9]"$COUNT"[^0-9] ]] || lc_console_item "WARNING: this doesn't look like an episode $COUNT:" "$FILE_PATH" "$BOLD$RED"
+    [[ "$FILE_NAME" =~ [^0-9]"$COUNT"[^0-9] ]] || lk_console_item "WARNING: this doesn't look like an episode $COUNT:" "$FILE_PATH" "$BOLD$RED"
 
     maybe_dryrun mv -vn "$FILE_PATH" "$NEW_PATH" || die
 

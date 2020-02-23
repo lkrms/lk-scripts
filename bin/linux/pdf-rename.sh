@@ -21,7 +21,7 @@ for FILE_PATH in "$@"; do
 
     echo
 
-    lc_console_item "Opening file $FILE_NUMBER of $#" "$FILE_PATH"
+    lk_console_item "Opening file $FILE_NUMBER of $#" "$FILE_PATH"
 
     nohup qpdfview --unique --instance pdf_rename "$FILE_PATH" >/dev/null 2>&1 &
     disown
@@ -57,11 +57,11 @@ for FILE_PATH in "$@"; do
 
     if [ "$NEW_PATH" = "$NEW_PATH_CLEAN" ]; then
 
-        lc_console_item "Renamed to" "$(basename "$NEW_PATH")" "$BOLD$GREEN"
+        lk_console_item "Renamed to" "$(basename "$NEW_PATH")" "$BOLD$GREEN"
 
     else
 
-        lc_console_item "$(basename "$NEW_PATH_CLEAN") already exists, renamed to" "$(basename "$NEW_PATH")" "$BOLD$YELLOW"
+        lk_console_item "$(basename "$NEW_PATH_CLEAN") already exists, renamed to" "$(basename "$NEW_PATH")" "$BOLD$YELLOW"
 
     fi
 

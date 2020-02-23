@@ -17,13 +17,11 @@ USAGE="Usage: $(basename "$0") [/path/to/formula_list_file...] [formula...]"
 
 # get a list of all available formulae
 AVAILABLE_PACKAGES=($(
-    . "$SUBSHELL_SCRIPT_PATH" || exit
     brew search | sort | uniq
 ))
 
 # and all currently installed formulae
 CURRENT_PACKAGES=($(
-    . "$SUBSHELL_SCRIPT_PATH" || exit
     brew list -1 --full-name | sort | uniq
 ))
 
@@ -42,7 +40,6 @@ done
 for f in "${LIST_FILES[@]}"; do
 
     PACKAGES=($(
-        . "$SUBSHELL_SCRIPT_PATH" || exit
         sort <"$f" | uniq
     ))
 

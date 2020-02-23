@@ -10,7 +10,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 assert_command_exists wget
 assert_command_exists php
 
-DELETE_ON_EXIT+=("$PWD/composer-setup.php")
+lk_delete_on_exit "$PWD/composer-setup.php"
 
 EXPECTED_SIGNATURE="$(wget -qO - "https://composer.github.io/installer.sig")"
 php -r "copy('https://getcomposer.org/installer', 'composer-setup.php');"

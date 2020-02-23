@@ -65,7 +65,7 @@ else
 fi
 
 TEMP_CONF="$(create_temp_file)"
-DELETE_ON_EXIT+=("$TEMP_CONF")
+lk_delete_on_exit "$TEMP_CONF"
 
 # create a new configuration file, based on the current (or default) configuration
 # 1. [global]
@@ -80,7 +80,7 @@ printf '\t%s\n' "${SETTINGS[@]}" >>"$TEMP_CONF"
 # finally, replace the live configuration file
 if CONF="$(testparm --suppress-prompt "$TEMP_CONF" 2>/dev/null)"; then
 
-    sudo_function move_file_delete_link "/etc/samba/smb.conf"
+    [ ! -e "/etc/samba/smb.conf" ] || sudo mv -fv "/etc/samba/smb.conf" "/etc/samba/smb.$(lk_timestamp).conf.bak"
 
     echo "$CONF" | sudo tee "/etc/samba/smb.conf" >/dev/null
 

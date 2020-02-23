@@ -23,15 +23,15 @@ mkdir -p "$FONT_CACHE_PATH" &&
     cd "$FONT_CACHE_PATH" || die "Can't write to $FONT_CACHE_PATH"
 
 UNPACK_ROOT="$(create_temp_dir Y)"
-DELETE_ON_EXIT+=("$UNPACK_ROOT")
+lk_delete_on_exit "$UNPACK_ROOT"
 
-lc_console_message "Downloading ${#FONT_URLS[@]} $(single_or_plural "${#FONT_URLS[@]}" font fonts)"
+lk_console_message "Downloading ${#FONT_URLS[@]} $(single_or_plural "${#FONT_URLS[@]}" font fonts)"
 
 FONT_PATHS="$(download_urls "${FONT_URLS[@]}")"
 
 while IFS= read -r FONT_PATH; do
 
-    lc_console_item "Extracting" "$(basename "$FONT_PATH")"
+    lk_console_item "Extracting" "$(basename "$FONT_PATH")"
 
     EXTRACT_PATH="$UNPACK_ROOT/$(basename "${FONT_PATH%.zip}")"
     unzip -qq -d "$EXTRACT_PATH" "$FONT_PATH" || die "unzip exit code: $?"

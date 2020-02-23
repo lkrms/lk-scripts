@@ -17,7 +17,6 @@ FILE_PATH="$(realpath "$1")"
 shift
 
 PACKAGES=($(
-    . "$SUBSHELL_SCRIPT_PATH" || exit
     dpkg-query -S "$FILE_PATH" 2>/dev/null | sed 's/:.*$//' | sort | uniq
 )) && [ "${#PACKAGES[@]}" -gt "0" ] || die "Error: $FILE_PATH doesn't belong to a package"
 
@@ -44,7 +43,7 @@ for p in "${PACKAGES[@]}"; do
         rm -Rf "$EXTRACT_PATH"
 
         pushd "$APT_DEB_PATH" >/dev/null || die
-        console_message "Downloading package archive:" "${NO_WRAP}${URL}${WRAP}" "$CYAN" >&2
+        console_message "Downloading package archive:" "${WRAP_OFF}${URL}${WRAP}" "$CYAN" >&2
         DEB_PATH="$(download_urls "$URL")" || die
         popd >/dev/null
 

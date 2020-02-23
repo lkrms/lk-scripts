@@ -59,7 +59,7 @@ for i in "${!UNISON_PROFILES[@]}"; do
 
     [ "$i" -eq "0" ] || echo
 
-    lc_console_item "Syncing local directory" '~'"${LOCAL_DIR#$HOME}"
+    lk_console_item "Syncing local directory" '~'"${LOCAL_DIR#$HOME}"
 
     if maybe_dryrun unison "$UNISON_PROFILE" -root "$LOCAL_DIR" -auto -logfile "$UNISON_ROOT/unison.$(hostname -s | tr "[:upper:]" "[:lower:]").log" "$@"; then
 
@@ -75,17 +75,17 @@ done
 
 [ "${#SKIPPED[@]}" -eq "0" ] || {
     echo
-    lc_echo_array "${SKIPPED[@]}" | lc_console_list "${#SKIPPED[@]} $(single_or_plural "${#SKIPPED[@]}" profile profiles) skipped:"
+    lk_echo_array "${SKIPPED[@]}" | lk_console_list "${#SKIPPED[@]} $(single_or_plural "${#SKIPPED[@]}" profile profiles) skipped:"
 }
 
 [ "${#PROCESSED[@]}" -eq "0" ] || {
     echo
-    lc_echo_array "${PROCESSED[@]}" | lc_console_list "${#PROCESSED[@]} $(single_or_plural "${#PROCESSED[@]}" profile profiles) synchronised:" "$BOLD$GREEN"
+    lk_echo_array "${PROCESSED[@]}" | lk_console_list "${#PROCESSED[@]} $(single_or_plural "${#PROCESSED[@]}" profile profiles) synchronised:" "$BOLD$GREEN"
 }
 
 [ "${#FAILED[@]}" -eq "0" ] || {
     echo
-    lc_echo_array "${FAILED[@]}" | lc_console_list "${#FAILED[@]} $(single_or_plural "${#FAILED[@]}" profile profiles) failed:" "$BOLD$RED"
+    lk_echo_array "${FAILED[@]}" | lk_console_list "${#FAILED[@]} $(single_or_plural "${#FAILED[@]}" profile profiles) failed:" "$BOLD$RED"
     echo
     pause
     exit 1

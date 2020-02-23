@@ -13,7 +13,7 @@ function apt_apply_preferences() {
         shopt -u nullglob
     }
 
-    [ "${#PREFS[@]}" -eq "0" ] || lc_console_message "Applying apt preferences"
+    [ "${#PREFS[@]}" -eq "0" ] || lk_console_message "Applying apt preferences"
 
     for PREF in ${PREFS[@]+"${PREFS[@]}"}; do
 
@@ -36,11 +36,6 @@ function apt_check_prerequisites() {
 function apt_check_essentials() {
 
     local i
-
-    # radvdump wasn't packaged separately until Ubuntu 18.04
-    ! i="$(array_search radvdump APT_ESSENTIALS)" ||
-        apt_package_available radvdump ||
-        APT_ESSENTIALS[$i]=radvd
 
     ! command_exists dpkg || ! dpkg -s "linux-generic-hwe-${DISTRIB_RELEASE}" >/dev/null 2>&1 || APT_ESSENTIALS+=("linux-tools-generic-hwe-${DISTRIB_RELEASE}?")
 
@@ -358,7 +353,7 @@ function apt_make_cache_clean() {
 
     [ "$APT_CACHE_DIRTY" -eq "0" ] || {
         apt_check_sources
-        lc_console_message "Updating apt package indexes"
+        lk_console_message "Updating apt package indexes"
         sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} -qq update && APT_CACHE_DIRTY=0 || die
     }
 
@@ -418,7 +413,7 @@ function apt_get_package_list() {
     done
 
     [ "${#BAD_LIST[@]}" -eq "0" ] || {
-        lc_echo_array "${BAD_LIST[@]}" | lc_console_list "$(single_or_plural "${#BAD_LIST[@]}" Package Packages) unavailable for installation" "$BOLD$RED"
+        lk_echo_array "${BAD_LIST[@]}" | lk_console_list "$(single_or_plural "${#BAD_LIST[@]}" Package Packages) unavailable for installation" "$BOLD$RED" >&2
         die
     }
 
@@ -446,7 +441,7 @@ function apt_install_packages() {
 
     apt_make_cache_clean
 
-    lc_console_item "Checking apt packages" "$1"
+    lk_console_item "Checking apt packages" "$1"
 
     for p in $2; do
 
@@ -522,12 +517,12 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            lc_console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$BOLD$MAGENTA"
+            lk_console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$BOLD$MAGENTA"
 
             apt_describe_packages "${INSTALL[*]}" "$BOLD$MAGENTA"
 
             [ "${#QUEUE[@]}" -gt "0" ] && {
-                lc_echo_array "${QUEUE[@]}" | lc_console_list "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories)" "$BOLD$MAGENTA"
+                lk_echo_array "${QUEUE[@]}" | lk_console_list "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories)" "$BOLD$MAGENTA"
                 PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
             }
 
@@ -537,7 +532,7 @@ function apt_install_packages() {
 
         if [ "$QUEUE_ONLY" = "N" ]; then
 
-            [ "${#QUEUE[@]}" -gt "0" ] && lc_echo_array "${QUEUE[@]}" | lc_console_list "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories)" "$GREEN"
+            [ "${#QUEUE[@]}" -gt "0" ] && lk_echo_array "${QUEUE[@]}" | lk_console_list "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories)" "$GREEN"
 
             for q in PPA REPO; do
 
@@ -555,7 +550,7 @@ function apt_install_packages() {
             SILENT_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]+${IGNORED[*]}}" "${SUPPRESSED[*]+${SUPPRESSED[*]}}" "" "${SILENCED[*]+${SILENCED[*]}}" Y))
             PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]+${INSTALL_QUEUE[*]}} ${SILENT_QUEUE[*]+${SILENT_QUEUE[*]}}"))
 
-            lc_console_item "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]+${PRETTY_QUEUE[*]}}" Y)" "$GREEN"
+            lk_console_item "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]+${PRETTY_QUEUE[*]}}" Y)" "$GREEN"
 
             for q in INSTALL SILENT; do
 
@@ -729,15 +724,13 @@ function do_apt_install_deb() {
 
     mkdir -p "$APT_DEB_PATH" && pushd "$APT_DEB_PATH" >/dev/null || die "Error: unable to access $APT_DEB_PATH"
 
-    lc_console_message "Downloading $# deb $(single_or_plural "$#" package packages)"
+    lk_console_message "Downloading $# deb $(single_or_plural "$#" package packages)"
 
     # allow "429 Too Many Requests"
     # shellcheck disable=SC2034
     DOWNLOAD_URLS_SKIP_REGEX='^\s*HTTP/[0-9.]+\s+429\b'
 
     PATHS="$(
-        # shellcheck disable=SC1090
-        . "$SUBSHELL_SCRIPT_PATH" || exit
         download_urls "$@"
     )" || die
 
@@ -752,8 +745,6 @@ function do_apt_install_deb() {
     for path in "${!DEB_PATHS[@]}"; do
 
         DEB_PACKAGE="$(
-            # shellcheck disable=SC1090
-            . "$SUBSHELL_SCRIPT_PATH" || exit
 
             # shellcheck disable=SC2016
             dpkg-deb --showformat '${Package}' -W "${DEB_PATHS[$path]}" | tail -n 1
@@ -762,8 +753,6 @@ function do_apt_install_deb() {
         if apt_package_installed "$DEB_PACKAGE"; then
 
             DEB_VERSION="$(
-                # shellcheck disable=SC1090
-                . "$SUBSHELL_SCRIPT_PATH" || exit
 
                 # shellcheck disable=SC2016
                 dpkg-deb --showformat '${Version}' -W "${DEB_PATHS[$path]}" | tail -n 1
@@ -785,7 +774,7 @@ function do_apt_install_deb() {
 
     done
 
-    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && lc_console_item "Installing deb $(single_or_plural "${#NOT_SKIPPED[@]}" package packages):" "${NOT_SKIPPED[*]}" "$GREEN"
+    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && lk_console_item "Installing deb $(single_or_plural "${#NOT_SKIPPED[@]}" package packages):" "${NOT_SKIPPED[*]}" "$GREEN"
 
     if [ "${#DEB_PATHS[@]}" -gt "0" ]; then
 
@@ -831,7 +820,7 @@ function apt_process_queue() {
 
         QUEUE=($(printf '%s\n' ${APT_PPA_QUEUE[@]+"${APT_PPA_QUEUE[@]}"} ${APT_REPO_QUEUE[@]+"${APT_REPO_QUEUE[@]}"} | sort | uniq))
 
-        [ "${#QUEUE[@]}" -gt "0" ] && lc_console_item "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$GREEN"
+        [ "${#QUEUE[@]}" -gt "0" ] && lk_console_item "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$GREEN"
 
         for q in PPA REPO; do
 
@@ -848,7 +837,7 @@ function apt_process_queue() {
         INSTALL_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]+${APT_IGNORED[*]}}" "${APT_SUPPRESSED[*]+${APT_SUPPRESSED[*]}}" "${APT_REMOVE_QUEUE[*]+${APT_REMOVE_QUEUE[*]}}" "${APT_SILENCED[*]+${APT_SILENCED[*]}}" N))
         SILENT_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]+${APT_IGNORED[*]}}" "${APT_SUPPRESSED[*]+${APT_SUPPRESSED[*]}}" "" "${APT_SILENCED[*]+${APT_SILENCED[*]}}" Y))
         PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]+${INSTALL_QUEUE[*]}} ${SILENT_QUEUE[*]+${SILENT_QUEUE[*]}}"))
-        lc_console_item "Applying ${#PRETTY_QUEUE[@]} package $(single_or_plural ${#PRETTY_QUEUE[@]} change changes):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y)" "$GREEN"
+        lk_console_item "Applying ${#PRETTY_QUEUE[@]} package $(single_or_plural ${#PRETTY_QUEUE[@]} change changes):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y)" "$GREEN"
 
         for q in INSTALL SILENT; do
 
@@ -909,7 +898,7 @@ function apt_check_sources() {
         fi
 
         [ "$PROXY_GOOD" -eq "1" ] || {
-            lc_console_item "APT proxy disabled (unreachable):" "$APT_PROXY" "$BOLD$YELLOW"
+            lk_console_item "APT proxy disabled (unreachable):" "$APT_PROXY" "$BOLD$YELLOW"
             echo 'Acquire::http::Proxy "";' | sudo tee "/etc/apt/apt.conf.d/99noproxy" >/dev/null
             APT_PROXY=
         }
@@ -934,7 +923,7 @@ function apt_upgrade_all() {
 
     apt_make_cache_clean
 
-    lc_console_message "Installing all available apt package updates" "$GREEN"
+    lk_console_message "Installing all available apt package updates" "$GREEN"
 
     sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} --fix-missing dist-upgrade || die
 
@@ -971,8 +960,6 @@ function apt_get_new_configuration_files() {
     assert_command_exists debsums
 
     sudo find /etc -type f | grep -vFf <(
-        # shellcheck disable=SC1090
-        . "$SUBSHELL_SCRIPT_PATH" || exit
         sudo debsums -e 2>/dev/null | sed -E 's/\s*[A-Z]+$//' || die
     ) || die
 
@@ -1031,7 +1018,6 @@ APT_ESSENTIALS=(
     pv
     stow
     vim
-    xxd
 
     # FILES
     attr
@@ -1055,7 +1041,6 @@ APT_ESSENTIALS=(
     ntp
     ntpdate
     openssh-server
-    radvdump
     traceroute
     whois
 
@@ -1077,6 +1062,9 @@ APT_ESSENTIALS=(
     # KERNEL
     linux-crashdump
     linux-tools-generic
+
+    # MISC
+    $(! lk_is_ubuntu_lts || { lk_ubuntu_at_least 18.04 && printf '%s\n' "xxd" "radvdump" || printf '%s\n' "radvd"; })
 )
 
 is_virtual || APT_ESSENTIALS+=(

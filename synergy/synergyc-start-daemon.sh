@@ -1,1 +1,0 @@
-synergyc-start.sh

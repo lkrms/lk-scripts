@@ -19,21 +19,21 @@ for FILE in "$@"; do
 
 done
 
-NEWEST_PATH="$(lc_sort_files_by_date "$@" | tail -n1)"
+NEWEST_PATH="$(lk_sort_paths_by_date "$@" | tail -n1)"
 
 PDF_PATH="$(create_temp_file)"
-DELETE_ON_EXIT+=("$PDF_PATH")
+lk_delete_on_exit "$PDF_PATH"
 
-lc_echo_array "$@" | lc_console_list "Combining:" "PDF" "PDFs"
+lk_echo_array "$@" | lk_console_list "Combining:" "PDF" "PDFs"
 echo
 
 mutool merge -o "$PDF_PATH" "$@" &&
     touch -r "$NEWEST_PATH" "$PDF_PATH" && {
 
-    lc_console_item "Successfully combined to" "$PDF_PATH" "$BOLD$GREEN"
+    lk_console_item "Successfully combined to" "$PDF_PATH" "$BOLD$GREEN"
     echo
 
-    lc_console_message "Moving original files out of the way"
+    lk_console_message "Moving original files out of the way"
 
     for FILE in "$@"; do
 
@@ -52,7 +52,7 @@ mutool merge -o "$PDF_PATH" "$@" &&
 
     echo
 
-    lc_console_message "Moving new PDF into place"
+    lk_console_message "Moving new PDF into place"
     mv -v "$PDF_PATH" "$1" || die
 
 }

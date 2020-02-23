@@ -13,11 +13,6 @@ for COMMON in "$ROOT_DIR/bash/common-"*; do
 
     case "$COMMON" in
 
-    # doesn't contain functions
-    *-subshell)
-        continue
-        ;;
-
     # already sourced if supported
     *-linux | *-macos | *-wsl)
         continue
@@ -39,6 +34,6 @@ for COMMON in "$ROOT_DIR/bash/common-"*; do
 
 done
 
-function_exists "$1" || die "Function not defined: $1"
+declare -F "$1" >/dev/null 2>&1 || die "Function not defined: $1"
 
 eval "$@"

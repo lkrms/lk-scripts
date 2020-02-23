@@ -17,7 +17,7 @@ mkdir -p "$SCRATCHPAD_DIR"
 
 [ -e "$TODAY_FILE" ] || {
 
-    printf "# Scratchpad for %s\n\n\n" "$(date +'%A, %-d %B %Y')" >>"$TODAY_FILE"
+    printf "**Scratchpad for %s**\n\n\n" "$(date +'%A, %-d %B %Y')" >>"$TODAY_FILE"
 
 }
 
