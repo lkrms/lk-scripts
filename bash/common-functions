@@ -284,7 +284,7 @@ function lk_safe_symlink() {
         TARGET="$(lk_add_file_suffix "$TARGET" "-default")"
         [ -e "$TARGET" ] || return
     }
-    ! lk_command_exists realpath || TARGET="$(realpath "$TARGET")"
+    ! lk_command_exists realpath || TARGET="$(realpath -s "$TARGET")"
     LK_SAFE_SYMLINK_NO_CHANGE=
     if [ -L "$LINK" ]; then
         CURRENT_TARGET="$(readlink "$LINK")" || return
@@ -499,7 +499,7 @@ EOF
         fi
     }
 
-    function lk_ext4_check() {
+    function lk_check_ext4() {
         local PAIRS SOURCE TARGET FSTYPE SIZE AVAIL
         findmnt -Pt ext4,ext3,ext2 -o SOURCE,TARGET,FSTYPE,SIZE,AVAIL | while IFS= read -r PAIRS; do
             eval "$PAIRS"
@@ -508,6 +508,11 @@ EOF
             lk_echoc "($SIZE with $AVAIL available, mounted at $TARGET)" "${YELLOW:-$(lk_safe_tput setaf 3)}"
             echo
         done
+    }
+
+    function lk_check_sysctl() {
+        lk_console_message "IPv4 and IPv6"
+        sysctl -ar 'net\..*\.((default|all)\.rp_filter|tcp_syncookies|ip_forward|all\.forwarding)$'
     }
 
 }
