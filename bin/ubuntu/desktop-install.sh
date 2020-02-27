@@ -25,7 +25,7 @@ assert_not_root
 
     safe_symlink "$CONFIG_DIR/apt.conf" "/etc/apt/apt.conf.d/90-linacreative" Y Y
 
-    safe_symlink "$CONFIG_DIR/config/sysctl.d/90-inotify-maximum-watches.conf" "/etc/sysctl.d/90-inotify-maximum-watches.conf" Y
+    safe_symlink "$CONFIG_DIR/sysctl.d/90-inotify-maximum-watches.conf" "/etc/sysctl.d/90-inotify-maximum-watches.conf" Y
 
     # get underway without an immediate index update
     apt_mark_cache_clean
