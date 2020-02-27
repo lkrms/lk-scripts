@@ -57,6 +57,8 @@ assert_not_root
     apt_install_packages "Webmin" "webmin"
     apt_install_packages "Samba server" "samba"
     apt_install_packages "DHCP server" "dnsmasq"
+    apt_install_packages "PPPoE client" "pppoe pppoeconf"
+    apt_install_packages "Squid proxy server" "squid"
     apt_install_packages "APT proxy server" "apt-cacher-ng"
     apt_install_packages "BitTorrent client" "transmission-cli"
     apt_install_packages "youtube-dl dependencies" "ffmpeg rtmpdump"
