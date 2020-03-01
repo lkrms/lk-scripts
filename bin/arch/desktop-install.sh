@@ -317,9 +317,11 @@ AUR_INSTALL+=(
     teams
     typora
 
-    #
+    # these need to be installed in this order
+    gconf
+    gnome-python
     gnome-python-desktop # i.e. python2-wnck
-    python2-xlib         # QuickTile needs this too
+    python2-xlib
     quicktile-git
 )
 
@@ -374,6 +376,8 @@ offer_sudo_password_bypass
 sudo pacman -Sy --needed "${PAC_INSTALL[@]}"
 
 lk_install_aur "${AUR_INSTALL[@]}"
+
+sudo passwd -l root
 
 sudo systemctl enable --now sshd.service
 
