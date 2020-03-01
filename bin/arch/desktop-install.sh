@@ -312,11 +312,15 @@ AUR_INSTALL+=(
     ghostwriter
     google-chrome
     makemkv
-    quicktile-git
     skypeforlinux-stable-bin
     spotify
     teams
     typora
+
+    #
+    gnome-python-desktop # i.e. python2-wnck
+    python2-xlib         # QuickTile needs this too
+    quicktile-git
 )
 
 # development
