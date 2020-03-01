@@ -411,6 +411,12 @@ function lk_ubuntu_at_least() {
     lk_is_ubuntu && lk_version_at_least "$(lsb_release -sr)" "$1"
 }
 
+# lk_user_in_group username groupname...
+#   True if USERNAME belongs to at least one of GROUPNAME.
+function lk_user_in_group() {
+    [ "$(comm -12 <(groups "$1" | sed -E 's/^.*://' | grep -Eo '[^[:space:]]+' | sort) <(lk_echo_array "${@:2}" | sort | uniq) | wc -l)" -gt "0" ]
+}
+
 # lk_make_iso path1...
 function lk_make_iso() {
     local ISOFILE

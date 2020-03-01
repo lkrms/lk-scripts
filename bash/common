@@ -590,59 +590,20 @@ function is_autostart() {
 }
 
 function offer_sudo_password_bypass() {
-
-    local VERBOSE="${1:-N}" USERNAME="${SUDO_USER:-$USER}" FILENAME CHECK_FILENAME
-
-    # don't proceed if there's no point
-    if ! groups "$USERNAME" | grep -Eo '[^:]+$' | grep -E '(\s|^)(admin|sudo)(\s|$)' >/dev/null; then
-
-        [ "$VERBOSE" = "Y" ] && console_message "User ${BOLD}${USERNAME}${RESET} is not an administrator" "" "$BOLD" "$RED" || true
-        return
-
-    fi
-
-    FILENAME="/etc/sudoers.d/nopasswd-$USERNAME"
-    CHECK_FILENAME="$CACHE_DIR/.nopasswd-$USERNAME"
-
-    if [ -e "$CHECK_FILENAME" ]; then
-
-        [ "$VERBOSE" = "Y" ] && console_message "Password bypass previously enabled for user ${BOLD}${USERNAME}${RESET}" "" "$GREEN" || true
-        return
-
-    fi
-
-    console_message "Please provide your computer password if requested" "" "$CYAN"
-
-    # check that we can, in fact, sudo as root
-    if ! sudo true; then
-
-        [ "$VERBOSE" = "Y" ] && console_message "User ${BOLD}${USERNAME}${RESET} is not allowed to sudo as root" "" "$BOLD" "$RED" || true
-        return
-
-    fi
-
-    if ! sudo test -e "$FILENAME"; then
-
-        if get_confirmation "Allow user ${BOLD}${USERNAME}${RESET} to skip future password prompts?" Y Y; then
-
-            sudo tee "$FILENAME" >/dev/null <<<"${USERNAME} ALL=(ALL) NOPASSWD:ALL" && sudo chmod 0440 "$FILENAME" || die
-            console_message "Password bypass enabled for user ${BOLD}${USERNAME}${RESET} in:" "$FILENAME" "$BOLD" "$BLUE"
-
-        else
-
-            return
-
-        fi
-
-    elif [ "$VERBOSE" = "Y" ]; then
-
-        console_message "Password bypass previously enabled for user ${BOLD}${USERNAME}${RESET}" "" "$GREEN"
-
-    fi
-
-    # attempt to save time next time
-    { touch "$CHECK_FILENAME" || sudo touch "$CHECK_FILENAME"; } >/dev/null 2>&1 || true
-
+    local CHECK_FILENAME FILENAME
+    lk_user_in_group "$USER" admin sudo wheel || return
+    CHECK_FILENAME="$CACHE_DIR/.nopasswd-$USER"
+    [ ! -e "$CHECK_FILENAME" ] || ! sudo -n true 2>/dev/null || return 0
+    FILENAME="/etc/sudoers.d/nopasswd-$USER"
+    sudo -n true 2>/dev/null || lk_console_message "Please enter your computer password if requested"
+    sudo true || return
+    sudo test -e "$FILENAME" ||
+        ! get_confirmation "Allow user $USER to skip future password prompts from sudo?" Y Y || {
+        sudo tee "$FILENAME" >/dev/null <<<"$USER ALL=(ALL) NOPASSWD:ALL" &&
+            sudo chmod 440 "$FILENAME" &&
+            lk_console_message "Password bypass enabled for $USER"
+    } || return
+    touch "$CHECK_FILENAME" 2>/dev/null || sudo touch "$CHECK_FILENAME" 2>/dev/null || true
 }
 
 function escape_separators() {
