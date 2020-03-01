@@ -7,31 +7,49 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../../bash/common"
 
-function lk_install_aur() {
-    local TEMP_DIR
-    TEMP_DIR="$(lk_mktemp_dir)" || return
-    lk_delete_on_exit "$TEMP_DIR"
-    (
-        cd "$TEMP_DIR" &&
-            git clone "https://aur.archlinux.org/$1.git" &&
-            cd "$1" &&
-            makepkg -si
-    )
-}
+function lk_install_aur() (
+    mkdir -p "$CACHE_DIR/aur" || exit
+    for AUR in "$@"; do
+        cd "$CACHE_DIR/aur" || exit
+        if [ ! -d "$AUR" ]; then
+            lk_console_item "Cloning repo" "https://aur.archlinux.org/$AUR.git"
+            git clone "https://aur.archlinux.org/$AUR.git" &&
+                cd "$AUR" ||
+                exit
+        else
+            cd "$AUR" && {
+                lk_is_false "${LK_UPDATE_AUR:-1}" || {
+                    lk_console_item "Updating repo" "https://aur.archlinux.org/$AUR.git"
+                    git pull
+                }
+            } || exit
+        fi
+        makepkg -si --noconfirm --needed
+    done
+)
 
-INSTALL=()
+PAC_INSTALL=()
+AUR_INSTALL=()
 
-# sound-related
-INSTALL+=(
+# hardware-related
+is_virtual || PAC_INSTALL+=(
     blueman
+    pulseaudio-bluetooth
+    tlp
+    tlp-rdw
+)
+
+# essentials
+PAC_INSTALL+=(
+    gvfs
+    gvfs-smb
     libcanberra
     libcanberra-pulse
     pavucontrol
-    pulseaudio-bluetooth
 )
 
 # themes and fonts
-INSTALL+=(
+PAC_INSTALL+=(
     #
     adapta-gtk-theme
     arc-gtk-theme
@@ -59,42 +77,62 @@ INSTALL+=(
     ttf-dejavu
 )
 
-# terminal
-INSTALL+=(
+# terminal-based
+PAC_INSTALL+=(
+    p7zip
     unison
     vim
 )
 
 # desktop
-#   ghostwriter
-#   spotify
-#   typora
-INSTALL+=(
+PAC_INSTALL+=(
+    audacity
     clementine
+    copyq
+    displaycal
     firefox
     flameshot
     geany
     guake
+    handbrake
+    handbrake-cli
+    inkscape
     keepassxc
     libreoffice-fresh
     nextcloud-client
     recoll
+    scribus
     speedcrunch
     thunderbird
 )
 
+AUR_INSTALL+=(
+    espanso
+    ghostwriter
+    google-chrome
+    makemkv
+    skypeforlinux-stable-bin
+    spotify
+    teams
+    typora
+)
+
 # development
-#   git-cola
-#   smerge
-INSTALL+=(
+PAC_INSTALL+=(
     code
     dbeaver
     git
-    java-openjdk
+    jre-openjdk
+)
+
+AUR_INSTALL+=(
+    git-cola
+    sublime-merge
+    sublime-text-dev
 )
 
 # libvirt
-INSTALL+=(
+PAC_INSTALL+=(
     bridge-utils
     dnsmasq
     ebtables
@@ -103,11 +141,13 @@ INSTALL+=(
     virt-manager
 )
 
-sudo pacman -Sy --needed "${INSTALL[@]}"
+sudo pacman -Sy --needed "${PAC_INSTALL[@]}"
+
+lk_install_aur "${AUR_INSTALL[@]}"
+
+sudo systemctl enable --now sshd.service
 
 xfconf-query -c xfwm4 -p /general/theme -n -t string -s "Arc-Dark-solid"
 xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus-Dark"
 xfconf-query -c xsettings -p /Net/SoundThemeName -n -t string -s "elementary"
 xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Arc-Dark-solid"
-
-lk_command_exists yay || lk_install_aur yay

@@ -119,6 +119,10 @@ function lk_is_true() {
     [[ "$1" =~ ^([yY1])$ ]]
 }
 
+function lk_is_false() {
+    [[ "$1" =~ ^([nN0])$ ]]
+}
+
 # [ESCAPE=escape_with] lk_escape string [escape_char1...]
 function lk_escape() {
     local i=0 STRING="$1" ESCAPE="${ESCAPE:-\\}" SPECIAL SEARCH REPLACE
