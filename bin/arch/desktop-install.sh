@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2034
+# shellcheck disable=SC1090,SC2034,SC2174
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -199,13 +199,22 @@ is_virtual || PAC_INSTALL+=(
     pulseaudio-bluetooth
 )
 
+AUR_INSTALL+=(
+    r8152-dkms # common USB / USB-C NIC
+)
+
 # essentials
 PAC_INSTALL+=(
+    gnome-keyring
     gvfs
     gvfs-smb
     libcanberra
     libcanberra-pulse
     pavucontrol
+)
+
+AUR_INSTALL+=(
+    xfce4-panel-profiles
 )
 
 # themes and fonts
@@ -252,6 +261,7 @@ PAC_INSTALL+=(
     pv
     stow
     unison
+    unzip
     vim
 
     # networking
@@ -280,24 +290,19 @@ AUR_INSTALL+=(
 
 # desktop
 PAC_INSTALL+=(
-    audacity
-    clementine
+    caprine
+    catfish
     copyq
-    displaycal
     firefox
     flameshot
     galculator
     geany
     gimp
-    guake
-    handbrake
-    handbrake-cli
     inkscape
     keepassxc
     libreoffice-fresh
     nextcloud-client
     qpdfview
-    recoll
     remmina
     scribus
     speedcrunch
@@ -305,17 +310,87 @@ PAC_INSTALL+=(
     transmission-cli
     transmission-gtk
     trash-cli
+
+    # PDF
+    ghostscript  # PDF/PostScript processor
+    mupdf-tools  # PDF manipulation tools
+    pandoc       # text conversion tool (e.g. Markdown to PDF)
+    poppler      # PDF tools like pdfimages
+    pstoedit     # converts PDF/PostScript to vector formats
+    texlive-core # required for PDF output from pandoc
+
+    # search (Recoll)
+    antiword            # Word
+    aspell-en           # English stemming
+    catdoc              # Excel, Powerpoint
+    perl-image-exiftool # EXIF metadata
+    python-lxml         # spreadsheets
+    recoll
+
+    # multimedia - playback
+    clementine
+    libdvdcss
+    libdvdnav
+    libvpx
+    vlc
+
+    # multimedia - audio
+    abcde
+    audacity
+    beets
+    python-eyed3
+
+    # multimedia - video
+    ffmpeg
+    handbrake
+    handbrake-cli
+    mkvtoolnix-cli
+    mkvtoolnix-gui
+    mpv
+    rtmpdump
+    youtube-dl
+
+    # system
+    dconf-editor
+    displaycal
+    gparted
+    guake
+    libsecret   # secret-tool
+    libva-utils # vainfo
+    samba
+    seahorse
+    syslinux
+    x11vnc
+
+    # automation
+    sxhkd
+    wmctrl
+    xautomation
+    xclip
+    xdotool
 )
 
 AUR_INSTALL+=(
     espanso
     ghostwriter
     google-chrome
-    makemkv
     skypeforlinux-stable-bin
     spotify
     teams
     typora
+
+    # multimedia - video
+    makemkv
+
+    # balena-etcher dependency
+    electron7-bin
+
+    # system
+    balena-etcher
+    hfsprogs
+
+    # automation
+    devilspie2
 
     # these need to be installed in this order
     gconf
@@ -329,9 +404,11 @@ AUR_INSTALL+=(
 PAC_INSTALL+=(
     code
     dbeaver
+    tidy
 
     #
     git
+    meld
 
     #
     jre-openjdk
@@ -339,14 +416,36 @@ PAC_INSTALL+=(
     #
     nodejs
     npm
+    yarn
 
     #
     php
+    php-gd
+    php-imagick
+    php-imap
+    php-intl
+    php-memcache
+    php-memcached
+    php-sqlite
+    xdebug
 
     #
+    wp-cli
+
+    #
+    mysql-python
     python
+    python-dateutil
     python-pip
+    python-requests
     python2
+
+    #
+    shellcheck
+
+    #
+    lua-penlight
+    lua51
 )
 
 AUR_INSTALL+=(
@@ -359,6 +458,8 @@ AUR_INSTALL+=(
 
 # development services
 PAC_INSTALL+=(
+    apache
+    mariadb
     php-fpm
 )
 
@@ -378,6 +479,20 @@ PAC_INSTALL+=(
     }
 
 sudo pacman -Sy --needed "${PAC_INSTALL[@]}"
+
+# otherwise makepkg fails with "unknown public key" errors
+gpg --list-keys >/dev/null
+[ -e "$HOME/.gnupg/gpg.conf" ] || {
+    touch "$HOME/.gnupg/gpg.conf" &&
+        chmod 600 "$HOME/.gnupg/gpg.conf"
+}
+[ ! -e "/etc/pacman.d/gnupg/pubring.gpg" ] ||
+    grep -Fq 'keyring /etc/pacman.d/gnupg/pubring.gpg' "$HOME/.gnupg/gpg.conf" || {
+    GPG_CONF="$(cat "$HOME/.gnupg/gpg.conf")" && {
+        [ -z "$GPG_CONF" ] || echo "$GPG_CONF"
+        echo 'keyring /etc/pacman.d/gnupg/pubring.gpg'
+    } >"$HOME/.gnupg/gpg.conf"
+}
 
 lk_install_aur "${AUR_INSTALL[@]}"
 
