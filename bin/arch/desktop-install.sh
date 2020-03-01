@@ -11,6 +11,8 @@ assert_is_desktop
 assert_not_root
 
 function lk_install_aur() (
+    export BUILDDIR="/tmp/makepkg" MAKEFLAGS
+    MAKEFLAGS="-j$(nproc)" || exit
     ERRORS=()
     mkdir -p "$CACHE_DIR/aur" || exit
     for AUR in "$@"; do
