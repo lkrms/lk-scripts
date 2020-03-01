@@ -272,6 +272,10 @@ PAC_INSTALL+=(
     sysfsutils
 )
 
+AUR_INSTALL+=(
+    vpn-slice
+)
+
 # desktop
 PAC_INSTALL+=(
     audacity
@@ -280,7 +284,9 @@ PAC_INSTALL+=(
     displaycal
     firefox
     flameshot
+    galculator
     geany
+    gimp
     guake
     handbrake
     handbrake-cli
@@ -288,10 +294,14 @@ PAC_INSTALL+=(
     keepassxc
     libreoffice-fresh
     nextcloud-client
+    qpdfview
     recoll
+    remmina
     scribus
     speedcrunch
     thunderbird
+    transmission-cli
+    transmission-gtk
     trash-cli
 )
 
@@ -300,6 +310,7 @@ AUR_INSTALL+=(
     ghostwriter
     google-chrome
     makemkv
+    quicktile-git
     skypeforlinux-stable-bin
     spotify
     teams
@@ -310,14 +321,37 @@ AUR_INSTALL+=(
 PAC_INSTALL+=(
     code
     dbeaver
+
+    #
     git
+
+    #
     jre-openjdk
+
+    #
+    nodejs
+    npm
+
+    #
+    php
+
+    #
+    python
+    python-pip
+    python2
 )
 
 AUR_INSTALL+=(
+    sublime-text-dev
+
+    #
     git-cola
     sublime-merge
-    sublime-text-dev
+)
+
+# development services
+PAC_INSTALL+=(
+    php-fpm
 )
 
 # libvirt
