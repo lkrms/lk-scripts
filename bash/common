@@ -593,8 +593,8 @@ function offer_sudo_password_bypass() {
     local CHECK_FILENAME FILENAME
     lk_user_in_group "$USER" admin sudo wheel || return
     CHECK_FILENAME="$CACHE_DIR/.nopasswd-$USER"
-    [ ! -e "$CHECK_FILENAME" ] || ! sudo -n true 2>/dev/null || return 0
     FILENAME="/etc/sudoers.d/nopasswd-$USER"
+    [ ! -e "$CHECK_FILENAME" ] || ! sudo -n true 2>/dev/null || ! sudo test -e "$FILENAME" || return 0
     sudo -n true 2>/dev/null || lk_console_message "Please enter your computer password if requested"
     sudo true || return
     sudo test -e "$FILENAME" ||

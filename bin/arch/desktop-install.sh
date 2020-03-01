@@ -371,15 +371,19 @@ PAC_INSTALL+=(
     virt-manager
 )
 
-offer_sudo_password_bypass
+! offer_sudo_password_bypass ||
+    {
+        lk_console_message "Disabling password-based login as root"
+        sudo passwd -l root
+    }
 
 sudo pacman -Sy --needed "${PAC_INSTALL[@]}"
 
 lk_install_aur "${AUR_INSTALL[@]}"
 
-sudo passwd -l root
-
 sudo systemctl enable --now sshd.service
+
+! lk_command_exists vim || lk_safe_symlink "$(command -v vim)" "/usr/local/bin/vi" Y
 
 xfconf-query -c xfwm4 -p /general/theme -n -t string -s "Arc-Dark-solid"
 xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus-Dark"
