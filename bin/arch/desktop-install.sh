@@ -8,6 +8,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../../bash/common"
 
 function lk_install_aur() (
+    ERRORS=()
     mkdir -p "$CACHE_DIR/aur" || exit
     for AUR in "$@"; do
         cd "$CACHE_DIR/aur" || exit
@@ -24,8 +25,9 @@ function lk_install_aur() (
                 }
             } || exit
         fi
-        makepkg -si --noconfirm --needed
+        makepkg -si --noconfirm --needed || ERRORS+=("$AUR")
     done
+    [ "${#ERRORS[@]}" -eq "0" ] || lk_echo_array "${ERRORS[@]}" || lk_console_list "Failed to install" "AUR package" "AUR packages" "$BOLD$RED"
 )
 
 PAC_INSTALL=()
@@ -80,6 +82,7 @@ PAC_INSTALL+=(
 # terminal-based
 PAC_INSTALL+=(
     p7zip
+    trash-cli
     unison
     vim
 )
@@ -140,6 +143,8 @@ PAC_INSTALL+=(
     qemu
     virt-manager
 )
+
+offer_sudo_password_bypass
 
 sudo pacman -Sy --needed "${PAC_INSTALL[@]}"
 
