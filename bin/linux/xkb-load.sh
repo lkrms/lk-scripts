@@ -24,6 +24,6 @@ done
     # give it a second for keys to be (physically) released
     has_argument "--no-sleep" || sleep 1
 
-    echo_run xkbcomp -I"$SCRIPT_DIR/xkb" "$CONFIG_DIR/${1:-xkbcomp}" "$DISPLAY"
+    xkbcomp -I"$SCRIPT_DIR/xkb" "$CONFIG_DIR/${1:-xkbcomp}" "$DISPLAY"
 
 }

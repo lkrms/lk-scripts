@@ -1,0 +1,9 @@
+default partial modifier_keys
+xkb_symbols "all" {
+    include "xfce4(rctrl_mod3)"
+};
+
+partial modifier_keys
+xkb_symbols "rctrl_mod3" {
+    modifier_map Control { <RCTL> };
+};

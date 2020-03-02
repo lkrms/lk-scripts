@@ -23,11 +23,11 @@ assert_command_exists bc
 
 if has_argument "-h" || has_argument "--help"; then
 
-    die "Usage: $(basename "$0") [--autostart] [--suggest] [--get-qt-exports] [--set-dpi-only] [--skip-lightdm]"
+    die "Usage: $(basename "$0") [--autostart] [--set-all] [--suggest] [--get-shell-env] [--set-dpi] [--update-lightdm]"
 
 fi
 
-! is_autostart || sleep 2
+# ! is_autostart || sleep 2
 
 # if the primary output's actual DPI is above this, enable "Retina" mode
 HIDPI_THRESHOLD=144
@@ -218,7 +218,7 @@ DPI="$(echo "scale=10;dpi=$DPI*$DPI_MULTIPLIER;scale=0;dpi/1" | bc)"
 echo "Scaling factor: $SCALING_FACTOR" >&2
 echo "Effective DPI: $DPI" >&2
 
-if has_argument "--get-qt-exports"; then
+if has_argument "--get-shell-env"; then
 
     ((QT_FONT_DPI = DPI / SCALING_FACTOR))
 
@@ -228,15 +228,9 @@ if has_argument "--get-qt-exports"; then
 
 fi
 
-if has_argument "--set-dpi-only"; then
+if has_argument "--set-dpi"; then
 
-    echo_run xrandr --dpi "$DPI" >&2
-
-fi
-
-if has_argument "--get-qt-exports" || has_argument "--set-dpi-only"; then
-
-    exit
+    xrandr --dpi "$DPI" >&2
 
 fi
 
@@ -289,13 +283,19 @@ for i in "${ALL_OUTPUTS[@]}"; do
 
 done
 
-# check that our configuration is valid
-xrandr --dryrun "${RESET_OPTIONS[@]}" >/dev/null || die
-xrandr --dryrun "${OPTIONS[@]}" >/dev/null || die
+if has_argument "--set-all" || has_argument "--lightdm" || is_autostart; then
 
-# apply configuration
-echo_run xrandr "${RESET_OPTIONS[@]}" || true
-echo_run xrandr "${OPTIONS[@]}" || die
+    # check that our configuration is valid
+    xrandr --dryrun "${RESET_OPTIONS[@]}" >/dev/null || die
+    xrandr --dryrun "${OPTIONS[@]}" >/dev/null || die
+
+    # apply configuration
+    echo "xrandr ${RESET_OPTIONS[*]}" >&2
+    xrandr "${RESET_OPTIONS[@]}" || true
+    echo "xrandr ${OPTIONS[*]}" >&2
+    xrandr "${OPTIONS[@]}" || die
+
+fi
 
 ! has_argument "--lightdm" || exit 0
 
@@ -310,7 +310,7 @@ EOF
 
 LIGHTDM_CONF_FILE="/etc/lightdm/lightdm.conf.d/90-xrandr-auto.conf"
 
-if ! has_argument "--skip-lightdm" &&
+if has_argument "--update-lightdm" &&
     [ -d "/etc/lightdm/lightdm.conf.d" ] &&
     { [ ! -e "$LIGHTDM_CONF_FILE" ] || diff "$LIGHTDM_CONF_FILE" <(get_lightdm_conf) >/dev/null; }; then
 
@@ -320,29 +320,29 @@ fi
 
 # ok, xrandr is sorted -- look after everything else
 
-SECS=0
+# SECS=0
 
-while [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; do
+# while [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; do
 
-    [ "$SECS" -lt "5" ] || die $'\nNo dbus daemon after 5 seconds'
+#     [ "$SECS" -lt "5" ] || die $'\nNo dbus daemon after 5 seconds'
 
-    [ "$SECS" -gt "0" ] || echo -n "Waiting for dbus daemon.." >&2
-    echo -n "." >&2
-    ((++SECS))
+#     [ "$SECS" -gt "0" ] || echo -n "Waiting for dbus daemon.." >&2
+#     echo -n "." >&2
+#     ((++SECS))
 
-    sleep 1
+#     sleep 1
 
-done
+# done
 
-[ "$SECS" -eq "0" ] || echo $'\ndbus daemon started at '"$DBUS_SESSION_BUS_ADDRESS"
+# [ "$SECS" -eq "0" ] || echo $'\ndbus daemon started at '"$DBUS_SESSION_BUS_ADDRESS"
 
 case "${XDG_CURRENT_DESKTOP:-}" in
 
 XFCE)
 
     # prevent Xfce from interfering with our display settings
-    echo_run xfconf-query -c displays -p / -rR
-    echo_run xfconf-query -c displays -p /Notify -n -t bool -s false
+    xfconf-query -c displays -p / -rR
+    xfconf-query -c displays -p /Notify -n -t bool -s false
 
     if ! is_desktop; then
 
@@ -352,11 +352,11 @@ XFCE)
         # unless more than one output is connected (0 = switch off display)
         [ "${#OUTPUTS[@]}" -le "1" ] || XFCE4_LID_ACTION=0
 
-        echo_run xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/lid-action-on-ac -n -t uint -s "$XFCE4_LID_ACTION"
+        xfconf-query -c xfce4-power-manager -p /xfce4-power-manager/lid-action-on-ac -n -t uint -s "$XFCE4_LID_ACTION"
 
     fi
 
-    echo_run "$SCRIPT_DIR/xfce4-set-dpi.sh" "${XFCE4_DPI:-$DPI}" "$ACTUAL_DPI" "$@"
+    # "$SCRIPT_DIR/xfce4-set-dpi.sh" "${XFCE4_DPI:-$DPI}" "$ACTUAL_DPI" "$@"
     ;;
 
 esac
@@ -368,26 +368,25 @@ if OVERRIDES="$(gsettings get org.gnome.settings-daemon.plugins.xsettings overri
     OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Gdk/WindowScalingFactor" "$SCALING_FACTOR")"
     OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Xft/DPI" "$XFT_DPI")"
 
-    echo_run gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
+    gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
 
 fi
 
 if gsettings get org.gnome.desktop.interface scaling-factor >/dev/null 2>&1; then
 
-    echo_run gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
-    echo_run gsettings set org.gnome.desktop.interface text-scaling-factor "$DPI_MULTIPLIER" || true
+    gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
+    gsettings set org.gnome.desktop.interface text-scaling-factor "$DPI_MULTIPLIER" || true
 
 fi
 
 if ! is_autostart; then
 
-    ! command_exists displaycal-apply-profiles || echo_run displaycal-apply-profiles
-    echo_run "$SCRIPT_DIR/x-release-modifiers.sh"
+    "$SCRIPT_DIR/x-release-modifiers.sh"
 
 fi
 
-echo_run "$SCRIPT_DIR/xkb-load.sh" --no-sleep "$@"
-echo_run "$SCRIPT_DIR/xinput-load.sh" "$@"
+"$SCRIPT_DIR/xkb-load.sh" "$@"
+# "$SCRIPT_DIR/xinput-load.sh" "$@"
 
 start_or_restart quicktile --daemonize
 start_or_restart devilspie2

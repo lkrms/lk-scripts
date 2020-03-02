@@ -1,7 +1,0 @@
-[Desktop Entry]
-Type=Application
-Name=Simple X hotkey daemon
-Exec=env SXHKD_SHELL=/bin/sh sxhkd -m -1 -r /tmp/sxhkd.command-output
-StartupNotify=false
-Terminal=false
-Hidden=false

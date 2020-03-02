@@ -36,12 +36,8 @@ def make_xte_commands(command, keys, both_modifiers=False):
     return commands
 
 
-log_directory = os.path.normpath(os.path.dirname(
-    os.path.realpath(__file__)) + "/../../log")
-log_file = os.path.join(log_directory, "sxhkd-do-map.py.log")
+log_file = "/tmp/" + os.path.basename(__file__) + ".log"
 
-if not os.path.exists(log_directory):
-    os.makedirs(log_directory)
 logging.basicConfig(
     filename=log_file, format="%(asctime)s %(relativeCreated)s %(levelname)s: %(message)s", level=logging.INFO)
 
@@ -65,7 +61,7 @@ logging.info("window name: {0}".format(window_name))
 is_unknown = window_class == "" and window_name == ""
 is_chrome = bool(re.search(r"^google-chrome\.Google-chrome$", window_class))
 is_terminal = bool(
-    re.search(r"^(guake|io\.elementary\.terminal|tilix|xfce4-terminal)\.", window_class))
+    re.search(r"^(guake|xfce4-terminal)\.", window_class))
 is_todoist = bool(re.search(
     r"^(todoist\.Todoist|crx_bgjohebimpjdhhocbknplfelpmdhifhd\.Google-chrome)$", window_class))
 is_vscode = bool(re.search(r"^code\.Code$", window_class))

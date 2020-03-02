@@ -25,7 +25,6 @@ function xinput_set_prop() {
 
     if xinput_has_prop "$1" "$2"; then
 
-        echo -e "xinput set-prop $*\n" >&2
         xinput set-prop "$@" || die "Error: unable to set '$2' on device $1"
 
     else
@@ -52,7 +51,6 @@ function xinput_set_sign() {
 
         done
 
-        echo -e "xinput set-prop $1 $2 ${SIGNED[*]}\n" >&2
         xinput set-prop "$1" "$2" "${SIGNED[@]}" || die "Error: unable to set '$2' on device $1"
 
     else
@@ -153,7 +151,6 @@ if [ "${XINPUT_DISABLE_TOUCHPAD_DURATION:-0.5}" != "0" ] && command_exists synda
 
             killall syndaemon 2>/dev/null || true
 
-            echo -e "syndaemon -i ${XINPUT_DISABLE_TOUCHPAD_DURATION:-0.5} -d -t -K -R\n" >&2
             syndaemon -i "${XINPUT_DISABLE_TOUCHPAD_DURATION:-0.5}" -d -t -K -R
 
         }

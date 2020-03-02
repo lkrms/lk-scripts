@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2034,SC2174
+# shellcheck disable=SC1090,SC2034,SC2174,SC2207
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -9,31 +9,6 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 assert_is_desktop
 assert_not_root
-
-function lk_install_aur() (
-    export BUILDDIR="/tmp/makepkg" MAKEFLAGS
-    MAKEFLAGS="-j$(nproc)" || exit
-    ERRORS=()
-    mkdir -p "$CACHE_DIR/aur" || exit
-    for AUR in "$@"; do
-        cd "$CACHE_DIR/aur" || exit
-        if [ ! -d "$AUR" ]; then
-            lk_console_item "Cloning repo" "https://aur.archlinux.org/$AUR.git"
-            git clone "https://aur.archlinux.org/$AUR.git" &&
-                cd "$AUR" ||
-                exit
-        else
-            cd "$AUR" && {
-                lk_is_false "${LK_UPDATE_AUR:-1}" || {
-                    lk_console_item "Updating repo" "https://aur.archlinux.org/$AUR.git"
-                    git pull
-                }
-            } || exit
-        fi
-        makepkg -si --noconfirm --needed || ERRORS+=("$AUR")
-    done
-    [ "${#ERRORS[@]}" -eq "0" ] || lk_echo_array "${ERRORS[@]}" | lk_console_list "Failed to install" "AUR package" "AUR packages" "$BOLD$RED"
-)
 
 PAC_INSTALL=()
 AUR_INSTALL=()
@@ -52,8 +27,8 @@ PAC_PRE_INSTALLED=(
     intel-ucode
     lightdm
     lightdm-gtk-greeter
-    linux-zen
-    linux-zen-headers
+    # linux-zen
+    # linux-zen-headers
     mesa
     vulkan-icd-loader
     vulkan-intel
@@ -85,6 +60,7 @@ PAC_PRE_INSTALLED=(
     ethtool
     exfat-utils
     f2fs-tools
+    git
     gnome-initial-setup
     gnu-netcat
     gpm
@@ -205,15 +181,22 @@ AUR_INSTALL+=(
 
 # essentials
 PAC_INSTALL+=(
+    engrampa
     gnome-keyring
     gvfs
     gvfs-smb
     libcanberra
     libcanberra-pulse
     pavucontrol
+    plank
+    xorg-xrandr
+
+    # ristretto alternative
+    nomacs
 )
 
 AUR_INSTALL+=(
+    mugshot
     xfce4-panel-profiles
 )
 
@@ -256,6 +239,7 @@ PAC_INSTALL+=(
 
     # utilities
     bc
+    cdrtools
     mediainfo
     p7zip
     pv
@@ -295,6 +279,7 @@ PAC_INSTALL+=(
     copyq
     firefox
     flameshot
+    freerdp
     galculator
     geany
     gimp
@@ -368,6 +353,7 @@ PAC_INSTALL+=(
     xautomation
     xclip
     xdotool
+    xorg-xev
 )
 
 AUR_INSTALL+=(
@@ -391,6 +377,7 @@ AUR_INSTALL+=(
 
     # automation
     devilspie2
+    xorg-xkbprint
 
     # these need to be installed in this order
     gconf
@@ -402,8 +389,11 @@ AUR_INSTALL+=(
 
 # development
 PAC_INSTALL+=(
-    code
+    autopep8
+    bash-language-server
     dbeaver
+    eslint
+    python-pylint
     tidy
 
     #
@@ -411,7 +401,7 @@ PAC_INSTALL+=(
     meld
 
     #
-    jre-openjdk
+    jdk11-openjdk
 
     #
     nodejs
@@ -430,9 +420,6 @@ PAC_INSTALL+=(
     xdebug
 
     #
-    wp-cli
-
-    #
     mysql-python
     python
     python-dateutil
@@ -444,16 +431,28 @@ PAC_INSTALL+=(
     shellcheck
 
     #
+    lua
     lua-penlight
-    lua51
 )
 
 AUR_INSTALL+=(
+    postman
     sublime-text-dev
+    visual-studio-code-bin
 
     #
     git-cola
     sublime-merge
+
+    #
+    php-box
+    php-compat-info
+
+    # platforms
+    azure-cli
+    azure-functions-core-tools-bin
+    sfdx-cli
+    wp-cli
 )
 
 # development services
@@ -472,35 +471,55 @@ PAC_INSTALL+=(
     virt-manager
 )
 
-! offer_sudo_password_bypass ||
-    {
-        lk_console_message "Disabling password-based login as root"
-        sudo passwd -l root
+{
+
+    ! offer_sudo_password_bypass ||
+        {
+            lk_console_message "Disabling password-based login as root"
+            sudo passwd -l root
+        }
+
+    PAC_TO_INSTALL=($(comm -13 <(pacman -Qeq | sort | uniq) <(lk_echo_array "${PAC_INSTALL[@]}" | sort | uniq)))
+
+    [ "${#PAC_TO_INSTALL[@]}" -eq "0" ] && sudo pacman -Syu || sudo pacman -Syu --asexplicit "${PAC_TO_INSTALL[@]}"
+
+    # otherwise makepkg fails with "unknown public key" errors
+    gpg --list-keys >/dev/null
+    [ -e "$HOME/.gnupg/gpg.conf" ] || {
+        touch "$HOME/.gnupg/gpg.conf" &&
+            chmod 600 "$HOME/.gnupg/gpg.conf"
     }
+    [ ! -e "/etc/pacman.d/gnupg/pubring.gpg" ] ||
+        grep -Fq 'keyring /etc/pacman.d/gnupg/pubring.gpg' "$HOME/.gnupg/gpg.conf" || {
+        GPG_CONF="$(cat "$HOME/.gnupg/gpg.conf")" && {
+            [ -z "$GPG_CONF" ] || echo "$GPG_CONF"
+            echo 'keyring /etc/pacman.d/gnupg/pubring.gpg'
+        } >"$HOME/.gnupg/gpg.conf"
+    }
+    GPG_KEYS=(
+        194B631AB2DA2888 # devilspie2
+        293D771241515FE8 # php-box
+        4773BD5E130D1D45 # spotify
+        F57D4F59BD3DF454 # sublime
+    )
+    gpg --recv-keys "${GPG_KEYS[@]}"
 
-sudo pacman -Sy --needed "${PAC_INSTALL[@]}"
+    lk_install_aur "${AUR_INSTALL[@]}"
 
-# otherwise makepkg fails with "unknown public key" errors
-gpg --list-keys >/dev/null
-[ -e "$HOME/.gnupg/gpg.conf" ] || {
-    touch "$HOME/.gnupg/gpg.conf" &&
-        chmod 600 "$HOME/.gnupg/gpg.conf"
+    sudo systemctl enable --now sshd.service
+
+    ! lk_command_exists vim || lk_safe_symlink "$(command -v vim)" "/usr/local/bin/vi" Y
+    ! lk_command_exists xfce4-terminal || lk_safe_symlink "$(command -v xfce4-terminal)" "/usr/local/bin/xterm" Y
+    SUDO_OR_NOT=1 lk_install_gnu_commands
+
+    xfconf-query -c xfwm4 -p /general/theme -n -t string -s "Materia"
+    xfconf-query -c xfwm4 -p /general/title_font -n -t string -s "Cantarell 9"
+    xfconf-query -c xsettings -p /Gtk/FontName -n -t string -s "Cantarell 10"
+    xfconf-query -c xsettings -p /Gtk/MonospaceFontName -n -t string -s "Source Code Pro 11"
+    xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus"
+    xfconf-query -c xsettings -p /Net/SoundThemeName -n -t string -s "elementary"
+    xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Materia"
+
+    exit
+
 }
-[ ! -e "/etc/pacman.d/gnupg/pubring.gpg" ] ||
-    grep -Fq 'keyring /etc/pacman.d/gnupg/pubring.gpg' "$HOME/.gnupg/gpg.conf" || {
-    GPG_CONF="$(cat "$HOME/.gnupg/gpg.conf")" && {
-        [ -z "$GPG_CONF" ] || echo "$GPG_CONF"
-        echo 'keyring /etc/pacman.d/gnupg/pubring.gpg'
-    } >"$HOME/.gnupg/gpg.conf"
-}
-
-lk_install_aur "${AUR_INSTALL[@]}"
-
-sudo systemctl enable --now sshd.service
-
-! lk_command_exists vim || lk_safe_symlink "$(command -v vim)" "/usr/local/bin/vi" Y
-
-xfconf-query -c xfwm4 -p /general/theme -n -t string -s "Arc-Dark-solid"
-xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus-Dark"
-xfconf-query -c xsettings -p /Net/SoundThemeName -n -t string -s "elementary"
-xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Arc-Dark-solid"

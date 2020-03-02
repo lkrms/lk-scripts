@@ -103,32 +103,9 @@ HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
 . /dev/stdin <<<"$(
     shopt -s nullglob
     [ ! -e "$LK_ROOT/config/settings" ] || . "$LK_ROOT/config/settings"
-    lk_variable_set "ADD_TO_PATH" || ADD_TO_PATH=()
-    ADD_TO_PATH+=("$HOME/.local/bin" "$LK_ROOT/bin")
-    ! lk_is_macos || ADD_TO_PATH+=("$LK_ROOT/bin/macos")
-    ! lk_is_linux || ADD_TO_PATH+=("$LK_ROOT/bin/linux")
-    ! lk_is_ubuntu || ADD_TO_PATH+=("$LK_ROOT/bin/ubuntu")
-    DELIMITED_PATH=":$PATH:"
-    for i in "${!ADD_TO_PATH[@]}"; do
-        [ -d "${ADD_TO_PATH[$i]}" ] &&
-            [ "${DELIMITED_PATH//:${ADD_TO_PATH[$i]}:/}" = "$DELIMITED_PATH" ] ||
-            unset "ADD_TO_PATH[$i]"
-    done
-    [ "${#ADD_TO_PATH[@]}" -eq "0" ] || {
-        IFS=:
-        EXPORT_PATH="export PATH=\"\$PATH:${ADD_TO_PATH[*]}\""
-        unset IFS
-        echo "$EXPORT_PATH"
-        eval "$EXPORT_PATH"
-    }
-    ! lk_is_linux || lk_is_root || ! EXPORT_LINUXBREW="$(lk_load_linuxbrew)" || {
-        echo "$EXPORT_LINUXBREW"
-        eval "$EXPORT_LINUXBREW"
-    }
-    lk_is_root || [ -z "${SCREENSHOT_DIR:-}" ] || {
-        { [ -d "$SCREENSHOT_DIR" ] || mkdir -pv "$SCREENSHOT_DIR"; } &&
-            echo "export LK_SCREENSHOT_DIR=\"$SCREENSHOT_DIR\""
-    }
+    LK_EXPORT="$(lk_load_env)"
+    echo "$LK_EXPORT"
+    eval "$LK_EXPORT"
     ! lk_command_exists shfmt || echo 'alias shellformat-test="shfmt -i 4 -l"'
     ! lk_command_exists youtube-dl || echo 'alias youtube-dl-audio="youtube-dl -x --audio-format m4a --audio-quality 0"'
     ! lk_is_macos || {

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # shellcheck disable=SC1091
-LINAC_QT_EXPORTS="$(xrandr-auto.sh --get-qt-exports --set-dpi-only)" &&
+LINAC_QT_EXPORTS="$(xrandr-auto.sh --get-shell-env --set-dpi)" &&
     . /dev/stdin <<<"$LINAC_QT_EXPORTS"
 
 if ldconfig -p | grep -E '^\s*libcanberra-gtk3?\.so' >/dev/null; then

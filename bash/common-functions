@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2016,SC2024,SC2034,SC2068
+# shellcheck disable=SC1087,SC2015,SC2016,SC2024,SC2034,SC2068,SC2119,SC2120
 
 # common-functions
 #   Provide various portable, self-contained Bash functions.
@@ -144,6 +144,22 @@ function lk_escape() {
 #   Replace all occurrences of FIND in STRING with REPLACE_WITH.
 function lk_replace() {
     echo "${3//$(lk_escape "$1" '*' '?' '[' ']' '(')/$2}"
+}
+
+function lk_lower() {
+    [ "$#" -gt "0" ] &&
+        echo "$*" | tr '[:upper:]' '[:lower:]' ||
+        tr '[:upper:]' '[:lower:]'
+}
+
+function lk_upper() {
+    [ "$#" -gt "0" ] &&
+        echo "$*" | tr '[:lower:]' '[:upper:]' ||
+        tr '[:lower:]' '[:upper:]'
+}
+
+function lk_get_hostname() {
+    hostname -s | lk_lower
 }
 
 function lk_safe_tput() {
@@ -399,6 +415,10 @@ function lk_is_wsl() {
     lk_return_cached LK_IS_WSL 'lk_is_linux && grep -qi microsoft /proc/version >/dev/null 2>&1'
 }
 
+function lk_is_arch() {
+    lk_return_cached LK_IS_ARCH 'lk_is_linux && [ -f "/etc/arch-release" ]'
+}
+
 function lk_is_ubuntu() {
     lk_return_cached LK_IS_UBUNTU 'lk_is_linux && lk_command_exists lsb_release && [ "$(lsb_release -si)" = "Ubuntu" ]'
 }
@@ -409,6 +429,35 @@ function lk_is_ubuntu_lts() {
 
 function lk_ubuntu_at_least() {
     lk_is_ubuntu && lk_version_at_least "$(lsb_release -sr)" "$1"
+}
+
+function lk_load_env() {
+    local i j DELIMITED_PATH IFS ADD ADD_FIRST ADD_TO_PATH=(${ADD_TO_PATH[@]+"${ADD_TO_PATH[@]}"} "$LK_ROOT/bin") ADD_TO_PATH_FIRST=("$HOME/.local/bin" ${ADD_TO_PATH_FIRST[@]+"${ADD_TO_PATH_FIRST[@]}"})
+    ! lk_is_macos || ADD_TO_PATH+=("$LK_ROOT/bin/macos")
+    ! lk_is_linux || ADD_TO_PATH+=("$LK_ROOT/bin/linux")
+    ! lk_is_arch || ADD_TO_PATH+=("$LK_ROOT/bin/arch")
+    ! lk_is_ubuntu || ADD_TO_PATH+=("$LK_ROOT/bin/ubuntu")
+    DELIMITED_PATH=":$PATH:"
+    for j in ADD_TO_PATH ADD_TO_PATH_FIRST; do
+        eval "for i in \"\${!$j[@]}\"; do
+            [ -d \"\${$j[\$i]}\" ] && [ \"\${DELIMITED_PATH//:\${$j[\$i]}:/}\" = \"\$DELIMITED_PATH\" ] ||
+                unset \"$j[\$i]\"
+        done"
+    done
+    IFS=:
+    ADD="${ADD_TO_PATH[*]+${ADD_TO_PATH[*]}}"
+    ADD_FIRST="${ADD_TO_PATH_FIRST[*]+${ADD_TO_PATH_FIRST[*]}}"
+    unset IFS
+    [ -z "$ADD$ADD_FIRST" ] || {
+        echo "export PATH=\"${ADD_FIRST:+$ADD_FIRST:}\$PATH${ADD:+:$ADD}\""
+    }
+    ! lk_is_linux || lk_is_root || ! EXPORT_LINUXBREW="$(lk_load_linuxbrew)" || {
+        echo "$EXPORT_LINUXBREW"
+    }
+    lk_is_root || [ -z "${SCREENSHOT_DIR:-}" ] || {
+        { [ -d "$SCREENSHOT_DIR" ] || mkdir -pv "$SCREENSHOT_DIR"; } &&
+            echo "export LK_SCREENSHOT_DIR=\"$SCREENSHOT_DIR\""
+    }
 }
 
 # lk_user_in_group username groupname...
@@ -425,7 +474,7 @@ function lk_make_iso() {
         [ ! -e "$ISOFILE" ] ||
         lk_warn "$ISOFILE already exists" ||
         return
-    mkisofs -r -o "$ISOFILE" "$@"
+    mkisofs -J -o "$ISOFILE" "$@"
 }
 
 # lk_openconnect user host [routes...]
@@ -484,11 +533,11 @@ export HOMEBREW_REPOSITORY="$PREFIX/Homebrew"
 export PATH="\${PATH:+\$PATH:}$PREFIX/bin:$PREFIX/sbin"
 export MANPATH="\${MANPATH:+\$MANPATH:}$PREFIX/share/man:"
 export INFOPATH="\${INFOPATH:+\$INFOPATH:}$PREFIX/share/info"
-function lk_brew_wrap() (
+lk_brew_wrap() (
     eval "\$("$PREFIX/bin/brew" shellenv)"
     "\$@"
 )
-function brew() {
+brew() {
     lk_brew_wrap "$PREFIX/bin/brew" "\$@"
 }
 EOF
@@ -526,9 +575,61 @@ EOF
 
     function lk_check_sysctl() {
         lk_console_message "IPv4 and IPv6"
-        sysctl -ar 'net\..*\.((default|all)\.rp_filter|tcp_syncookies|ip_forward|all\.forwarding)$'
+        sysctl -ar 'net\..*\.(((default|all)\.rp_filter|tcp_syncookies|ip_forward|all\.forwarding)|accept_ra)$'
     }
 
+}
+
+! lk_is_arch || {
+
+    # shellcheck disable=SC2207
+    function lk_install_aur() {
+        local MAKEFLAGS LATEST_FILENAME NO_ERRORS=("$@")
+        MAKEFLAGS="-j$(nproc)" &&
+            LATEST_FILENAME=".lk_latest_installed.$(lk_get_hostname)" || return
+        export MAKEFLAGS
+        mkdir -p "$LK_ROOT/cache/aur" || return
+        ERRORS=($(
+            for AUR in "$@"; do
+                sleep 1
+                while [ "$(jobs -p | wc -l)" -gt "3" ]; do
+                    sleep 1
+                done
+                ( 
+                    (
+                        cd "$LK_ROOT/cache/aur" || exit
+                        if [ ! -d "$AUR" ]; then
+                            lk_console_item "Cloning" "https://aur.archlinux.org/$AUR.git"
+                            git clone "https://aur.archlinux.org/$AUR.git" &&
+                                cd "$AUR" ||
+                                exit
+                        else
+                            cd "$AUR" && {
+                                lk_is_false "${LK_UPDATE_AUR:-1}" || {
+                                    lk_console_item "Checking for updates" "https://aur.archlinux.org/$AUR.git"
+                                    git fetch --quiet &&
+                                        BEHIND="$(git rev-list --count 'HEAD..@{u}')" || exit
+                                    if [ "$BEHIND" -gt "0" ]; then
+                                        rm -f "$LATEST_FILENAME"
+                                        git merge --ff-only || exit
+                                    fi
+                                }
+                            } || exit
+                        fi
+                    ) >&2 || echo "$AUR"
+                ) &
+            done
+            wait
+        ))
+        # we can't use `comm` because order is important
+        [ "${#ERRORS[@]}" -eq "0" ] || NO_ERRORS=($(printf '%s\n' "$@" | grep -Fvf <(printf '%s\n' "${ERRORS[@]}")))
+        for AUR in ${NO_ERRORS[@]+"${NO_ERRORS[@]}"}; do
+            cd "$LK_ROOT/cache/aur/$AUR" || exit
+            [ -e "$LATEST_FILENAME" ] ||
+                makepkg -si --noconfirm --needed && touch "$LATEST_FILENAME" || ERRORS+=("$AUR")
+        done
+        [ "${#ERRORS[@]}" -eq "0" ] || lk_echo_array "${ERRORS[@]}" | lk_console_list "Failed to install" "AUR package" "AUR packages" "$BOLD$RED"
+    }
 }
 
 LK_DEFAULT_CONSOLE_COLOUR="$(lk_safe_tput setaf 6)"

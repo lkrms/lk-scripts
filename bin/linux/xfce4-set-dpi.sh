@@ -75,22 +75,22 @@ else
 fi
 
 # disable Appearance > Fonts > Custom DPI setting
-echo_run xfconf-query -c "xsettings" -p "/Xft/DPI" -n -t int -s "-1"
+xfconf-query -c "xsettings" -p "/Xft/DPI" -n -t int -s "-1"
 
 # mouse cursor size
-echo_run xfconf-query -c "xsettings" -p "/Gtk/CursorThemeSize" -n -t int -s "${_24}"
+xfconf-query -c "xsettings" -p "/Gtk/CursorThemeSize" -n -t int -s "${_24}"
 
-echo_run xfconf-query -c "xsettings" -p "/Gtk/IconSizes" -n -t string -s "gtk-button=${_16},${_16}:gtk-dialog=${_48},${_48}:gtk-dnd=${_32},${_32}:gtk-large-toolbar=${_24},${_24}:gtk-menu=${_16},${_16}:gtk-small-toolbar=${_16},${_16}"
+xfconf-query -c "xsettings" -p "/Gtk/IconSizes" -n -t string -s "gtk-button=${_16},${_16}:gtk-dialog=${_48},${_48}:gtk-dnd=${_32},${_32}:gtk-large-toolbar=${_24},${_24}:gtk-menu=${_16},${_16}:gtk-small-toolbar=${_16},${_16}"
 
-echo_run xfconf-query -c "thunar" -p "/shortcuts-icon-size" -n -t string -s "$THUNAR_ICON_SIZE_24"
+xfconf-query -c "thunar" -p "/shortcuts-icon-size" -n -t string -s "$THUNAR_ICON_SIZE_24"
 
-echo_run xfconf-query -c "thunar" -p "/tree-icon-size" -n -t string -s "$THUNAR_ICON_SIZE_32"
+xfconf-query -c "thunar" -p "/tree-icon-size" -n -t string -s "$THUNAR_ICON_SIZE_32"
 
-echo_run xfconf-query -c "thunar" -p "/last-icon-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_75"
+xfconf-query -c "thunar" -p "/last-icon-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_75"
 
-echo_run xfconf-query -c "thunar" -p "/last-details-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_38"
+xfconf-query -c "thunar" -p "/last-details-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_38"
 
-echo_run xfconf-query -c "thunar" -p "/last-compact-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_25"
+xfconf-query -c "thunar" -p "/last-compact-view-zoom-level" -n -t string -s "$THUNAR_ZOOM_LEVEL_25"
 
 if PANELS="$(
     xfconf-query -c "xfce4-panel" -p "/panels" -lv 2>/dev/null | grep -Eo '^/panels/[^/]+/' | sort | uniq
@@ -99,7 +99,7 @@ if PANELS="$(
     while IFS= read -r PANEL; do
 
         # Xfce panel size
-        echo_run xfconf-query -c "xfce4-panel" -p "${PANEL}size" -n -t int -s "${_24}"
+        xfconf-query -c "xfce4-panel" -p "${PANEL}size" -n -t int -s "${_24}"
 
     done < <(echo "$PANELS")
 
@@ -116,11 +116,11 @@ if PANEL_PLUGINS="$(
         case "$PLUGIN_NAME" in
 
         systray)
-            echo_run xfconf-query -c "xfce4-panel" -p "${PLUGIN_ID}/size-max" -n -t int -s "$PANEL_ICON_SIZE"
+            xfconf-query -c "xfce4-panel" -p "${PLUGIN_ID}/size-max" -n -t int -s "$PANEL_ICON_SIZE"
             ;;
 
         statusnotifier)
-            echo_run xfconf-query -c "xfce4-panel" -p "${PLUGIN_ID}/icon-size" -n -t int -s "$PANEL_ICON_SIZE"
+            xfconf-query -c "xfce4-panel" -p "${PLUGIN_ID}/icon-size" -n -t int -s "$PANEL_ICON_SIZE"
             ;;
 
         esac
@@ -162,7 +162,7 @@ if command_exists dconf; then
         while IFS= read -r PLANK_DOCK; do
 
             # Plank icon size
-            echo_run dconf write "/net/launchpad/plank/docks/${PLANK_DOCK}icon-size" "${_48}"
+            dconf write "/net/launchpad/plank/docks/${PLANK_DOCK}icon-size" "${_48}"
 
         done < <(echo "$PLANK_DOCKS")
 
