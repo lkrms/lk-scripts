@@ -1,9 +1,13 @@
 default partial modifier_keys
 xkb_symbols "all" {
-    include "xfce4(rctrl_mod3)"
+    include "xfce4(rctrl_hyper)"
 };
 
 partial modifier_keys
-xkb_symbols "rctrl_mod3" {
-    modifier_map Control { <RCTL> };
+xkb_symbols "rctrl_hyper" {
+    key <RCTL> {
+        type[Group1]= "ONE_LEVEL",
+        symbols[Group1]= [         Hyper_R ]
+    };
+    modifier_map Mod3 { <RCTL> };
 };
