@@ -363,6 +363,7 @@ AUR_INSTALL+=(
     skypeforlinux-stable-bin
     spotify
     teams
+    todoist-electron
     typora
 
     # multimedia - video

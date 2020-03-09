@@ -9,4 +9,6 @@ if LK_SCRIPT_PATH="$(realpath "$0" 2>/dev/null)" ||
     eval "$(xrandr-auto.sh --get-shell-env --autostart)" || true
 fi
 
+xset -b
+
 . /etc/xdg/xfce4/xinitrc
