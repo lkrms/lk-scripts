@@ -11,6 +11,7 @@ assert_is_desktop
 assert_not_root
 
 PAC_INSTALL=()
+PAC_REMOVE=()
 AUR_INSTALL=()
 
 # alis.sh has these covered
@@ -27,8 +28,6 @@ PAC_PRE_INSTALLED=(
     intel-ucode
     lightdm
     lightdm-gtk-greeter
-    # linux-zen
-    # linux-zen-headers
     mesa
     vulkan-icd-loader
     vulkan-intel
@@ -62,7 +61,6 @@ PAC_PRE_INSTALLED=(
     f2fs-tools
     git
     gnome-initial-setup
-    gnu-netcat
     gpm
     gptfdisk
     grub
@@ -85,6 +83,7 @@ PAC_PRE_INSTALLED=(
     nmap
     ntfs-3g
     ntp
+    openbsd-netcat
     openconnect
     openssh
     openvpn
@@ -190,9 +189,16 @@ PAC_INSTALL+=(
     pavucontrol
     plank
     xorg-xrandr
+    xsecurelock
+    xss-lock
+    zenity
 
     # ristretto alternative
     nomacs
+)
+
+PAC_REMOVE+=(
+    xfce4-screensaver
 )
 
 AUR_INSTALL+=(
@@ -227,6 +233,12 @@ PAC_INSTALL+=(
     noto-fonts-emoji
     noto-fonts-extra
     ttf-dejavu
+    ttf-inconsolata
+    ttf-jetbrains-mono
+    ttf-lato
+    ttf-opensans
+    ttf-roboto
+    ttf-roboto-mono
 )
 
 # terminal-based
@@ -240,6 +252,7 @@ PAC_INSTALL+=(
     # utilities
     bc
     cdrtools
+    jq
     mediainfo
     p7zip
     pv
@@ -247,6 +260,7 @@ PAC_INSTALL+=(
     unison
     unzip
     vim
+    wimlib
 
     # networking
     bridge-utils
@@ -256,12 +270,15 @@ PAC_INSTALL+=(
     # monitoring
     atop
     glances
-    htop
-    iftop
+    htop # 'top' alternative
     iotop
-    nethogs
-    nload
     sysstat
+
+    # network monitoring
+    iftop    # shows network traffic by service and host
+    iproute2 # (ifstat) dumps network statistics by interface
+    nethogs  # groups bandwidth by process ('nettop')
+    nload    # shows bandwidth by interface
 
     # system
     hwinfo
@@ -364,6 +381,7 @@ AUR_INSTALL+=(
     spotify
     teams
     todoist-electron
+    ttf-ms-win10
     typora
 
     # multimedia - video
@@ -396,6 +414,8 @@ PAC_INSTALL+=(
     eslint
     python-pylint
     tidy
+    ttf-font-awesome
+    ttf-ionicons
 
     #
     git
@@ -480,6 +500,10 @@ PAC_INSTALL+=(
             sudo passwd -l root
         }
 
+    PAC_TO_REMOVE=($(comm -12 <(pacman -Qq | sort | uniq) <(lk_echo_array "${PAC_REMOVE[@]}" | sort | uniq)))
+
+    [ "${#PAC_TO_REMOVE[@]}" -eq "0" ] || sudo pacman -R "${PAC_TO_REMOVE[@]}"
+
     PAC_TO_INSTALL=($(comm -13 <(pacman -Qeq | sort | uniq) <(lk_echo_array "${PAC_INSTALL[@]}" | sort | uniq)))
 
     [ "${#PAC_TO_INSTALL[@]}" -eq "0" ] && sudo pacman -Syu || sudo pacman -Syu --asexplicit "${PAC_TO_INSTALL[@]}"
@@ -507,7 +531,11 @@ PAC_INSTALL+=(
 
     lk_install_aur "${AUR_INSTALL[@]}"
 
-    sudo systemctl enable --now sshd.service
+    SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "PasswordAuthentication" "no" " " "#" " " &&
+        sudo systemctl enable --now sshd.service || true
+
+    sudo usermod --append --groups libvirt "$USER" &&
+        sudo systemctl enable --now libvirtd libvirt-guests || true
 
     ! lk_command_exists vim || lk_safe_symlink "$(command -v vim)" "/usr/local/bin/vi" Y
     ! lk_command_exists xfce4-terminal || lk_safe_symlink "$(command -v xfce4-terminal)" "/usr/local/bin/xterm" Y

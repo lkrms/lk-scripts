@@ -9,12 +9,8 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 assert_not_root
 
-[ "$#" -eq "2" ] || die "Usage: $(basename "$0") url instancename [chrome_arg ...]"
-
-URL="$1"
-INSTANCE_NAME="$2"
-shift 2
+[ "$#" -ge "1" ] || die "Usage: $(basename "$0") url [chrome_arg...]"
 
 [ -d "${HOME:-}" ] || die "HOME not set"
 
-google-chrome --user-data-dir="$HOME/.config/$INSTANCE_NAME" --no-first-run --enable-features=OverlayScrollbar --app="$URL" "$@"
+lk_open_chrome_ssb "$@"

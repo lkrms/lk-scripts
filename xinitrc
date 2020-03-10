@@ -11,4 +11,9 @@ fi
 
 xset -b
 
+export XSECURELOCK_PASSWORD_PROMPT="emoticon"
+export XSECURELOCK_SAVER="saver_blank"
+export XSECURELOCK_SHOW_DATETIME=1
+xss-lock -l -- xsecurelock &
+
 . /etc/xdg/xfce4/xinitrc
