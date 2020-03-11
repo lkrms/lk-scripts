@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1087,SC2015,SC2016,SC2024,SC2034,SC2068,SC2119,SC2120
+# shellcheck disable=SC1087,SC2015,SC2016,SC2024,SC2034,SC2068,SC2119,SC2120,SC2207
 
 # common-functions
 #   Provide various portable, self-contained Bash functions.
@@ -72,6 +72,17 @@ function lk_command_exists() {
     done
 }
 
+function lk_which_command() {
+    local COMMAND
+    for COMMAND in "$@"; do
+        if command -v "$COMMAND" >/dev/null 2>&1; then
+            echo "$COMMAND"
+            return
+        fi
+    done
+    return 1
+}
+
 # lk_bash_at_least major minor
 function lk_bash_at_least() {
     [ "${BASH_VERSINFO[0]}" -eq "$1" ] &&
@@ -113,6 +124,10 @@ function lk_is_root() {
 
 function lk_is_yes() {
     [[ "$1" =~ ^[yY]$ ]]
+}
+
+function lk_is_no() {
+    [[ "$1" =~ ^[nN]$ ]]
 }
 
 function lk_is_true() {
@@ -263,7 +278,7 @@ function lk_console_message() {
         lk_echoc -n "==> " "$COLOURS"
         lk_echoc -n "$MESSAGE" "${BOLD:-$(lk_safe_tput bold)}"
         [ -z "$MESSAGE2" ] || lk_echoc -n " $MESSAGE2" "$COLOURS"
-    )"
+    )" >&2
 }
 
 # lk_console_item message item [colour_sequence]
@@ -286,8 +301,8 @@ function lk_console_list() {
         [ -z "$ITEM" ] || ITEMS+=("$ITEM")
     done
     lk_console_message "${MESSAGE%:}:" "$COLOURS"
-    [ "${#ITEMS[@]}" -eq "0" ] || lk_echoc "$(printf '%s\n' "${ITEMS[@]}" | column)" "$COLOURS"
-    [ -z "${SINGLE_NOUN:-}" ] || echo "(${#ITEMS[@]} $(lk_maybe_plural "${#ITEMS[@]}" "$SINGLE_NOUN" "$PLURAL_NOUN"))"
+    [ "${#ITEMS[@]}" -eq "0" ] || lk_echoc "$(printf '%s\n' "${ITEMS[@]}" | column)" "$COLOURS" >&2
+    [ -z "${SINGLE_NOUN:-}" ] || echo "(${#ITEMS[@]} $(lk_maybe_plural "${#ITEMS[@]}" "$SINGLE_NOUN" "$PLURAL_NOUN"))" >&2
 }
 
 # lk_add_file_suffix file_path suffix [ext]
@@ -337,7 +352,7 @@ function lk_safe_symlink() {
     elif [ -e "$LINK" ]; then
         lk_maybe_sudo mv -fv "$LINK" "$LINK.bak" || return
     else
-        lk_maybe_sudo mkdir -p "$(dirname "$LINK")" || return
+        lk_maybe_sudo mkdir -pv "$(dirname "$LINK")" || return
     fi
     lk_maybe_sudo ln -sv "$TARGET" "$LINK"
 }
@@ -395,7 +410,7 @@ function lk_sort_paths_by_date() {
 }
 
 function lk_sort_paths_by_date_reverse() {
-    gnu_stat --printf '%Y :%n\0' "$@" | sort -znr | sed -zE 's/^[0-9]+ ://' | xargs -0 printf '%s\n'
+    lk_sort_paths_by_date | tac
 }
 
 function lk_is_identifier() {
@@ -446,6 +461,14 @@ function lk_is_ubuntu_lts() {
 
 function lk_ubuntu_at_least() {
     lk_is_ubuntu && lk_version_at_least "$(lsb_release -sr)" "$1"
+}
+
+function lk_is_desktop() {
+    lk_return_cached LK_IS_DESKTOP 'lk_is_macos || lk_command_exists X'
+}
+
+function lk_is_server() {
+    ! lk_is_desktop
 }
 
 # lk_apply_setting file_path setting_name setting_value [delimiter] [comment_chars] [space_chars]
@@ -518,50 +541,6 @@ function lk_user_in_group() {
     [ "$(comm -12 <(groups "$1" | sed -E 's/^.*://' | grep -Eo '[^[:space:]]+' | sort) <(lk_echo_array "${@:2}" | sort | uniq) | wc -l)" -gt "0" ]
 }
 
-function lk_get_firefox_profile() {
-    local INI_PATH PROFILE_PATH
-    INI_PATH="$HOME/.mozilla/firefox/installs.ini"
-    [ -f "$INI_PATH" ] &&
-        PROFILE_PATH="$HOME/.mozilla/firefox/$(grep -m 1 '^Default=' "$INI_PATH" | sed 's/^Default=//')" || return
-    echo "$PROFILE_PATH"
-}
-
-# lk_set_firefox_pref pref_name raw_value
-function lk_set_firefox_pref() {
-    local USERJS_PATH PREF_LINE USERJS
-    USERJS_PATH="$(lk_get_firefox_profile)/user.js" || return
-    [ -f "$USERJS_PATH" ] || touch "$USERJS_PATH" || return
-    PREF_LINE="user_pref(\"$1\", $2);"
-    grep -Fxq "$PREF_LINE" "$USERJS_PATH" || {
-        USERJS="$(sed -E "/^user_pref\(\"$(lk_escape_ere "$1")\"/d" "$USERJS_PATH")" || return
-        {
-            [ -z "$USERJS" ] || echo "$USERJS"
-            echo "$PREF_LINE"
-        } >"$USERJS_PATH"
-    }
-}
-
-function lk_open_firefox_ssb() (
-    if lk_set_firefox_pref "browser.ssb.enabled" "true"; then
-        nohup firefox --ssb "$@" </dev/null >/dev/null 2>&1 &
-    else
-        nohup firefox "$@" </dev/null >/dev/null 2>&1 &
-    fi
-    disown
-)
-
-function lk_open_chrome_ssb() (
-    local CHROME_COMMAND INSTANCE_NAME
-    for CHROME_COMMAND in google-chrome-stable google-chrome; do
-        lk_command_exists "$CHROME_COMMAND" || continue
-        INSTANCE_NAME="$(echo "$1" | sed -Ee 's/^https?:\/\/([^/]+)(\/.*)?$/\1_\2/' -e 's/\//_/g' -e 's/[_]+$//')"
-        nohup "$CHROME_COMMAND" --user-data-dir="$HOME/.config/$INSTANCE_NAME" --no-first-run --enable-features=OverlayScrollbar --app="$1" "${@:2}" </dev/null >/dev/null 2>&1 &
-        disown
-        return
-    done
-    return 1
-)
-
 # lk_make_iso path1...
 function lk_make_iso() {
     local ISOFILE
@@ -571,32 +550,6 @@ function lk_make_iso() {
         lk_warn "$ISOFILE already exists" ||
         return
     mkisofs -J -o "$ISOFILE" "$@"
-}
-
-# lk_openconnect user host [routes...]
-function lk_openconnect() {
-    local VPN_USER="$1" VPN_HOST="$2" VPN_PASSWD COMMAND
-    shift 2 || return
-    ! pgrep -x openconnect >/dev/null ||
-        lk_warn "openconnect is already running" ||
-        return
-    lk_secret "$VPN_USER@$VPN_HOST" "$VPN_HOST (OpenConnect)" openconnect &&
-        VPN_PASSWD="$LK_SECRET_PASSWORD" &&
-        [ -n "$VPN_PASSWD" ] ||
-        lk_warn "password required" ||
-        return
-    COMMAND=(
-        openconnect
-        --background
-        --script "vpn-slice ${*:---route-internal}"
-        --verbose
-        --dump-http-traffic
-        --passwd-on-stdin
-        --protocol "${VPN_PROTOCOL:-gp}"
-        --user "$VPN_USER"
-        "$VPN_HOST"
-    )
-    echo "$VPN_PASSWD" | sudo "${COMMAND[@]}" >>"/tmp/openconnect.$USER.log" 2>&1
 }
 
 set -o pipefail
@@ -639,25 +592,6 @@ brew() {
 EOF
     }
 
-    # lk_secret value label [namespace]
-    function lk_secret() {
-        local NAMESPACE
-        NAMESPACE="${3:-$(basename "$0")}"
-        lk_command_exists secret-tool || lk_warn "secret-tool: command not found" || return
-        if ! LK_SECRET_PASSWORD="$(secret-tool lookup "$NAMESPACE" "$1" 2>/dev/null)"; then
-            lk_console_item "Password not found in keychain" "$NAMESPACE:$1" "${RED:-$(lk_safe_tput setaf 1)}" >&2
-            [ -t 0 ] &&
-                [ -t 1 ] &&
-                lk_console_message "Please enter the password for $2 now" &&
-                secret-tool store --label="$2" "$NAMESPACE" "$1" &&
-                LK_SECRET_PASSWORD="$(secret-tool lookup "$NAMESPACE" "$1")" ||
-                {
-                    LK_SECRET_PASSWORD=
-                    return 1
-                }
-        fi
-    }
-
     function lk_check_ext4() {
         local PAIRS SOURCE TARGET FSTYPE SIZE AVAIL
         findmnt -Pt ext4,ext3,ext2 -o SOURCE,TARGET,FSTYPE,SIZE,AVAIL | while IFS= read -r PAIRS; do
@@ -672,16 +606,6 @@ EOF
     function lk_check_sysctl() {
         lk_console_message "IPv4 and IPv6"
         sysctl -ar 'net\..*\.(((default|all)\.rp_filter|tcp_syncookies|ip_forward|all\.forwarding)|accept_ra)$'
-    }
-
-    function lk_install_icon() {
-        local SIZE SIZES=(16x16 24x24 32x32 48x48 64x64 96x96 128x128 256x256 512x512 1024x1024)
-        [ -f "$1" ] || return
-        for SIZE in "${SIZES[@]}"; do
-            mkdir -p "$HOME/.local/share/icons/hicolor/$SIZE/apps" &&
-                convert "$1" -resize "$SIZE" "$HOME/.local/share/icons/hicolor/$SIZE/apps/$(basename "$1")" || return
-        done
-        ! lk_command_exists gtk-update-icon-cache || gtk-update-icon-cache --force --ignore-theme-index --quiet "$HOME/.local/share/icons/hicolor" || true
     }
 
 }

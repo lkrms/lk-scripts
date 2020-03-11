@@ -1322,6 +1322,7 @@ ROOT_DIR_RELATIVE="$(dirname "$COMMON_SCRIPT_PATH")/.."
 ROOT_DIR="$(realpath "$ROOT_DIR_RELATIVE" 2>/dev/null)" || ROOT_DIR="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "$ROOT_DIR_RELATIVE")"
 
 . "$ROOT_DIR/bash/common-functions"
+lk_is_server || . "$ROOT_DIR/bash/common-desktop"
 
 lk_trap_err
 

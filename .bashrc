@@ -18,9 +18,10 @@ eval "$(
 )"
 
 . "$LK_ROOT/bash/common-functions"
+lk_is_server || . "$LK_ROOT/bash/common-desktop"
 
 function lk_find_largest() {
-    gnu_find . -xdev -type f ${@+\( "$@" \)} -print0 | xargs -0 gnu_stat --format '%14s %N' | sort -nr | less
+    gnu_find -L . -xdev -type f ${@+\( "$@" \)} -print0 | xargs -0 gnu_stat --format '%14s %N' | sort -nr | less
 }
 
 function lk_find_latest() {
@@ -30,7 +31,7 @@ function lk_find_latest() {
         TYPE_ARGS+=(${TYPE_ARGS[@]+-o} -type "${TYPE:$i-1:1}")
     done
     [ "${#TYPE_ARGS[@]}" -eq 2 ] || TYPE_ARGS=(\( "${TYPE_ARGS[@]}" \))
-    gnu_find . -xdev -regextype posix-extended ${@+\( "$@" \)} "${TYPE_ARGS[@]}" -print0 | xargs -0 gnu_stat --format '%Y :%y %N' | sort -nr | cut -d: -f2- | less
+    gnu_find -L . -xdev -regextype posix-extended ${@+\( "$@" \)} "${TYPE_ARGS[@]}" -print0 | xargs -0 gnu_stat --format '%Y :%y %N' | sort -nr | cut -d: -f2- | less
 }
 
 function lk_before_command() {
@@ -151,5 +152,5 @@ function find_all() {
     local FIND="${1:-}"
     [ -n "$FIND" ] || return
     shift
-    gnu_find . -xdev -iname "*$FIND*" "$@"
+    gnu_find -L . -xdev -iname "*$FIND*" "$@"
 }
