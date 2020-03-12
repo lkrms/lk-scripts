@@ -10,10 +10,13 @@ if LK_SCRIPT_PATH="$(realpath "$0" 2>/dev/null)" ||
 fi
 
 xset -b
+xset s 120 60
 
 export XSECURELOCK_PASSWORD_PROMPT="emoticon"
 export XSECURELOCK_SAVER="saver_blank"
 export XSECURELOCK_SHOW_DATETIME=1
-xss-lock -l -- xsecurelock &
+xss-lock -n /usr/lib/xsecurelock/dimmer -l -- xsecurelock &
+
+xfconf-query -c xfce4-session -p /general/LockCommand -n -t string -s "xset s activate"
 
 . /etc/xdg/xfce4/xinitrc

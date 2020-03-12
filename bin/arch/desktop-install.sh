@@ -32,8 +32,10 @@ PAC_PRE_INSTALLED=(
     vulkan-icd-loader
     vulkan-intel
     xfce4
-    xfce4-goodies
+    xfce4-goodies # except xfce4-screensaver
     xorg-server
+    xsecurelock
+    xss-lock
 
     # probably not
     lvm2
@@ -56,19 +58,25 @@ PAC_PRE_INSTALLED=(
     dmraid
     dnsmasq
     dosfstools
+    engrampa
     ethtool
     exfat-utils
     f2fs-tools
     git
     gnome-initial-setup
+    gnome-keyring
     gpm
     gptfdisk
     grub
+    gvfs
+    gvfs-smb
     hdparm
     ipw2100-fw
     ipw2200-fw
     jfsutils
     lftp
+    libcanberra
+    libcanberra-pulse
     linux-firmware
     lsb-release
     lvm2
@@ -88,6 +96,8 @@ PAC_PRE_INSTALLED=(
     openssh
     openvpn
     parted
+    pavucontrol
+    plank
     ppp
     pptpclient
     reiserfsprogs
@@ -105,6 +115,8 @@ PAC_PRE_INSTALLED=(
     wpa_supplicant
     xfsprogs
     xl2tpd
+    xorg-xrandr
+    zenity
 
     # "base"
     bash
@@ -179,24 +191,6 @@ AUR_INSTALL+=(
 )
 
 # essentials
-PAC_INSTALL+=(
-    engrampa
-    gnome-keyring
-    gvfs
-    gvfs-smb
-    libcanberra
-    libcanberra-pulse
-    pavucontrol
-    plank
-    xorg-xrandr
-    xsecurelock
-    xss-lock
-    zenity
-
-    # ristretto alternative
-    nomacs
-)
-
 PAC_REMOVE+=(
     xfce4-screensaver
 )
@@ -239,6 +233,7 @@ PAC_INSTALL+=(
     ttf-opensans
     ttf-roboto
     ttf-roboto-mono
+    ttf-ubuntu-font-family
 )
 
 # terminal-based
@@ -286,6 +281,7 @@ PAC_INSTALL+=(
 )
 
 AUR_INSTALL+=(
+    cloud-utils
     vpn-slice
 )
 
@@ -304,6 +300,7 @@ PAC_INSTALL+=(
     keepassxc
     libreoffice-fresh
     nextcloud-client
+    nomacs # ristretto alternative
     qpdfview
     remmina
     scribus
@@ -328,6 +325,7 @@ PAC_INSTALL+=(
     perl-image-exiftool # EXIF metadata
     python-lxml         # spreadsheets
     recoll
+    unrtf
 
     # multimedia - playback
     clementine
@@ -377,6 +375,7 @@ AUR_INSTALL+=(
     espanso
     ghostwriter
     google-chrome
+    masterpdfeditor
     skypeforlinux-stable-bin
     spotify
     teams
@@ -532,6 +531,7 @@ PAC_INSTALL+=(
     lk_install_aur "${AUR_INSTALL[@]}"
 
     SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "PasswordAuthentication" "no" " " "#" " " &&
+        SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "AcceptEnv" "LANG LC_*" " " "#" " " &&
         sudo systemctl enable --now sshd.service || true
 
     sudo usermod --append --groups libvirt "$USER" &&
@@ -540,14 +540,6 @@ PAC_INSTALL+=(
     ! lk_command_exists vim || lk_safe_symlink "$(command -v vim)" "/usr/local/bin/vi" Y
     ! lk_command_exists xfce4-terminal || lk_safe_symlink "$(command -v xfce4-terminal)" "/usr/local/bin/xterm" Y
     SUDO_OR_NOT=1 lk_install_gnu_commands
-
-    xfconf-query -c xfwm4 -p /general/theme -n -t string -s "Materia"
-    xfconf-query -c xfwm4 -p /general/title_font -n -t string -s "Cantarell 9"
-    xfconf-query -c xsettings -p /Gtk/FontName -n -t string -s "Cantarell 10"
-    xfconf-query -c xsettings -p /Gtk/MonospaceFontName -n -t string -s "Source Code Pro 11"
-    xfconf-query -c xsettings -p /Net/IconThemeName -n -t string -s "Papirus"
-    xfconf-query -c xsettings -p /Net/SoundThemeName -n -t string -s "elementary"
-    xfconf-query -c xsettings -p /Net/ThemeName -n -t string -s "Materia"
 
     exit
 
