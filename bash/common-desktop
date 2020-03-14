@@ -24,26 +24,23 @@ function lk_set_firefox_pref() {
     }
 }
 
-function lk_open_firefox_ssb() (
+function lk_open_firefox_ssb() {
     if lk_set_firefox_pref "browser.ssb.enabled" "true"; then
-        nohup firefox --ssb "$@" </dev/null >/dev/null 2>&1 &
+        firefox --ssb "$@"
     else
-        nohup firefox "$@" </dev/null >/dev/null 2>&1 &
+        firefox "$@"
     fi
-    disown
-)
+}
 
-function lk_open_chrome_ssb() (
+function lk_open_chrome_ssb() {
     local CHROME_COMMAND INSTANCE_NAME
-    for CHROME_COMMAND in google-chrome-stable google-chrome; do
-        lk_command_exists "$CHROME_COMMAND" || continue
-        INSTANCE_NAME="$(echo "$1" | sed -Ee 's/^https?:\/\/([^/]+)(\/.*)?$/\1_\2/' -e 's/\//_/g' -e 's/[_]+$//')"
-        nohup "$CHROME_COMMAND" --user-data-dir="$HOME/.config/$INSTANCE_NAME" --no-first-run --enable-features=OverlayScrollbar --app="$1" "${@:2}" </dev/null >/dev/null 2>&1 &
-        disown
-        return
+    for CHROME_COMMAND in google-chrome-stable google-chrome chrome; do
+        lk_command_exists "$CHROME_COMMAND" && break || CHROME_COMMAND=
     done
-    return 1
-)
+    [ -n "$CHROME_COMMAND" ] || return
+    INSTANCE_NAME="$(echo "$1" | sed -Ee 's/^https?:\/\/([^/]+)(\/.*)?$/\1_\2/' -e 's/\//_/g' -e 's/[_]+$//')"
+    "$CHROME_COMMAND" --user-data-dir="$HOME/.config/$INSTANCE_NAME" --no-first-run --enable-features=OverlayScrollbar --app="$1" "${@:2}"
+}
 
 # lk_openconnect user host [routes...]
 function lk_openconnect() {
