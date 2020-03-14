@@ -1,0 +1,15 @@
+#cloud-config
+ssh_pwauth: false
+users:
+  - name: lina
+    gecos: Luke Arms
+    shell: /bin/bash
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQC4TQaVVf3oS2voCCdWMum75lSuaq2DkXk0anOzvnbDiUC3vgJaohEVd00KRwDDEE5UH/VntS9ooyT/7RNdD/5j3EVfhD7n6hqt5Zt0bDCplNOc14R/pP0Xc7ztWgco1T5uvn0HFrjxGuKN6FxNvjD4Md6ipgBC1o5CQwFORSludOOolMElOV66AxxGhYYQ70tELwwUFcP8pVLjkLggUqxfxru3S5hw1rrpACzGETMGMZkpID88pN10Q+cwfgz/KpQ2iGtuils49ErULPHgmo5I4EeuQb6zL/KDKLuSVbXf8hBkt9reOBdz1/6QXeSL90dfVRxGSwuyBR4/+vbrWXSdsDdKCpOM+kUH8ZcgV7GyFja4u0owJgHPB2wIEjJ8efdkmLg055jwUJKTKDDEztrCsln0Gzt1e92oDzbXROOMB5cMf6AtSN7a0wOaIYr2WyisIHXJ45rcwYjm/oxRPdQYOgk3XwJ5ZPesfq3Uc7p1hIP9qrLS6L7WFLSghJ0+BPW6TpvJokK20UNA2K8NBHaWOi9p7rHa1JJl/2FVJjZMXdMB0mlZ/CWy2RfhCc97nqDrhX6NM8OnLH+d6f1PeHJ/FZqb23jl5OyCrLDKJ0JEqU4JU1pmDZCvrjaIHZSrfMRKpL8wWBCtwK2dMtnoN/h3MDs/RfaYQUPQ1LLQ3EuDRw==
+apt:
+  primary:
+    - arches: [default]
+      uri: http://ubuntu.mirror.lkrms.org/ubuntu/
+package_upgrade: true
+package_reboot_if_required: true

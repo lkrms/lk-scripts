@@ -1,6 +1,9 @@
 #!/bin/bash
 # shellcheck disable=SC2034
 
+#CLOUDIMG_POOL_ROOT="/var/lib/libvirt/images"
+#UBUNTU_CLOUDIMG_HOST="cloud-images.ubuntu.com"
+
 SCREENSHOT_DIR="$HOME/Pictures/Screenshots"
 
 SCRATCHPAD_DIR="$HOME/Documents/Notes/Daily"

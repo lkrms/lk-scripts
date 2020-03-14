@@ -278,10 +278,12 @@ PAC_INSTALL+=(
     # system
     hwinfo
     sysfsutils
+    #ubuntu-keyring
 )
 
 AUR_INSTALL+=(
     cloud-utils
+    ubuntu-keyring
     vpn-slice
 )
 
@@ -508,17 +510,14 @@ PAC_INSTALL+=(
     [ "${#PAC_TO_INSTALL[@]}" -eq "0" ] && sudo pacman -Syu || sudo pacman -Syu --asexplicit "${PAC_TO_INSTALL[@]}"
 
     # otherwise makepkg fails with "unknown public key" errors
-    gpg --list-keys >/dev/null
+    lk_console_message "Checking GPG keys"
+    [ -e "$HOME/.gnupg" ] || gpg --list-keys >/dev/null
     [ -e "$HOME/.gnupg/gpg.conf" ] || {
         touch "$HOME/.gnupg/gpg.conf" &&
             chmod 600 "$HOME/.gnupg/gpg.conf"
     }
-    [ ! -e "/etc/pacman.d/gnupg/pubring.gpg" ] ||
-        grep -Fq 'keyring /etc/pacman.d/gnupg/pubring.gpg' "$HOME/.gnupg/gpg.conf" || {
-        GPG_CONF="$(cat "$HOME/.gnupg/gpg.conf")" && {
-            [ -z "$GPG_CONF" ] || echo "$GPG_CONF"
-            echo 'keyring /etc/pacman.d/gnupg/pubring.gpg'
-        } >"$HOME/.gnupg/gpg.conf"
+    [ ! -e "/etc/pacman.d/gnupg/pubring.gpg" ] || {
+        lk_apply_setting "$HOME/.gnupg/gpg.conf" "keyring" "/etc/pacman.d/gnupg/pubring.gpg" " "
     }
     GPG_KEYS=(
         194B631AB2DA2888 # devilspie2
@@ -526,7 +525,11 @@ PAC_INSTALL+=(
         4773BD5E130D1D45 # spotify
         F57D4F59BD3DF454 # sublime
     )
-    gpg --recv-keys "${GPG_KEYS[@]}"
+    MISSING_GPG_KEYS=($(comm -13 <(lk_get_gpg_keyids | lk_lower | sort | uniq) <(lk_echo_array "${GPG_KEYS[@]}" | lk_lower | sort | uniq)))
+    [ "${#MISSING_GPG_KEYS[@]}" -eq "0" ] || {
+        lk_console_message "Importing ${#MISSING_GPG_KEYS[@]} GPG $(lk_maybe_plural "${#MISSING_GPG_KEYS[@]}" key keys)"
+        gpg --recv-keys "${GPG_KEYS[@]}"
+    }
 
     lk_install_aur "${AUR_INSTALL[@]}"
 

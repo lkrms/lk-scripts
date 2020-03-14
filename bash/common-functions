@@ -471,6 +471,10 @@ function lk_is_server() {
     ! lk_is_desktop
 }
 
+function lk_get_gpg_keyids() {
+    gpg --list-keys --with-colons | { grep -E '^(pub|sub):' || true; } | cut -d: -f5
+}
+
 # lk_apply_setting file_path setting_name setting_value [delimiter] [comment_chars] [space_chars]
 # shellcheck disable=SC2005
 function lk_apply_setting() {
@@ -652,7 +656,7 @@ EOF
         for AUR in ${NO_ERRORS[@]+"${NO_ERRORS[@]}"}; do
             cd "$LK_ROOT/cache/aur/$AUR" || exit
             [ -e "$LATEST_FILENAME" ] ||
-                makepkg -si --noconfirm --needed && touch "$LATEST_FILENAME" || ERRORS+=("$AUR")
+                makepkg -sic --noconfirm --needed && touch "$LATEST_FILENAME" || ERRORS+=("$AUR")
         done
         [ "${#ERRORS[@]}" -eq "0" ] || lk_echo_array "${ERRORS[@]}" | lk_console_list "Failed to install" "AUR package" "AUR packages" "$BOLD$RED"
     }
