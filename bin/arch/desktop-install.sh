@@ -187,6 +187,7 @@ is_virtual || PAC_INSTALL+=(
 )
 
 AUR_INSTALL+=(
+    brother-hl5450dn
     r8152-dkms # common USB / USB-C NIC
 )
 
@@ -195,9 +196,16 @@ PAC_REMOVE+=(
     xfce4-screensaver
 )
 
+PAC_INSTALL+=(
+    cups
+    i2c-tools # contains i2c-dev module, required by ddcutil
+)
+
 AUR_INSTALL+=(
+    ddcutil
     mugshot
     xfce4-panel-profiles
+    xiccd
 )
 
 # themes and fonts
@@ -536,6 +544,8 @@ PAC_INSTALL+=(
     SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "PasswordAuthentication" "no" " " "#" " " &&
         SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "AcceptEnv" "LANG LC_*" " " "#" " " &&
         sudo systemctl enable --now sshd.service || true
+
+    sudo systemctl enable --now org.cups.cupsd.service || true
 
     sudo usermod --append --groups libvirt "$USER" &&
         sudo systemctl enable --now libvirtd libvirt-guests || true
