@@ -430,7 +430,7 @@ function lk_version_at_least() {
 
 function lk_return_cached() {
     lk_variable_set "$1" || {
-        eval "$2;$1=\"\$?\""
+        eval "$1=0;{ $2;}||$1=\"\$?\""
     }
     return "${!1}"
 }

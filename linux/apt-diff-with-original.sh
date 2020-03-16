@@ -26,7 +26,7 @@ for p in "${PACKAGES[@]}"; do
 
     apt_package_installed "$p" || continue
 
-    DOWNLOAD_INFO=($(apt-get "${APT_GET_OPTIONS[@]}" download --print-uris "$p" 2>/dev/null)) && [ "${#DOWNLOAD_INFO[@]}" -ge "2" ] || {
+    DOWNLOAD_INFO=($(apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} download --print-uris "$p" 2>/dev/null)) && [ "${#DOWNLOAD_INFO[@]}" -ge "2" ] || {
         console_message "Unable to get archive URI for package:" "$p" "$BOLD" "$RED" >&2
         continue
     }

@@ -188,6 +188,7 @@ is_virtual || PAC_INSTALL+=(
 
 AUR_INSTALL+=(
     brother-hl5450dn
+    brother-hll3230cdw
     r8152-dkms # common USB / USB-C NIC
 )
 
@@ -247,6 +248,7 @@ PAC_INSTALL+=(
 # terminal-based
 PAC_INSTALL+=(
     # shells
+    asciinema
     bash-completion
     byobu
     ksh
@@ -290,6 +292,7 @@ PAC_INSTALL+=(
 )
 
 AUR_INSTALL+=(
+    asciicast2gif
     cloud-utils
     ubuntu-keyring
     vpn-slice
@@ -459,6 +462,7 @@ PAC_INSTALL+=(
 
     #
     shellcheck
+    shfmt
 
     #
     lua
@@ -492,13 +496,17 @@ PAC_INSTALL+=(
     php-fpm
 )
 
-# libvirt
+# VMs and containers
 PAC_INSTALL+=(
+    # libvirt
     dnsmasq
     ebtables
     libvirt
     qemu
     virt-manager
+
+    # docker
+    docker
 )
 
 {
@@ -543,12 +551,20 @@ PAC_INSTALL+=(
 
     SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "PasswordAuthentication" "no" " " "#" " " &&
         SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "AcceptEnv" "LANG LC_*" " " "#" " " &&
-        sudo systemctl enable --now sshd.service || true
+        sudo systemctl enable --now sshd || true
 
-    sudo systemctl enable --now org.cups.cupsd.service || true
+    # TODO: configure /etc/ntp.conf with "server ntp.lkrms.org iburst"
+    sudo systemctl enable --now ntpd || true
 
-    sudo usermod --append --groups libvirt "$USER" &&
+    sudo systemctl enable --now org.cups.cupsd || true
+
+    SUDO_OR_NOT=1 lk_apply_setting "/etc/conf.d/libvirt-guests" "ON_SHUTDOWN" "shutdown" "=" "# " &&
+        SUDO_OR_NOT=1 lk_apply_setting "/etc/conf.d/libvirt-guests" "SHUTDOWN_TIMEOUT" "300" "=" "# " &&
+        sudo usermod --append --groups libvirt "$USER" &&
         sudo systemctl enable --now libvirtd libvirt-guests || true
+
+    sudo usermod --append --groups docker "$USER" &&
+        sudo systemctl enable --now docker || true
 
     ! lk_command_exists vim || lk_safe_symlink "$(command -v vim)" "/usr/local/bin/vi" Y
     ! lk_command_exists xfce4-terminal || lk_safe_symlink "$(command -v xfce4-terminal)" "/usr/local/bin/xterm" Y

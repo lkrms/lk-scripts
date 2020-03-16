@@ -36,6 +36,7 @@ assert_not_root
     brew_mark_cache_clean
     brew_check_taps
 
+    apt_register_repository docker "https://download.docker.com/linux/ubuntu/gpg" "deb [arch=amd64] https://download.docker.com/linux/ubuntu $DISTRIB_CODENAME stable" "origin Docker" "containerd.io docker-ce*"
     apt_register_repository webmin "http://www.webmin.com/jcameron-key.asc" "deb https://download.webmin.com/download/repository sarge contrib" "origin Jamie Cameron" "webmin"
 
     APT_ESSENTIALS+=(
@@ -57,11 +58,12 @@ assert_not_root
     apt_install_packages "Webmin" "webmin"
     apt_install_packages "Samba server" "samba"
     apt_install_packages "DHCP server" "dnsmasq"
-    apt_install_packages "PPPoE client" "pppoe pppoeconf"
+    apt_install_packages "PPPoE client" "pppoe pppoeconf wide-dhcpv6-client"
     apt_install_packages "Squid proxy server" "squid"
     apt_install_packages "APT proxy server" "apt-cacher-ng"
     apt_install_packages "BitTorrent client" "transmission-cli"
     apt_install_packages "youtube-dl dependencies" "ffmpeg rtmpdump"
+    apt_install_packages "Docker" "containerd.io docker-ce docker-ce-cli"
 
     brew_queue_formulae "Unison" "unison"
     brew_queue_formulae "Shell script formatter" "shfmt"
