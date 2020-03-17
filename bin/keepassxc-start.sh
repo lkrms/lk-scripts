@@ -76,9 +76,10 @@ IFS=$'\n\n\n'
 if [ "$DAEMON" -eq "0" ]; then
 
     nohup "$KEEPASSXC_PATH" --pw-stdin "$@" <<<"${PASSWORDS[*]}" >"/tmp/$(basename "$0").log" 2>&1 &
+    disown
 
 else
 
-    "$KEEPASSXC_PATH" --pw-stdin "$@" <<<"${PASSWORDS[*]}" &
+    "$KEEPASSXC_PATH" --pw-stdin "$@" <<<"${PASSWORDS[*]}"
 
 fi
