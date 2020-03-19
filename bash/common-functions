@@ -510,6 +510,61 @@ function lk_apply_setting() {
     }
 }
 
+# EXPAND_WHITESPACE=<1|0|Y|N> lk_enable_entry file_path entry [comment_chars] [trailing_pattern]
+#   If TRAILING_PATTERN is unset, trailing whitespace (followed by an optional
+#   comment if COMMENT_CHARS is set) will be matched after ENTRY.
+#   EXPAND_WHITESPACE is enabled by default and allows one or more whitespace characters
+#   in ENTRY to match one or more whitespace characters in FILE_PATH. Escaped whitespace
+#   characters in ENTRY are unescaped without expansion.
+function lk_enable_entry() {
+    local FILE_PATH="$1" ENTRY="$2" OPTIONAL_COMMENT_PATTERN COMMENT_PATTERN TRAILING_PATTERN \
+        ENTRY_ESCAPED CHECK_PATTERN SEARCH_PATTERN REPLACED
+    OPTIONAL_COMMENT_PATTERN="${3:+[$(lk_escape_ere "$3")]*}"
+    COMMENT_PATTERN="${3:+${3// /}}"
+    COMMENT_PATTERN="${COMMENT_PATTERN:+[$(lk_escape_ere "$COMMENT_PATTERN")]+}"
+    TRAILING_PATTERN="${4-\\s+${COMMENT_PATTERN:+(${COMMENT_PATTERN}.*)?}}"
+    ENTRY_ESCAPED="$(lk_escape_ere "$ENTRY")"
+    lk_is_false "${EXPAND_WHITESPACE:-1}" || ENTRY_ESCAPED="$(sed -Ee 's/(^|[^\])\s+/\1\\s+/g' -e 's/\\\\(\s)/\1/g' <<<"$ENTRY_ESCAPED")"
+    CHECK_PATTERN="^$ENTRY_ESCAPED${TRAILING_PATTERN:+($TRAILING_PATTERN)?}\$"
+    grep -Eq "$CHECK_PATTERN" "$FILE_PATH" || {
+        # try to replace a commented entry
+        SEARCH_PATTERN="^$OPTIONAL_COMMENT_PATTERN($ENTRY_ESCAPED${TRAILING_PATTERN:+($TRAILING_PATTERN)?})\$"
+        REPLACED="$(sed -E "0,/$SEARCH_PATTERN/{s/$SEARCH_PATTERN/\1/}" "$FILE_PATH")" || return
+        [ -f "$FILE_PATH.orig" ] || lk_maybe_sudo cp -pv "$FILE_PATH" "$FILE_PATH.orig" || return
+        if grep -Eq "$CHECK_PATTERN" <<<"$REPLACED"; then
+            lk_maybe_sudo tee "$FILE_PATH" <<<"$REPLACED" >/dev/null || return
+        else
+            {
+                echo "$REPLACED"
+                echo "$ENTRY"
+            } | lk_maybe_sudo tee "$FILE_PATH" >/dev/null || return
+        fi
+    }
+}
+
+# lk_disable_entry file_path entry_pattern comment_chars [trailing_pattern]
+#   ENTRY_PATTERN must be properly escaped. The first character in COMMENT_CHARS
+#   is prepended to any matching entries.
+function lk_disable_entry() {
+    local FILE_PATH="$1" ENTRY_PATTERN="$2" COMMENT_CHAR COMMENT_PATTERN TRAILING_PATTERN \
+        CHECK_PATTERN REPLACED
+    [ -n "$3" ] || return
+    COMMENT_CHAR="${3:0:1}"
+    COMMENT_PATTERN="[$(lk_escape_ere "$3")]*"
+    TRAILING_PATTERN="${4-(\\s+$COMMENT_PATTERN.*)?}"
+    CHECK_PATTERN="^$ENTRY_PATTERN$TRAILING_PATTERN\$"
+    ! grep -Eq "$CHECK_PATTERN" "$FILE_PATH" || {
+        REPLACED="$(sed -E "s/$CHECK_PATTERN/$(lk_escape_ere_replace "$COMMENT_CHAR")&/" "$FILE_PATH")" || return
+        if ! grep -Eq "$CHECK_PATTERN" <<<"$REPLACED"; then
+            [ -f "$FILE_PATH.orig" ] || lk_maybe_sudo cp -pv "$FILE_PATH" "$FILE_PATH.orig" || return
+            lk_maybe_sudo tee "$FILE_PATH" <<<"$REPLACED" >/dev/null || return
+        else
+            lk_warn "unable to disable entry in $FILE_PATH"
+            return 1
+        fi
+    }
+}
+
 function lk_load_env() {
     local i j DELIMITED_PATH IFS ADD ADD_FIRST ADD_TO_PATH=(${ADD_TO_PATH[@]+"${ADD_TO_PATH[@]}"} "$LK_ROOT/bin") ADD_TO_PATH_FIRST=("$HOME/.local/bin" ${ADD_TO_PATH_FIRST[@]+"${ADD_TO_PATH_FIRST[@]}"})
     ! lk_is_macos || ADD_TO_PATH+=("$LK_ROOT/bin/macos")

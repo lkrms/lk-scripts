@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2034,SC2174,SC2207
+# shellcheck disable=SC1090,SC2015,SC2034,SC2174,SC2207
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -16,180 +16,190 @@ AUR_INSTALL=()
 
 # alis.sh has these covered
 PAC_PRE_INSTALLED=(
-    linux
-    linux-headers
-    networkmanager
-    xdg-user-dirs
+    #linux
+    #linux-headers
+    #networkmanager
+    #xdg-user-dirs
 
     # probably
-    dosfstools
-    grub
-    intel-media-driver
-    intel-ucode
-    lightdm
-    lightdm-gtk-greeter
-    mesa
-    vulkan-icd-loader
-    vulkan-intel
-    xfce4
-    xfce4-goodies # except xfce4-screensaver
-    xorg-server
-    xsecurelock
-    xss-lock
+    #dosfstools
+    #grub
+    #intel-media-driver
+    #intel-ucode
+    #lightdm
+    #lightdm-gtk-greeter
+    #mesa
+    #vulkan-icd-loader
+    #vulkan-intel
+    #xfce4
+    #xfce4-goodies # except xfce4-screensaver
+    #xorg-server
+    #xsecurelock
+    #xss-lock
 
     # probably not
-    lvm2
+    #lvm2
 
     # if needed
-    virtualbox-guest-dkms
-    virtualbox-guest-modules-arch
-    virtualbox-guest-utils
-    virtualbox-guest-utils
+    #virtualbox-guest-dkms
+    #virtualbox-guest-modules-arch
+    #virtualbox-guest-utils
 
     # added in lkrms/alis
-    b43-fwcutter
-    btrfs-progs
-    crda
-    curl
-    dhclient
-    dhcpcd
-    diffutils
-    dmidecode
-    dmraid
-    dnsmasq
-    dosfstools
-    engrampa
-    ethtool
-    exfat-utils
-    f2fs-tools
-    git
-    gnome-initial-setup
-    gnome-keyring
-    gpm
-    gptfdisk
-    grub
-    gvfs
-    gvfs-smb
-    hdparm
-    ipw2100-fw
-    ipw2200-fw
-    jfsutils
-    lftp
-    libcanberra
-    libcanberra-pulse
-    linux-firmware
-    lsb-release
-    lvm2
-    man-db
-    man-pages
-    mdadm
-    mtools
-    nano
-    net-tools
-    network-manager-applet
-    nfs-utils
-    nmap
-    ntfs-3g
-    ntp
-    openbsd-netcat
-    openconnect
-    openssh
-    openvpn
-    parted
-    pavucontrol
-    plank
-    ppp
-    pptpclient
-    reiserfsprogs
-    rsync
-    smartmontools
-    sudo
-    tcpdump
-    usb_modeswitch
-    usbutils
-    vi
-    vpnc
-    wget
-    wireless_tools
-    wireless-regdb
-    wpa_supplicant
-    xfsprogs
-    xl2tpd
-    xorg-xrandr
-    zenity
+    #b43-fwcutter
+    #btrfs-progs
+    #crda
+    #curl
+    #dhclient
+    #dhcpcd
+    #diffutils
+    #dmidecode
+    #dmraid
+    #dnsmasq
+    #dosfstools
+    #engrampa
+    #ethtool
+    #exfat-utils
+    #f2fs-tools
+    #git
+    #gnome-initial-setup
+    #gnome-keyring
+    #gpm
+    #gptfdisk
+    #grub
+    #gvfs
+    #gvfs-smb
+    #hdparm
+    #ipw2100-fw
+    #ipw2200-fw
+    #jfsutils
+    #lftp
+    #libcanberra
+    #libcanberra-pulse
+    #linux-firmware
+    #lsb-release
+    #lvm2
+    #man-db
+    #man-pages
+    #mdadm
+    #mtools
+    #nano
+    #net-tools
+    #network-manager-applet
+    #nfs-utils
+    #nmap
+    #ntfs-3g
+    #ntp
+    #openbsd-netcat
+    #openconnect
+    #openssh
+    #openvpn
+    #parted
+    #pavucontrol
+    #plank
+    #ppp
+    #pptpclient
+    #reiserfsprogs
+    #rsync
+    #smartmontools
+    #sudo
+    #tcpdump
+    #usb_modeswitch
+    #usbutils
+    #vi
+    #vpnc
+    #wget
+    #wireless_tools
+    #wireless-regdb
+    #wpa_supplicant
+    #xfsprogs
+    #xl2tpd
+    #xorg-xrandr
+    #zenity
 
     # "base"
-    bash
-    bzip2
-    coreutils
-    file
-    filesystem
-    findutils
-    gawk
-    gcc-libs
-    gettext
-    glibc
-    grep
-    gzip
-    iproute2
-    iputils
-    licenses
-    pacman
-    pciutils
-    procps-ng
-    psmisc
-    sed
-    shadow
-    systemd
-    systemd-sysvcompat
-    tar
-    util-linux
-    xz
+    #bash
+    #bzip2
+    #coreutils
+    #file
+    #filesystem
+    #findutils
+    #gawk
+    #gcc-libs
+    #gettext
+    #glibc
+    #grep
+    #gzip
+    #iproute2
+    #iputils
+    #licenses
+    #pacman
+    #pciutils
+    #procps-ng
+    #psmisc
+    #sed
+    #shadow
+    #systemd
+    #systemd-sysvcompat
+    #tar
+    #util-linux
+    #xz
 
     # "base-devel"
-    autoconf
-    automake
-    binutils
-    bison
-    fakeroot
-    file
-    findutils
-    flex
-    gawk
-    gcc
-    gettext
-    grep
-    groff
-    gzip
-    libtool
-    m4
-    make
-    pacman
-    patch
-    pkgconf
-    sed
-    sudo
-    texinfo
-    which
+    #autoconf
+    #automake
+    #binutils
+    #bison
+    #fakeroot
+    #file
+    #findutils
+    #flex
+    #gawk
+    #gcc
+    #gettext
+    #grep
+    #groff
+    #gzip
+    #libtool
+    #m4
+    #make
+    #pacman
+    #patch
+    #pkgconf
+    #sed
+    #sudo
+    #texinfo
+    #which
 )
 
 # hardware-related
 is_virtual || PAC_INSTALL+=(
+    clinfo
     hddtemp
+    intel-compute-runtime
+    intel-media-sdk
+    libva-intel-driver
+    libvdpau-va-gl
     lm_sensors
+    nvme-cli
     powertop
     tlp
     tlp-rdw
 
     # desktop-only
     blueman
+    guvcview
+    linssid
     pulseaudio-bluetooth
+)
+
+is_virtual || AUR_INSTALL+=(
+    r8152-dkms # common USB / USB-C NIC
 )
 
 AUR_INSTALL+=(
     brother-hl5450dn
     brother-hll3230cdw
-    r8152-dkms # common USB / USB-C NIC
 )
 
 # essentials
@@ -261,6 +271,7 @@ PAC_INSTALL+=(
     mediainfo
     p7zip
     pv
+    sox
     stow
     unison
     unzip
@@ -294,6 +305,8 @@ PAC_INSTALL+=(
 AUR_INSTALL+=(
     asciicast2gif
     cloud-utils
+    git-filter-repo
+    powershell-bin
     ubuntu-keyring
     vpn-slice
 )
@@ -319,6 +332,8 @@ PAC_INSTALL+=(
     scribus
     speedcrunch
     thunderbird
+    thunderbird-i18n-en-gb
+    thunderbird-i18n-en-us
     transmission-cli
     transmission-gtk
     trash-cli
@@ -330,6 +345,10 @@ PAC_INSTALL+=(
     poppler      # PDF tools like pdfimages
     pstoedit     # converts PDF/PostScript to vector formats
     texlive-core # required for PDF output from pandoc
+
+    # photography
+    geeqie
+    rapid-photo-downloader
 
     # search (Recoll)
     antiword            # Word
@@ -373,6 +392,7 @@ PAC_INSTALL+=(
     samba
     seahorse
     syslinux
+    vdpauinfo
     x11vnc
 
     # automation
@@ -393,6 +413,7 @@ AUR_INSTALL+=(
     spotify
     teams
     todoist-electron
+    trimage
     ttf-ms-win10
     typora
 
@@ -429,6 +450,11 @@ PAC_INSTALL+=(
     ttf-font-awesome
     ttf-ionicons
 
+    # email
+    msmtp     # smtp client
+    msmtp-mta # sendmail alias for msmtp
+    s-nail    # mail and mailx commands
+
     #
     git
     meld
@@ -458,6 +484,7 @@ PAC_INSTALL+=(
     python-dateutil
     python-pip
     python-requests
+    python-virtualenv
     python2
 
     #
@@ -467,11 +494,15 @@ PAC_INSTALL+=(
     #
     lua
     lua-penlight
+
+    # platforms
+    aws-cli
 )
 
 AUR_INSTALL+=(
     postman
     sublime-text-dev
+    trickle
     visual-studio-code-bin
 
     #
@@ -494,6 +525,10 @@ PAC_INSTALL+=(
     apache
     mariadb
     php-fpm
+)
+
+AUR_INSTALL+=(
+    mongodb-bin
 )
 
 # VMs and containers
@@ -565,6 +600,28 @@ PAC_INSTALL+=(
 
     sudo usermod --append --groups docker "$USER" &&
         sudo systemctl enable --now docker || true
+
+    { sudo test -d "/var/lib/mysql/mysql" ||
+        sudo mariadb-install-db --user="mysql" --basedir="/usr" --datadir="/var/lib/mysql"; } &&
+        sudo systemctl enable --now mysqld || true
+
+    sudo systemctl enable --now php-fpm || true
+
+    SUDO_OR_NOT=1
+    sudo mkdir -p "/srv/http" &&
+        sudo chown -c "$USER:" "/srv/http" &&
+        mkdir -p "/srv/http/localhost/html" "/srv/http/127.0.0.1" &&
+        { [ -e "/srv/http/127.0.0.1/html" ] || ln -s "../localhost/html" "/srv/http/127.0.0.1/html"; } &&
+        lk_safe_symlink "$CONFIG_DIR/httpd-vhost-alias.conf" "/etc/httpd/conf/extra/httpd-vhost-alias.conf" &&
+        lk_enable_entry "/etc/httpd/conf/httpd.conf" "Include conf/extra/httpd-vhost-alias.conf" "# " &&
+        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule dir_module modules/mod_dir.so" "# " &&
+        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule headers_module modules/mod_headers.so" "# " &&
+        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so" "# " &&
+        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule proxy_module modules/mod_proxy.so" "# " &&
+        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule rewrite_module modules/mod_rewrite.so" "# " &&
+        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule vhost_alias_module modules/mod_vhost_alias.so" "# " &&
+        sudo systemctl enable --now httpd || true
+    unset SUDO_OR_NOT
 
     ! lk_command_exists vim || lk_safe_symlink "$(command -v vim)" "/usr/local/bin/vi" Y
     ! lk_command_exists xfce4-terminal || lk_safe_symlink "$(command -v xfce4-terminal)" "/usr/local/bin/xterm" Y

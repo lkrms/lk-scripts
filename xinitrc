@@ -12,8 +12,8 @@ fi
 
 xset -b
 xset s 120 20
-export XSECURELOCK_DIM_TIME_MS=20000
-export XSECURELOCK_WAIT_TIME_MS=20000
+export XSECURELOCK_DIM_TIME_MS=750
+export XSECURELOCK_WAIT_TIME_MS=60000
 
 XSECURELOCK_FONT="$(xfconf-query -c xsettings -p /Gtk/MonospaceFontName)" &&
     export XSECURELOCK_FONT ||
