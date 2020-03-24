@@ -138,7 +138,7 @@ case "${XDG_CURRENT_DESKTOP:-}" in
     elif [ "$EDID_DISPLAY_2_ACTIVE" -eq "1" ]; then
 
         SCALING_FACTOR=1
-        DPI=96
+        DPI=120
         XFCE4_DPI=120
 
         if [ "$EDID_DISPLAY_4_ACTIVE" -eq "1" ]; then

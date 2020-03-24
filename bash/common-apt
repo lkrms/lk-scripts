@@ -1014,6 +1014,7 @@ APT_ESSENTIALS=(
     cmake
     devscripts
     equivs
+    jq
     p7zip-full
     pv
     stow

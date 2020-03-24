@@ -356,7 +356,7 @@ XFCE)
 
     fi
 
-    # "$SCRIPT_DIR/xfce4-set-dpi.sh" "${XFCE4_DPI:-$DPI}" "$ACTUAL_DPI" "$@"
+    "$SCRIPT_DIR/xfce4-set-dpi.sh" "${XFCE4_DPI:-$DPI}"
     ;;
 
 esac
