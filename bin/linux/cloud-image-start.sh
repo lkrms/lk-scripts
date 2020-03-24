@@ -24,6 +24,7 @@ IMAGE="${8:-ubuntu-18.04-minimal}"
 case "$IMAGE" in
 
 *18.04*)
+    IMAGE_NAME="ubuntu18.04"
     IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/minimal/releases/bionic/release/ubuntu-18.04-minimal-cloudimg-amd64.img"
     SHA_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/minimal/releases/bionic/release/SHA256SUMS.gpg"
     SHA_KEYRING="/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
@@ -31,6 +32,7 @@ case "$IMAGE" in
     ;;
 
 *16.04*)
+    IMAGE_NAME="ubuntu16.04"
     IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/minimal/releases/xenial/release/ubuntu-16.04-minimal-cloudimg-amd64-disk1.img"
     SHA_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/minimal/releases/xenial/release/SHA256SUMS.gpg"
     SHA_KEYRING="/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg"
@@ -58,12 +60,8 @@ if [ ! -f "$FILENAME" ] || lk_is_true "${LK_CLOUDIMG_REFRESH:-1}"; then
         die "error downloading $IMAGE_URL"
     }
 
-    SHA_SUMS="$(
-        [ ! -f "SHASUMS" ] || cat "SHASUMS"
-        curl "$SHA_URL" | gpg --no-default-keyring --keyring "$SHA_KEYRING" --decrypt
-    )" || die "error verifying $SHA_URL"
-
-    echo "$SHA_SUMS" | sort -k 2 | uniq >SHASUMS
+    SHA_SUMS="$(curl "$SHA_URL" | gpg --no-default-keyring --keyring "$SHA_KEYRING" --decrypt)" || die "error verifying $SHA_URL"
+    echo "$SHA_SUMS" >"SHASUMS-$IMAGE_NAME" || die "error writing to SHASUMS-$IMAGE_NAME"
 
 fi
 
@@ -73,7 +71,7 @@ CLOUDIMG_PATH="$CLOUDIMG_POOL_ROOT/cloud-images/$IMG_NAME-$TIMESTAMP.qcow2"
 if sudo test -f "$CLOUDIMG_PATH"; then
     lk_console_message "$FILENAME is already available at $CLOUDIMG_PATH"
 else
-    grep -E "$(lk_escape_ere "$FILENAME")\$" SHASUMS | shasum -a "${SHA_ALGORITHM:-256}" -c &&
+    grep -E "$(lk_escape_ere "$FILENAME")\$" "SHASUMS-$IMAGE_NAME" | shasum -a "${SHA_ALGORITHM:-256}" -c &&
         lk_console_item "Verified" "$FILENAME" "$BOLD$GREEN" ||
         die "$PWD$FILENAME: verification failed"
     sudo mkdir -p "$CLOUDIMG_POOL_ROOT/cloud-images"
