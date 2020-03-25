@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2034
+# shellcheck disable=SC1090,SC2015,SC2034
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -52,7 +52,8 @@ for i in "${!UNISON_PROFILES[@]}"; do
 
     esac
 
-    [ -d "$LOCAL_DIR" ] || {
+    [ -d "$LOCAL_DIR" ] &&
+        [ ! -e "$LOCAL_DIR/.unison-skip" ] || {
         SKIPPED+=("$UNISON_PROFILE")
         continue
     }

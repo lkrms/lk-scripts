@@ -209,7 +209,8 @@ PAC_REMOVE+=(
 
 PAC_INSTALL+=(
     cups
-    i2c-tools # contains i2c-dev module, required by ddcutil
+    i2c-tools       # contains i2c-dev module, required by ddcutil
+    pulseaudio-alsa # required by audacity
 )
 
 AUR_INSTALL+=(
