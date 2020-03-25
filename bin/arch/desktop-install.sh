@@ -462,6 +462,7 @@ PAC_INSTALL+=(
 
     #
     jdk11-openjdk
+    jre11-openjdk
 
     #
     nodejs
