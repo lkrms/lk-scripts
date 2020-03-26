@@ -222,13 +222,11 @@ DPI="$(echo "scale=10;dpi=$DPI*$DPI_MULTIPLIER;scale=0;dpi/1" | bc)"
 
 if has_argument "--get-shell-env"; then
 
-    # ((QT_FONT_DPI = DPI / SCALING_FACTOR))
+    ((QT_FONT_DPI = DPI / SCALING_FACTOR))
 
-    # echo "export QT_AUTO_SCREEN_SCALE_FACTOR=\"0\""
-    # echo "export QT_SCALE_FACTOR=\"$SCALING_FACTOR\""
-    # echo "export QT_FONT_DPI=\"$QT_FONT_DPI\""
-
-    echo "export QT_AUTO_SCREEN_SCALE_FACTOR=\"1\""
+    echo "export QT_AUTO_SCREEN_SCALE_FACTOR=\"0\""
+    echo "export QT_SCALE_FACTOR=\"$SCALING_FACTOR\""
+    echo "export QT_FONT_DPI=\"$QT_FONT_DPI\""
 
 fi
 
