@@ -475,6 +475,25 @@ function lk_get_gpg_keyids() {
     gpg --list-keys --with-colons | { grep -E '^(pub|sub):' || true; } | cut -d: -f5
 }
 
+# lk_start_or_restart command [arg1...]
+#   Kill any running COMMAND processes, then run COMMAND in the
+#   background and disown it.
+function lk_start_or_restart() {
+    local COMMAND
+    [ -n "$1" ] &&
+        COMMAND="$(basename "$1")" || return
+    is_root ||
+        ! pgrep -xu "$USER" "$COMMAND" >/dev/null || # limit to processes owned by $USER
+        pkill -xu "$USER" "$COMMAND"                 #
+    ! is_root ||                                     #
+        ! pgrep -x "$COMMAND" >/dev/null ||          # ...unless we're running as root
+        pkill -x "$COMMAND"
+    ! command_exists "$1" || {
+        nohup "$@" </dev/null >/dev/null 2>&1 &
+        disown
+    }
+}
+
 # lk_apply_setting file_path setting_name setting_value [delimiter] [comment_chars] [space_chars]
 # shellcheck disable=SC2005
 function lk_apply_setting() {

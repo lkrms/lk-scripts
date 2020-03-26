@@ -215,22 +215,29 @@ fi
 
 DPI="$(echo "scale=10;dpi=$DPI*$DPI_MULTIPLIER;scale=0;dpi/1" | bc)"
 
-echo "Scaling factor: $SCALING_FACTOR" >&2
-echo "Effective DPI: $DPI" >&2
+{
+    echo "Scaling factor: $SCALING_FACTOR"
+    echo "Effective DPI: $DPI"
+} >&2
 
 if has_argument "--get-shell-env"; then
 
-    ((QT_FONT_DPI = DPI / SCALING_FACTOR))
+    # ((QT_FONT_DPI = DPI / SCALING_FACTOR))
 
-    echo "export QT_AUTO_SCREEN_SCALE_FACTOR=\"0\""
-    echo "export QT_SCALE_FACTOR=\"$SCALING_FACTOR\""
-    echo "export QT_FONT_DPI=\"$QT_FONT_DPI\""
+    # echo "export QT_AUTO_SCREEN_SCALE_FACTOR=\"0\""
+    # echo "export QT_SCALE_FACTOR=\"$SCALING_FACTOR\""
+    # echo "export QT_FONT_DPI=\"$QT_FONT_DPI\""
+
+    echo "export QT_AUTO_SCREEN_SCALE_FACTOR=\"1\""
 
 fi
 
 if has_argument "--set-dpi"; then
 
-    xrandr --dpi "$DPI" >&2
+    {
+        xrandr --dpi "$DPI"
+        echo "Xft.dpi: $DPI" | xrdb -merge
+    } >&2
 
 fi
 
@@ -295,6 +302,8 @@ if has_argument "--set-all" || has_argument "--lightdm" || is_autostart; then
     echo "xrandr ${OPTIONS[*]}" >&2
     xrandr "${OPTIONS[@]}" || die
 
+    echo "Xft.dpi: $DPI" | xrdb -merge
+
 fi
 
 ! has_argument "--lightdm" || exit 0
@@ -319,22 +328,6 @@ if has_argument "--update-lightdm" &&
 fi
 
 # ok, xrandr is sorted -- look after everything else
-
-# SECS=0
-
-# while [ -z "${DBUS_SESSION_BUS_ADDRESS:-}" ]; do
-
-#     [ "$SECS" -lt "5" ] || die $'\nNo dbus daemon after 5 seconds'
-
-#     [ "$SECS" -gt "0" ] || echo -n "Waiting for dbus daemon.." >&2
-#     echo -n "." >&2
-#     ((++SECS))
-
-#     sleep 1
-
-# done
-
-# [ "$SECS" -eq "0" ] || echo $'\ndbus daemon started at '"$DBUS_SESSION_BUS_ADDRESS"
 
 case "${XDG_CURRENT_DESKTOP:-}" in
 
@@ -361,17 +354,6 @@ XFCE)
 
 esac
 
-if OVERRIDES="$(gsettings get org.gnome.settings-daemon.plugins.xsettings overrides 2>/dev/null)"; then
-
-    ((XFT_DPI = 1024 * DPI))
-
-    OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Gdk/WindowScalingFactor" "$SCALING_FACTOR")"
-    OVERRIDES="$("$SCRIPT_DIR/glib-update-variant-dictionary.py" "$OVERRIDES" "Xft/DPI" "$XFT_DPI")"
-
-    gsettings set org.gnome.settings-daemon.plugins.xsettings overrides "$OVERRIDES" || true
-
-fi
-
 if gsettings get org.gnome.desktop.interface scaling-factor >/dev/null 2>&1; then
 
     gsettings set org.gnome.desktop.interface scaling-factor "$SCALING_FACTOR" || true
@@ -388,9 +370,9 @@ fi
 "$SCRIPT_DIR/xkb-load.sh" "$@"
 # "$SCRIPT_DIR/xinput-load.sh" "$@"
 
-start_or_restart quicktile --daemonize
-start_or_restart devilspie2
-start_or_restart plank
+lk_start_or_restart quicktile --daemonize
+lk_start_or_restart devilspie2
+lk_start_or_restart plank
 
 # Plank needs a little time
 sleep 2

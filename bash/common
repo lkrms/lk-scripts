@@ -899,34 +899,6 @@ function get_log_file() {
 
 }
 
-# start_or_restart [/path/to/]command [arg ...]
-#   Kill any running COMMAND processes, then run COMMAND in the
-#   background and disown it.
-#
-function start_or_restart() {
-
-    local COMMAND LOG_FILE LOG_FILE2 LOG_MESSAGE
-
-    COMMAND="$(basename "$1")" || die
-    LOG_FILE="$(get_log_file "_$COMMAND.stdout")" || die
-    LOG_FILE2="$(get_log_file "_$COMMAND.stderr")" || die
-
-    # limit to processes owned by $USER unless running as root
-    is_root || ! pgrep -xu "$USER" "$COMMAND" >/dev/null || echo_run pkill -xu "$USER" "$COMMAND"
-    ! is_root || ! pgrep -x "$COMMAND" >/dev/null || echo_run pkill -x "$COMMAND"
-
-    if command_exists "$1"; then
-
-        LOG_MESSAGE="$(date_get_log) [${FUNCNAME[0]}] Running: $*"
-        echo $'\n'"$LOG_MESSAGE" >>"$LOG_FILE"
-        echo $'\n'"$LOG_MESSAGE" >>"$LOG_FILE2"
-        nohup "$@" </dev/null >>"$LOG_FILE" 2>&1 &
-        disown
-
-    fi
-
-}
-
 function time_command() {
 
     local EXIT_CODE=0
