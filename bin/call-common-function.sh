@@ -9,7 +9,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 [ "$#" -gt "0" ] || die "Usage: $(basename "$0") function_name [argument1...]"
 
-for COMMON in "$ROOT_DIR/bash/common-"*; do
+for COMMON in "$LK_ROOT/bash/common-"*; do
 
     case "$COMMON" in
 

@@ -213,7 +213,7 @@ gcc@7 \
 
     dev_apply_system_config
 
-    "$ROOT_DIR/bash/dev-system-update.sh"
+    "$LK_ROOT/bash/dev-system-update.sh"
 
     exit
 

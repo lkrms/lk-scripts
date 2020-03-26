@@ -511,7 +511,7 @@ EOF
 
         if apt_package_just_installed "samba"; then
 
-            "$ROOT_DIR/linux/dev-samba-configure.sh"
+            "$LK_ROOT/linux/dev-samba-configure.sh"
 
         fi
 
@@ -697,7 +697,7 @@ EOF
 
     fi
 
-    "$ROOT_DIR/bash/dev-system-update.sh"
+    "$LK_ROOT/bash/dev-system-update.sh"
 
     apt_purge
 

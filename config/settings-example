@@ -15,5 +15,5 @@ GIT_URL_REPLACEMENTS=(
     's/ssh:\/\/([^/]+)\//\1:/'
 )
 
-DEFAULT_CODE_ROOTS=("$ROOT_DIR")
+DEFAULT_CODE_ROOTS=("$LK_ROOT")
 [ -z "${HOME:-}" ] || DEFAULT_CODE_ROOTS+=("$HOME/Code")

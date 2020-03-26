@@ -1317,19 +1317,24 @@ function get_memory_size() {
     fi
 }
 
-COMMON_SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || COMMON_SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-ROOT_DIR_RELATIVE="$(dirname "$COMMON_SCRIPT_PATH")/.."
-ROOT_DIR="$(realpath "$ROOT_DIR_RELATIVE" 2>/dev/null)" || ROOT_DIR="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "$ROOT_DIR_RELATIVE")"
+function lk_set_root() {
+    local SCRIPT_PATH ROOT_DIR
+    SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
+    ROOT_DIR="$(dirname "$SCRIPT_PATH")/.."
+    LK_ROOT="$(realpath "$ROOT_DIR" 2>/dev/null)" || LK_ROOT="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "$ROOT_DIR")"
+}
 
-. "$ROOT_DIR/bash/common-functions"
-lk_is_server || . "$ROOT_DIR/bash/common-desktop"
+lk_set_root
+
+. "$LK_ROOT/bash/common-functions"
+lk_is_server || . "$LK_ROOT/bash/common-desktop"
 
 lk_trap_err
 
-CONFIG_DIR="$ROOT_DIR/config"
-CACHE_DIR="$ROOT_DIR/cache"
-LOG_DIR="$ROOT_DIR/log"
-TEMP_DIR="$ROOT_DIR/tmp"
+CONFIG_DIR="$LK_ROOT/config"
+CACHE_DIR="$LK_ROOT/cache"
+LOG_DIR="$LK_ROOT/log"
+TEMP_DIR="$LK_ROOT/tmp"
 
 FONTPATH=
 
@@ -1355,7 +1360,7 @@ eval "$(lk_get_colours '')"
 if lk_is_macos; then
     PLATFORM=mac
     FONTPATH="${HOME:+$HOME/Library/Fonts:}/Library/Fonts"
-    . "$ROOT_DIR/bash/common-macos"
+    . "$LK_ROOT/bash/common-macos"
 elif lk_is_linux; then
     if lk_is_wsl; then
         PLATFORM=wsl
@@ -1365,7 +1370,7 @@ elif lk_is_linux; then
         FONTPATH="${HOME:+$HOME/.local/share/fonts:}/usr/share/fonts"
     fi
     [ -f /etc/lsb-release ] && . /etc/lsb-release
-    . "$ROOT_DIR/bash/common-linux"
+    . "$LK_ROOT/bash/common-linux"
 else
     die "unknown platform"
 fi

@@ -1,7 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2068
 
-. "$ROOT_DIR/bash/common-git"
+. "$LK_ROOT/bash/common-git"
 
 # Usage: dev_install_packages [queue only? (y/N)] [name of 'already installed' array]
 function dev_install_packages() {
@@ -124,7 +124,7 @@ function dev_install_packages() {
 
                 pushd "$TEMP_DIR" >/dev/null || die
 
-                "$ROOT_DIR/bin/composer-install.sh" --quiet &&
+                "$LK_ROOT/bin/composer-install.sh" --quiet &&
                     mv "composer.phar" "/usr/local/bin/composer" ||
                     die
 
@@ -180,22 +180,22 @@ function dev_apply_system_config() {
 
     if is_linux; then
 
-        safe_symlink "$ROOT_DIR/bin/md-scratchpad.sh" "$HOME/.local/bin/md-scratchpad.sh"
-        safe_symlink "$ROOT_DIR/bin/pdf-combine.sh" "$HOME/.local/bin/pdf-combine.sh"
+        safe_symlink "$LK_ROOT/bin/md-scratchpad.sh" "$HOME/.local/bin/md-scratchpad.sh"
+        safe_symlink "$LK_ROOT/bin/pdf-combine.sh" "$HOME/.local/bin/pdf-combine.sh"
 
         if command_exists xrandr; then
 
-            safe_symlink "$ROOT_DIR/bin/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh" &&
-                safe_symlink "$ROOT_DIR/bin/linux/applications/xrandr-auto.sh.desktop" "$HOME/.config/autostart/xrandr-auto.sh.desktop" || true
+            safe_symlink "$LK_ROOT/bin/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh" &&
+                safe_symlink "$LK_ROOT/bin/linux/applications/xrandr-auto.sh.desktop" "$HOME/.config/autostart/xrandr-auto.sh.desktop" || true
 
         fi
 
-        command_exists xkbcomp && safe_symlink "$ROOT_DIR/bin/linux/xkb-load.sh" "$HOME/.local/bin/xkb-load.sh" || true
+        command_exists xkbcomp && safe_symlink "$LK_ROOT/bin/linux/xkb-load.sh" "$HOME/.local/bin/xkb-load.sh" || true
 
-        if command_exists google-chrome && safe_symlink "$ROOT_DIR/bin/chrome-app.sh" "$HOME/.local/bin/chrome-app.sh"; then
+        if command_exists google-chrome && safe_symlink "$LK_ROOT/bin/chrome-app.sh" "$HOME/.local/bin/chrome-app.sh"; then
 
-            safe_symlink "$ROOT_DIR/bin/linux/applications/harvest.desktop" "$HOME/.config/autostart/harvest.desktop" &&
-                safe_symlink "$ROOT_DIR/bin/linux/applications/harvest.desktop" "$HOME/.local/share/applications/harvest.desktop" || true
+            safe_symlink "$LK_ROOT/bin/linux/applications/harvest.desktop" "$HOME/.config/autostart/harvest.desktop" &&
+                safe_symlink "$LK_ROOT/bin/linux/applications/harvest.desktop" "$HOME/.local/share/applications/harvest.desktop" || true
 
         fi
 
@@ -203,16 +203,16 @@ function dev_apply_system_config() {
 
         safe_symlink "/usr/share/applications/guake.desktop" "$HOME/.config/autostart/guake.desktop" || true
 
-        command_exists espanso && safe_symlink "$ROOT_DIR/bin/linux/applications/espanso.desktop" "$HOME/.config/autostart/espanso.desktop" &&
-            safe_symlink "$ROOT_DIR/bin/linux/applications/espanso.desktop" "$HOME/.local/share/applications/espanso.desktop" &&
+        command_exists espanso && safe_symlink "$LK_ROOT/bin/linux/applications/espanso.desktop" "$HOME/.config/autostart/espanso.desktop" &&
+            safe_symlink "$LK_ROOT/bin/linux/applications/espanso.desktop" "$HOME/.local/share/applications/espanso.desktop" &&
             espanso unregister 2>/dev/null || true
-        command_exists rescuetime && safe_symlink "$ROOT_DIR/bin/linux/applications/rescuetime.desktop" "$HOME/.config/autostart/rescuetime.desktop" || true
+        command_exists rescuetime && safe_symlink "$LK_ROOT/bin/linux/applications/rescuetime.desktop" "$HOME/.config/autostart/rescuetime.desktop" || true
 
         if command_exists sxhkd; then
 
-            safe_symlink "$ROOT_DIR/linux/sxhkd/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc" N Y &&
-                safe_symlink "$ROOT_DIR/linux/sxhkd/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py" &&
-                safe_symlink "$ROOT_DIR/bin/linux/applications/sxhkd.desktop" "$HOME/.config/autostart/sxhkd.desktop" || true
+            safe_symlink "$LK_ROOT/linux/sxhkd/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc" N Y &&
+                safe_symlink "$LK_ROOT/linux/sxhkd/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py" &&
+                safe_symlink "$LK_ROOT/bin/linux/applications/sxhkd.desktop" "$HOME/.config/autostart/sxhkd.desktop" || true
 
         fi
 
