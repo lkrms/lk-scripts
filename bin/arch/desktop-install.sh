@@ -595,6 +595,9 @@ PAC_INSTALL+=(
 
     sudo systemctl enable --now org.cups.cupsd || true
 
+    SUDO_OR_NOT=1 lk_apply_setting "/etc/bluetooth/main.conf" "AutoEnable" "true" "=" "#" &&
+        sudo systemctl enable --now bluetooth
+
     SUDO_OR_NOT=1 lk_apply_setting "/etc/conf.d/libvirt-guests" "ON_SHUTDOWN" "shutdown" "=" "# " &&
         SUDO_OR_NOT=1 lk_apply_setting "/etc/conf.d/libvirt-guests" "SHUTDOWN_TIMEOUT" "300" "=" "# " &&
         sudo usermod --append --groups libvirt "$USER" &&
