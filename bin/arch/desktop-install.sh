@@ -540,6 +540,7 @@ PAC_INSTALL+=(
     ebtables
     libvirt
     qemu
+    qemu-arch-extra # includes UEFI firmware, among other goodies
     virt-manager
 
     # docker
