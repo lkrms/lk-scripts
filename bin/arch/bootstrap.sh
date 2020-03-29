@@ -187,9 +187,16 @@ PACMAN_DESKTOP_PACKAGES=(
 
     #
     xfce4
-    $(is_dryrun &&                                                    # xfce4-screensaver is buggy and insecure,
-        echo "xfce4-goodies" ||                                       # plus it autostarts by default,
-        pacman -Sygq "xfce4-goodies" | grep -Fxv "xfce4-screensaver") # so we remove it from xfce4-goodies
+    $(
+        # xfce4-screensaver is buggy and insecure, and it autostarts
+        # by default, so remove it from xfce4-goodies
+        { is_dryrun || [ "$#" -eq "0" ]; } &&
+            echo "xfce4-goodies" ||
+            {
+                pacman -Sy >&2
+                pacman -Sgq "xfce4-goodies" | grep -Fxv "xfce4-screensaver"
+            }
+    )
     engrampa
     pavucontrol
     libcanberra
