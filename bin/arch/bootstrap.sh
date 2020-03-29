@@ -411,18 +411,30 @@ EOF
 
 in_target locale-gen
 
+message "enabling NetworkManager..."
+in_target systemctl enable NetworkManager.service
+
+if [ "${#PACMAN_DESKTOP_PACKAGES[@]}" -eq "0" ]; then
+    in_target systemctl set-default multi-user.target
+else
+    in_target systemctl set-default graphical.target
+
+    message "enabling lightdm..."
+    in_target systemctl enable lightdm.service
+fi
+
 maybe_dryrun ln -sfv "/usr/share/zoneinfo/${TIMEZONE:-UTC}" "/mnt/etc/localtime"
 in_target hwclock --systohc
 
-in_target useradd -m "$TARGET_USERNAME" -G adm,wheel -s /bin/bash &&
-    echo -e "$TARGET_PASSWORD\n$TARGET_PASSWORD" | in_target passwd "$TARGET_USERNAME" &&
-    in_target passwd -l root
+in_target useradd -m "$TARGET_USERNAME" -G adm,wheel -s /bin/bash
+echo -e "$TARGET_PASSWORD\n$TARGET_PASSWORD" | in_target passwd "$TARGET_USERNAME"
+in_target passwd -l root
 
 configure_pacman "/mnt/etc/pacman.conf"
 
 message "enabling ntpd..."
-configure_ntp "/mnt/etc/ntp.conf" &&
-    in_target systemctl enable ntpd.service
+configure_ntp "/mnt/etc/ntp.conf"
+in_target systemctl enable ntpd.service
 
 ! _lsblk "DISC-GRAN,DISC-MAX" --nodeps "$ROOT_PARTITION" "$BOOT_PARTITION" | grep -Ev '^\s*0B\s+0B\s*$' >/dev/null || {
     message "enabling fstrim..."
@@ -430,6 +442,9 @@ configure_ntp "/mnt/etc/ntp.conf" &&
 }
 
 message "installing boot loader..."
+maybe_dryrun sed -Ei -e 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=saved/' \
+    -e 's/^#?GRUB_SAVEDEFAULT=.*/GRUB_SAVEDEFAULT=true/' \
+    /mnt/etc/default/grub
 in_target grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB &&
     in_target grub-mkconfig -o /boot/grub/grub.cfg
 
