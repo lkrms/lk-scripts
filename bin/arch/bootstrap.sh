@@ -33,7 +33,6 @@ PACMAN_DESKTOP_PACKAGES=(
     chromium
     falkon
     firefox
-    midori
 
     # multimedia
     libdvdcss
