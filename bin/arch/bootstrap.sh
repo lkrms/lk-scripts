@@ -15,8 +15,73 @@ TIMEZONE="Australia/Sydney"     # see /usr/share/zoneinfo
 LOCALES=("en_AU" "en_GB")       # UTF-8 is enforced
 LANGUAGE="en_AU:en_GB:en"
 MIRROR="http://archlinux.mirror.lkrms.org/archlinux/\$repo/os/\$arch"
-PACMAN_PACKAGES=()
-PACMAN_DESKTOP_PACKAGES=()
+PACMAN_PACKAGES=(
+    lynx
+)
+PACMAN_DESKTOP_PACKAGES=(
+    # basics
+    galculator
+    geany
+    gimp
+    keepassxc
+    libreoffice-fresh
+    qpdfview
+    samba
+    speedcrunch
+
+    # browsers
+    chromium
+    falkon
+    firefox
+    midori
+
+    # multimedia
+    libdvdcss
+    libdvdnav
+    libvpx
+    vlc
+
+    # remote desktop
+    freerdp
+    remmina
+    x11vnc
+
+    #
+    adapta-gtk-theme
+    arc-gtk-theme
+    arc-icon-theme
+    arc-solid-gtk-theme
+    breeze-gtk
+    breeze-icons
+    materia-gtk-theme
+
+    #
+    elementary-icon-theme
+    elementary-wallpapers
+    gtk-theme-elementary
+    sound-theme-elementary
+
+    #
+    moka-icon-theme
+    papirus-icon-theme
+
+    #
+    noto-fonts
+    noto-fonts-cjk
+    noto-fonts-emoji
+    noto-fonts-extra
+    ttf-dejavu
+    ttf-inconsolata
+    ttf-jetbrains-mono
+    ttf-lato
+    ttf-opensans
+    ttf-roboto
+    ttf-roboto-mono
+    ttf-ubuntu-font-family
+
+    #
+    archlinux-wallpaper
+)
 
 function die() {
     local EXIT_STATUS="$?"
@@ -179,10 +244,12 @@ PACMAN_DESKTOP_PACKAGES=(
 
     #
     cups
+    flameshot
     gnome-keyring
     gvfs
     gvfs-smb
     network-manager-applet
+    seahorse
     zenity
 
     #
@@ -197,6 +264,7 @@ PACMAN_DESKTOP_PACKAGES=(
                 pacman -Sgq "xfce4-goodies" | grep -Fxv "xfce4-screensaver"
             }
     )
+    catfish
     engrampa
     pavucontrol
     libcanberra
@@ -214,7 +282,20 @@ PACMAN_DESKTOP_PACKAGES=(
     ${PACMAN_DESKTOP_PACKAGES[@]+"${PACMAN_DESKTOP_PACKAGES[@]}"}
 )
 
-grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo || {
+function is_virtual() {
+    grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo
+}
+
+function is_qemu() {
+    is_virtual && grep -Eiq qemu /sys/devices/virtual/dmi/id/*_vendor
+}
+
+is_virtual && {
+    ! is_qemu || {
+        PACMAN_PACKAGES+=(qemu-guest-agent)
+        PACMAN_DESKTOP_PACKAGES+=(spice-vdagent)
+    }
+} || {
     PACMAN_PACKAGES+=(
         linux-firmware
         linux-headers
@@ -411,6 +492,9 @@ EOF
 
 in_target locale-gen
 
+! is_qemu ||
+    in_target systemctl enable qemu-ga.service
+
 message "enabling NetworkManager..."
 in_target systemctl enable NetworkManager.service
 
@@ -442,6 +526,7 @@ in_target systemctl enable ntpd.service
 }
 
 message "installing boot loader..."
+[ -e "/mnt/etc/default/grub.orig" ] || maybe_dryrun cp -pv "/mnt/etc/default/grub" "/mnt/etc/default/grub.orig"
 maybe_dryrun sed -Ei -e 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=saved/' \
     -e 's/^#?GRUB_SAVEDEFAULT=.*/GRUB_SAVEDEFAULT=true/' \
     /mnt/etc/default/grub
