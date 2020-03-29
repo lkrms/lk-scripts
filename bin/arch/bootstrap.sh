@@ -10,27 +10,46 @@ TIMEZONE="Australia/Sydney"     # see /usr/share/zoneinfo
 LOCALES=("en_AU" "en_GB")       # UTF-8 is enforced
 LANGUAGE="en_AU:en_GB:en"
 MIRROR="http://archlinux.mirror.lkrms.org/archlinux/\$repo/os/\$arch"
+PACMAN_PACKAGES=()
+PACMAN_DESKTOP_PACKAGES=()
 
 function die() {
     local EXIT_STATUS="$?"
     [ "$EXIT_STATUS" -ne "0" ] || EXIT_STATUS="1"
-    [ "$#" -eq "0" ] || message "$1"
+    [ "$#" -eq "0" ] || echo "$(basename "$0"): $BOLD$RED$1$RESET" >&2
     exit "$EXIT_STATUS"
 }
 
+function usage() {
+    {
+        echo "$BOLD${CYAN}Usage:$RESET
+  $(basename "$0") ${YELLOW}root_partition boot_partition$RESET hostname username
+  $(basename "$0") ${YELLOW}install_disk$RESET hostname username
+
+$BOLD${CYAN}Current block devices:$RESET"
+        lsblk --output "NAME,RM,RO,SIZE,TYPE,FSTYPE,MOUNTPOINT" --paths
+    } >&2
+    die
+}
+
+function safe_tput() {
+    ! tput "$@" >/dev/null 2>&1 ||
+        tput "$@"
+}
+
 function message() {
-    echo "$(basename "$0"): $1" >&2
+    echo $'\n'"$BOLD$CYAN:: $1$RESET" >&2
 }
 
 function confirm() {
     local YN
-    read -rp $'\n'"$1 [y/n] " YN
+    read -rp $'\n'"$BOLD$1$RESET [y/n] " YN
     [[ "$YN" =~ ^[yY]$ ]]
 }
 
 function get_secret() {
     local SECRET
-    read -rsp $'\n'"$1 " SECRET
+    read -rsp $'\n'"$BOLD$YELLOW$1$RESET " SECRET
     echo "$SECRET"
 }
 
@@ -40,7 +59,7 @@ function is_dryrun() {
 
 function maybe_dryrun() {
     if is_dryrun; then
-        message "[DRY RUN] $*"
+        echo "$CYAN[DRY RUN]$RESET skipped: $*" >&2
     else
         "$@"
     fi
@@ -72,11 +91,10 @@ function in_target() {
 }
 
 function configure_ntp() {
-    local NTP_CONF
     [ -z "${NTP_SERVER:-}" ] || {
-        NTP_CONF="server $NTP_SERVER iburst"
         [ -e "$1.orig" ] || maybe_dryrun cp -pv "$1" "$1.orig"
-        maybe_dryrun sed -Ei -e 's/^(server|pool)\b/#&/' -e "0,/^#(server|pool)\b/{s/^#(server|pool)\b/\\n$NTP_CONF\\n\\n&/}" "$1"
+        maybe_dryrun sed -Ei 's/^(server|pool)\b/#&/' "$1"
+        is_dryrun || echo "server $NTP_SERVER iburst" >>"$1"
     }
 }
 
@@ -85,13 +103,65 @@ function configure_pacman() {
     maybe_dryrun sed -Ei 's/^#\s*(Color|TotalDownload)\s*$/\1/' "$1"
 }
 
-USAGE="
-  $(basename "$0") root_partition boot_partition hostname username
-  $(basename "$0") target_device hostname username
+PACMAN_PACKAGES=(
+    # bare minimum
+    base
+    linux
+    mkinitcpio
 
-Current block devices:
-$(lsblk)
-"
+    # boot
+    grub
+    efibootmgr
+
+    # multi-boot
+    os-prober
+    ntfs-3g
+
+    # other
+    sudo
+    networkmanager
+    openssh
+    ntp
+
+    #
+    ${PACMAN_PACKAGES[@]+"${PACMAN_PACKAGES[@]}"}
+)
+
+PACMAN_DESKTOP_PACKAGES=(
+    xdg-user-dirs
+    xfce4
+    xfce4-goodies
+    lightdm
+    lightdm-gtk-greeter
+    xorg-server
+
+    #
+    ${PACMAN_DESKTOP_PACKAGES[@]+"${PACMAN_DESKTOP_PACKAGES[@]}"}
+)
+
+grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo || {
+    PACMAN_PACKAGES+=(
+        linux-firmware
+        linux-headers
+    )
+    ! grep -Eq '^vendor_id\s*:\s+GenuineIntel$' /proc/cpuinfo ||
+        PACMAN_PACKAGES+=(intel-ucode)
+    ! grep -Eq '^vendor_id\s*:\s+AuthenticAMD$' /proc/cpuinfo ||
+        PACMAN_PACKAGES+=(amd-ucode)
+
+    PACMAN_DESKTOP_PACKAGES+=(
+        mesa
+        intel-media-driver # TODO: detect intel graphics first
+        libva-intel-driver
+    )
+}
+
+RED="$(safe_tput setaf 1)"
+GREEN="$(safe_tput setaf 2)"
+YELLOW="$(safe_tput setaf 3)"
+CYAN="$(safe_tput setaf 6)"
+BOLD="$(safe_tput bold)"
+RESET="$(safe_tput sgr0)"
 
 [ -d "/sys/firmware/efi/efivars" ] || die "please reboot in UEFI mode"
 
@@ -105,7 +175,7 @@ case "$#" in
 3)
     [ -e "$1" ] &&
         check_devices disk "$1" ||
-        die "$USAGE"
+        usage
 
     before_install
 
@@ -135,7 +205,7 @@ case "$#" in
     [ -e "$1" ] &&
         [ -e "$2" ] &&
         check_devices part "$1" "$2" ||
-        die "$USAGE"
+        usage
 
     before_install
 
@@ -147,7 +217,7 @@ case "$#" in
     ;;
 
 *)
-    die "$USAGE"
+    usage
     ;;
 
 esac
@@ -161,7 +231,7 @@ TARGET_PASSWORD="${TARGET_PASSWORD:-}"
         [ -n "$TARGET_PASSWORD" ] &&
             [ "$TARGET_PASSWORD" = "$CONFIRM_PASSWORD" ] &&
             break ||
-            message "password missing or mismatched"
+            echo -n "$BOLD$RED:: password missing or mismatched$RESET" >&2
     done
 }
 
@@ -206,7 +276,7 @@ configure_pacman "/etc/pacman.conf"
     echo "Server=$MIRROR" >/etc/pacman.d/mirrorlist # pacstrap copies this to the new system
 
 message "installing system..."
-maybe_dryrun pacstrap -i /mnt base linux linux-firmware efibootmgr grub mkinitcpio ntfs-3g ntp os-prober sudo
+maybe_dryrun pacstrap -i /mnt "${PACMAN_PACKAGES[@]}"
 
 message "configuring system..."
 
@@ -230,16 +300,18 @@ is_dryrun || {
 EOF
 }
 
+in_target locale-gen
+
 maybe_dryrun ln -sfv "/usr/share/zoneinfo/${TIMEZONE:-UTC}" "/mnt/etc/localtime"
 in_target hwclock --systohc
-
-in_target locale-gen
 
 in_target useradd -m "$TARGET_USERNAME" -G adm,wheel -s /bin/bash &&
     echo -e "$TARGET_PASSWORD\n$TARGET_PASSWORD" | in_target passwd "$TARGET_USERNAME" &&
     in_target passwd -l root
 
 configure_pacman "/mnt/etc/pacman.conf"
+
+message "enabling ntpd..."
 configure_ntp "/mnt/etc/ntp.conf" &&
     in_target systemctl enable ntpd.service
 
@@ -248,7 +320,8 @@ configure_ntp "/mnt/etc/ntp.conf" &&
     in_target systemctl enable fstrim.timer # weekly
 }
 
+message "installing boot loader..."
 in_target grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB &&
     in_target grub-mkconfig -o /boot/grub/grub.cfg
 
-message "Bootstrap complete. Reboot at your leisure."
+echo "$BOLD${GREEN}Bootstrap complete. Reboot at your leisure.$RESET" >&2
