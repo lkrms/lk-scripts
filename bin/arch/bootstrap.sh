@@ -1,6 +1,11 @@
 #!/bin/bash
 # shellcheck disable=SC2015,SC2206,SC2207
 
+# Usage:
+#   1. boot from an Arch Linux live CD
+#   2. wget https://lkr.ms/bootstrap
+#   3. bash bootstrap
+
 set -euo pipefail
 
 PING_HOSTNAME="one.one.one.one" # see https://blog.cloudflare.com/dns-resolver-1-1-1-1/
@@ -103,6 +108,12 @@ function configure_pacman() {
     maybe_dryrun sed -Ei 's/^#\s*(Color|TotalDownload)\s*$/\1/' "$1"
 }
 
+# by default, DRYRUN=1 unless running as root
+[ -n "${DRYRUN:-}" ] || {
+    DRYRUN=0
+    [ "$EUID" -eq "0" ] || DRYRUN=1
+}
+
 PACMAN_PACKAGES=(
     # bare minimum
     base
@@ -117,11 +128,43 @@ PACMAN_PACKAGES=(
     os-prober
     ntfs-3g
 
-    # other
+    # bootstrap.sh dependencies
     sudo
     networkmanager
     openssh
     ntp
+
+    # basics
+    bash-completion
+    byobu
+    curl
+    diffutils
+    dmidecode
+    git
+    lftp
+    nano
+    net-tools
+    nmap
+    openbsd-netcat
+    rsync
+    tcpdump
+    traceroute
+    vim
+    wget
+
+    # == UNNECESSARY ON DISPOSABLE SERVERS
+    #
+    man-db
+    man-pages
+
+    # filesystems
+    btrfs-progs
+    dosfstools
+    f2fs-tools
+    jfsutils
+    reiserfsprogs
+    xfsprogs
+    nfs-utils
 
     #
     ${PACMAN_PACKAGES[@]+"${PACMAN_PACKAGES[@]}"}
@@ -129,11 +172,36 @@ PACMAN_PACKAGES=(
 
 PACMAN_DESKTOP_PACKAGES=(
     xdg-user-dirs
-    xfce4
-    xfce4-goodies
     lightdm
     lightdm-gtk-greeter
     xorg-server
+    xorg-xrandr
+
+    #
+    cups
+    gnome-keyring
+    gvfs
+    gvfs-smb
+    network-manager-applet
+    zenity
+
+    #
+    xfce4
+    $(is_dryrun &&                                                    # xfce4-screensaver is buggy and insecure,
+        echo "xfce4-goodies" ||                                       # plus it autostarts by default,
+        pacman -Sygq "xfce4-goodies" | grep -Fxv "xfce4-screensaver") # so we remove it from xfce4-goodies
+    engrampa
+    pavucontrol
+    libcanberra
+    libcanberra-pulse
+    plank
+
+    # xfce4-screensaver replacement
+    xsecurelock
+    xss-lock
+
+    #
+    pulseaudio-alsa
 
     #
     ${PACMAN_DESKTOP_PACKAGES[@]+"${PACMAN_DESKTOP_PACKAGES[@]}"}
@@ -143,6 +211,31 @@ grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo || {
     PACMAN_PACKAGES+=(
         linux-firmware
         linux-headers
+
+        #
+        hddtemp
+        lm_sensors
+        tlp
+        tlp-rdw
+
+        #
+        gptfdisk # provides sgdisk
+        lvm2     #
+        mdadm    # software RAID
+        parted
+
+        #
+        ethtool
+        hdparm
+        smartmontools
+        usb_modeswitch
+        usbutils
+        wpa_supplicant
+
+        #
+        b43-fwcutter
+        ipw2100-fw
+        ipw2200-fw
     )
     ! grep -Eq '^vendor_id\s*:\s+GenuineIntel$' /proc/cpuinfo ||
         PACMAN_PACKAGES+=(intel-ucode)
@@ -151,8 +244,13 @@ grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo || {
 
     PACMAN_DESKTOP_PACKAGES+=(
         mesa
+        libvdpau-va-gl
         intel-media-driver # TODO: detect intel graphics first
         libva-intel-driver
+
+        #
+        blueman
+        pulseaudio-bluetooth
     )
 }
 
@@ -235,6 +333,10 @@ TARGET_PASSWORD="${TARGET_PASSWORD:-}"
     done
 }
 
+confirm "Install Xfce?" || {
+    PACMAN_DESKTOP_PACKAGES=()
+}
+
 message "probing partitions..."
 maybe_dryrun partprobe
 
@@ -276,7 +378,7 @@ configure_pacman "/etc/pacman.conf"
     echo "Server=$MIRROR" >/etc/pacman.d/mirrorlist # pacstrap copies this to the new system
 
 message "installing system..."
-maybe_dryrun pacstrap -i /mnt "${PACMAN_PACKAGES[@]}"
+maybe_dryrun pacstrap -i /mnt "${PACMAN_PACKAGES[@]}" ${PACMAN_DESKTOP_PACKAGES[@]+"${PACMAN_DESKTOP_PACKAGES[@]}"}
 
 message "configuring system..."
 
