@@ -424,9 +424,6 @@ confirm "Install Xfce?" || {
     PACMAN_DESKTOP_PACKAGES=()
 }
 
-message "probing partitions..."
-maybe_dryrun partprobe
-
 ROOT_PARTITION_TYPE="$(_lsblk FSTYPE "$ROOT_PARTITION")" || die "no block device at $ROOT_PARTITION"
 BOOT_PARTITION_TYPE="$(_lsblk FSTYPE "$BOOT_PARTITION")" || die "no block device at $BOOT_PARTITION"
 
