@@ -175,6 +175,13 @@ function configure_pacman() {
     maybe_dryrun sed -Ei 's/^#\s*(Color|TotalDownload)\s*$/\1/' "$1"
 }
 
+RED="$(safe_tput setaf 1)"
+GREEN="$(safe_tput setaf 2)"
+YELLOW="$(safe_tput setaf 3)"
+CYAN="$(safe_tput setaf 6)"
+BOLD="$(safe_tput bold)"
+RESET="$(safe_tput sgr0)"
+
 # by default, DRYRUN=1 unless running as root
 [ -n "${DRYRUN:-}" ] || {
     DRYRUN=0
@@ -352,13 +359,6 @@ is_virtual && {
         pulseaudio-bluetooth
     )
 }
-
-RED="$(safe_tput setaf 1)"
-GREEN="$(safe_tput setaf 2)"
-YELLOW="$(safe_tput setaf 3)"
-CYAN="$(safe_tput setaf 6)"
-BOLD="$(safe_tput bold)"
-RESET="$(safe_tput sgr0)"
 
 [ -d "/sys/firmware/efi/efivars" ] || die "please reboot in UEFI mode"
 
