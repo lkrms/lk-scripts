@@ -41,8 +41,6 @@ PACMAN_DESKTOP_PACKAGES=(
     vlc
 
     # remote desktop
-    freerdp
-    remmina
     x11vnc
 
     #
@@ -183,6 +181,12 @@ function configure_pacman() {
     [ "$EUID" -eq "0" ] || DRYRUN=1
 }
 
+message "configuring pacman..."
+configure_pacman "/etc/pacman.conf"
+[ -z "$MIRROR" ] ||
+    is_dryrun ||
+    echo "Server=$MIRROR" >/etc/pacman.d/mirrorlist # pacstrap copies this to the new system
+
 PACMAN_PACKAGES=(
     # bare minimum
     base
@@ -298,6 +302,9 @@ is_virtual && {
     ! is_qemu || {
         PACMAN_PACKAGES+=(qemu-guest-agent)
         PACMAN_DESKTOP_PACKAGES+=(spice-vdagent)
+        message "installing qemu-guest-agent in the running environment..."
+        pacman -Syu qemu-guest-agent &&
+            systemctl start qemu-ga.service
     }
 } || {
     PACMAN_PACKAGES+=(
@@ -371,7 +378,7 @@ case "$#" in
 
     confirm "Repartition $1? ALL DATA WILL BE LOST." || die
 
-    message "Partitioning $1..."
+    message "partitioning $1..."
     maybe_dryrun parted --script "$1" \
         mklabel gpt \
         mkpart fat32 2048s 260MiB \
@@ -468,12 +475,6 @@ maybe_dryrun mount -o "${MOUNT_OPTIONS:-defaults}" "$ROOT_PARTITION" /mnt &&
     maybe_dryrun mkdir /mnt/boot &&
     maybe_dryrun mount -o "${MOUNT_OPTIONS:-defaults}" "$BOOT_PARTITION" /mnt/boot || die
 
-message "configuring pacman..."
-configure_pacman "/etc/pacman.conf"
-[ -z "$MIRROR" ] ||
-    is_dryrun ||
-    echo "Server=$MIRROR" >/etc/pacman.d/mirrorlist # pacstrap copies this to the new system
-
 message "installing system..."
 maybe_dryrun pacstrap -i /mnt "${PACMAN_PACKAGES[@]}" ${PACMAN_DESKTOP_PACKAGES[@]+"${PACMAN_DESKTOP_PACKAGES[@]}"}
 
@@ -514,6 +515,30 @@ else
 
     message "enabling lightdm..."
     in_target systemctl enable lightdm.service
+
+    is_dryrun || {
+        mkdir -p "/mnt/etc/skel/.config/xfce4" &&
+            cat <<EOF >"/mnt/etc/skel/.config/xfce4/xinitrc"
+#!/bin/sh
+xset -b
+xset s 120 20
+export XSECURELOCK_DIM_TIME_MS=750
+export XSECURELOCK_WAIT_TIME_MS=60000
+
+XSECURELOCK_FONT="$(xfconf-query -c xsettings -p /Gtk/MonospaceFontName)" &&
+    export XSECURELOCK_FONT ||
+    unset XSECURELOCK_FONT
+
+export XSECURELOCK_SAVER="saver_blank"
+export XSECURELOCK_SHOW_DATETIME=1
+export XSECURELOCK_AUTH_TIMEOUT=20
+xss-lock -n /usr/lib/xsecurelock/dimmer -l -- xsecurelock &
+
+xfconf-query -c xfce4-session -p /general/LockCommand -n -t string -s "xset s activate"
+
+. /etc/xdg/xfce4/xinitrc
+EOF
+    }
 fi
 
 maybe_dryrun ln -sfv "/usr/share/zoneinfo/${TIMEZONE:-UTC}" "/mnt/etc/localtime"
