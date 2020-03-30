@@ -309,9 +309,6 @@ is_virtual && {
     ! is_qemu || {
         PACMAN_PACKAGES+=(qemu-guest-agent)
         PACMAN_DESKTOP_PACKAGES+=(spice-vdagent)
-        message "installing qemu-guest-agent in the running environment..."
-        pacman -Syu qemu-guest-agent &&
-            systemctl start qemu-ga.service
     }
 } || {
     PACMAN_PACKAGES+=(
