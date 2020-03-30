@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2015,SC2206,SC2207
+# shellcheck disable=SC2015,SC2016,SC2206,SC2207
 
 # Usage:
 #   1. boot from an Arch Linux live CD
@@ -80,6 +80,11 @@ PACMAN_DESKTOP_PACKAGES=(
 
     #
     archlinux-wallpaper
+)
+AUR_PACKAGES=()
+AUR_DESKTOP_PACKAGES=(
+    mugshot
+    xfce4-panel-profiles
 )
 
 function die() {
@@ -422,7 +427,15 @@ TARGET_PASSWORD="${TARGET_PASSWORD:-}"
 
 confirm "Install Xfce?" || {
     PACMAN_DESKTOP_PACKAGES=()
+    AUR_DESKTOP_PACKAGES=()
 }
+
+AUR_PACKAGES+=(${AUR_DESKTOP_PACKAGES[@]+"${AUR_DESKTOP_PACKAGES[@]}"})
+[ "${#AUR_PACKAGES[@]}" -eq "0" ] ||
+    PACMAN_PACKAGES+=(
+        base-devel
+        go # yay dependency
+    )
 
 ROOT_PARTITION_TYPE="$(_lsblk FSTYPE "$ROOT_PARTITION")" || die "no block device at $ROOT_PARTITION"
 BOOT_PARTITION_TYPE="$(_lsblk FSTYPE "$BOOT_PARTITION")" || die "no block device at $BOOT_PARTITION"
@@ -473,7 +486,7 @@ done
 
 is_dryrun || {
     genfstab -U /mnt >>/mnt/etc/fstab
-    echo "%wheel ALL=(ALL) ALL" >"/mnt/etc/sudoers.d/90-wheel"
+    printf "%s\n" "%wheel ALL=(ALL) ALL" "%wheel ALL=(ALL) NOPASSWD: /usr/bin/pacman" >"/mnt/etc/sudoers.d/90-wheel"
     {
         echo "LANG=${LOCALES[0]}.UTF-8"
         [ -z "${LANGUAGE:-}" ] || echo "LANGUAGE=$LANGUAGE"
@@ -519,6 +532,13 @@ in_target systemctl enable ntpd.service
 ! _lsblk "DISC-GRAN,DISC-MAX" --nodeps "$ROOT_PARTITION" "$BOOT_PARTITION" | grep -Ev '^\s*0B\s+0B\s*$' >/dev/null || {
     message "enabling fstrim..."
     in_target systemctl enable fstrim.timer # weekly
+}
+
+[ "${#AUR_PACKAGES[@]}" -eq "0" ] || {
+    message "installing yay..."
+    in_target sudo -H -u "$TARGET_USERNAME" \
+        bash -c 'mkdir -p "$HOME/Downloads" && git clone "https://aur.archlinux.org/yay.git" "$HOME/Downloads/yay" && cd "$HOME/Downloads/yay" && makepkg -ic' &&
+        in_target sudo -H -u "$TARGET_USERNAME" yay -Sy --aur --needed "${AUR_PACKAGES[@]}"
 }
 
 message "installing boot loader..."
