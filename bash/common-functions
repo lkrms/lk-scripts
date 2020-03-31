@@ -713,7 +713,9 @@ EOF
                                     lk_console_item "Checking for updates" "https://aur.archlinux.org/$AUR.git"
                                     git fetch --quiet &&
                                         BEHIND="$(git rev-list --count 'HEAD..@{u}')" || exit
-                                    if [ "$BEHIND" -gt "0" ]; then
+                                    if [ -e "$LATEST_FILENAME" ] &&
+                                        [ "$(git log -1 --format=%ct)" -ge "$(gnu_stat --printf %Z "$LATEST_FILENAME")" ] ||
+                                        [ "$BEHIND" -gt "0" ]; then
                                         rm -f "$LATEST_FILENAME"
                                         git merge --ff-only >/dev/null || exit
                                     fi

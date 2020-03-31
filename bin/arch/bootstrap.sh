@@ -50,6 +50,9 @@ PACMAN_DESKTOP_PACKAGES=(
     arc-solid-gtk-theme
     breeze-gtk
     breeze-icons
+
+    #
+    gtk-engine-murrine
     materia-gtk-theme
 
     #

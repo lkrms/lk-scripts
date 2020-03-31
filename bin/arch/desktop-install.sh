@@ -229,6 +229,9 @@ PAC_INSTALL+=(
     arc-solid-gtk-theme
     breeze-gtk
     breeze-icons
+
+    #
+    gtk-engine-murrine
     materia-gtk-theme
 
     #
@@ -269,6 +272,7 @@ PAC_INSTALL+=(
     bc
     cdrtools
     jq
+    lsb-release
     mediainfo
     p7zip
     pv
@@ -281,6 +285,7 @@ PAC_INSTALL+=(
 
     # networking
     bridge-utils
+    openconnect
     traceroute
     whois
 
@@ -318,6 +323,7 @@ PAC_INSTALL+=(
     catfish
     copyq
     firefox
+    firefox-i18n-en-gb
     flameshot
     freerdp
     galculator
@@ -326,6 +332,7 @@ PAC_INSTALL+=(
     inkscape
     keepassxc
     libreoffice-fresh
+    libreoffice-fresh-en-gb
     nextcloud-client
     nomacs # ristretto alternative
     qpdfview
