@@ -83,10 +83,7 @@ PACMAN_DESKTOP_PACKAGES=(
     archlinux-wallpaper
 )
 AUR_PACKAGES=()
-AUR_DESKTOP_PACKAGES=(
-    mugshot
-    xfce4-panel-profiles
-)
+AUR_DESKTOP_PACKAGES=()
 
 function die() {
     local EXIT_STATUS="$?"
@@ -300,6 +297,14 @@ PACMAN_DESKTOP_PACKAGES=(
     ${PACMAN_DESKTOP_PACKAGES[@]+"${PACMAN_DESKTOP_PACKAGES[@]}"}
 )
 
+AUR_DESKTOP_PACKAGES=(
+    mugshot
+    xfce4-panel-profiles
+
+    #
+    ${AUR_DESKTOP_PACKAGES[@]+"${AUR_DESKTOP_PACKAGES[@]}"}
+)
+
 function is_virtual() {
     grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo
 }
@@ -321,6 +326,7 @@ is_virtual && {
         #
         hddtemp
         lm_sensors
+        powertop
         tlp
         tlp-rdw
 
@@ -333,6 +339,7 @@ is_virtual && {
         #
         ethtool
         hdparm
+        nvme-cli
         smartmontools
         usb_modeswitch
         usbutils
@@ -357,6 +364,9 @@ is_virtual && {
         #
         blueman
         pulseaudio-bluetooth
+    )
+    AUR_DESKTOP_PACKAGES+=(
+        xiccd
     )
 }
 

@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2015,SC2034,SC2174,SC2207
+# shellcheck disable=SC1090,SC2015,SC2034,SC2046,SC2174,SC2207
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -11,252 +11,44 @@ assert_is_desktop
 assert_not_root
 
 PAC_INSTALL=()
-PAC_REMOVE=()
 AUR_INSTALL=()
 
-# alis.sh has these covered
-PAC_PRE_INSTALLED=(
-    #linux
-    #linux-headers
-    #networkmanager
-    #xdg-user-dirs
+PAC_KEEP=(
+    asciicast2gif
+    gnome-python-desktop
+    masterpdfeditor
+    python2-xlib
+    quicktile-git
+    ubuntu-keyring
+)
 
-    # probably
-    #dosfstools
-    #grub
-    #intel-media-driver
-    #intel-ucode
-    #lightdm
-    #lightdm-gtk-greeter
-    #mesa
-    #vulkan-icd-loader
-    #vulkan-intel
-    #xfce4
-    #xfce4-goodies # except xfce4-screensaver
-    #xorg-server
-    #xsecurelock
-    #xss-lock
-
-    # probably not
-    #lvm2
-
-    # if needed
-    #virtualbox-guest-dkms
-    #virtualbox-guest-modules-arch
-    #virtualbox-guest-utils
-
-    # added in lkrms/alis
-    #b43-fwcutter
-    #btrfs-progs
-    #crda
-    #curl
-    #dhclient
-    #dhcpcd
-    #diffutils
-    #dmidecode
-    #dmraid
-    #dnsmasq
-    #dosfstools
-    #engrampa
-    #ethtool
-    #exfat-utils
-    #f2fs-tools
-    #git
-    #gnome-initial-setup
-    #gnome-keyring
-    #gpm
-    #gptfdisk
-    #grub
-    #gvfs
-    #gvfs-smb
-    #hdparm
-    #ipw2100-fw
-    #ipw2200-fw
-    #jfsutils
-    #lftp
-    #libcanberra
-    #libcanberra-pulse
-    #linux-firmware
-    #lsb-release
-    #lvm2
-    #man-db
-    #man-pages
-    #mdadm
-    #mtools
-    #nano
-    #net-tools
-    #network-manager-applet
-    #nfs-utils
-    #nmap
-    #ntfs-3g
-    #ntp
-    #openbsd-netcat
-    #openconnect
-    #openssh
-    #openvpn
-    #parted
-    #pavucontrol
-    #plank
-    #ppp
-    #pptpclient
-    #reiserfsprogs
-    #rsync
-    #smartmontools
-    #sudo
-    #tcpdump
-    #usb_modeswitch
-    #usbutils
-    #vi
-    #vpnc
-    #wget
-    #wireless_tools
-    #wireless-regdb
-    #wpa_supplicant
-    #xfsprogs
-    #xl2tpd
-    #xorg-xrandr
-    #zenity
-
-    # "base"
-    #bash
-    #bzip2
-    #coreutils
-    #file
-    #filesystem
-    #findutils
-    #gawk
-    #gcc-libs
-    #gettext
-    #glibc
-    #grep
-    #gzip
-    #iproute2
-    #iputils
-    #licenses
-    #pacman
-    #pciutils
-    #procps-ng
-    #psmisc
-    #sed
-    #shadow
-    #systemd
-    #systemd-sysvcompat
-    #tar
-    #util-linux
-    #xz
-
-    # "base-devel"
-    #autoconf
-    #automake
-    #binutils
-    #bison
-    #fakeroot
-    #file
-    #findutils
-    #flex
-    #gawk
-    #gcc
-    #gettext
-    #grep
-    #groff
-    #gzip
-    #libtool
-    #m4
-    #make
-    #pacman
-    #patch
-    #pkgconf
-    #sed
-    #sudo
-    #texinfo
-    #which
+PAC_REMOVE=(
+    xfce4-screensaver # buggy and insecure
 )
 
 # hardware-related
-is_virtual || PAC_INSTALL+=(
-    clinfo
-    hddtemp
-    intel-compute-runtime
-    intel-media-sdk
-    libva-intel-driver
-    libvdpau-va-gl
-    lm_sensors
-    nvme-cli
-    powertop
-    tlp
-    tlp-rdw
+is_virtual || {
+    PAC_INSTALL+=(
+        guvcview  # webcam utility
+        i2c-tools # provides i2c-dev module, required by ddcutil
+        linssid   # wireless scanner
 
-    # desktop-only
-    blueman
-    guvcview
-    linssid
-    pulseaudio-bluetooth
-)
+        # "general-purpose computing on graphics processing units" (GPGPU)
+        # required to run GPU benchmarks, e.g. in Geekbench
+        clinfo
+        intel-compute-runtime
 
-is_virtual || AUR_INSTALL+=(
-    r8152-dkms # common USB / USB-C NIC
-)
-
+        # required to use Intel Quick Sync Video in FFmpeg
+        intel-media-sdk
+    )
+    AUR_INSTALL+=(
+        ddcutil
+        r8152-dkms # common USB / USB-C NIC
+    )
+}
 AUR_INSTALL+=(
     brother-hl5450dn
     brother-hll3230cdw
-)
-
-# essentials
-PAC_REMOVE+=(
-    xfce4-screensaver
-)
-
-PAC_INSTALL+=(
-    cups
-    i2c-tools       # contains i2c-dev module, required by ddcutil
-    pulseaudio-alsa # required by audacity
-)
-
-AUR_INSTALL+=(
-    ddcutil
-    mugshot
-    xfce4-panel-profiles
-    xiccd
-)
-
-# themes and fonts
-PAC_INSTALL+=(
-    #
-    adapta-gtk-theme
-    arc-gtk-theme
-    arc-icon-theme
-    arc-solid-gtk-theme
-    breeze-gtk
-    breeze-icons
-
-    #
-    gtk-engine-murrine
-    materia-gtk-theme
-
-    #
-    elementary-icon-theme
-    elementary-wallpapers
-    gtk-theme-elementary
-    sound-theme-elementary
-
-    #
-    moka-icon-theme
-    papirus-icon-theme
-
-    #
-    noto-fonts
-    noto-fonts-cjk
-    noto-fonts-emoji
-    noto-fonts-extra
-    ttf-dejavu
-    ttf-inconsolata
-    ttf-jetbrains-mono
-    ttf-lato
-    ttf-opensans
-    ttf-roboto
-    ttf-roboto-mono
-    ttf-ubuntu-font-family
 )
 
 # terminal-based
@@ -303,17 +95,16 @@ PAC_INSTALL+=(
     nload    # shows bandwidth by interface
 
     # system
+    cloud-utils
     hwinfo
     sysfsutils
-    #ubuntu-keyring
 )
 
 AUR_INSTALL+=(
-    asciicast2gif
-    cloud-utils
+    #asciicast2gif
     git-filter-repo
     powershell-bin
-    ubuntu-keyring
+    #ubuntu-keyring
     vpn-slice
 )
 
@@ -416,13 +207,13 @@ AUR_INSTALL+=(
     espanso
     ghostwriter
     google-chrome
-    masterpdfeditor
+    #masterpdfeditor
     skypeforlinux-stable-bin
     spotify
     teams
     todoist-electron
     trimage
-    ttf-ms-win10
+    #ttf-ms-win10
     typora
 
     # multimedia - video
@@ -440,11 +231,11 @@ AUR_INSTALL+=(
     xorg-xkbprint
 
     # these need to be installed in this order
-    gconf
-    gnome-python
-    gnome-python-desktop # i.e. python2-wnck
-    python2-xlib
-    quicktile-git
+    #gconf
+    #gnome-python
+    #gnome-python-desktop #i.e. python2-wnck
+    #python2-xlib
+    #quicktile-git
 )
 
 # development
@@ -563,12 +354,30 @@ PAC_INSTALL+=(
         }
 
     PAC_TO_REMOVE=($(comm -12 <(pacman -Qq | sort | uniq) <(lk_echo_array "${PAC_REMOVE[@]}" | sort | uniq)))
+    [ "${#PAC_TO_REMOVE[@]}" -eq "0" ] || {
+        lk_console_message "Removing packages"
+        sudo pacman -R "${PAC_TO_REMOVE[@]}"
+    }
 
-    [ "${#PAC_TO_REMOVE[@]}" -eq "0" ] || sudo pacman -R "${PAC_TO_REMOVE[@]}"
+    PAC_TO_MARK_EXPLICIT=($(comm -12 <(pacman -Qdq | sort | uniq) <(lk_echo_array "${PAC_INSTALL[@]}" "${AUR_INSTALL[@]}" ${PAC_KEEP[@]+"${PAC_KEEP[@]}"} | sort | uniq)))
+    [ "${#PAC_TO_MARK_EXPLICIT[@]}" -eq "0" ] || {
+        lk_console_message "Setting install reasons"
+        sudo pacman -D --asexplicit "${PAC_TO_MARK_EXPLICIT[@]}"
+    }
 
     PAC_TO_INSTALL=($(comm -13 <(pacman -Qeq | sort | uniq) <(lk_echo_array "${PAC_INSTALL[@]}" | sort | uniq)))
+    [ "${#PAC_TO_INSTALL[@]}" -eq "0" ] || {
+        lk_console_message "Installing new packages from repo"
+        sudo pacman -Sy "${PAC_TO_INSTALL[@]}"
+    }
 
-    [ "${#PAC_TO_INSTALL[@]}" -eq "0" ] && sudo pacman -Syu || sudo pacman -Syu --asexplicit "${PAC_TO_INSTALL[@]}"
+    ! PAC_TO_PURGE=($(pacman -Qdtq)) ||
+        [ "${#PAC_TO_PURGE[@]}" -eq "0" ] ||
+        ! get_confirmation "Purge orphaned packages?" ||
+        sudo pacman -Rns "${PAC_TO_PURGE[@]}"
+
+    lk_console_message "Upgrading installed packages"
+    sudo pacman -Syu
 
     # otherwise makepkg fails with "unknown public key" errors
     lk_console_message "Checking GPG keys"

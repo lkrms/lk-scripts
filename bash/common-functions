@@ -690,52 +690,58 @@ EOF
 
 ! lk_is_arch || {
 
-    # shellcheck disable=SC2207
-    function lk_install_aur() {
-        local MAKEFLAGS LATEST_FILENAME NO_ERRORS=("$@")
-        MAKEFLAGS="-j$(nproc)" &&
-            LATEST_FILENAME=".lk_latest_installed.$(lk_get_hostname)" || return
-        export MAKEFLAGS
-        mkdir -p "$LK_ROOT/cache/aur" || return
-        ERRORS=($(
-            for AUR in "$@"; do
-                ( 
-                    (
-                        cd "$LK_ROOT/cache/aur" || exit
-                        if [ ! -d "$AUR" ]; then
-                            lk_console_item "Cloning" "https://aur.archlinux.org/$AUR.git"
-                            git clone "https://aur.archlinux.org/$AUR.git" >/dev/null &&
-                                cd "$AUR" ||
-                                exit
-                        else
-                            cd "$AUR" && {
-                                lk_is_false "${LK_UPDATE_AUR:-1}" || {
-                                    lk_console_item "Checking for updates" "https://aur.archlinux.org/$AUR.git"
-                                    git fetch --quiet &&
-                                        BEHIND="$(git rev-list --count 'HEAD..@{u}')" || exit
-                                    if [ -e "$LATEST_FILENAME" ] &&
-                                        [ "$(git log -1 --format=%ct)" -ge "$(gnu_stat --printf %Z "$LATEST_FILENAME")" ] ||
-                                        [ "$BEHIND" -gt "0" ]; then
-                                        rm -f "$LATEST_FILENAME"
-                                        git merge --ff-only >/dev/null || exit
-                                    fi
-                                }
-                            } || exit
-                        fi
-                    ) >&2 || echo "$AUR"
-                ) &
+    if lk_command_exists yay; then
+        function lk_install_aur() {
+            yay -Sy --aur --needed "$@"
+        }
+    else
+        # shellcheck disable=SC2207
+        function lk_install_aur() {
+            local MAKEFLAGS LATEST_FILENAME NO_ERRORS=("$@")
+            MAKEFLAGS="-j$(nproc)" &&
+                LATEST_FILENAME=".lk_latest_installed.$(lk_get_hostname)" || return
+            export MAKEFLAGS
+            mkdir -p "$LK_ROOT/cache/aur" || return
+            ERRORS=($(
+                for AUR in "$@"; do
+                    ( 
+                        (
+                            cd "$LK_ROOT/cache/aur" || exit
+                            if [ ! -d "$AUR" ]; then
+                                lk_console_item "Cloning" "https://aur.archlinux.org/$AUR.git"
+                                git clone "https://aur.archlinux.org/$AUR.git" >/dev/null &&
+                                    cd "$AUR" ||
+                                    exit
+                            else
+                                cd "$AUR" && {
+                                    lk_is_false "${LK_UPDATE_AUR:-1}" || {
+                                        lk_console_item "Checking for updates" "https://aur.archlinux.org/$AUR.git"
+                                        git fetch --quiet &&
+                                            BEHIND="$(git rev-list --count 'HEAD..@{u}')" || exit
+                                        if [ -e "$LATEST_FILENAME" ] &&
+                                            [ "$(git log -1 --format=%ct)" -ge "$(gnu_stat --printf %Z "$LATEST_FILENAME")" ] ||
+                                            [ "$BEHIND" -gt "0" ]; then
+                                            rm -f "$LATEST_FILENAME"
+                                            git merge --ff-only >/dev/null || exit
+                                        fi
+                                    }
+                                } || exit
+                            fi
+                        ) >&2 || echo "$AUR"
+                    ) &
+                done
+                wait
+            ))
+            # we can't use `comm` because order is important
+            [ "${#ERRORS[@]}" -eq "0" ] || NO_ERRORS=($(printf '%s\n' "$@" | grep -Fvf <(printf '%s\n' "${ERRORS[@]}")))
+            for AUR in ${NO_ERRORS[@]+"${NO_ERRORS[@]}"}; do
+                cd "$LK_ROOT/cache/aur/$AUR" || exit
+                [ -e "$LATEST_FILENAME" ] ||
+                    makepkg -sic --needed && touch "$LATEST_FILENAME" || ERRORS+=("$AUR")
             done
-            wait
-        ))
-        # we can't use `comm` because order is important
-        [ "${#ERRORS[@]}" -eq "0" ] || NO_ERRORS=($(printf '%s\n' "$@" | grep -Fvf <(printf '%s\n' "${ERRORS[@]}")))
-        for AUR in ${NO_ERRORS[@]+"${NO_ERRORS[@]}"}; do
-            cd "$LK_ROOT/cache/aur/$AUR" || exit
-            [ -e "$LATEST_FILENAME" ] ||
-                makepkg -sic --noconfirm --needed && touch "$LATEST_FILENAME" || ERRORS+=("$AUR")
-        done
-        [ "${#ERRORS[@]}" -eq "0" ] || lk_echo_array "${ERRORS[@]}" | lk_console_list "Failed to install" "AUR package" "AUR packages" "$BOLD$RED"
-    }
+            [ "${#ERRORS[@]}" -eq "0" ] || lk_echo_array "${ERRORS[@]}" | lk_console_list "Failed to install" "AUR package" "AUR packages" "$BOLD$RED"
+        }
+    fi
 }
 
 LK_DEFAULT_CONSOLE_COLOUR="$(lk_safe_tput setaf 6)"
