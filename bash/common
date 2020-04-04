@@ -4,11 +4,11 @@
 set -euo pipefail
 
 function is_virtual() {
+    lk_is_linux && grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo
+}
 
-    assert_is_linux
-
-    grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo
-
+function is_qemu() {
+    is_virtual && grep -Eiq qemu /sys/devices/virtual/dmi/id/*_vendor
 }
 
 function is_desktop() {

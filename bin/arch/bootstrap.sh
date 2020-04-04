@@ -573,7 +573,10 @@ in_target systemctl enable ntpd.service
     message "installing yay..."
     in_target sudo -H -u "$TARGET_USERNAME" \
         bash -c 'mkdir -p "$HOME/Downloads" && git clone "https://aur.archlinux.org/yay.git" "$HOME/Downloads/yay" && cd "$HOME/Downloads/yay" && makepkg -ic' &&
-        in_target sudo -H -u "$TARGET_USERNAME" yay -Sy --aur --needed "${AUR_PACKAGES[@]}"
+        {
+            message "installing AUR packages..."
+            in_target sudo -H -u "$TARGET_USERNAME" yay -Sy --aur --needed "${AUR_PACKAGES[@]}"
+        }
 }
 
 message "installing boot loader..."

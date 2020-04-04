@@ -401,7 +401,14 @@ PAC_INSTALL+=(
         gpg --recv-keys "${GPG_KEYS[@]}"
     }
 
-    lk_install_aur "${AUR_INSTALL[@]}"
+    AUR_TO_INSTALL=($(comm -13 <(pacman -Qeq | sort | uniq) <(lk_echo_array "${AUR_INSTALL[@]}" | sort | uniq)))
+    [ "${#AUR_TO_INSTALL[@]}" -eq "0" ] || {
+        lk_console_message "Installing new packages from AUR"
+        yay -Sy --aur "${AUR_TO_INSTALL[@]}"
+    }
+
+    lk_console_message "Upgrading installed AUR packages"
+    yay -Syu --aur
 
     SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "PasswordAuthentication" "no" " " "#" " " &&
         SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "AcceptEnv" "LANG LC_*" " " "#" " " &&
