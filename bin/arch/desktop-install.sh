@@ -268,6 +268,7 @@ PAC_INSTALL+=(
     yarn
 
     #
+    composer
     php
     php-gd
     php-imagick
