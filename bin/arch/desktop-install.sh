@@ -435,9 +435,26 @@ PAC_INSTALL+=(
         sudo mariadb-install-db --user="mysql" --basedir="/usr" --datadir="/var/lib/mysql"; } &&
         sudo systemctl enable --now mysqld || true
 
+    SUDO_OR_NOT=1
+
+    for PHP_EXT in bcmath curl gd gettext imap intl mysqli sqlite3 xmlrpc zip; do
+        lk_enable_entry "/etc/php/php.ini" "extension=$PHP_EXT" ";"
+    done
+    lk_apply_setting "/etc/php/php.ini" "memory_limit" "256M" " = " ";" " "
+    lk_apply_setting "/etc/php/php.ini" "error_reporting" "E_ALL" " = " ";" " "
+    lk_apply_setting "/etc/php/php.ini" "display_errors" "On" " = " ";" " "
+    lk_apply_setting "/etc/php/php.ini" "display_startup_errors" "On" " = " ";" " "
+    lk_apply_setting "/etc/php/php.ini" "error_log" "syslog" " = " ";" " "
+    [ ! -f "/etc/php/conf.d/imagick.ini" ] || lk_enable_entry "/etc/php/conf.d/imagick.ini" "extension=imagick" ";"
+    [ ! -f "/etc/php/conf.d/memcache.ini" ] || lk_enable_entry "/etc/php/conf.d/memcache.ini" "extension=memcache.so" ";"
+    [ ! -f "/etc/php/conf.d/memcached.ini" ] || lk_enable_entry "/etc/php/conf.d/memcached.ini" "extension=memcached.so" ";"
+    [ ! -f "/etc/php/conf.d/xdebug.ini" ] || {
+        lk_enable_entry "/etc/php/conf.d/xdebug.ini" "zend_extension=xdebug.so" ";"
+        lk_apply_setting "/etc/php/conf.d/xdebug.ini" "xdebug.remote_enable" "on" " = " ";" " "
+        lk_apply_setting "/etc/php/conf.d/xdebug.ini" "xdebug.remote_autostart" "on" " = " ";" " "
+    }
     sudo systemctl enable --now php-fpm || true
 
-    SUDO_OR_NOT=1
     sudo mkdir -p "/srv/http" &&
         sudo chown -c "$USER:" "/srv/http" &&
         mkdir -p "/srv/http/localhost/html" "/srv/http/127.0.0.1" &&
@@ -451,6 +468,7 @@ PAC_INSTALL+=(
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule rewrite_module modules/mod_rewrite.so" "# " &&
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule vhost_alias_module modules/mod_vhost_alias.so" "# " &&
         sudo systemctl enable --now httpd || true
+
     unset SUDO_OR_NOT
 
     ! lk_command_exists vim || lk_safe_symlink "$(command -v vim)" "/usr/local/bin/vi" Y
