@@ -95,6 +95,7 @@ PAC_INSTALL+=(
     nload    # shows bandwidth by interface
 
     # system
+    acme.sh
     cloud-utils
     hwinfo
     sysfsutils
