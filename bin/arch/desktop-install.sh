@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2015,SC2034,SC2046,SC2174,SC2207
+# shellcheck disable=SC1090,SC2015,SC2016,SC2034,SC2046,SC2174,SC2207
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
@@ -86,6 +86,7 @@ PAC_INSTALL+=(
     glances
     htop # 'top' alternative
     iotop
+    ps_mem
     sysstat
 
     # network monitoring
@@ -246,6 +247,7 @@ PAC_INSTALL+=(
     dbeaver
     eslint
     python-pylint
+    qcachegrind
     tidy
     ttf-font-awesome
     ttf-ionicons
@@ -438,22 +440,67 @@ PAC_INSTALL+=(
 
     SUDO_OR_NOT=1
 
-    for PHP_EXT in bcmath curl gd gettext imap intl mysqli sqlite3 xmlrpc zip; do
+    for PHP_EXT in bcmath curl gd gettext imap intl mysqli soap sqlite3 xmlrpc zip; do
         lk_enable_entry "/etc/php/php.ini" "extension=$PHP_EXT" ";"
     done
-    lk_apply_setting "/etc/php/php.ini" "memory_limit" "256M" " = " ";" " "
-    lk_apply_setting "/etc/php/php.ini" "error_reporting" "E_ALL" " = " ";" " "
-    lk_apply_setting "/etc/php/php.ini" "display_errors" "On" " = " ";" " "
-    lk_apply_setting "/etc/php/php.ini" "display_startup_errors" "On" " = " ";" " "
-    lk_apply_setting "/etc/php/php.ini" "error_log" "syslog" " = " ";" " "
+    lk_enable_entry "/etc/php/php.ini" "zend_extension=opcache" ";"
+    function apply_php_setting() {
+        lk_apply_setting "${PHP_INI_FILE:-/etc/php/php.ini}" "$1" "$2" " = " ";" " "
+    }
+    sudo mkdir -pm700 "/var/cache/php/opcache" &&
+        sudo chown "http:" "/var/cache/php/opcache"
+    apply_php_setting "memory_limit" "128M"
+    apply_php_setting "error_reporting" "E_ALL"
+    apply_php_setting "display_errors" "On"
+    apply_php_setting "display_startup_errors" "On"
+    apply_php_setting "log_errors" "Off"
+    apply_php_setting "opcache.memory_consumption" "512"
+    apply_php_setting "opcache.file_cache" "/var/cache/php/opcache"
     [ ! -f "/etc/php/conf.d/imagick.ini" ] || lk_enable_entry "/etc/php/conf.d/imagick.ini" "extension=imagick" ";"
     [ ! -f "/etc/php/conf.d/memcache.ini" ] || lk_enable_entry "/etc/php/conf.d/memcache.ini" "extension=memcache.so" ";"
     [ ! -f "/etc/php/conf.d/memcached.ini" ] || lk_enable_entry "/etc/php/conf.d/memcached.ini" "extension=memcached.so" ";"
     [ ! -f "/etc/php/conf.d/xdebug.ini" ] || {
         lk_enable_entry "/etc/php/conf.d/xdebug.ini" "zend_extension=xdebug.so" ";"
-        lk_apply_setting "/etc/php/conf.d/xdebug.ini" "xdebug.remote_enable" "on" " = " ";" " "
-        lk_apply_setting "/etc/php/conf.d/xdebug.ini" "xdebug.remote_autostart" "on" " = " ";" " "
+        mkdir -pm777 "$HOME/.tmp/"{cachegrind,trace}
+        PHP_INI_FILE="/etc/php/conf.d/xdebug.ini"
+        apply_php_setting "xdebug.remote_enable" "On"
+        apply_php_setting "xdebug.remote_autostart" "Off"
+        apply_php_setting "xdebug.profiler_enable_trigger" "On"
+        apply_php_setting "xdebug.profiler_output_dir" "$HOME/.tmp/cachegrind"
+        apply_php_setting "xdebug.profiler_output_name" "callgrind.out.%H.%R.%u"
+        apply_php_setting "xdebug.trace_enable_trigger" "On"
+        apply_php_setting "xdebug.collect_params" "4"
+        apply_php_setting "xdebug.collect_return" "On"
+        apply_php_setting "xdebug.trace_output_dir" "$HOME/.tmp/trace"
+        apply_php_setting "xdebug.trace_output_name" "trace.%H.%R.%u"
     }
+    [ ! -f "/etc/php/php-fpm.conf" ] ||
+        {
+            PHP_INI_FILE="/etc/php/php-fpm.conf"
+            apply_php_setting "emergency_restart_threshold" "10" # restart FPM if 10 children are gone in 60 seconds
+            apply_php_setting "emergency_restart_interval" "60"  #
+            apply_php_setting "events.mechanism" "epoll"         # don't rely on auto detection
+        }
+    [ ! -f "/etc/php/php-fpm.d/www.conf" ] ||
+        {
+            sudo chgrp http "/var/log/httpd" &&
+                sudo chmod g+w "/var/log/httpd"
+            PHP_INI_FILE="/etc/php/php-fpm.d/www.conf"
+            apply_php_setting "pm" "static"             # ondemand can't handle bursts: https://github.com/php/php-src/pull/1308
+            apply_php_setting "pm.max_children" "50"    # MUST be >= MaxRequestWorkers in httpd.conf
+            apply_php_setting "pm.max_requests" "0"     # don't respawn automatically
+            apply_php_setting "rlimit_files" "524288"   # check `ulimit -Hn` and raise for user http in /etc/security/limits.d/ if required
+            apply_php_setting "rlimit_core" "unlimited" # as above, but check `ulimit -Hc` instead
+            apply_php_setting "pm.status_path" "/status"
+            apply_php_setting "ping.path" "/ping"
+            apply_php_setting "access.log" '/var/log/httpd/php-fpm-$pool.access.log'
+            apply_php_setting "access.format" '"%R - %u %t \"%m %r%Q%q\" %s %f %{mili}d %{kilo}M %C%%"'
+            apply_php_setting "catch_workers_output" "yes"
+            apply_php_setting "php_admin_value[error_log]" '/var/log/httpd/php-fpm-$pool.error.log'
+            apply_php_setting "php_admin_flag[log_errors]" "On"
+            apply_php_setting "php_flag[display_errors]" "Off"
+            apply_php_setting "php_flag[display_startup_errors]" "Off"
+        }
     sudo systemctl enable --now php-fpm || true
 
     sudo mkdir -p "/srv/http" &&
@@ -464,10 +511,14 @@ PAC_INSTALL+=(
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "Include conf/extra/httpd-vhost-alias.conf" "# " &&
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule dir_module modules/mod_dir.so" "# " &&
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule headers_module modules/mod_headers.so" "# " &&
+        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule info_module modules/mod_info.so" "# " &&
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so" "# " &&
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule proxy_module modules/mod_proxy.so" "# " &&
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule rewrite_module modules/mod_rewrite.so" "# " &&
+        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule status_module modules/mod_status.so" "# " &&
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule vhost_alias_module modules/mod_vhost_alias.so" "# " &&
+        sudo usermod --append --groups "http" "$USER" &&
+        sudo usermod --append --groups "$(id -gn)" "http" &&
         sudo systemctl enable --now httpd || true
 
     unset SUDO_OR_NOT
