@@ -2,7 +2,9 @@
 # shellcheck disable=SC2034
 
 #CLOUDIMG_POOL_ROOT="/var/lib/libvirt/images"
+#CLOUDIMG_SESSION_POOL_ROOT="$HOME/.local/share/libvirt/images"
 #UBUNTU_CLOUDIMG_HOST="cloud-images.ubuntu.com"
+#UBUNTU_APT_MIRROR="http://archive.ubuntu.com/ubuntu"
 
 SCREENSHOT_DIR="$HOME/Pictures/Screenshots"
 

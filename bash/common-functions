@@ -138,6 +138,10 @@ function lk_is_false() {
     [[ "$1" =~ ^([nN0])$ ]]
 }
 
+function lk_full_name() {
+    getent passwd "${1:-$UID}" | cut -d: -f5 | cut -d, -f1
+}
+
 # [ESCAPE=escape_with] lk_escape string [escape_char1...]
 function lk_escape() {
     local i=0 STRING="$1" ESCAPE="${ESCAPE:-\\}" SPECIAL SEARCH REPLACE

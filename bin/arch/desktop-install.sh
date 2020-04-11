@@ -428,7 +428,13 @@ PAC_INSTALL+=(
 
     SUDO_OR_NOT=1 lk_apply_setting "/etc/conf.d/libvirt-guests" "ON_SHUTDOWN" "shutdown" "=" "# " &&
         SUDO_OR_NOT=1 lk_apply_setting "/etc/conf.d/libvirt-guests" "SHUTDOWN_TIMEOUT" "300" "=" "# " &&
-        sudo usermod --append --groups libvirt "$USER" &&
+        sudo usermod --append --groups libvirt,kvm "$USER" &&
+        {
+            [ -e "/etc/qemu/bridge.conf" ] || {
+                sudo mkdir -p "/etc/qemu" &&
+                    echo "allow all" | sudo tee "/etc/qemu/bridge.conf" >/dev/null
+            }
+        } &&
         sudo systemctl enable --now libvirtd libvirt-guests || true
 
     sudo usermod --append --groups docker "$USER" &&
