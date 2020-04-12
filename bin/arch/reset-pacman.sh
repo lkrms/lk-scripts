@@ -112,6 +112,7 @@ PACMAN_PACKAGES=(
     net-tools
     nmap
     openbsd-netcat
+    ps_mem
     rsync
     tcpdump
     traceroute
@@ -136,6 +137,7 @@ PACMAN_PACKAGES=(
     xdg-user-dirs
     lightdm
     lightdm-gtk-greeter
+    lightdm-gtk-greeter-settings
     xorg-server
     xorg-xrandr
 

@@ -255,6 +255,7 @@ PACMAN_DESKTOP_PACKAGES=(
     xdg-user-dirs
     lightdm
     lightdm-gtk-greeter
+    lightdm-gtk-greeter-settings
     xorg-server
     xorg-xrandr
 
