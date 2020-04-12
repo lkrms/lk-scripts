@@ -48,7 +48,8 @@ Images available:
   ubuntu-18.04
   ubuntu-16.04-minimal
   ubuntu-16.04
-  ubuntu-14.04"
+  ubuntu-14.04
+  ubuntu-12.04"
 
 # TODO: validate the following (including MAC uniqueness)
 VM_HOSTNAME="$1"
@@ -116,6 +117,17 @@ case "$IMAGE" in
     )
     SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
     OS_VARIANT="ubuntu14.04"
+    ;;
+
+*12.04*)
+    IMAGE_NAME="ubuntu-12.04"
+    IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/precise/current/precise-server-cloudimg-amd64-disk1.img"
+    SHA_URLS=(
+        "https://cloud-images.ubuntu.com/precise/current/SHA256SUMS.gpg"
+        "https://cloud-images.ubuntu.com/precise/current/SHA256SUMS"
+    )
+    SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+    OS_VARIANT="ubuntu12.04"
     ;;
 
 *)
@@ -243,6 +255,15 @@ SSH_AUTHORIZED_KEYS=($(grep -Ev '^(#|\s*$)' "$HOME/.ssh/authorized_keys"))
 unset IFS
 [ "${#SSH_AUTHORIZED_KEYS[@]}" -gt "0" ] || die "$HOME/.ssh/authorized_keys: no keys"
 
+PACKAGES=()
+[ "$IMAGE_NAME" = "ubuntu-12.04" ] || PACKAGES+=("qemu-guest-agent")
+[ -z "$VM_PACKAGES" ] || {
+    IFS=","
+    # shellcheck disable=SC2206
+    PACKAGES+=($VM_PACKAGES)
+    unset IFS
+}
+
 USER_DATA="\
 #cloud-config
 ssh_pwauth: false
@@ -260,16 +281,11 @@ apt:
       uri: ${UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}
 package_upgrade: true
 package_reboot_if_required: true
-packages:
-  - qemu-guest-agent
 $(
-    [ -z "$VM_PACKAGES" ] || {
-        IFS=","
-        # shellcheck disable=SC2206
-        PACKAGES=($VM_PACKAGES)
-        unset IFS
-        printf '%s\n' "${PACKAGES[@]/#/  - }"
-    }
+    [ "$IMAGE_NAME" != "ubuntu-12.04" ] || printf '%s\n' \
+        "apt_upgrade: true" \
+        "ssh_authorized_keys:" "${SSH_AUTHORIZED_KEYS[@]/#/  - }"
+    [ "${#PACKAGES[@]}" -eq "0" ] || printf '%s\n' "packages:" "${PACKAGES[@]/#/  - }"
     [ "${#FSTAB[@]}" -eq "0" ] || {
         FSTAB_CMD=("${FSTAB[@]/#/  - echo \"}")
         FSTAB_CMD=("${FSTAB_CMD[@]/%/\" >>/etc/fstab}")
@@ -286,7 +302,7 @@ write_files:
       nameserver ${SUBNET}1
     path: /etc/resolv.conf"
     # cloud-init on ubuntu-14.04 doesn't recognise the "apt" schema
-    [ "$IMAGE_NAME" != "ubuntu-14.04" ] || echo "\
+    [ "$IMAGE_NAME" != "ubuntu-14.04" ] && [ "$IMAGE_NAME" != "ubuntu-12.04" ] || echo "\
 apt_mirror: ${UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}"
 )"
 
@@ -296,12 +312,13 @@ instance-id: $(uuidgen)
 local-hostname: $VM_HOSTNAME
 $(
     # cloud-init on ubuntu-14.04 ignores the network-config file
-    [ -z "$VM_IPV4_ADDRESS" ] || [ "$IMAGE_NAME" != "ubuntu-14.04" ] || echo "\
+    [ -z "$VM_IPV4_ADDRESS" ] || { [ "$IMAGE_NAME" != "ubuntu-14.04" ] && [ "$IMAGE_NAME" != "ubuntu-12.04" ]; } || echo "\
 network-interfaces: |
+  auto eth0
   iface eth0 inet static
   address $VM_IPV4_ADDRESS
   gateway ${SUBNET}1
-  dns-nameserver ${SUBNET}1"
+  dns-nameservers ${SUBNET}1"
 )"
 
 echo "$NETWORK_CONFIG" >network-config.latest.yml
