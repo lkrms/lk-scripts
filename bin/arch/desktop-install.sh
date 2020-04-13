@@ -19,7 +19,6 @@ PAC_KEEP=(
     masterpdfeditor
     python2-xlib
     quicktile-git
-    ubuntu-keyring
 )
 
 PAC_REMOVE=(
@@ -106,7 +105,6 @@ AUR_INSTALL+=(
     #asciicast2gif
     git-filter-repo
     powershell-bin
-    #ubuntu-keyring
     vpn-slice
 )
 

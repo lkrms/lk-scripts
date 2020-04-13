@@ -344,10 +344,10 @@ function lk_safe_symlink() {
         TARGET="$(lk_add_file_suffix "$TARGET" "-default")"
         [ -e "$TARGET" ] || return
     }
-    ! lk_command_exists realpath || TARGET="$(realpath -s "$TARGET")"
+    ! lk_command_exists realpath || TARGET="$(lk_maybe_sudo realpath -s "$TARGET")"
     LK_SAFE_SYMLINK_NO_CHANGE=
-    if [ -L "$LINK" ]; then
-        CURRENT_TARGET="$(readlink "$LINK")" || return
+    if maybe_sudo test -L "$LINK"; then
+        CURRENT_TARGET="$(maybe_sudo readlink "$LINK")" || return
         [ "$CURRENT_TARGET" != "$TARGET" ] || {
             LK_SAFE_SYMLINK_NO_CHANGE=1
             return
