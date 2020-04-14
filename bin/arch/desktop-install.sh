@@ -526,6 +526,7 @@ EOF
         { [ -e "/srv/http/127.0.0.1/html" ] || ln -s "../localhost/html" "/srv/http/127.0.0.1/html"; } &&
         lk_safe_symlink "$CONFIG_DIR/httpd-vhost-alias.conf" "/etc/httpd/conf/extra/httpd-vhost-alias.conf" &&
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "Include conf/extra/httpd-vhost-alias.conf" "# " &&
+        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule alias_module modules/mod_alias.so" "# " &&
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule dir_module modules/mod_dir.so" "# " &&
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule headers_module modules/mod_headers.so" "# " &&
         lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule info_module modules/mod_info.so" "# " &&
