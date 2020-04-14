@@ -500,16 +500,6 @@ done
 is_dryrun || {
     genfstab -U /mnt >>/mnt/etc/fstab
     printf "%s\n" "%wheel ALL=(ALL) ALL" "%wheel ALL=(ALL) NOPASSWD: /usr/bin/pacman" >"/mnt/etc/sudoers.d/90-wheel"
-    [ ! -d "/mnt/etc/polkit-1/rules.d" ] ||
-        cat <<EOF >"/mnt/etc/polkit-1/rules.d/49-wheel.rules"
-// Allow any user in the 'wheel' group to take any action without
-// entering a password.
-polkit.addRule(function (action, subject) {
-    if (subject.isInGroup("wheel")) {
-        return polkit.Result.YES;
-    }
-});
-EOF
     {
         echo "LANG=${LOCALES[0]}.UTF-8"
         [ -z "${LANGUAGE:-}" ] || echo "LANGUAGE=$LANGUAGE"

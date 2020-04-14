@@ -353,6 +353,19 @@ PAC_INSTALL+=(
         {
             lk_console_message "Disabling password-based login as root"
             sudo passwd -l root
+
+            lk_console_message "Disabling polkit password prompts"
+            ! sudo test -d "/etc/polkit-1/rules.d" ||
+                sudo test -e "/etc/polkit-1/rules.d/49-wheel.rules" ||
+                sudo tee "/etc/polkit-1/rules.d/49-wheel.rules" <<EOF >/dev/null
+// Allow any user in the 'wheel' group to take any action without
+// entering a password.
+polkit.addRule(function (action, subject) {
+    if (subject.isInGroup("wheel")) {
+        return polkit.Result.YES;
+    }
+});
+EOF
         }
 
     PAC_TO_REMOVE=($(comm -12 <(pacman -Qq | sort | uniq) <(lk_echo_array "${PAC_REMOVE[@]}" | sort | uniq)))
