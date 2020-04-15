@@ -346,8 +346,8 @@ function lk_safe_symlink() {
     }
     ! lk_command_exists realpath || TARGET="$(lk_maybe_sudo realpath -s "$TARGET")"
     LK_SAFE_SYMLINK_NO_CHANGE=
-    if maybe_sudo test -L "$LINK"; then
-        CURRENT_TARGET="$(maybe_sudo readlink "$LINK")" || return
+    if lk_maybe_sudo test -L "$LINK"; then
+        CURRENT_TARGET="$(lk_maybe_sudo readlink "$LINK")" || return
         [ "$CURRENT_TARGET" != "$TARGET" ] || {
             LK_SAFE_SYMLINK_NO_CHANGE=1
             return
