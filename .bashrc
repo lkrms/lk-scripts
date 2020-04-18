@@ -34,6 +34,13 @@ function lk_find_latest() {
     gnu_find -L . -xdev -regextype posix-extended ${@+\( "$@" \)} "${TYPE_ARGS[@]}" -print0 | xargs -0 gnu_stat --format '%Y :%y %N' | sort -nr | cut -d: -f2- | less
 }
 
+function lk_ssl_client() {
+    local HOST="${1:-}" PORT="${2:-}"
+    [ -n "$HOST" ] || lk_warn "no hostname" || return
+    [ -n "$PORT" ] || lk_warn "no port" || return
+    openssl s_client -connect "$HOST":"$PORT" -servername "$HOST"
+}
+
 function lk_before_command() {
     [ "${LK_PROMPT_DISPLAYED:-0}" -eq "0" ] || [ "$BASH_COMMAND" = "$PROMPT_COMMAND" ] || {
         LK_LAST_COMMAND=($BASH_COMMAND)
