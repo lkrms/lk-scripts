@@ -223,10 +223,12 @@ PACMAN_PACKAGES=(
     git
     lftp
     nano
-    net-tools
-    nmap
-    openbsd-netcat
-    ps_mem
+    ndisc6         # for rdisc6
+    net-tools      #
+    nmap           #
+    openbsd-netcat #
+    ps_mem         #
+    radvd          # for radvdump
     rsync
     tcpdump
     traceroute
