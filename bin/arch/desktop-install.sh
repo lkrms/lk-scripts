@@ -120,6 +120,7 @@ PAC_INSTALL+=(
     galculator
     geany
     gimp
+    gucharmap
     inkscape
     keepassxc
     libreoffice-fresh
