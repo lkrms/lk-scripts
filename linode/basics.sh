@@ -23,3 +23,45 @@ passwd -l root
 # update everything
 apt-get update
 apt-get dist-upgrade -y
+
+# install essentials
+PACKAGES=(
+    #
+    atop
+    ntp
+
+    #
+    attr
+    byobu
+    coreutils
+    curl
+    dmidecode
+    file
+    hwinfo
+    lftp
+    net-tools
+    traceroute
+    vim
+    wget
+
+    #
+    htop    # 'top' alternative
+    iftop   # shows network traffic by service and host
+    ifstat  # dumps network statistics by interface
+    iotop   #
+    nethogs # groups bandwidth by process ('nettop')
+    nload   # shows bandwidth by interface
+    sysstat
+
+    #
+    jq
+    p7zip-full
+    pv
+
+    #
+    apt-listchanges
+    aptitude
+    debsums
+)
+
+apt-get install -y "${PACKAGES[@]}"

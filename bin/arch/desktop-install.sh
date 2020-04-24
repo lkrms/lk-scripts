@@ -19,6 +19,7 @@ PAC_KEEP=(
     masterpdfeditor
     python2-xlib
     quicktile-git
+    r8152-dkms # common USB / USB-C NIC
 )
 
 PAC_REMOVE=(
@@ -42,7 +43,6 @@ is_virtual || {
     )
     AUR_INSTALL+=(
         ddcutil
-        r8152-dkms # common USB / USB-C NIC
     )
 }
 AUR_INSTALL+=(
@@ -97,6 +97,7 @@ PAC_INSTALL+=(
     # system
     acme.sh
     cloud-utils
+    cronie
     hwinfo
     sysfsutils
 )
@@ -137,6 +138,9 @@ PAC_INSTALL+=(
     transmission-cli
     transmission-gtk
     trash-cli
+
+    # because there's always That One Website
+    flashplugin
 
     # PDF
     ghostscript  # PDF/PostScript processor
