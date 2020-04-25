@@ -133,6 +133,7 @@ PAC_INSTALL+=(
     remmina
     scribus
     speedcrunch
+    system-config-printer
     thunderbird
     thunderbird-i18n-en-gb
     thunderbird-i18n-en-us
