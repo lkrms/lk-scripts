@@ -2,15 +2,15 @@
 
 # Add entries like the following to `/etc/udev/rules.d/90-virsh-attach.rules`:
 #
-# ACTION=="add",    SUBSYSTEM=="usb", ENV{ID_VENDOR_ID}=="0x04b8", ENV{ID_MODEL_ID}=="0x0155", RUN+="/path/to/udev-virsh-attach.sh"
-# ACTION=="remove", SUBSYSTEM=="usb", ENV{ID_VENDOR_ID}=="0x04b8", ENV{ID_MODEL_ID}=="0x0155", RUN+="/path/to/udev-virsh-attach.sh"
+# ACTION=="add",    SUBSYSTEM=="usb", ENV{ID_VENDOR_ID}=="04b8", ENV{ID_MODEL_ID}=="0155", RUN+="/path/to/udev-virsh-attach.sh vm_name"
+# ACTION=="remove", SUBSYSTEM=="usb", ENV{ID_VENDOR_ID}=="04b8", ENV{ID_MODEL_ID}=="0155", RUN+="/path/to/udev-virsh-attach.sh vm_name"
 #
 # Use `udevadm monitor --property --udev` while attaching and detaching a
 # device to check its properties. Then `udevadm control --reload`, followed by
 # `udevadm trigger --action=add` if needed.
 #
 # If not working as expected, try `udevadm test /sys/DEVPATH` (find the current
-# DEVPATH in `/tmp/udev-virsh-attach.sh.err`).
+# DEVPATH using `udevadm monitor --property --udev`).
 
 [ -n "$ID_VENDOR_ID" ] &&
     [ -n "$ID_MODEL_ID" ] &&
@@ -25,7 +25,7 @@ SCRIPT_FILE="/tmp/$(basename "$0")_${ID_VENDOR_ID}_${ID_MODEL_ID}.sh"
 # shellcheck disable=SC2094
 function log_start() {
     {
-        echo -e "\n-- START $ACTION $ID_SERIAL $(date +'%b %_d %H:%M:%S.%N %z') --" | tee /dev/stderr
+        echo -e "\n-- START $ACTION $ID_SERIAL $(date +'%b %_d %H:%M:%S.%N %z') --" | tee -a /dev/stderr
         printenv >&2
     } >>"$OUT_FILE" 2>>"$ERR_FILE"
 }
@@ -42,7 +42,7 @@ function log_start() {
   </source>
 </hostdev>
 EOF
-    echo "-- END $ACTION $ID_SERIAL $(date +'%b %_d %H:%M:%S.%N %z') --" | tee /dev/stderr
+    echo "-- END $ACTION $ID_SERIAL $(date +'%b %_d %H:%M:%S.%N %z') --" | tee -a /dev/stderr
 } >>"$OUT_FILE" 2>>"$ERR_FILE"
 SCRIPT
     chmod a+x "$SCRIPT_FILE"
