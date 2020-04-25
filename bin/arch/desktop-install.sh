@@ -96,6 +96,7 @@ PAC_INSTALL+=(
 
     # system
     acme.sh
+    at
     cloud-utils
     cronie
     hwinfo
@@ -393,33 +394,14 @@ EOF
 
     ! PAC_TO_PURGE=($(pacman -Qdtq)) ||
         [ "${#PAC_TO_PURGE[@]}" -eq "0" ] ||
-        ! get_confirmation "Purge orphaned packages?" ||
-        sudo pacman -Rns "${PAC_TO_PURGE[@]}"
+        {
+            lk_echo_array "${PAC_TO_PURGE[@]}" | lk_console_list "Orphaned package(s)"
+            ! get_confirmation "Purge?" ||
+                sudo pacman -Rns "${PAC_TO_PURGE[@]}"
+        }
 
     lk_console_message "Upgrading installed packages"
     sudo pacman -Syu
-
-    # otherwise makepkg fails with "unknown public key" errors
-    lk_console_message "Checking GPG keys"
-    [ -e "$HOME/.gnupg" ] || gpg --list-keys >/dev/null
-    [ -e "$HOME/.gnupg/gpg.conf" ] || {
-        touch "$HOME/.gnupg/gpg.conf" &&
-            chmod 600 "$HOME/.gnupg/gpg.conf"
-    }
-    [ ! -e "/etc/pacman.d/gnupg/pubring.gpg" ] || {
-        lk_apply_setting "$HOME/.gnupg/gpg.conf" "keyring" "/etc/pacman.d/gnupg/pubring.gpg" " "
-    }
-    GPG_KEYS=(
-        194B631AB2DA2888 # devilspie2
-        293D771241515FE8 # php-box
-        4773BD5E130D1D45 # spotify
-        F57D4F59BD3DF454 # sublime
-    )
-    MISSING_GPG_KEYS=($(comm -13 <(lk_get_gpg_keyids | lk_lower | sort | uniq) <(lk_echo_array "${GPG_KEYS[@]}" | lk_lower | sort | uniq)))
-    [ "${#MISSING_GPG_KEYS[@]}" -eq "0" ] || {
-        lk_console_message "Importing ${#MISSING_GPG_KEYS[@]} GPG $(lk_maybe_plural "${#MISSING_GPG_KEYS[@]}" key keys)"
-        gpg --recv-keys "${GPG_KEYS[@]}"
-    }
 
     AUR_TO_INSTALL=($(comm -13 <(pacman -Qeq | sort | uniq) <(lk_echo_array "${AUR_INSTALL[@]}" | sort | uniq)))
     [ "${#AUR_TO_INSTALL[@]}" -eq "0" ] || {
@@ -434,7 +416,10 @@ EOF
         SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "AcceptEnv" "LANG LC_*" " " "#" " " &&
         sudo systemctl enable --now sshd || true
 
-    # TODO: configure /etc/ntp.conf with "server ntp.lkrms.org iburst"
+    sudo systemctl enable --now atd || true
+
+    sudo systemctl enable --now cronie || true
+
     sudo systemctl enable --now ntpd || true
 
     sudo systemctl enable --now org.cups.cupsd || true
