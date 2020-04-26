@@ -115,6 +115,7 @@ PAC_INSTALL+=(
     caprine
     catfish
     copyq
+    evince
     firefox
     firefox-i18n-en-gb
     flameshot
