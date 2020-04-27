@@ -394,7 +394,7 @@ EOF
         sudo pacman -Sy "${PAC_TO_INSTALL[@]}"
     }
 
-    ! PAC_TO_PURGE=($(pacman -Qdtq)) ||
+    ! PAC_TO_PURGE=($(pacman -Qdttq)) ||
         [ "${#PAC_TO_PURGE[@]}" -eq "0" ] ||
         {
             lk_echo_array "${PAC_TO_PURGE[@]}" | lk_console_list "Orphaned package(s)"
