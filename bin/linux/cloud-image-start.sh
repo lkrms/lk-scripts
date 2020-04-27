@@ -44,6 +44,8 @@ Defaults:
   IMAGE=ubuntu-18.04-minimal
 
 Images available:
+  ubuntu-20.04-minimal
+  ubuntu-20.04
   ubuntu-18.04-minimal
   ubuntu-18.04
   ubuntu-16.04-minimal
@@ -66,6 +68,27 @@ IMAGE="${10:-ubuntu-18.04-minimal}"
 # OS_VARIANT: run `osinfo-query os` for options
 case "$IMAGE" in
 
+*20.04*minimal)
+    IMAGE_NAME="ubuntu-20.04-minimal"
+    IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/minimal/releases/focal/release/ubuntu-20.04-minimal-cloudimg-amd64.img"
+    SHA_URLS=(
+        "https://cloud-images.ubuntu.com/minimal/releases/focal/release/SHA256SUMS.gpg"
+    )
+    SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+    OS_VARIANT="ubuntu20.04"
+    ;;
+
+*20.04*)
+    IMAGE_NAME="ubuntu-20.04"
+    IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/focal/current/focal-server-cloudimg-amd64.img"
+    SHA_URLS=(
+        "https://cloud-images.ubuntu.com/focal/current/SHA256SUMS.gpg"
+        "https://cloud-images.ubuntu.com/focal/current/SHA256SUMS"
+    )
+    SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
+    OS_VARIANT="ubuntu20.04"
+    ;;
+
 *18.04*minimal)
     IMAGE_NAME="ubuntu-18.04-minimal"
     IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/minimal/releases/bionic/release/ubuntu-18.04-minimal-cloudimg-amd64.img"
@@ -81,7 +104,7 @@ case "$IMAGE" in
     IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/bionic/current/bionic-server-cloudimg-amd64.img"
     SHA_URLS=(
         "https://cloud-images.ubuntu.com/bionic/current/SHA256SUMS.gpg"
-        "http://cloud-images.ubuntu.com/bionic/current/SHA256SUMS"
+        "https://cloud-images.ubuntu.com/bionic/current/SHA256SUMS"
     )
     SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
     OS_VARIANT="ubuntu18.04"
@@ -101,8 +124,8 @@ case "$IMAGE" in
     IMAGE_NAME="ubuntu-16.04"
     IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
     SHA_URLS=(
-        "http://cloud-images.ubuntu.com/xenial/current/SHA256SUMS.gpg"
-        "http://cloud-images.ubuntu.com/xenial/current/SHA256SUMS"
+        "https://cloud-images.ubuntu.com/xenial/current/SHA256SUMS.gpg"
+        "https://cloud-images.ubuntu.com/xenial/current/SHA256SUMS"
     )
     SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
     OS_VARIANT="ubuntu16.04"
