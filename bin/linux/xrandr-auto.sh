@@ -302,6 +302,9 @@ if has_argument "--set-all" || has_argument "--lightdm" || is_autostart; then
 
     echo "Xft.dpi: $DPI" | xrdb -merge
 
+    has_argument "--lightdm" || ! lk_command_exists "displaycal-apply-profiles" ||
+        displaycal-apply-profiles
+
 fi
 
 ! has_argument "--lightdm" || exit 0

@@ -121,11 +121,12 @@ case "${XDG_CURRENT_DESKTOP:-}" in
         # or: additional 4K also connected?
         elif [ "$EDID_DISPLAY_1_ACTIVE" -eq "1" ]; then
 
+            # positioned to the left of display 0
             EDID_DISPLAY_1_OPTIONS+=(
-                --mode 3840x2160       # AOC U2790VQ does 60Hz+limited RGB or 30Hz+full RGB
-                --rate 30              # but not 60Hz+full RGB, no matter what its EDID says
-                --scale-from 3840x2160 #
-                --pos 0x0              # positioned to the left of display 0
+                --mode 3840x2160 --scale-from 3840x2160 --pos 0x0
+                # AOC U2790VQ does 60Hz+limited RGB or 30Hz+full RGB but not 60Hz+full RGB,
+                # no matter what its EDID says
+                --set "Broadcast RGB" "Limited 16:235"
             )
             POS_0=3840x0
 
