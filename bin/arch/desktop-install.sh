@@ -449,7 +449,7 @@ EOF
 
     SUDO_OR_NOT=1
 
-    for PHP_EXT in bcmath curl gd gettext imap intl mysqli soap sqlite3 xmlrpc zip; do
+    for PHP_EXT in bcmath curl gd gettext imap intl mysqli pdo_sqlite soap sqlite3 xmlrpc zip; do
         lk_enable_entry "/etc/php/php.ini" "extension=$PHP_EXT" ";"
     done
     lk_enable_entry "/etc/php/php.ini" "zend_extension=opcache" ";"
