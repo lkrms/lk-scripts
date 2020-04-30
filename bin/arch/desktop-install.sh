@@ -14,11 +14,6 @@ PAC_INSTALL=()
 AUR_INSTALL=()
 
 PAC_KEEP=(
-    asciicast2gif
-    gnome-python-desktop
-    masterpdfeditor
-    python2-xlib
-    quicktile-git
     r8152-dkms # common USB / USB-C NIC
 )
 
@@ -104,7 +99,6 @@ PAC_INSTALL+=(
 )
 
 AUR_INSTALL+=(
-    #asciicast2gif
     git-filter-repo
     powershell-bin
     vpn-slice
@@ -215,13 +209,13 @@ AUR_INSTALL+=(
     espanso
     ghostwriter
     google-chrome
-    #masterpdfeditor
+    masterpdfeditor-free
     skypeforlinux-stable-bin
     spotify
     teams
     todoist-electron
     trimage
-    #ttf-ms-win10
+    ttf-ms-win10
     typora
 
     # multimedia - video
@@ -236,14 +230,8 @@ AUR_INSTALL+=(
 
     # automation
     devilspie2
+    quicktile-git
     xorg-xkbprint
-
-    # these need to be installed in this order
-    #gconf
-    #gnome-python
-    #gnome-python-desktop #i.e. python2-wnck
-    #python2-xlib
-    #quicktile-git
 )
 
 # development
@@ -310,7 +298,6 @@ PAC_INSTALL+=(
 )
 
 AUR_INSTALL+=(
-    postman
     sublime-text-dev
     trickle
     visual-studio-code-bin
@@ -318,10 +305,6 @@ AUR_INSTALL+=(
     #
     git-cola
     sublime-merge
-
-    #
-    php-box
-    php-compat-info
 
     # platforms
     azure-cli
