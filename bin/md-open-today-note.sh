@@ -7,13 +7,15 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../bash/common"
 
-is_macos || assert_command_exists xdg-open
-! is_macos || assert_command_exists open
+is_macos && OPEN=open || OPEN=xdg-open
+OPEN="${1:-$OPEN}"
 
-SCRATCHPAD_DIR="${SCRATCHPAD_DIR:-$HOME/Documents/Notes/Daily}"
-TODAY_FILE="$SCRATCHPAD_DIR/$(date +'%Y-%m-%d').md"
+assert_command_exists "$OPEN"
 
-mkdir -p "$SCRATCHPAD_DIR"
+NOTES_DIR="${NOTES_DIR:-$HOME/Documents/Notes}"
+TODAY_FILE="$NOTES_DIR/Daily/$(date +'%Y-%m-%d').md"
+
+mkdir -p "$NOTES_DIR/Daily"
 
 [ -e "$TODAY_FILE" ] || {
 
@@ -21,5 +23,4 @@ mkdir -p "$SCRATCHPAD_DIR"
 
 }
 
-is_macos || xdg-open "$TODAY_FILE"
-! is_macos || open "$TODAY_FILE"
+"$OPEN" "$TODAY_FILE"

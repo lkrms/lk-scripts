@@ -8,7 +8,7 @@
 
 SCREENSHOT_DIR="$HOME/Pictures/Screenshots"
 
-SCRATCHPAD_DIR="$HOME/Documents/Notes/Daily"
+NOTES_DIR="$HOME/Documents/Notes"
 
 SAMBA_WORKGROUP="WORKGROUP"
 

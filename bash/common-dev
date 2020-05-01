@@ -180,7 +180,7 @@ function dev_apply_system_config() {
 
     if is_linux; then
 
-        safe_symlink "$LK_ROOT/bin/md-scratchpad.sh" "$HOME/.local/bin/md-scratchpad.sh"
+        safe_symlink "$LK_ROOT/bin/md-open-today-note.sh" "$HOME/.local/bin/md-open-today-note.sh"
         safe_symlink "$LK_ROOT/bin/pdf-combine.sh" "$HOME/.local/bin/pdf-combine.sh"
 
         if command_exists xrandr; then

@@ -618,9 +618,15 @@ function lk_load_env() {
     ! lk_is_linux || lk_is_root || ! EXPORT_LINUXBREW="$(lk_load_linuxbrew)" || {
         echo "$EXPORT_LINUXBREW"
     }
-    lk_is_root || [ -z "${SCREENSHOT_DIR:-}" ] || {
-        { [ -d "$SCREENSHOT_DIR" ] || mkdir -pv "$SCREENSHOT_DIR"; } &&
-            echo "export LK_SCREENSHOT_DIR=\"$SCREENSHOT_DIR\""
+    lk_is_root || {
+        [ -z "${SCREENSHOT_DIR:-}" ] || {
+            { [ -d "$SCREENSHOT_DIR" ] || mkdir -pv "$SCREENSHOT_DIR"; } &&
+                echo "export LK_SCREENSHOT_DIR=\"$SCREENSHOT_DIR\""
+        }
+        [ -z "${NOTES_DIR:-}" ] || {
+            { [ -d "$NOTES_DIR" ] || mkdir -pv "$NOTES_DIR"; } &&
+                echo "export LK_NOTES_DIR=\"$NOTES_DIR\""
+        }
     }
 }
 
