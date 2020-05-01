@@ -479,6 +479,13 @@ function lk_get_gpg_keyids() {
     gpg --list-keys --with-colons | { grep -E '^(pub|sub):' || true; } | cut -d: -f5
 }
 
+function lk_ssl_client() {
+    local HOST="${1:-}" PORT="${2:-}" SERVER_NAME="${3:-${1:-}}"
+    [ -n "$HOST" ] || lk_warn "no hostname" || return
+    [ -n "$PORT" ] || lk_warn "no port" || return
+    openssl s_client -connect "$HOST":"$PORT" -servername "$SERVER_NAME"
+}
+
 # lk_start_or_restart command [arg1...]
 #   Kill any running COMMAND processes, then run COMMAND in the
 #   background and disown it.

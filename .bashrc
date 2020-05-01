@@ -34,11 +34,12 @@ function lk_find_latest() {
     gnu_find -L . -xdev -regextype posix-extended ${@+\( "$@" \)} "${TYPE_ARGS[@]}" -print0 | xargs -0 gnu_stat --format '%Y :%y %N' | sort -nr | cut -d: -f2- | less
 }
 
-function lk_ssl_client() {
-    local HOST="${1:-}" PORT="${2:-}"
-    [ -n "$HOST" ] || lk_warn "no hostname" || return
-    [ -n "$PORT" ] || lk_warn "no port" || return
-    openssl s_client -connect "$HOST":"$PORT" -servername "$HOST"
+function lk_add_group_read() {
+    local DIR="${1:-.}"
+    [ -d "$DIR" ] || lk_warn "not a directory: $DIR" || return
+    ! lk_is_root || lk_warn "can't run as root" || return
+    sudo find "$DIR" -type f ! -perm -g=r -exec chmod -c g+r '{}' \;
+    sudo find "$DIR" -type d ! -perm -g=rx -exec chmod -c g+rx '{}' \;
 }
 
 function lk_before_command() {
