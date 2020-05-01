@@ -3,19 +3,18 @@
 set -euo pipefail
 
 PULL_FROM="${PWD%/.git}"
-
 cd "/opt/linac-scripts"
-
 unset GIT_DIR
 
-echo "[$PWD] git remote set-url origin \"$PULL_FROM\"" >&2
+echo "[$PWD] git remote set-url local \"$PULL_FROM\"" >&2
+git remote add local "$PULL_FROM" 2>/dev/null ||
+    git remote set-url local "$PULL_FROM"
 
-git remote add origin "$PULL_FROM" 2>/dev/null ||
-    git remote set-url origin "$PULL_FROM"
-
-echo "[$PWD] git reset --hard origin/master" >&2
-
-git fetch --force origin &&
-    git reset --hard origin/master
+echo "[$PWD] git merge --ff-only local/master" >&2
+git fetch --force local
+git merge --ff-only local/master || {
+    echo "[$PWD] git reset --hard local/master" >&2
+    git reset --hard local/master
+}
 
 echo "[$PWD] Done." >&2
