@@ -377,16 +377,16 @@ EOF
         sudo pacman -Sy "${PAC_TO_INSTALL[@]}"
     }
 
+    lk_console_message "Upgrading installed packages"
+    sudo pacman -Syu
+
     ! PAC_TO_PURGE=($(pacman -Qdttq)) ||
         [ "${#PAC_TO_PURGE[@]}" -eq "0" ] ||
         {
-            lk_echo_array "${PAC_TO_PURGE[@]}" | lk_console_list "Orphaned package(s)"
-            ! get_confirmation "Purge?" ||
+            lk_echo_array "${PAC_TO_PURGE[@]}" | lk_console_list "Orphaned:" "package" "packages"
+            ! get_confirmation "Remove?" ||
                 sudo pacman -Rns "${PAC_TO_PURGE[@]}"
         }
-
-    lk_console_message "Upgrading installed packages"
-    sudo pacman -Syu
 
     AUR_TO_INSTALL=($(comm -13 <(pacman -Qeq | sort | uniq) <(lk_echo_array "${AUR_INSTALL[@]}" | sort | uniq)))
     [ "${#AUR_TO_INSTALL[@]}" -eq "0" ] || {

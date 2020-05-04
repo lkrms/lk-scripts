@@ -4,10 +4,20 @@
 # common-functions
 #   Provide various portable, self-contained Bash functions.
 
+function lk_caller() {
+    local CALLER=() SOURCE="${BASH_SOURCE[2]:-}" IFS
+    [ "$SOURCE" = "$0" ] || CALLER=("$(basename "$0")")
+    CALLER+=(
+        ${SOURCE:+"$SOURCE:${BASH_LINENO[1]}"}
+        ${FUNCNAME[2]+"${FUNCNAME[2]}()"}
+    )
+    lk_implode " >> " "${CALLER[@]}"
+}
+
 # lk_warn message
 function lk_warn() {
     local EXIT_STATUS="$?"
-    echo "$(basename "$0"): $1" >&2
+    echo "$(lk_caller): $1" >&2
     return "$EXIT_STATUS"
 }
 
@@ -16,7 +26,7 @@ function lk_warn() {
 function lk_die() {
     local EXIT_STATUS="$?"
     [ "$EXIT_STATUS" -ne "0" ] || EXIT_STATUS="1"
-    [ "$#" -eq "0" ] || echo "$(basename "$0"): $1" >&2
+    [ "$#" -eq "0" ] || echo "$(lk_caller): $1" >&2
     lk_is_true "${LK_DIE_HAPPY:-0}" || exit "$EXIT_STATUS"
     exit 0
 }
@@ -245,6 +255,17 @@ function lk_echo_array() {
     printf '%s\n' "$@"
 }
 
+function lk_implode() {
+    local DELIM="$1"
+    shift
+    [ "$#" -eq "0" ] || {
+        printf '%s' "$1"
+        shift
+    }
+    [ "$#" -eq "0" ] ||
+        printf "$DELIM%s" "$@"
+}
+
 # lk_echoc [-neE] message [colour_sequence...]
 function lk_echoc() {
     local ECHO_ARGS=() MESSAGE RESET IFS COLOURS=
@@ -283,6 +304,18 @@ function lk_console_message() {
         lk_echoc -n "$MESSAGE" "${BOLD:-$(lk_safe_tput bold)}"
         [ -z "$MESSAGE2" ] || lk_echoc -n " $MESSAGE2" "$COLOURS"
     )" >&2
+}
+
+function lk_console_log() {
+    lk_console_message "$1"
+}
+
+function lk_console_warning() {
+    lk_console_message "$1" "$LK_WARNING_COLOUR"
+}
+
+function lk_console_error() {
+    lk_console_message "$1" "$LK_ERROR_COLOUR"
 }
 
 # lk_console_item message item [colour_sequence]
@@ -376,13 +409,9 @@ function lk_install_gnu_commands() {
     [ "$#" -gt "0" ] || COMMANDS=(${LK_GNU_COMMANDS[@]+"${LK_GNU_COMMANDS[@]}"})
     for COMMAND in ${COMMANDS[@]+"${COMMANDS[@]}"}; do
         GCOMMAND="$PREFIX$COMMAND"
-        lk_command_exists "$GCOMMAND" ||
-            {
-                EXIT_STATUS="$?"
-                echo "$GCOMMAND: command not found" >&2
-                continue
-            }
-        COMMAND_PATH="$(command -v "$GCOMMAND" 2>/dev/null)" &&
+        { lk_command_exists "$GCOMMAND" ||
+            lk_warn "$GCOMMAND: command not found"; } &&
+            COMMAND_PATH="$(command -v "$GCOMMAND" 2>/dev/null)" &&
             lk_safe_symlink "$COMMAND_PATH" "${GNU_PATH:-/usr/local/bin}/gnu_$COMMAND" ||
             EXIT_STATUS="$?"
     done
@@ -411,10 +440,6 @@ function lk_dirs_exist() {
 
 function lk_sort_paths_by_date() {
     gnu_stat --printf '%Y :%n\0' "$@" | sort -zn | sed -zE 's/^[0-9]+ ://' | xargs -0 printf '%s\n'
-}
-
-function lk_sort_paths_by_date_reverse() {
-    lk_sort_paths_by_date | tac
 }
 
 function lk_is_identifier() {
@@ -714,4 +739,6 @@ EOF
 
 }
 
-LK_DEFAULT_CONSOLE_COLOUR="$(lk_safe_tput setaf 6)"
+LK_DEFAULT_CONSOLE_COLOUR="$(lk_safe_tput setaf 6)"              # cyan
+LK_WARNING_COLOUR="$(lk_safe_tput bold && lk_safe_tput setaf 3)" # yellow
+LK_ERROR_COLOUR="$(lk_safe_tput bold && lk_safe_tput setaf 1)"   # red
