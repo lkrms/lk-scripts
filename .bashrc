@@ -162,3 +162,14 @@ function find_all() {
     shift
     gnu_find -L . -xdev -iname "*$FIND*" "$@"
 }
+
+! lk_is_arch || {
+
+    function lk_makepkg() {
+        makepkg --syncdeps --rmdeps --clean "$@" &&
+            makepkg --printsrcinfo >.SRCINFO && {
+            [ "$#" -gt "0" ] || lk_console_item "To install:" "${FUNCNAME[0]} --install"
+        }
+    }
+
+}

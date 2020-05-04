@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC1087,SC2015,SC2016,SC2024,SC2034,SC2068,SC2119,SC2120,SC2207
+# shellcheck disable=SC1003,SC2005,SC2015,SC2016,SC2034,SC2120,SC2162,SC2207
 
 # common-functions
 #   Provide various portable, self-contained Bash functions.
@@ -82,7 +82,7 @@ function lk_command_exists() {
     done
 }
 
-function lk_which_command() {
+function lk_first_existing_command() {
     local COMMAND
     for COMMAND in "$@"; do
         if command -v "$COMMAND" >/dev/null 2>&1; then
@@ -111,7 +111,6 @@ else
     }
 fi
 
-# shellcheck disable=SC2162
 if lk_bash_at_least 4 1; then
     function lk_pause() {
         read -sN 1 -p "${1:-Press any key to continue . . . }"
@@ -162,7 +161,10 @@ function lk_escape() {
         # ensure ESCAPE itself is only escaped once
         [ "$i" -eq "0" ] || [ "$REPLACE" != "${SPECIAL[0]}" ] || continue
         SEARCH="\\$REPLACE"
+        [ "$REPLACE" != "\$" ] || REPLACE="\\\$"
+        [ "$REPLACE" != "\`" ] || REPLACE="\\\`"
         [ "$REPLACE" != "\\" ] || REPLACE="\\\\"
+        [ "$REPLACE" != "\"" ] || REPLACE="\\\""
         [ "$REPLACE" != "}" ] || REPLACE="\\}"
         eval "STRING=\"\${STRING//$SEARCH/$ESCAPE$REPLACE}\""
         ((++i))
@@ -170,13 +172,15 @@ function lk_escape() {
     echo "$STRING"
 }
 
+function lk_escape_double_quotes() {
+    lk_escape "$1" '$' '`' '\' '"'
+}
+
 function lk_escape_ere() {
-    # shellcheck disable=SC1003
     lk_escape "$1" '$' '(' ')' '*' '+' '.' '/' '?' '[' '\' ']' '^' '{' '|' '}'
 }
 
 function lk_escape_ere_replace() {
-    # shellcheck disable=SC1003
     lk_escape "$1" '&' '/' '\'
 }
 
@@ -531,27 +535,33 @@ function lk_start_or_restart() {
 }
 
 # lk_apply_setting file_path setting_name setting_value [delimiter] [comment_chars] [space_chars]
-# shellcheck disable=SC2005
+#   Set value of SETTING_NAME to SETTING_VALUE in FILE_PATH.
+#   DELIMITER defaults to "=".
+#   To uncomment an existing SETTING_NAME assignment first, use COMMENT_CHARS
+#   to specify which characters can be removed from the beginning of lines.
+#   Use SPACE_CHARS to specify whitespace characters considered legal before
+#   and after SETTING_NAME, SETTING_VALUE and DELIMITER.
 function lk_apply_setting() {
     local FILE_PATH="$1" SETTING_NAME="$2" SETTING_VALUE="$3" DELIMITER="${4:-=}" \
         COMMENT_PATTERN SPACE_PATTERN NAME_ESCAPED VALUE_ESCAPED DELIMITER_ESCAPED CHECK_PATTERN SEARCH_PATTERN REPLACE REPLACED
+    lk_maybe_sudo test -f "$FILE_PATH" || lk_warn "$FILE_PATH must exist" || return
     COMMENT_PATTERN="${5:+[$(lk_escape_ere "$5")]*}"
     SPACE_PATTERN="${6:+[$(lk_escape_ere "$6")]*}"
     NAME_ESCAPED="$(lk_escape_ere "$SETTING_NAME")"
     VALUE_ESCAPED="$(lk_escape_ere "$SETTING_VALUE")"
-    DELIMITER_ESCAPED="$(lk_trim "$DELIMITER")"
+    DELIMITER_ESCAPED="$(sed -Ee "s/^$SPACE_PATTERN//" -e "s/$SPACE_PATTERN\$//" <<<"$DELIMITER")"
     [ -n "$DELIMITER_ESCAPED" ] || DELIMITER_ESCAPED="$DELIMITER"
     DELIMITER_ESCAPED="$(lk_escape_ere "$DELIMITER_ESCAPED")"
-    CHECK_PATTERN="^$NAME_ESCAPED$SPACE_PATTERN$DELIMITER_ESCAPED$SPACE_PATTERN$VALUE_ESCAPED$SPACE_PATTERN\$"
+    CHECK_PATTERN="^$SPACE_PATTERN$NAME_ESCAPED$SPACE_PATTERN$DELIMITER_ESCAPED$SPACE_PATTERN$VALUE_ESCAPED$SPACE_PATTERN\$"
     grep -Eq "$CHECK_PATTERN" "$FILE_PATH" || {
         REPLACE="$SETTING_NAME$DELIMITER$SETTING_VALUE"
         # try to replace an uncommented value first
-        SEARCH_PATTERN="^$SPACE_PATTERN$NAME_ESCAPED$SPACE_PATTERN$DELIMITER_ESCAPED.*\$"
-        REPLACED="$(sed -E "0,/$SEARCH_PATTERN/{s/$SEARCH_PATTERN/$(lk_escape_ere_replace "$REPLACE")/}" "$FILE_PATH")" || return
+        SEARCH_PATTERN="^($SPACE_PATTERN)$NAME_ESCAPED$SPACE_PATTERN$DELIMITER_ESCAPED.*\$"
+        REPLACED="$(sed -E "0,/$SEARCH_PATTERN/{s/$SEARCH_PATTERN/\\1$(lk_escape_ere_replace "$REPLACE")/}" "$FILE_PATH")" || return
         # failing that, try for a commented one
         grep -Eq "$CHECK_PATTERN" <<<"$REPLACED" || {
-            SEARCH_PATTERN="^$COMMENT_PATTERN$SPACE_PATTERN$NAME_ESCAPED$SPACE_PATTERN$DELIMITER_ESCAPED.*\$"
-            REPLACED="$(sed -E "0,/$SEARCH_PATTERN/{s/$SEARCH_PATTERN/$(lk_escape_ere_replace "$REPLACE")/}" "$FILE_PATH")" || return
+            SEARCH_PATTERN="^($SPACE_PATTERN)$COMMENT_PATTERN($SPACE_PATTERN)$NAME_ESCAPED$SPACE_PATTERN$DELIMITER_ESCAPED.*\$"
+            REPLACED="$(sed -E "0,/$SEARCH_PATTERN/{s/$SEARCH_PATTERN/\\1\\2$(lk_escape_ere_replace "$REPLACE")/}" "$FILE_PATH")" || return
         }
         [ -f "$FILE_PATH.orig" ] || lk_maybe_sudo cp -pv "$FILE_PATH" "$FILE_PATH.orig" || return
         if grep -Eq "$CHECK_PATTERN" <<<"$REPLACED"; then
@@ -566,25 +576,35 @@ function lk_apply_setting() {
 }
 
 # EXPAND_WHITESPACE=<1|0|Y|N> lk_enable_entry file_path entry [comment_chars] [trailing_pattern]
-#   If TRAILING_PATTERN is unset, trailing whitespace (followed by an optional
-#   comment if COMMENT_CHARS is set) will be matched after ENTRY.
-#   EXPAND_WHITESPACE is enabled by default and allows one or more whitespace characters
-#   in ENTRY to match one or more whitespace characters in FILE_PATH. Escaped whitespace
-#   characters in ENTRY are unescaped without expansion.
+#   Add ENTRY to FILE_PATH if not already present.
+#   To uncomment an existing ENTRY line first, use COMMENT_CHARS to specify
+#   which characters can be removed from the beginning of lines.
+#   Use TRAILING_PATTERN to provide a regular expression matching existing text
+#   to retain if it appears after ENTRY. The default is to keep whitespace and
+#   comments.
+#   EXPAND_WHITESPACE is enabled by default. It allows one or more whitespace
+#   characters in ENTRY to match one or more whitespace characters in
+#   FILE_PATH. If EXPAND_WHITESPACE is enabled, escaped whitespace characters
+#   in ENTRY are unescaped without expansion.
 function lk_enable_entry() {
     local FILE_PATH="$1" ENTRY="$2" OPTIONAL_COMMENT_PATTERN COMMENT_PATTERN TRAILING_PATTERN \
-        ENTRY_ESCAPED CHECK_PATTERN SEARCH_PATTERN REPLACED
+        ENTRY_ESCAPED SPACE_PATTERN CHECK_PATTERN SEARCH_PATTERN REPLACED
+    lk_maybe_sudo test -f "$FILE_PATH" || lk_warn "$FILE_PATH must exist" || return
     OPTIONAL_COMMENT_PATTERN="${3:+[$(lk_escape_ere "$3")]*}"
-    COMMENT_PATTERN="${3:+${3// /}}"
+    COMMENT_PATTERN="${3:+$(lk_trim "$3")}"
     COMMENT_PATTERN="${COMMENT_PATTERN:+[$(lk_escape_ere "$COMMENT_PATTERN")]+}"
     TRAILING_PATTERN="${4-\\s+${COMMENT_PATTERN:+(${COMMENT_PATTERN}.*)?}}"
     ENTRY_ESCAPED="$(lk_escape_ere "$ENTRY")"
-    lk_is_false "${EXPAND_WHITESPACE:-1}" || ENTRY_ESCAPED="$(sed -Ee 's/(^|[^\])\s+/\1\\s+/g' -e 's/\\\\(\s)/\1/g' <<<"$ENTRY_ESCAPED")"
-    CHECK_PATTERN="^$ENTRY_ESCAPED${TRAILING_PATTERN:+($TRAILING_PATTERN)?}\$"
+    SPACE_PATTERN=
+    lk_is_false "${EXPAND_WHITESPACE:-1}" || {
+        ENTRY_ESCAPED="$(sed -Ee 's/(^|[^\])\s+/\1\\s+/g' -e 's/\\\\(\s)/\1/g' <<<"$ENTRY_ESCAPED")"
+        SPACE_PATTERN='\s*'
+    }
+    CHECK_PATTERN="^$SPACE_PATTERN$ENTRY_ESCAPED${TRAILING_PATTERN:+($TRAILING_PATTERN)?}\$"
     grep -Eq "$CHECK_PATTERN" "$FILE_PATH" || {
         # try to replace a commented entry
-        SEARCH_PATTERN="^$OPTIONAL_COMMENT_PATTERN($ENTRY_ESCAPED${TRAILING_PATTERN:+($TRAILING_PATTERN)?})\$"
-        REPLACED="$(sed -E "0,/$SEARCH_PATTERN/{s/$SEARCH_PATTERN/\1/}" "$FILE_PATH")" || return
+        SEARCH_PATTERN="^($SPACE_PATTERN)$OPTIONAL_COMMENT_PATTERN($SPACE_PATTERN$ENTRY_ESCAPED${TRAILING_PATTERN:+($TRAILING_PATTERN)?})\$"
+        REPLACED="$(sed -E "0,/$SEARCH_PATTERN/{s/$SEARCH_PATTERN/\1\2/}" "$FILE_PATH")" || return
         [ -f "$FILE_PATH.orig" ] || lk_maybe_sudo cp -pv "$FILE_PATH" "$FILE_PATH.orig" || return
         if grep -Eq "$CHECK_PATTERN" <<<"$REPLACED"; then
             lk_maybe_sudo tee "$FILE_PATH" <<<"$REPLACED" >/dev/null || return
@@ -597,48 +617,63 @@ function lk_enable_entry() {
     }
 }
 
-# lk_disable_entry file_path entry_pattern comment_chars [trailing_pattern]
-#   ENTRY_PATTERN must be properly escaped. The first character in COMMENT_CHARS
-#   is prepended to any matching entries.
-function lk_disable_entry() {
-    local FILE_PATH="$1" ENTRY_PATTERN="$2" COMMENT_CHAR COMMENT_PATTERN TRAILING_PATTERN \
-        CHECK_PATTERN REPLACED
-    [ -n "$3" ] || return
-    COMMENT_CHAR="${3:0:1}"
-    COMMENT_PATTERN="[$(lk_escape_ere "$3")]*"
-    TRAILING_PATTERN="${4-(\\s+$COMMENT_PATTERN.*)?}"
-    CHECK_PATTERN="^$ENTRY_PATTERN$TRAILING_PATTERN\$"
-    ! grep -Eq "$CHECK_PATTERN" "$FILE_PATH" || {
-        REPLACED="$(sed -E "s/$CHECK_PATTERN/$(lk_escape_ere_replace "$COMMENT_CHAR")&/" "$FILE_PATH")" || return
-        if ! grep -Eq "$CHECK_PATTERN" <<<"$REPLACED"; then
-            [ -f "$FILE_PATH.orig" ] || lk_maybe_sudo cp -pv "$FILE_PATH" "$FILE_PATH.orig" || return
-            lk_maybe_sudo tee "$FILE_PATH" <<<"$REPLACED" >/dev/null || return
-        else
-            lk_warn "unable to disable entry in $FILE_PATH"
-            return 1
-        fi
-    }
+function lk_apply_php_setting() {
+    [ -n "${PHP_INI_FILE:-}" ] || lk_warn "PHP_INI_FILE not set" || return
+    lk_apply_setting "$PHP_INI_FILE" "$1" "$2" "=" "; " " "
+}
+
+function lk_enable_php_entry() {
+    [ -n "${PHP_INI_FILE:-}" ] || lk_warn "PHP_INI_FILE not set" || return
+    lk_enable_entry "$PHP_INI_FILE" "$1" "; "
+}
+
+function lk_apply_httpd_setting() {
+    [ -n "${HTTPD_CONF_FILE:-}" ] || lk_warn "HTTPD_CONF_FILE not set" || return
+    lk_apply_setting "$HTTPD_CONF_FILE" "$1" "$2" " " "" $' \t'
+}
+
+function lk_enable_httpd_entry() {
+    [ -n "${HTTPD_CONF_FILE:-}" ] || lk_warn "HTTPD_CONF_FILE not set" || return
+    lk_enable_entry "$HTTPD_CONF_FILE" "$1" "# " ""
+}
+
+function lk_in_path() {
+    [[ ":$PATH:" =~ :$(lk_escape_ere "${1%/}"): ]]
+}
+
+function lk_path_add() {
+    if [ -d "$1" ]; then
+        echo "$(sed -Ee "s/(:|^)$(lk_escape_ere "$1")(:|$)/\\1\\2/g" -e 's/:+/:/g' -e 's/(^:|:$)//' <<<"$PATH"):$1"
+    else
+        echo "$PATH"
+    fi
+}
+
+function lk_path_add_to_front() {
+    if [ -d "$1" ]; then
+        echo "$1:$(sed -Ee "s/(:|^)$(lk_escape_ere "$1")(:|$)/\\1\\2/g" -e 's/:+/:/g' -e 's/(^:|:$)//' <<<"$PATH")"
+    else
+        echo "$PATH"
+    fi
 }
 
 function lk_load_env() {
-    local i j DELIMITED_PATH IFS ADD ADD_FIRST ADD_TO_PATH=(${ADD_TO_PATH[@]+"${ADD_TO_PATH[@]}"} "$LK_ROOT/bin") ADD_TO_PATH_FIRST=("$HOME/.local/bin" ${ADD_TO_PATH_FIRST[@]+"${ADD_TO_PATH_FIRST[@]}"})
+    local PATH="$PATH" OLD_PATH DIR
+    OLD_PATH="$PATH"
+    ADD_TO_PATH=(
+        ${ADD_TO_PATH[@]+"${ADD_TO_PATH[@]}"}
+        "$LK_ROOT/bin"
+    )
     ! lk_is_macos || ADD_TO_PATH+=("$LK_ROOT/bin/macos")
     ! lk_is_linux || ADD_TO_PATH+=("$LK_ROOT/bin/linux")
     ! lk_is_arch || ADD_TO_PATH+=("$LK_ROOT/bin/arch")
     ! lk_is_ubuntu || ADD_TO_PATH+=("$LK_ROOT/bin/ubuntu")
-    DELIMITED_PATH=":$PATH:"
-    for j in ADD_TO_PATH ADD_TO_PATH_FIRST; do
-        eval "for i in \"\${!$j[@]}\"; do
-            [ -d \"\${$j[\$i]}\" ] && [ \"\${DELIMITED_PATH//:\${$j[\$i]}:/}\" = \"\$DELIMITED_PATH\" ] ||
-                unset \"$j[\$i]\"
-        done"
+    for DIR in "${ADD_TO_PATH[@]}"; do
+        PATH="$(lk_path_add "$DIR")"
     done
-    IFS=:
-    ADD="${ADD_TO_PATH[*]+${ADD_TO_PATH[*]}}"
-    ADD_FIRST="${ADD_TO_PATH_FIRST[*]+${ADD_TO_PATH_FIRST[*]}}"
-    unset IFS
-    [ -z "$ADD$ADD_FIRST" ] || {
-        echo "export PATH=\"${ADD_FIRST:+$ADD_FIRST:}\$PATH${ADD:+:$ADD}\""
+    PATH="$(lk_path_add_to_front "${HOME:+$HOME/.local/bin}")"
+    [ "$PATH" = "$OLD_PATH" ] || {
+        echo "export PATH=\"$(lk_escape_double_quotes "$PATH")\""
     }
     ! lk_is_linux || lk_is_root || ! EXPORT_LINUXBREW="$(lk_load_linuxbrew)" || {
         echo "$EXPORT_LINUXBREW"
@@ -669,7 +704,7 @@ function lk_make_iso() {
         [ ! -e "$ISOFILE" ] ||
         lk_warn "$ISOFILE already exists" ||
         return
-    mkisofs -J -o "$ISOFILE" "$@"
+    mkisofs -V "$(lk_date "%y%m%d")$(basename "$1")" -J -r -hfs -o "$ISOFILE" "$@"
 }
 
 set -o pipefail
@@ -724,17 +759,8 @@ EOF
     }
 
     function lk_check_sysctl() {
-        lk_console_message "IPv4 and IPv6"
+        lk_console_message "IPv4 and IPv6 parameters:"
         sysctl -ar 'net\..*\.(((default|all)\.rp_filter|tcp_syncookies|ip_forward|all\.forwarding)|accept_ra)$'
-    }
-
-}
-
-! lk_is_arch || {
-
-    function lk_makepkg() {
-        makepkg --syncdeps --rmdeps --clean --install &&
-            makepkg --printsrcinfo >.SRCINFO
     }
 
 }

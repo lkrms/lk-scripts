@@ -384,7 +384,7 @@ EOF
         [ "${#PAC_TO_PURGE[@]}" -eq "0" ] ||
         {
             lk_echo_array "${PAC_TO_PURGE[@]}" | lk_console_list "Orphaned:" "package" "packages"
-            ! get_confirmation "Remove?" ||
+            ! get_confirmation "Remove?" Y ||
                 sudo pacman -Rns "${PAC_TO_PURGE[@]}"
         }
 
@@ -397,8 +397,10 @@ EOF
     lk_console_message "Upgrading installed AUR packages"
     yay -Syu --aur
 
-    SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "PasswordAuthentication" "no" " " "#" " " &&
-        SUDO_OR_NOT=1 lk_apply_setting "/etc/ssh/sshd_config" "AcceptEnv" "LANG LC_*" " " "#" " " &&
+    SUDO_OR_NOT=1
+
+    lk_apply_setting "/etc/ssh/sshd_config" "PasswordAuthentication" "no" " " "#" " " &&
+        lk_apply_setting "/etc/ssh/sshd_config" "AcceptEnv" "LANG LC_*" " " "#" " " &&
         sudo systemctl enable --now sshd || true
 
     sudo systemctl enable --now atd || true
@@ -409,11 +411,11 @@ EOF
 
     sudo systemctl enable --now org.cups.cupsd || true
 
-    SUDO_OR_NOT=1 lk_apply_setting "/etc/bluetooth/main.conf" "AutoEnable" "true" "=" "#" &&
+    lk_apply_setting "/etc/bluetooth/main.conf" "AutoEnable" "true" "=" "#" &&
         sudo systemctl enable --now bluetooth
 
-    SUDO_OR_NOT=1 lk_apply_setting "/etc/conf.d/libvirt-guests" "ON_SHUTDOWN" "shutdown" "=" "# " &&
-        SUDO_OR_NOT=1 lk_apply_setting "/etc/conf.d/libvirt-guests" "SHUTDOWN_TIMEOUT" "300" "=" "# " &&
+    lk_apply_setting "/etc/conf.d/libvirt-guests" "ON_SHUTDOWN" "shutdown" "=" "# " &&
+        lk_apply_setting "/etc/conf.d/libvirt-guests" "SHUTDOWN_TIMEOUT" "300" "=" "# " &&
         sudo usermod --append --groups libvirt,kvm "$USER" &&
         {
             [ -e "/etc/qemu/bridge.conf" ] || {
@@ -430,95 +432,98 @@ EOF
         sudo mariadb-install-db --user="mysql" --basedir="/usr" --datadir="/var/lib/mysql"; } &&
         sudo systemctl enable --now mysqld || true
 
-    SUDO_OR_NOT=1
-
+    PHP_INI_FILE=/etc/php/php.ini
     for PHP_EXT in bcmath curl gd gettext imap intl mysqli pdo_sqlite soap sqlite3 xmlrpc zip; do
-        lk_enable_entry "/etc/php/php.ini" "extension=$PHP_EXT" ";"
+        lk_enable_php_entry "extension=$PHP_EXT"
     done
-    lk_enable_entry "/etc/php/php.ini" "zend_extension=opcache" ";"
-    function apply_php_setting() {
-        lk_apply_setting "${PHP_INI_FILE:-/etc/php/php.ini}" "$1" "$2" " = " ";" " "
-    }
+    lk_enable_php_entry "zend_extension=opcache"
     sudo mkdir -pm700 "/var/cache/php/opcache" &&
         sudo chown "http:" "/var/cache/php/opcache"
-    apply_php_setting "memory_limit" "128M"
-    apply_php_setting "error_reporting" "E_ALL"
-    apply_php_setting "display_errors" "On"
-    apply_php_setting "display_startup_errors" "On"
-    apply_php_setting "log_errors" "Off"
-    apply_php_setting "opcache.memory_consumption" "512"
-    apply_php_setting "opcache.file_cache" "/var/cache/php/opcache"
-    [ ! -f "/etc/php/conf.d/imagick.ini" ] || lk_enable_entry "/etc/php/conf.d/imagick.ini" "extension=imagick" ";"
-    [ ! -f "/etc/php/conf.d/memcache.ini" ] || lk_enable_entry "/etc/php/conf.d/memcache.ini" "extension=memcache.so" ";"
-    [ ! -f "/etc/php/conf.d/memcached.ini" ] || lk_enable_entry "/etc/php/conf.d/memcached.ini" "extension=memcached.so" ";"
+    lk_apply_php_setting "memory_limit" "128M"
+    lk_apply_php_setting "error_reporting" "E_ALL"
+    lk_apply_php_setting "display_errors" "On"
+    lk_apply_php_setting "display_startup_errors" "On"
+    lk_apply_php_setting "log_errors" "Off"
+    lk_apply_php_setting "opcache.memory_consumption" "512"
+    lk_apply_php_setting "opcache.file_cache" "/var/cache/php/opcache"
+    [ ! -f "/etc/php/conf.d/imagick.ini" ] ||
+        PHP_INI_FILE="/etc/php/conf.d/imagick.ini" \
+            lk_enable_php_entry "extension=imagick"
+    [ ! -f "/etc/php/conf.d/memcache.ini" ] ||
+        PHP_INI_FILE="/etc/php/conf.d/memcache.ini" \
+            lk_enable_php_entry "extension=memcache.so"
+    [ ! -f "/etc/php/conf.d/memcached.ini" ] ||
+        PHP_INI_FILE="/etc/php/conf.d/memcached.ini" \
+            lk_enable_php_entry "extension=memcached.so"
     [ ! -f "/etc/php/conf.d/xdebug.ini" ] || {
-        lk_enable_entry "/etc/php/conf.d/xdebug.ini" "zend_extension=xdebug.so" ";"
         mkdir -pm777 "$HOME/.tmp/"{cachegrind,trace}
         PHP_INI_FILE="/etc/php/conf.d/xdebug.ini"
-        apply_php_setting "xdebug.remote_enable" "On"
-        apply_php_setting "xdebug.remote_autostart" "Off"
-        apply_php_setting "xdebug.profiler_enable_trigger" "On"
-        apply_php_setting "xdebug.profiler_output_dir" "$HOME/.tmp/cachegrind"
-        apply_php_setting "xdebug.profiler_output_name" "callgrind.out.%H.%R.%u"
-        apply_php_setting "xdebug.trace_enable_trigger" "On"
-        apply_php_setting "xdebug.collect_params" "4"
-        apply_php_setting "xdebug.collect_return" "On"
-        apply_php_setting "xdebug.trace_output_dir" "$HOME/.tmp/trace"
-        apply_php_setting "xdebug.trace_output_name" "trace.%H.%R.%u"
+        lk_enable_php_entry "zend_extension=xdebug.so"
+        lk_apply_php_setting "xdebug.remote_enable" "On"
+        lk_apply_php_setting "xdebug.remote_autostart" "Off"
+        lk_apply_php_setting "xdebug.profiler_enable_trigger" "On"
+        lk_apply_php_setting "xdebug.profiler_output_dir" "$HOME/.tmp/cachegrind"
+        lk_apply_php_setting "xdebug.profiler_output_name" "callgrind.out.%H.%R.%u"
+        lk_apply_php_setting "xdebug.trace_enable_trigger" "On"
+        lk_apply_php_setting "xdebug.collect_params" "4"
+        lk_apply_php_setting "xdebug.collect_return" "On"
+        lk_apply_php_setting "xdebug.trace_output_dir" "$HOME/.tmp/trace"
+        lk_apply_php_setting "xdebug.trace_output_name" "trace.%H.%R.%u"
     }
     [ ! -f "/etc/php/php-fpm.conf" ] ||
         {
             PHP_INI_FILE="/etc/php/php-fpm.conf"
-            apply_php_setting "emergency_restart_threshold" "10" # restart FPM if 10 children are gone in 60 seconds
-            apply_php_setting "emergency_restart_interval" "60"  #
-            apply_php_setting "events.mechanism" "epoll"         # don't rely on auto detection
+            lk_apply_php_setting "emergency_restart_threshold" "10" # restart FPM if 10 children are gone in 60 seconds
+            lk_apply_php_setting "emergency_restart_interval" "60"  #
+            lk_apply_php_setting "events.mechanism" "epoll"         # don't rely on auto detection
         }
     [ ! -f "/etc/php/php-fpm.d/www.conf" ] ||
         {
             sudo chgrp http "/var/log/httpd" &&
                 sudo chmod g+w "/var/log/httpd"
             PHP_INI_FILE="/etc/php/php-fpm.d/www.conf"
-            apply_php_setting "pm" "static"             # ondemand can't handle bursts: https://github.com/php/php-src/pull/1308
-            apply_php_setting "pm.max_children" "50"    # MUST be >= MaxRequestWorkers in httpd.conf
-            apply_php_setting "pm.max_requests" "0"     # don't respawn automatically
-            apply_php_setting "rlimit_files" "524288"   # check `ulimit -Hn` and raise for user http in /etc/security/limits.d/ if required
-            apply_php_setting "rlimit_core" "unlimited" # as above, but check `ulimit -Hc` instead
-            apply_php_setting "pm.status_path" "/status"
-            apply_php_setting "ping.path" "/ping"
-            apply_php_setting "access.log" '/var/log/httpd/php-fpm-$pool.access.log'
-            apply_php_setting "access.format" '"%R - %u %t \"%m %r%Q%q\" %s %f %{mili}d %{kilo}M %C%%"'
-            apply_php_setting "catch_workers_output" "yes"
-            apply_php_setting "php_admin_value[error_log]" '/var/log/httpd/php-fpm-$pool.error.log'
-            apply_php_setting "php_admin_flag[log_errors]" "On"
-            apply_php_setting "php_flag[display_errors]" "Off"
-            apply_php_setting "php_flag[display_startup_errors]" "Off"
+            lk_apply_php_setting "pm" "static"             # ondemand can't handle bursts: https://github.com/php/php-src/pull/1308
+            lk_apply_php_setting "pm.max_children" "50"    # MUST be >= MaxRequestWorkers in httpd.conf
+            lk_apply_php_setting "pm.max_requests" "0"     # don't respawn automatically
+            lk_apply_php_setting "rlimit_files" "524288"   # check `ulimit -Hn` and raise for user http in /etc/security/limits.d/ if required
+            lk_apply_php_setting "rlimit_core" "unlimited" # as above, but check `ulimit -Hc` instead
+            lk_apply_php_setting "pm.status_path" "/status"
+            lk_apply_php_setting "ping.path" "/ping"
+            lk_apply_php_setting "access.log" '/var/log/httpd/php-fpm-$pool.access.log'
+            lk_apply_php_setting "access.format" '"%R - %u %t \"%m %r%Q%q\" %s %f %{mili}d %{kilo}M %C%%"'
+            lk_apply_php_setting "catch_workers_output" "yes"
+            lk_apply_php_setting "php_admin_value[error_log]" '/var/log/httpd/php-fpm-$pool.error.log'
+            lk_apply_php_setting "php_admin_flag[log_errors]" "On"
+            lk_apply_php_setting "php_flag[display_errors]" "Off"
+            lk_apply_php_setting "php_flag[display_startup_errors]" "Off"
         }
     sudo systemctl enable --now php-fpm || true
 
+    HTTPD_CONF_FILE="/etc/httpd/conf/httpd.conf"
     sudo mkdir -p "/srv/http" &&
         sudo chown -c "$USER:" "/srv/http" &&
         mkdir -p "/srv/http/localhost/html" "/srv/http/127.0.0.1" &&
         { [ -e "/srv/http/127.0.0.1/html" ] || ln -s "../localhost/html" "/srv/http/127.0.0.1/html"; } &&
         lk_safe_symlink "$CONFIG_DIR/httpd-vhost-alias.conf" "/etc/httpd/conf/extra/httpd-vhost-alias.conf" &&
-        lk_enable_entry "/etc/httpd/conf/httpd.conf" "Include conf/extra/httpd-vhost-alias.conf" "# " &&
-        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule alias_module modules/mod_alias.so" "# " &&
-        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule dir_module modules/mod_dir.so" "# " &&
-        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule headers_module modules/mod_headers.so" "# " &&
-        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule info_module modules/mod_info.so" "# " &&
-        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so" "# " &&
-        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule proxy_module modules/mod_proxy.so" "# " &&
-        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule rewrite_module modules/mod_rewrite.so" "# " &&
-        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule status_module modules/mod_status.so" "# " &&
-        lk_enable_entry "/etc/httpd/conf/httpd.conf" "LoadModule vhost_alias_module modules/mod_vhost_alias.so" "# " &&
+        lk_enable_httpd_entry "Include conf/extra/httpd-vhost-alias.conf" &&
+        lk_enable_httpd_entry "LoadModule alias_module modules/mod_alias.so" &&
+        lk_enable_httpd_entry "LoadModule dir_module modules/mod_dir.so" &&
+        lk_enable_httpd_entry "LoadModule headers_module modules/mod_headers.so" &&
+        lk_enable_httpd_entry "LoadModule info_module modules/mod_info.so" &&
+        lk_enable_httpd_entry "LoadModule proxy_fcgi_module modules/mod_proxy_fcgi.so" &&
+        lk_enable_httpd_entry "LoadModule proxy_module modules/mod_proxy.so" &&
+        lk_enable_httpd_entry "LoadModule rewrite_module modules/mod_rewrite.so" &&
+        lk_enable_httpd_entry "LoadModule status_module modules/mod_status.so" &&
+        lk_enable_httpd_entry "LoadModule vhost_alias_module modules/mod_vhost_alias.so" &&
         sudo usermod --append --groups "http" "$USER" &&
         sudo usermod --append --groups "$(id -gn)" "http" &&
         sudo systemctl enable --now httpd || true
 
-    unset SUDO_OR_NOT
+    ! lk_command_exists vim || lk_safe_symlink "$(command -v vim)" "/usr/local/bin/vi"
+    ! lk_command_exists xfce4-terminal || lk_safe_symlink "$(command -v xfce4-terminal)" "/usr/local/bin/xterm"
+    lk_install_gnu_commands
 
-    ! lk_command_exists vim || lk_safe_symlink "$(command -v vim)" "/usr/local/bin/vi" Y
-    ! lk_command_exists xfce4-terminal || lk_safe_symlink "$(command -v xfce4-terminal)" "/usr/local/bin/xterm" Y
-    SUDO_OR_NOT=1 lk_install_gnu_commands
+    unset SUDO_OR_NOT
 
     exit
 
