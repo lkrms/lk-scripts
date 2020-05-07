@@ -68,8 +68,8 @@ else
 
 fi
 
-# disable Appearance > Fonts > Custom DPI setting
-xfconf-query -c "xsettings" -p "/Xft/DPI" -n -t int -s "-1"
+# Appearance > Fonts > Custom DPI
+xfconf-query -c "xsettings" -p "/Xft/DPI" -n -t int -s "$1"
 
 # mouse cursor size
 xfconf-query -c "xsettings" -p "/Gtk/CursorThemeSize" -n -t int -s "${_24}"

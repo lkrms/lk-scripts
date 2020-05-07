@@ -300,8 +300,6 @@ if has_argument "--set-all" || has_argument "--lightdm" || is_autostart; then
     echo "xrandr ${OPTIONS[*]}" >&2
     xrandr "${OPTIONS[@]}" || die
 
-    echo "Xft.dpi: $DPI" | xrdb -merge
-
     has_argument "--lightdm" || ! lk_command_exists "displaycal-apply-profiles" ||
         displaycal-apply-profiles
 
@@ -351,6 +349,11 @@ XFCE)
     fi
 
     "$SCRIPT_DIR/xfce4-set-dpi.sh" "${XFCE4_DPI:-$DPI}"
+    ;;
+
+*)
+
+    echo "Xft.dpi: $DPI" | xrdb -merge
     ;;
 
 esac
