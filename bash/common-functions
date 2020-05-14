@@ -5,19 +5,22 @@
 #   Provide various portable, self-contained Bash functions.
 
 function lk_caller() {
-    local CALLER=() SOURCE="${BASH_SOURCE[2]:-}" IFS
-    [ "$SOURCE" = "$0" ] || CALLER=("$(basename "$0")")
-    CALLER+=(
-        ${SOURCE:+"$SOURCE:${BASH_LINENO[1]}"}
-        ${FUNCNAME[2]+"${FUNCNAME[2]}()"}
-    )
-    lk_implode " >> " "${CALLER[@]}"
+    local CALLER=() SOURCE="${BASH_SOURCE[2]:-}" FUNC="${FUNCNAME[2]:-}"
+    [ "$SOURCE" = "$0" ] && [ "$SOURCE" != "main" ] || CALLER=("$(basename "$0")")
+    [ "$SOURCE" = "main" ] || CALLER+=(${SOURCE:+"$SOURCE$LK_DIM:${BASH_LINENO[1]}$LK_RESET"})
+    if [[ "${1:-}" =~ ^(-s|--short)$ ]]; then
+        echo "${CALLER[0]}"
+    else
+        [ "$FUNC" = "main" ] || CALLER+=(${FUNC:+"$FUNC$LK_DIM()$LK_RESET"})
+        CALLER[0]="$LK_BOLD${CALLER[0]}$LK_RESET"
+        lk_implode "$LK_DIM->$LK_RESET" "${CALLER[@]}"
+    fi
 }
 
 # lk_warn message
 function lk_warn() {
     local EXIT_STATUS="$?"
-    echo "$(lk_caller): $1" >&2
+    echo "$(lk_caller --short): $1" >&2
     return "$EXIT_STATUS"
 }
 
@@ -208,6 +211,13 @@ function lk_trim() {
         sed -Ee 's/^\s+//' -e 's/\s+$//'
 }
 
+function lk_coalesce() {
+    while [ "$#" -gt "0" ] && [ -z "$1" ]; do
+        shift
+    done
+    echo "${1:-}"
+}
+
 function lk_get_hostname() {
     hostname -s | lk_lower
 }
@@ -272,21 +282,20 @@ function lk_implode() {
 
 # lk_echoc [-neE] message [colour_sequence...]
 function lk_echoc() {
-    local ECHO_ARGS=() MESSAGE RESET IFS COLOURS=
-    RESET="$(lk_safe_tput sgr0)"
+    local ECHO_ARGS=() MESSAGE IFS COLOURS=
     while [[ "${1:-}" =~ ^-[neE]+$ ]]; do
         ECHO_ARGS+=("$1")
         shift
     done
     MESSAGE="${1:-}"
     shift || true
-    if [ "$#" -gt "0" ] && [ -n "$RESET" ]; then
+    if [ "$#" -gt "0" ] && [ -n "$LK_RESET" ]; then
         IFS=
         COLOURS="$*"
         unset IFS
-        MESSAGE="$(lk_replace "$RESET" "$RESET$COLOURS" "$MESSAGE")"
+        MESSAGE="$(lk_replace "$LK_RESET" "$LK_RESET$COLOURS" "$MESSAGE")"
     fi
-    echo ${ECHO_ARGS[@]+"${ECHO_ARGS[@]}"} "$COLOURS$MESSAGE$RESET"
+    echo ${ECHO_ARGS[@]+"${ECHO_ARGS[@]}"} "$COLOURS$MESSAGE$LK_RESET"
 }
 
 # lk_console_message message [[secondary_message] colour_sequence]
@@ -305,7 +314,7 @@ function lk_console_message() {
         # - writing <=512 bytes with echo or printf should be atomic on all
         #   platforms, but this can't be guaranteed
         lk_echoc -n "==> " "$COLOURS"
-        lk_echoc -n "$MESSAGE" "${BOLD:-$(lk_safe_tput bold)}"
+        lk_echoc -n "$MESSAGE" "$LK_BOLD"
         [ -z "$MESSAGE2" ] || lk_echoc -n " $MESSAGE2" "$COLOURS"
     )" >&2
 }
@@ -765,6 +774,8 @@ EOF
 
 }
 
-LK_DEFAULT_CONSOLE_COLOUR="$(lk_safe_tput setaf 6)"              # cyan
-LK_WARNING_COLOUR="$(lk_safe_tput bold && lk_safe_tput setaf 3)" # yellow
-LK_ERROR_COLOUR="$(lk_safe_tput bold && lk_safe_tput setaf 1)"   # red
+eval "$(lk_get_colours)"
+
+LK_DEFAULT_CONSOLE_COLOUR="$LK_CYAN"
+LK_WARNING_COLOUR="$LK_BOLD$LK_YELLOW"
+LK_ERROR_COLOUR="$LK_BOLD$LK_RED"

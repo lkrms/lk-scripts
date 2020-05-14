@@ -50,12 +50,11 @@ function lk_before_command() {
 }
 
 function lk_prompt() {
-    local EXIT_STATUS="$?" PS=() SECS COMMAND IFS RED GREEN YELLOW BLUE BOLD RESET DIM STR LEN=25
+    local EXIT_STATUS="$?" PS=() SECS COMMAND IFS DIM STR LEN=25
     history -a
     [ "${LK_HISTORY_READ_NEW:-N}" = "N" ] || history -n
-    eval "$(lk_get_colours "" | grep -E '^(RED|GREEN|YELLOW|BLUE|BOLD|RESET|DIM)=')"
-    # if terminal doesn't support `dim`, try yellow
-    [ -n "$DIM" ] || DIM="$YELLOW"
+    # if terminal doesn't support `dim`, use yellow
+    DIM="$(lk_coalesce "$LK_DIM" "$LK_YELLOW")"
     if [ "${#LK_LAST_COMMAND[@]}" -gt "0" ]; then
         ((SECS = $(lk_date "%s") - LK_LAST_COMMAND_START)) || true
         if [ "$EXIT_STATUS" -ne "0" ] ||
@@ -68,24 +67,24 @@ function lk_prompt() {
             COMMAND="${COMMAND//$'\r\n'/ }"
             COMMAND="${COMMAND//$'\n'/ }"
             COMMAND="${COMMAND//\\/\\\\}"
-            PS+=("\n\[$DIM\]\d \t\[$RESET\] ")
+            PS+=("\n\[$DIM\]\d \t\[$LK_RESET\] ")
             [ "$EXIT_STATUS" -eq "0" ] && {
-                PS+=("\[$GREEN\]✔")
+                PS+=("\[$LK_GREEN\]✔")
             } || {
                 STR=" exit status $EXIT_STATUS"
                 ((LEN += ${#STR}))
-                PS+=("\[$RED\]✘$STR")
+                PS+=("\[$LK_RED\]✘$STR")
             }
             STR=" after ${SECS}s "
-            PS+=("$STR\[$RESET$DIM\]")
+            PS+=("$STR\[$LK_RESET$DIM\]")
             ((LEN = $(tput cols) - LEN - ${#STR}))
             [ "$LEN" -le "0" ] || PS+=("( ${COMMAND:0:$LEN} )")
-            PS+=("\[$RESET\]\n")
+            PS+=("\[$LK_RESET\]\n")
         fi
         LK_LAST_COMMAND=()
     fi
-    [ "$EUID" -ne "0" ] && PS+=("\[$BOLD$GREEN\]\u@") || PS+=("\[$BOLD$RED\]\u@")
-    PS+=("\h\[$RESET\]:\[$BOLD$BLUE\]\w\[$RESET\]")
+    [ "$EUID" -ne "0" ] && PS+=("\[$LK_BOLD$LK_GREEN\]\u@") || PS+=("\[$LK_BOLD$LK_RED\]\u@")
+    PS+=("\h\[$LK_RESET\]:\[$LK_BOLD$LK_BLUE\]\w\[$LK_RESET\]")
     IFS=
     PS1="${PS[*]}\\\$ "
     unset IFS
