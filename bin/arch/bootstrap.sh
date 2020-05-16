@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2015,SC2016,SC2206,SC2207
+# shellcheck disable=SC1090,SC2015,SC2016,SC2034,SC2124,SC2206,SC2207
 
 # Usage:
 #   1. boot from an Arch Linux live CD
@@ -7,6 +7,7 @@
 #   3. bash bootstrap
 
 set -euo pipefail
+shopt -s nullglob
 
 PING_HOSTNAME="one.one.one.one" # see https://blog.cloudflare.com/dns-resolver-1-1-1-1/
 NTP_SERVER="ntp.lkrms.org"      #
@@ -15,73 +16,15 @@ TIMEZONE="Australia/Sydney"     # see /usr/share/zoneinfo
 LOCALES=("en_AU" "en_GB")       # UTF-8 is enforced
 LANGUAGE="en_AU:en_GB:en"
 MIRROR="http://archlinux.mirror.lkrms.org/archlinux/\$repo/os/\$arch"
-PACMAN_PACKAGES=(
-    lynx
-)
-PACMAN_DESKTOP_PACKAGES=(
-    # basics
-    galculator
-    geany
-    gimp
-    keepassxc
-    libreoffice-fresh
-    qpdfview
-    samba
-    speedcrunch
 
-    # browsers
-    chromium
-    falkon
-    firefox
+SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" ||
+    SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}" 2>/dev/null)" ||
+    SCRIPT_PATH="${BASH_SOURCE[0]}"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd -P)"
 
-    # multimedia
-    libdvdcss
-    libdvdnav
-    libvpx
-    vlc
-
-    # remote desktop
-    x11vnc
-
-    #
-    adapta-gtk-theme
-    arc-gtk-theme
-    arc-icon-theme
-    arc-solid-gtk-theme
-    breeze-gtk
-    breeze-icons
-
-    #
-    gtk-engine-murrine
-    materia-gtk-theme
-
-    #
-    elementary-icon-theme
-    elementary-wallpapers
-    gtk-theme-elementary
-    sound-theme-elementary
-
-    #
-    moka-icon-theme
-    papirus-icon-theme
-
-    #
-    noto-fonts
-    noto-fonts-cjk
-    noto-fonts-emoji
-    noto-fonts-extra
-    ttf-dejavu
-    ttf-inconsolata
-    ttf-jetbrains-mono
-    ttf-lato
-    ttf-opensans
-    ttf-roboto
-    ttf-roboto-mono
-    ttf-ubuntu-font-family
-
-    #
-    archlinux-wallpaper
-)
+# these are added to the default package lists in bootstrap-packages.sh
+PACMAN_PACKAGES=()
+PACMAN_DESKTOP_PACKAGES=()
 AUR_PACKAGES=()
 AUR_DESKTOP_PACKAGES=()
 
@@ -95,7 +38,7 @@ function die() {
 function usage() {
     {
         echo "$BOLD${CYAN}Usage:$RESET
-  $(basename "$0") ${YELLOW}root_partition boot_partition$RESET hostname username
+  $(basename "$0") ${YELLOW}root_partition boot_partition [other_os_partition...]$RESET hostname username
   $(basename "$0") ${YELLOW}install_disk$RESET hostname username
 
 $BOLD${CYAN}Current block devices:$RESET"
@@ -131,7 +74,7 @@ function is_dryrun() {
 
 function maybe_dryrun() {
     if is_dryrun; then
-        echo "$CYAN[DRY RUN]$RESET skipped: $*" >&2
+        echo "${CYAN}[DRY RUN]$RESET skipped: $*" >&2
     else
         "$@"
     fi
@@ -142,8 +85,11 @@ function _lsblk() {
 }
 
 function check_devices() {
-    local COLUMN="${COLUMN:-TYPE}" MATCH="$1" LIST
+    local COLUMN="${COLUMN:-TYPE}" MATCH="$1" DEV LIST
     shift
+    for DEV in "$@"; do
+        [ -e "$DEV" ] || return
+    done
     LIST="$(_lsblk "$COLUMN" --nodeps "$@")" &&
         echo "$LIST" | grep -Fx "$MATCH" >/dev/null &&
         ! echo "$LIST" | grep -Fxv "$MATCH" >/dev/null
@@ -175,6 +121,14 @@ function configure_pacman() {
     maybe_dryrun sed -Ei 's/^#\s*(Color|TotalDownload)\s*$/\1/' "$1"
 }
 
+function is_virtual() {
+    grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo
+}
+
+function is_qemu() {
+    is_virtual && grep -Eiq qemu /sys/devices/virtual/dmi/id/*_vendor
+}
+
 RED="$(safe_tput setaf 1)"
 GREEN="$(safe_tput setaf 2)"
 YELLOW="$(safe_tput setaf 3)"
@@ -188,204 +142,41 @@ RESET="$(safe_tput sgr0)"
     [ "$EUID" -eq "0" ] || DRYRUN=1
 }
 
+[ -d "/sys/firmware/efi/efivars" ] || die "please reboot in UEFI mode"
+
+[ "$#" -ge "3" ] ||
+    usage
+
 message "configuring pacman..."
 configure_pacman "/etc/pacman.conf"
 [ -z "$MIRROR" ] ||
     is_dryrun ||
     echo "Server=$MIRROR" >/etc/pacman.d/mirrorlist # pacstrap copies this to the new system
 
-PACMAN_PACKAGES=(
-    # bare minimum
-    base
-    linux
-    mkinitcpio
+PACMAN_READY=0
+is_dryrun || [ "$#" -eq "0" ] || PACMAN_READY=1
 
-    # boot
-    grub
-    efibootmgr
+[ -e "$SCRIPT_DIR/bootstrap-packages.sh" ] ||
+    wget --output-document="$SCRIPT_DIR/bootstrap-packages.sh" "https://raw.githubusercontent.com/lkrms/linac-scripts/master/bin/arch/bootstrap-packages.sh"
 
-    # multi-boot
-    os-prober
-    ntfs-3g
-
-    # bootstrap.sh dependencies
-    sudo
-    networkmanager
-    openssh
-    ntp
-
-    # basics
-    bash-completion
-    byobu
-    curl
-    diffutils
-    dmidecode
-    git
-    lftp
-    nano
-    ndisc6         # for rdisc6
-    net-tools      #
-    nmap           #
-    openbsd-netcat #
-    ps_mem         #
-    radvd          # for radvdump
-    rsync
-    tcpdump
-    traceroute
-    vim
-    wget
-
-    # == UNNECESSARY ON DISPOSABLE SERVERS
-    #
-    man-db
-    man-pages
-
-    # filesystems
-    btrfs-progs
-    dosfstools
-    f2fs-tools
-    jfsutils
-    reiserfsprogs
-    xfsprogs
-    nfs-utils
-
-    #
-    ${PACMAN_PACKAGES[@]+"${PACMAN_PACKAGES[@]}"}
-)
-
-PACMAN_DESKTOP_PACKAGES=(
-    xdg-user-dirs
-    lightdm
-    lightdm-gtk-greeter
-    lightdm-gtk-greeter-settings
-    xorg-server
-    xorg-xrandr
-
-    #
-    cups
-    flameshot
-    gnome-keyring
-    gvfs
-    gvfs-smb
-    network-manager-applet
-    seahorse
-    zenity
-
-    #
-    xfce4
-    $(
-        # xfce4-screensaver is buggy and insecure, and it autostarts
-        # by default, so remove it from xfce4-goodies
-        { is_dryrun || [ "$#" -eq "0" ]; } &&
-            echo "xfce4-goodies" ||
-            {
-                pacman -Sy >&2
-                pacman -Sgq "xfce4-goodies" | grep -Fxv "xfce4-screensaver"
-            }
-    )
-    catfish
-    engrampa
-    pavucontrol
-    libcanberra
-    libcanberra-pulse
-    plank
-
-    # xfce4-screensaver replacement
-    xsecurelock
-    xss-lock
-
-    #
-    pulseaudio-alsa
-
-    #
-    ${PACMAN_DESKTOP_PACKAGES[@]+"${PACMAN_DESKTOP_PACKAGES[@]}"}
-)
-
-AUR_DESKTOP_PACKAGES=(
-    mugshot
-    xfce4-panel-profiles
-
-    #
-    ${AUR_DESKTOP_PACKAGES[@]+"${AUR_DESKTOP_PACKAGES[@]}"}
-)
-
-function is_virtual() {
-    grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo
-}
-
-function is_qemu() {
-    is_virtual && grep -Eiq qemu /sys/devices/virtual/dmi/id/*_vendor
-}
-
-is_virtual && {
-    ! is_qemu || {
-        PACMAN_PACKAGES+=(qemu-guest-agent)
-        PACMAN_DESKTOP_PACKAGES+=(spice-vdagent)
-    }
-} || {
-    PACMAN_PACKAGES+=(
-        linux-firmware
-        linux-headers
-
-        #
-        hddtemp
-        lm_sensors
-        powertop
-        tlp
-        tlp-rdw
-
-        #
-        gptfdisk # provides sgdisk
-        lvm2     #
-        mdadm    # software RAID
-        parted
-
-        #
-        ethtool
-        hdparm
-        nvme-cli
-        smartmontools
-        usb_modeswitch
-        usbutils
-        wpa_supplicant
-
-        #
-        b43-fwcutter
-        ipw2100-fw
-        ipw2200-fw
-    )
-    ! grep -Eq '^vendor_id\s*:\s+GenuineIntel$' /proc/cpuinfo ||
-        PACMAN_PACKAGES+=(intel-ucode)
-    ! grep -Eq '^vendor_id\s*:\s+AuthenticAMD$' /proc/cpuinfo ||
-        PACMAN_PACKAGES+=(amd-ucode)
-
-    PACMAN_DESKTOP_PACKAGES+=(
-        mesa
-        libvdpau-va-gl
-        intel-media-driver # TODO: detect intel graphics first
-        libva-intel-driver
-
-        #
-        blueman
-        pulseaudio-bluetooth
-    )
-    AUR_DESKTOP_PACKAGES+=(
-        xiccd
-    )
-}
-
-[ -d "/sys/firmware/efi/efivars" ] || die "please reboot in UEFI mode"
+. "$SCRIPT_DIR/bootstrap-packages.sh"
 
 # in case we're starting over
-[ ! -d "/mnt/boot" ] || {
-    maybe_dryrun umount /mnt/boot
-    maybe_dryrun umount /mnt
-} || die
+if [ -d "/mnt/boot" ]; then
+    OTHER_OS_MOUNTS=(/mnt/mnt/*)
+    [ "${#OTHER_OS_MOUNTS[@]}" -eq "0" ] || {
+        maybe_dryrun umount "${OTHER_OS_MOUNTS[@]}" &&
+            maybe_dryrun rmdir "${OTHER_OS_MOUNTS[@]}" || die
+    }
+    maybe_dryrun umount /mnt/boot &&
+        maybe_dryrun umount /mnt || die
+fi
 
-case "$#" in
-3)
-    [ -e "$1" ] &&
-        check_devices disk "$1" ||
+OTHER_OS_PARTITIONS=()
+
+if [ "$#" -eq "3" ]; then
+
+    check_devices disk "$1" ||
         usage
 
     before_install
@@ -410,12 +201,10 @@ case "$#" in
     REPARTITIONED=1
     TARGET_HOSTNAME="$2"
     TARGET_USERNAME="$3"
-    ;;
 
-4)
-    [ -e "$1" ] &&
-        [ -e "$2" ] &&
-        check_devices part "$1" "$2" ||
+elif [ "$#" -ge "4" ]; then
+
+    check_devices part "${@:0:$#-2}" ||
         usage
 
     before_install
@@ -423,15 +212,11 @@ case "$#" in
     REPARTITIONED=0
     ROOT_PARTITION="$1"
     BOOT_PARTITION="$2"
-    TARGET_HOSTNAME="$3"
-    TARGET_USERNAME="$4"
-    ;;
+    OTHER_OS_PARTITIONS=("${@:2:$#-4}")
+    TARGET_HOSTNAME="${@: -2:1}"
+    TARGET_USERNAME="${@: -1:1}"
 
-*)
-    usage
-    ;;
-
-esac
+fi
 
 TARGET_PASSWORD="${TARGET_PASSWORD:-}"
 [ -n "$TARGET_PASSWORD" ] || {
@@ -445,18 +230,6 @@ TARGET_PASSWORD="${TARGET_PASSWORD:-}"
             echo -n "$BOLD$RED:: password missing or mismatched$RESET" >&2
     done
 }
-
-confirm "Install Xfce?" || {
-    PACMAN_DESKTOP_PACKAGES=()
-    AUR_DESKTOP_PACKAGES=()
-}
-
-AUR_PACKAGES+=(${AUR_DESKTOP_PACKAGES[@]+"${AUR_DESKTOP_PACKAGES[@]}"})
-[ "${#AUR_PACKAGES[@]}" -eq "0" ] ||
-    PACMAN_PACKAGES+=(
-        base-devel
-        go # yay dependency
-    )
 
 ROOT_PARTITION_TYPE="$(_lsblk FSTYPE "$ROOT_PARTITION")" || die "no block device at $ROOT_PARTITION"
 BOOT_PARTITION_TYPE="$(_lsblk FSTYPE "$BOOT_PARTITION")" || die "no block device at $BOOT_PARTITION"
@@ -489,8 +262,16 @@ maybe_dryrun mount -o "${MOUNT_OPTIONS:-defaults}" "$ROOT_PARTITION" /mnt &&
     maybe_dryrun mkdir /mnt/boot &&
     maybe_dryrun mount -o "${MOUNT_OPTIONS:-defaults}" "$BOOT_PARTITION" /mnt/boot || die
 
+i=0
+for PARTITION in ${OTHER_OS_PARTITIONS[@]+"${OTHER_OS_PARTITIONS[@]}"}; do
+    MOUNT_DIR="/mnt/mnt/temp$i"
+    maybe_dryrun mkdir -p "$MOUNT_DIR" &&
+        maybe_dryrun mount "$PARTITION" "$MOUNT_DIR" || die "unable to mount partition $PARTITION"
+    ((++i))
+done
+
 message "installing system..."
-maybe_dryrun pacstrap -i /mnt "${PACMAN_PACKAGES[@]}" ${PACMAN_DESKTOP_PACKAGES[@]+"${PACMAN_DESKTOP_PACKAGES[@]}"}
+maybe_dryrun pacstrap -i /mnt "${PACMAN_PACKAGES[@]}"
 
 message "configuring system..."
 
@@ -535,7 +316,7 @@ else
             cat <<EOF >"/mnt/etc/skel/.config/xfce4/xinitrc"
 #!/bin/sh
 xset -b
-xset s 120 20
+xset s 240 20
 export XSECURELOCK_DIM_TIME_MS=750
 export XSECURELOCK_WAIT_TIME_MS=60000
 
@@ -587,6 +368,7 @@ message "installing boot loader..."
 [ -e "/mnt/etc/default/grub.orig" ] || maybe_dryrun cp -pv "/mnt/etc/default/grub" "/mnt/etc/default/grub.orig"
 maybe_dryrun sed -Ei -e 's/^GRUB_DEFAULT=.*/GRUB_DEFAULT=saved/' \
     -e 's/^#?GRUB_SAVEDEFAULT=.*/GRUB_SAVEDEFAULT=true/' \
+    -e 's/^GRUB_CMDLINE_LINUX_DEFAULT="\s*(quiet\b(\s(.+))?|(.+\s)quiet\s(.+)|((.+)\s)?\bquiet)\s*"/GRUB_CMDLINE_LINUX_DEFAULT="\3\4\5\7 audit=0"/' \
     /mnt/etc/default/grub
 in_target grub-install --target=x86_64-efi --efi-directory=/boot --bootloader-id=GRUB &&
     in_target grub-mkconfig -o /boot/grub/grub.cfg

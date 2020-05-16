@@ -14,7 +14,17 @@ PAC_INSTALL=()
 AUR_INSTALL=()
 
 PAC_KEEP=(
+    asciicast2gif
+    balena-etcher
     r8152-dkms # common USB / USB-C NIC
+
+    #
+    mongodb-bin
+
+    #
+    azure-cli
+    azure-functions-core-tools-bin
+    sfdx-cli
 )
 
 PAC_REMOVE=(
@@ -221,11 +231,7 @@ AUR_INSTALL+=(
     # multimedia - video
     makemkv
 
-    # balena-etcher dependency
-    electron7-bin
-
     # system
-    balena-etcher
     hfsprogs
 
     # automation
@@ -240,6 +246,7 @@ PAC_INSTALL+=(
     bash-language-server
     dbeaver
     eslint
+    geckodriver
     python-pylint
     qcachegrind
     tidy
@@ -279,6 +286,7 @@ PAC_INSTALL+=(
     #
     mysql-python
     python
+    python-acme # for working with Let's Encrypt
     python-dateutil
     python-pip
     python-requests
@@ -307,9 +315,6 @@ AUR_INSTALL+=(
     sublime-merge
 
     # platforms
-    azure-cli
-    azure-functions-core-tools-bin
-    sfdx-cli
     wp-cli
 )
 
@@ -320,18 +325,14 @@ PAC_INSTALL+=(
     php-fpm
 )
 
-AUR_INSTALL+=(
-    mongodb-bin
-)
-
 # VMs and containers
 PAC_INSTALL+=(
-    # libvirt
+    # KVM/QEMU
     dnsmasq
     ebtables
+    edk2-ovmf # UEFI firmware
     libvirt
     qemu
-    qemu-arch-extra # includes UEFI firmware, among other goodies
     virt-manager
 
     # docker
@@ -380,14 +381,6 @@ EOF
     lk_console_message "Upgrading installed packages"
     sudo pacman -Syu
 
-    ! PAC_TO_PURGE=($(pacman -Qdttq)) ||
-        [ "${#PAC_TO_PURGE[@]}" -eq "0" ] ||
-        {
-            lk_echo_array "${PAC_TO_PURGE[@]}" | lk_console_list "Orphaned:" "package" "packages"
-            ! get_confirmation "Remove?" Y ||
-                sudo pacman -Rns "${PAC_TO_PURGE[@]}"
-        }
-
     AUR_TO_INSTALL=($(comm -13 <(pacman -Qeq | sort | uniq) <(lk_echo_array "${AUR_INSTALL[@]}" | sort | uniq)))
     [ "${#AUR_TO_INSTALL[@]}" -eq "0" ] || {
         lk_console_message "Installing new packages from AUR"
@@ -396,6 +389,14 @@ EOF
 
     lk_console_message "Upgrading installed AUR packages"
     yay -Syu --aur
+
+    ! PAC_TO_PURGE=($(pacman -Qdttq)) ||
+        [ "${#PAC_TO_PURGE[@]}" -eq "0" ] ||
+        {
+            lk_echo_array "${PAC_TO_PURGE[@]}" | lk_console_list "Orphaned:" "package" "packages"
+            ! get_confirmation "Remove?" Y ||
+                sudo pacman -Rns "${PAC_TO_PURGE[@]}"
+        }
 
     SUDO_OR_NOT=1
 

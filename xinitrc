@@ -11,7 +11,7 @@ if LK_SCRIPT_PATH="$(realpath "$0" 2>/dev/null)" ||
 fi
 
 xset -b
-xset s 120 20
+xset s 240 20
 export XSECURELOCK_DIM_TIME_MS=750
 export XSECURELOCK_WAIT_TIME_MS=60000
 
