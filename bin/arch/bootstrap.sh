@@ -204,7 +204,7 @@ if [ "$#" -eq "3" ]; then
 
 elif [ "$#" -ge "4" ]; then
 
-    check_devices part "${@:0:$#-2}" ||
+    check_devices part "${@:1:$#-2}" ||
         usage
 
     before_install
@@ -212,7 +212,7 @@ elif [ "$#" -ge "4" ]; then
     REPARTITIONED=0
     ROOT_PARTITION="$1"
     BOOT_PARTITION="$2"
-    OTHER_OS_PARTITIONS=("${@:2:$#-4}")
+    OTHER_OS_PARTITIONS=("${@:3:$#-4}")
     TARGET_HOSTNAME="${@: -2:1}"
     TARGET_USERNAME="${@: -1:1}"
 
