@@ -42,6 +42,7 @@ is_virtual || {
         # required to run GPU benchmarks, e.g. in Geekbench
         clinfo
         intel-compute-runtime
+        opencl-nvidia
 
         # required to use Intel Quick Sync Video in FFmpeg
         intel-media-sdk

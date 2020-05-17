@@ -167,13 +167,23 @@ is_virtual && {
     PACMAN_DESKTOP_PACKAGES+=(
         mesa
         libvdpau-va-gl
-        intel-media-driver # TODO: detect intel graphics first
-        libva-intel-driver
 
         #
         blueman
         pulseaudio-bluetooth
     )
+
+    GRAPHICS_CONTROLLERS="$(lspci | grep -E 'VGA|3D')"
+    ! grep -qi "Intel" <<<"$GRAPHICS_CONTROLLERS" ||
+        PACMAN_DESKTOP_PACKAGES+=(
+            intel-media-driver
+            libva-intel-driver
+        )
+    ! grep -qi "NVIDIA" <<<"$GRAPHICS_CONTROLLERS" ||
+        PACMAN_DESKTOP_PACKAGES+=(
+            nvidia
+            nvidia-utils
+        )
 
     AUR_DESKTOP_PACKAGES+=(
         xiccd
