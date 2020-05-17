@@ -28,7 +28,8 @@ PAC_KEEP=(
 )
 
 PAC_REMOVE=(
-    xfce4-screensaver # buggy and insecure
+    visual-studio-code-bin # replaced with OSS version
+    xfce4-screensaver      # buggy and insecure
 )
 
 # hardware-related
@@ -91,6 +92,7 @@ PAC_INSTALL+=(
     glances
     htop # 'top' alternative
     iotop
+    lsof
     ps_mem
     sysstat
 
@@ -245,6 +247,7 @@ AUR_INSTALL+=(
 PAC_INSTALL+=(
     autopep8
     bash-language-server
+    code
     dbeaver
     eslint
     geckodriver
@@ -309,7 +312,6 @@ PAC_INSTALL+=(
 AUR_INSTALL+=(
     sublime-text-dev
     trickle
-    visual-studio-code-bin
 
     #
     git-cola
