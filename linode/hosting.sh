@@ -75,15 +75,13 @@ function keep_trying() {
     local ATTEMPT=1 MAX_ATTEMPTS="${MAX_ATTEMPTS:-10}" WAIT=5 LAST_WAIT=3 NEW_WAIT EXIT_STATUS
     if ! "$@"; then
         while [ "$ATTEMPT" -lt "$MAX_ATTEMPTS" ]; do
-            [ "${NO_LOG:-0}" -eq "1" ] || log "Command failed:" "$*"
-            if [ "${NO_WAIT:-0}" -ne "1" ]; then
-                [ "${NO_LOG:-0}" -eq "1" ] || log "Waiting $WAIT seconds"
-                sleep "$WAIT"
-                ((NEW_WAIT = WAIT + LAST_WAIT))
-                LAST_WAIT="$WAIT"
-                WAIT="$NEW_WAIT"
-            fi
-            [ "${NO_LOG:-0}" -eq "1" ] || log "Retrying (attempt $((++ATTEMPT))/$MAX_ATTEMPTS)"
+            log "Command failed:" "$*"
+            log "Waiting $WAIT seconds"
+            sleep "$WAIT"
+            ((NEW_WAIT = WAIT + LAST_WAIT))
+            LAST_WAIT="$WAIT"
+            WAIT="$NEW_WAIT"
+            log "Retrying (attempt $((++ATTEMPT))/$MAX_ATTEMPTS)"
             if "$@"; then
                 return
             else
@@ -99,27 +97,34 @@ function exit_trap() {
     # restore stdout and stderr
     exec 1>&6 2>&7 6>&- 7>&-
     if [ -n "${CALL_HOME_MX:-}" ]; then
+        if [ "$EXIT_STATUS" -eq "0" ]; then
+            SUBJECT="$NODE_FQDN deployed successfully"
+        else
+            SUBJECT="$NODE_FQDN failed to deploy"
+        fi
         nc "$CALL_HOME_MX" 25 <<EOF || true
 HELO $NODE_FQDN
 MAIL FROM:<root@$NODE_FQDN>
 RCPT TO:<$ADMIN_EMAIL>
 DATA
-From: root@$NODE_FQDN
-To: $ADMIN_EMAIL
+From: ${PATH_PREFIX}hosting@Linode <root@$NODE_FQDN>
+To: $NODE_HOSTNAME admin <$ADMIN_EMAIL>
 Date: $(date -R)
-Subject: Deployment report for Linode $NODE_FQDN
+Subject: $SUBJECT
 
-Exit status: $EXIT_STATUS
+Hi
 
-Log files:
+The Linode at $NODE_HOSTNAME ($NODE_FQDN) is now live.
+${EMAIL_INFO:+
+$EMAIL_INFO
+}
+Install log:
 
 <<</var/log/${PATH_PREFIX}install.log
 $(cat "/var/log/${PATH_PREFIX}install.log" 2>&1 || :)
 >>>
 
-<<</var/log/${PATH_PREFIX}install.out
-$(cat "/var/log/${PATH_PREFIX}install.out" 2>&1 || :)
->>>
+Full output: $NODE_HOSTNAME:/var/log/${PATH_PREFIX}install.out
 
 .
 QUIT
@@ -130,23 +135,35 @@ EOF
 set -euo pipefail
 shopt -s nullglob
 
-trap 'exit_trap' EXIT
-
-PATH_PREFIX="${PATH_PREFIX:-stackscript-}"
-HOST_DOMAIN="${HOST_DOMAIN#www.}"
-HOST_ACCOUNT="${HOST_ACCOUNT:-${HOST_DOMAIN%%.*}}"
-exec 6>&1 7>&2 # save stdout and stderr to restore later
-exec > >(tee -a "/var/log/${PATH_PREFIX}install.out") 2>&1
 if [ "${SCRIPT_DEBUG:-N}" = "Y" ]; then
     set -x
-else
-    export DEBIAN_FRONTEND=noninteractive DEBCONF_NONINTERACTIVE_SEEN=true
 fi
+
+trap 'exit_trap' EXIT
+
+PATH_PREFIX="${PATH_PREFIX:-lk-}"
+HOST_DOMAIN="${HOST_DOMAIN#www.}"
+HOST_ACCOUNT="${HOST_ACCOUNT:-${HOST_DOMAIN%%.*}}"
+
+export DEBIAN_FRONTEND=noninteractive \
+    DEBCONF_NONINTERACTIVE_SEEN=true
+
+# restrict access to log files
+install -m 0640 -g "adm" "/dev/null" "/var/log/${PATH_PREFIX}install.log"
+install -m 0640 -g "adm" "/dev/null" "/var/log/${PATH_PREFIX}install.out"
+
+# save stdout and stderr for later
+exec 6>&1 7>&2
+exec > >(tee -a "/var/log/${PATH_PREFIX}install.out") 2>&1
 
 if [ ! -s "/root/.ssh/authorized_keys" ]; then
     log "==== $(basename "$0"): at least one SSH key must be added to Linodes deployed with this StackScript"
     exit 1
 fi
+
+log "==== $(basename "$0"): preparing system"
+log "Environment:" \
+    "$(printenv | grep -v '^LS_COLORS=' | sort)"
 
 . /etc/lsb-release
 
@@ -162,16 +179,13 @@ case "$DISTRIB_RELEASE" in
     ;;
 esac
 
-log "==== $(basename "$0"): preparing system"
-log "Environment:" \
-    "$(printenv)"
-
 IPV4_ADDRESS="$(
     ip a |
         awk '/inet / { print $2 }' |
         grep -Ev '^(127|10|172\.(1[6-9]|2[0-9]|3[01])|192\.168)\.'
 )" || IPV4_ADDRESS=
 log "Public IPv4 address: ${IPV4_ADDRESS:-not assigned to an interface}"
+
 IPV6_ADDRESS="$(
     ip a |
         awk '/inet6 / { print $2 }' |
@@ -180,7 +194,16 @@ IPV6_ADDRESS="$(
 )" || IPV6_ADDRESS=
 log "Public IPv6 address: ${IPV6_ADDRESS:-not assigned to an interface}"
 
-log "Setting \"Storage=persistent\" in /etc/systemd/journald.conf"
+log "Configuring kernel parameters"
+SYSCTL_FILE="/etc/sysctl.d/90-${PATH_PREFIX}defaults.conf"
+cat <<EOF >"$SYSCTL_FILE"
+# Created by $(basename "$0") at $(now)
+vm.swappiness = 1
+EOF
+log_file "$SYSCTL_FILE"
+sysctl --system
+
+log "Enabling persistent journald storage"
 if [ -f "/etc/systemd/journald.conf" ] &&
     grep -Eq '^#?Storage=' "/etc/systemd/journald.conf"; then
     sed -Ei.orig 's/^#?Storage=.*$/Storage=persistent/' "/etc/systemd/journald.conf"
@@ -192,12 +215,23 @@ else
 Storage=persistent
 EOF
 fi
-
-log "Restarting systemd-journald.service to activate persistent log storage"
 systemctl restart systemd-journald.service
 
 log "Setting system hostname to '$NODE_HOSTNAME'"
 hostnamectl set-hostname "$NODE_HOSTNAME"
+
+log "Sourcing /opt/${PATH_PREFIX}-platform/server/.bashrc in ~/.bashrc for all users"
+BASH_SKEL="
+# Added by $(basename "$0") at $(now)
+if [ -f '/opt/${PATH_PREFIX}-platform/server/.bashrc' ]; then
+    . '/opt/${PATH_PREFIX}-platform/server/.bashrc'
+fi"
+echo "$BASH_SKEL" >>"/etc/skel/.bashrc"
+if [ -f "/root/.bashrc" ]; then
+    echo "$BASH_SKEL" >>"/root/.bashrc"
+else
+    cp "/etc/skel/.bashrc" "/root/.bashrc"
+fi
 
 log "Adding entries for '$NODE_HOSTNAME' and '$NODE_FQDN' to /etc/hosts"
 printf '%s\n' "" \
@@ -208,17 +242,27 @@ printf '%s\n' "" \
 
 for USERNAME in $ADMIN_USERS; do
     log "Creating superuser '$USERNAME'"
-    useradd --create-home --groups adm,sudo --shell /bin/bash "$USERNAME"
+    useradd --create-home --groups "adm,sudo" --shell "/bin/bash" "$USERNAME"
     echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/nopasswd-$USERNAME"
     [ ! -e "/root/.ssh" ] || {
         log "Moving /root/.ssh to /home/$USERNAME/.ssh"
         mv "/root/.ssh" "/home/$USERNAME/" &&
             chown -R "$USERNAME": "/home/$USERNAME/.ssh"
+        FIRST_ADMIN="$USERNAME"
     }
 done
 
-log "Disabling login as root"
+log "Creating virtual host root directory at /srv/www"
+install -d -m 0755 "/srv/www"
+
+log "Disabling root login"
 passwd -l root
+
+log "Disabling clear text passwords when authenticating with SSH"
+sed -Ei.orig \
+    's/^#?(PasswordAuthentication|PermitRootLogin)\b.*/\1 no/' \
+    /etc/ssh/sshd_config
+systemctl restart sshd.service
 
 log "Configuring unattended APT upgrades and disabling optional dependencies"
 APT_CONF_FILE="/etc/apt/apt.conf.d/90${PATH_PREFIX}defaults"
@@ -239,6 +283,7 @@ log_file "$APT_CONF_FILE"
 log "Disabling automatic \"systemctl start\" when new services are installed"
 cat <<EOF >"/usr/sbin/policy-rc.d"
 #!/bin/sh
+
 # Created by $(basename "$0") at $(now)
 exit 101
 EOF
@@ -262,6 +307,7 @@ PACKAGES=(
     coreutils
     cron
     curl
+    git
     htop
     info
     iptables
@@ -293,7 +339,6 @@ PACKAGES=(
 [ -z "$NODE_SERVICES" ] ||
     PACKAGES+=(software-properties-common)
 
-# pre-seed debconf
 debconf-set-selections <<EOF
 postfix	postfix/main_mailer_type	select	Internet Site
 postfix	postfix/mailname	string	$NODE_FQDN
@@ -304,7 +349,6 @@ EOF
 log "Installing APT packages:" "${PACKAGES[*]}"
 keep_trying apt-get -yq install "${PACKAGES[@]}"
 
-# set timezone
 log "Setting system timezone to '$NODE_TIMEZONE'"
 timedatectl set-timezone "$NODE_TIMEZONE"
 
@@ -313,6 +357,11 @@ systemctl start atop.service
 
 log "Starting ntp.service"
 systemctl start ntp.service
+
+install -d -m 2775 -o "$FIRST_ADMIN" -g "adm" "/opt/${PATH_PREFIX}-platform"
+sudo -Hu "$FIRST_ADMIN" \
+    git clone "https://github.com/lkrms/lk-platform.git" \
+    "/opt/${PATH_PREFIX}-platform"
 
 case ",$NODE_SERVICES," in
 ,,) ;;
@@ -398,12 +447,14 @@ case ",$NODE_SERVICES," in
 
     if [ -n "$HOST_DOMAIN" ]; then
         log "Creating user account '$HOST_ACCOUNT'"
-        useradd --no-create-home --home-dir "/srv/www/$HOST_ACCOUNT" --shell /usr/sbin/nologin
-        mkdir -p "/srv/www/$HOST_ACCOUNT"/{public_html,log}
-        chown -Rc "$HOST_ACCOUNT:" "/srv/www/$HOST_ACCOUNT"
+        useradd --create-home --home-dir "/srv/www/$HOST_ACCOUNT" --shell "/bin/bash" "$HOST_ACCOUNT"
+        HOST_ACCOUNT_GROUP="$(id -gn "$HOST_ACCOUNT")"
+        install -d -m 2775 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/public_html"
+        install -d -m 2550 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/log"
+        # TODO: create SSH key and include in email
         if is_installed apache2; then
-            log "Adding user 'www-data' to group '$(id -gn "$HOST_ACCOUNT")'"
-            usermod --append --groups "$(id -gn "$HOST_ACCOUNT")" "www-data"
+            log "Adding user 'www-data' to group '$HOST_ACCOUNT_GROUP'"
+            usermod --append --groups "$HOST_ACCOUNT_GROUP" "www-data"
         fi
     fi
     ;;
@@ -470,6 +521,7 @@ if is_installed apache2; then
         a2enmod --force "${APACHE_ENABLE_MODS[@]}"
     }
 
+    # TODO: make PHP-FPM setup conditional
     log "Configuring Apache HTTPD to serve PHP-FPM virtual hosts"
     cat <<EOF >"/etc/apache2/sites-available/${PATH_PREFIX}default.conf"
 <Directory /srv/www/*/public_html>
@@ -536,9 +588,15 @@ EOF
     ln -s "../sites-available/${PATH_PREFIX}default.conf" "/etc/apache2/sites-enabled/000-${PATH_PREFIX}default.conf"
     log_file "/etc/apache2/sites-available/${PATH_PREFIX}default.conf"
 
+    PHP_FPM_POOLS=("/etc/php/7.2/fpm/pool.d"/*)
+    if [ "${#PHP_FPM_POOLS[@]}" -gt "0" ]; then
+        log "Disabling pre-installed PHP-FPM pools"
+        install -d -m 0755 "/etc/php/7.2/fpm/pool.d.orig"
+        mv "${PHP_FPM_POOLS[@]}" "/etc/php/7.2/fpm/pool.d.orig/"
+    fi
+
     if [ -n "$HOST_DOMAIN" ]; then
         log "Adding site to Apache HTTPD: $HOST_DOMAIN"
-        mkdir -p "/srv/www/$HOST_ACCOUNT/log"
         cat <<EOF >"/etc/apache2/sites-available/$HOST_ACCOUNT.conf"
 <VirtualHost *:80>
     ServerName $HOST_DOMAIN
@@ -551,15 +609,53 @@ EOF
     Use PhpFpmVirtualHostSsl72 $HOST_ACCOUNT
 </VirtualHost>
 EOF
+        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/error.log"
+        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/access.log"
         ln -s "../sites-available/$HOST_ACCOUNT.conf" "/etc/apache2/sites-enabled/$HOST_ACCOUNT.conf"
         log_file "/etc/apache2/sites-available/$HOST_ACCOUNT.conf"
 
-        log "Starting apache2.service"
-        systemctl start apache2.service
+        log "Adding pool to PHP-FPM: $HOST_ACCOUNT"
+        cat <<EOF >"/etc/php/7.2/fpm/pool.d/$HOST_ACCOUNT.conf"
+[$HOST_ACCOUNT]
+user = \$pool
+listen = /run/php/php7.2-fpm-\$pool.sock
+listen.owner = www-data
+listen.group = www-data
+; ondemand can't handle sudden bursts: https://github.com/php/php-src/pull/1308
+pm = static
+; tune based on memory consumed per process under load
+pm.max_children = 8
+; respawn occasionally in case of memory leaks
+pm.max_requests = 10000
+; check \`ulimit -Hn\` and raise in /etc/security/limits.d/ if needed
+rlimit_files = 1048576
+pm.status_path = /status
+ping.path = /ping
+access.log = "/srv/www/\$pool/log/php7.2-fpm.access.log"
+access.format = "%R - %u %t \"%m %r%Q%q\" %s %f %{mili}d %{kilo}M %C%%"
+catch_workers_output = yes
+php_admin_value[error_log] = "/srv/www/\$pool/log/php7.2-fpm.error.log"
+php_admin_flag[log_errors] = On
+php_flag[display_errors] = Off
+php_flag[display_startup_errors] = Off
+EOF
+        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php7.2-fpm.access.log"
+        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php7.2-fpm.error.log"
+        log_file "/etc/php/7.2/fpm/pool.d/$HOST_ACCOUNT.conf"
     fi
+
+    PHP_FPM_POOLS=("/etc/php/7.2/fpm/pool.d"/*)
+    if [ "${#PHP_FPM_POOLS[@]}" -gt "0" ]; then
+        log "Starting php7.2-fpm.service"
+        systemctl start php7.2-fpm.service
+    fi
+
+    log "Starting apache2.service"
+    systemctl start apache2.service
 fi
 
 if is_installed mariadb-server; then
+    # TODO: configure innodb_buffer_pool_size as a percentage of system memory
     log "Starting mysql.service (MariaDB)"
     systemctl start mysql.service
     if [ -n "$MYSQL_PASSWORD" ]; then
@@ -573,6 +669,10 @@ TO '$MYSQL_USERNAME'@'localhost' \
 IDENTIFIED BY '$MYSQL_PASSWORD' \
 WITH GRANT OPTION" | mysql -uroot
     fi
+    # TODO: create $HOST_ACCOUNT database and include credentials in email
 fi
+
+# TODO: add logrotate.d config
+# TODO: add iptables rules
 
 log "==== $(basename "$0"): deployment complete"
