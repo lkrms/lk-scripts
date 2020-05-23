@@ -22,48 +22,148 @@ case "$(basename "$0")" in
     ;;
 esac
 
-[ "$#" -gt "0" ] || die "
-  $(basename "$0") vm_hostname [memory cpus disk_size network ipv4_address filesystem_maps packages mac_address image]
+IMAGE="ubuntu-18.04-minimal"
+VM_PACKAGES=
+VM_FILESYSTEM_MAPS=
+VM_MEMORY="4096"
+VM_CPUS="2"
+VM_DISK_SIZE="80G"
+VM_IPV4_ADDRESS=
+VM_MAC_ADDRESS="$(printf '52:54:00:%02x:%02x:%02x' $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256)))"
+STACKSCRIPT=
 
-Defaults:
-  MEMORY=2048
-  CPUS=1
-  DISK_SIZE=20G
-  NETWORK=$VM_NETWORK
-    Connect to bridge device BRIDGE using \"bridge=BRIDGE\"
-  IPV4_ADDRESS=
-    Added to cloud-init network-config file
-    Must include a prefix, e.g. \"192.168.122.10/24\"
-  FILESYSTEM_MAPS=
-    e.g. \"/host/path,/guest/path|/host/path2,/guest/path2\"
-  PACKAGES=
-    e.g. \"apache2,mariadb-server,php-fpm\"
-    Always installed: qemu-guest-agent
-  MAC_ADDRESS=52:54:00:xx:xx:xx
-    Randomly generated without checking uniqueness
-  IMAGE=ubuntu-18.04-minimal
+USAGE="
+Usage:
+  $(basename "$0") [options] vm_name
 
-Images available:
-  ubuntu-20.04-minimal
-  ubuntu-20.04
-  ubuntu-18.04-minimal
-  ubuntu-18.04
-  ubuntu-16.04-minimal
-  ubuntu-16.04
-  ubuntu-14.04
-  ubuntu-12.04"
+Boot a new QEMU/KVM instance from the current release of a cloud image.
 
-# TODO: validate the following (including MAC uniqueness)
-VM_HOSTNAME="$1"
-VM_MEMORY="${2:-2048}"
-VM_CPUS="${3:-1}"
-VM_DISK_SIZE="${4:-20G}"
-VM_NETWORK="${5:-$VM_NETWORK}"
-VM_IPV4_ADDRESS="${6:-}"
-VM_FILESYSTEM_MAPS="${7:-}"
-VM_PACKAGES="${8:-}"
-VM_MAC_ADDRESS="${9:-$(printf '52:54:00:%02x:%02x:%02x' $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256)))}"
-IMAGE="${10:-ubuntu-18.04-minimal}"
+Options:
+  -i, --image <image_name>                                            [$IMAGE]
+  -p, --packages <package,...>
+  -f, --fs-maps <host_path,guest_path|...>
+  -P, --preset <preset_name>
+  -c, --cpus <count>                                                  [$VM_CPUS]
+  -m, --memory <size>               size is in MiB                    [$VM_MEMORY]
+  -s, --disk-size <size>            size is in GiB                    [$VM_DISK_SIZE]
+  -n, --network <network_name>      may be given as: 'bridge=ifname'  [$VM_NETWORK]
+  -I, --ip-address <ipv4_address>   format must be: 'a.b.c.d/prefix'
+  -M, --mac <52:54:00:xx:xx:xx>     uniqueness is not checked
+  -S, --stackscript <script_path>   overrides --packages
+
+  Supported images:
+    ubuntu-20.04-minimal
+    ubuntu-18.04-minimal
+    ubuntu-16.04-minimal
+    ubuntu-20.04
+    ubuntu-18.04
+    ubuntu-16.04
+    ubuntu-14.04
+    ubuntu-12.04
+
+  Presets:
+    linode16gb
+    linode8gb
+    linode4gb
+    linode2gb
+    linode1gb
+
+  If --stackscript is specified:
+    - you will be prompted to set StackScript variables found in the script
+    - cloud-init will be configured to initialize a Linode-like environment
+    - the specified script will be minified and added to runcmd in cloud-init
+"
+
+OPTS="$(getopt --options "i:p:f:P:m:c:s:n:I:M:S:" \
+    --longoptions "image:,packages:,fs-maps:,preset:,memory:,cpus:,disk-size:,network:,ip-address:,mac:,stackscript:" \
+    --name "$(basename "$0")" \
+    -- "$@")" || die "$USAGE"
+
+eval "set -- $OPTS"
+
+while :; do
+    OPT="$1"
+    shift
+    case "$OPT" in
+    -i | --image)
+        IMAGE="$1"
+        ;;
+    -p | --packages)
+        VM_PACKAGES="$1"
+        ;;
+    -f | --fs-maps)
+        VM_FILESYSTEM_MAPS="$1"
+        ;;
+    -P | --preset)
+        case "$1" in
+        linode1gb)
+            VM_CPUS=1
+            VM_MEMORY=1024
+            VM_DISK_SIZE=25G
+            ;;
+        linode2gb)
+            VM_CPUS=1
+            VM_MEMORY=2048
+            VM_DISK_SIZE=50G
+            ;;
+        linode4gb)
+            VM_CPUS=2
+            VM_MEMORY=4096
+            VM_DISK_SIZE=80G
+            ;;
+        linode8gb)
+            VM_CPUS=4
+            VM_MEMORY=8192
+            VM_DISK_SIZE=160G
+            ;;
+        linode16gb)
+            VM_CPUS=6
+            VM_MEMORY=16384
+            VM_DISK_SIZE=320G
+            ;;
+        *)
+            lk_warn "invalid preset '$1'"
+            die "$USAGE"
+            ;;
+        esac
+        ;;
+    -m | --memory)
+        VM_MEMORY="$1"
+        ;;
+    -c | --cpus)
+        VM_CPUS="$1"
+        ;;
+    -s | --disk-size)
+        VM_DISK_SIZE="$1"
+        ;;
+    -n | --network)
+        VM_NETWORK="$1"
+        ;;
+    -I | --ip-address)
+        VM_IPV4_ADDRESS="$1"
+        ;;
+    -M | --mac)
+        VM_MAC_ADDRESS="$1"
+        ;;
+    -S | --stackscript)
+        [ -f "$1" ] || {
+            lk_warn "invalid StackScript '$1'"
+            die "$USAGE"
+        }
+        STACKSCRIPT="$1"
+        ;;
+    --)
+        break
+        ;;
+    esac
+    shift
+done
+
+VM_HOSTNAME="${1:-}"
+[ -n "$VM_HOSTNAME" ] || die "$USAGE"
+if lk_maybe_sudo virsh list --all --name | grep -Fx "$VM_HOSTNAME" >/dev/null; then
+    die "domain '$VM_HOSTNAME' already exists"
+fi
 
 # OS_VARIANT: run `osinfo-query os` for options
 case "$IMAGE" in
@@ -159,6 +259,65 @@ case "$IMAGE" in
 
 esac
 
+if [ -n "$STACKSCRIPT" ]; then
+    STACKSCRIPT="$(realpath "$STACKSCRIPT")"
+    STACKSCRIPT_TAGS="$(grep -Eo '<(udf|UDF)(\s+[a-z]+="[^"]*")*\s*/>' "$STACKSCRIPT")"
+    STACKSCRIPT_TAG_COUNT="$(wc -l <<<"$STACKSCRIPT_TAGS")"
+    STACKSCRIPT_FIELDS=()
+    while IFS=$'\n' read -rd $'\0' -u 4 NAME LABEL DEFAULT_EXISTS DEFAULT SELECT_TYPE SELECT_OPTIONS; do
+        [ "${#STACKSCRIPT_FIELDS[@]}" -gt "0" ] ||
+            lk_console_message "'$(basename "$STACKSCRIPT")' has $STACKSCRIPT_TAG_COUNT StackScript $(lk_maybe_plural "$STACKSCRIPT_TAG_COUNT" "variable" "variables")"
+        NAME="${NAME%.}"
+        LABEL="${LABEL%.}"
+        DEFAULT_EXISTS="${DEFAULT_EXISTS%.}"
+        DEFAULT="${DEFAULT%.}"
+        SELECT_TYPE="${SELECT_TYPE%.}"
+        SELECT_OPTIONS="${SELECT_OPTIONS%.}"
+        if [ -n "$DEFAULT_EXISTS" ]; then
+            PROMPT="$BOLD$GREEN<optional>$RESET"
+        else
+            unset DEFAULT
+            PROMPT="$BOLD$RED<required>$RESET"
+        fi
+        PROMPT="\
+$DIM($(("${#STACKSCRIPT_FIELDS[@]}" + 1))/$STACKSCRIPT_TAG_COUNT)$RESET \
+$YELLOW$BOLD$LABEL$RESET \
+$PROMPT${SELECT_TYPE:+ $BOLD$MAGENTA<$SELECT_TYPE=\"$SELECT_OPTIONS\">$RESET}\
+${DEFAULT+ $CYAN<default=\"$DEFAULT\">$RESET}
+"
+        while :; do
+            eval "INITIAL_VALUE=\"\${$NAME:-\${DEFAULT:-}}\""
+            eval "read -rep \"\${PROMPT}Value for \$BOLD\$NAME\$RESET: \" \${INITIAL_VALUE:+-i \"\$INITIAL_VALUE\"} $NAME"
+            [ -z "${!NAME}" ] && [ -z "$DEFAULT_EXISTS" ] || break
+        done
+        STACKSCRIPT_FIELDS+=("$NAME")
+    done 4< <(cat <<<"$STACKSCRIPT_TAGS" |
+        sed -E 's/<(udf|UDF)(\s+(name="([a-zA-Z_][a-zA-Z0-9_]*)"|label="([^"]*)"|(default)="([^"]*)"|(oneof|manyof)="([^"]*)"|[a-zA-Z]+="[^"]*"))*\s*\/>/\4\n\5\n\6\n\7\n\8\n\9/' |
+        xargs -d $'\n' -n 6 printf '%s.\n%s.\n%s.\n%s.\n%s.\n%s.\0')
+    STACKSCRIPT_ENV=
+    [ "${#STACKSCRIPT_FIELDS[@]}" -eq "0" ] ||
+        STACKSCRIPT_ENV="$(set | grep -E "^($(lk_implode '|' "${STACKSCRIPT_FIELDS[@]}"))=.+$" | sort)"
+fi
+
+lk_console_message "Ready to download and deploy:"
+echo "\
+Name:               $VM_HOSTNAME
+Image:              $IMAGE_NAME (${IMAGE_URL##*/})
+Packages:           ${VM_PACKAGES:+${VM_PACKAGES//,/, }, }qemu-guest-agent
+Filesystem maps:    ${VM_FILESYSTEM_MAPS:-<none>}
+Memory:             $VM_MEMORY
+CPUs:               $VM_CPUS
+Disk size:          $VM_DISK_SIZE
+Network:            $VM_NETWORK
+IPv4 address:       ${VM_IPV4_ADDRESS:-<automatic>}
+MAC address:        $VM_MAC_ADDRESS
+StackScript:        ${STACKSCRIPT:-<none>}${STACKSCRIPT_ENV:+
+
+StackScript environment:
+  ${STACKSCRIPT_ENV//$'\n'/$'\n'  }}
+"
+lk_confirm "OK to proceed?" Y
+
 mkdir -p "$CACHE_DIR/cloud-images" &&
     cd "$CACHE_DIR/cloud-images" || die
 
@@ -211,7 +370,10 @@ DISK_PATH="$VM_POOL_ROOT/$VM_HOSTNAME-$IMG_NAME-$TIMESTAMP.qcow2"
 NOCLOUD_TEMP_PATH="$VM_HOSTNAME-$IMG_NAME-$TIMESTAMP-cloud-init.img"
 NOCLOUD_PATH="$VM_POOL_ROOT/$NOCLOUD_TEMP_PATH"
 
-[ ! -e "$DISK_PATH" ] || die "disk already exists: $DISK_PATH"
+if [ -e "$DISK_PATH" ]; then
+    lk_console_item "Disk image already exists:" "$DISK_PATH"
+    lk_confirm "Destroy the existing image and start over?" N || exit
+fi
 
 NETWORK_CONFIG="\
 version: 1
@@ -287,7 +449,9 @@ PACKAGES=()
     unset IFS
 }
 
-USER_DATA="\
+RUN_CMD=()
+if [ -z "$STACKSCRIPT" ]; then
+    USER_DATA="\
 #cloud-config
 ssh_pwauth: false
 users:
@@ -298,34 +462,73 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     ssh_authorized_keys:
 $(printf '      - %s\n' "${SSH_AUTHORIZED_KEYS[@]}")
+package_upgrade: true
+package_reboot_if_required: true
+$(
+        [ "$IMAGE_NAME" != "ubuntu-12.04" ] || printf '%s\n' \
+            "apt_upgrade: true" \
+            "ssh_authorized_keys:" "${SSH_AUTHORIZED_KEYS[@]/#/  - }"
+        [ "${#PACKAGES[@]}" -eq "0" ] || printf '%s\n' "packages:" "${PACKAGES[@]/#/  - }"
+    )"
+else
+    USER_DATA="\
+#cloud-config
+ssh_pwauth: true
+disable_root: false
+users: []
+ssh_authorized_keys:
+$(printf '  - %s\n' "${SSH_AUTHORIZED_KEYS[@]}")"
+
+    STACKSCRIPT_LINES="$(
+        if lk_command_exists shfmt; then
+            shfmt -mn "$STACKSCRIPT"
+        else
+            lk_warn "unable to minify $STACKSCRIPT (shfmt not installed)"
+            cat "$STACKSCRIPT"
+        fi | sed 's/^/      /'
+    )"
+    RUN_CMD+=(
+        "  - - env"
+        "    - ${STACKSCRIPT_ENV//$'\n'/$'\n'    - }"
+        "    - bash"
+        "    - -c"
+        "    - |"
+        "      exec </dev/null"
+        "$STACKSCRIPT_LINES"
+    )
+fi
+
+USER_DATA="$USER_DATA
 apt:
   primary:
     - arches: [default]
       uri: ${UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}
-package_upgrade: true
-package_reboot_if_required: true
 $(
-    [ "$IMAGE_NAME" != "ubuntu-12.04" ] || printf '%s\n' \
-        "apt_upgrade: true" \
-        "ssh_authorized_keys:" "${SSH_AUTHORIZED_KEYS[@]/#/  - }"
-    [ "${#PACKAGES[@]}" -eq "0" ] || printf '%s\n' "packages:" "${PACKAGES[@]/#/  - }"
     [ "${#FSTAB[@]}" -eq "0" ] || {
         FSTAB_CMD=("${FSTAB[@]/#/  - echo \"}")
         FSTAB_CMD=("${FSTAB_CMD[@]/%/\" >>/etc/fstab}")
         FSTAB_CMD+=("${MOUNT_DIRS[@]/#/  - mount }")
+        RUN_CMD=(
+            "  - mkdir -pv ${MOUNT_DIRS[*]}"
+            "${FSTAB_CMD[@]}"
+            ${RUN_CMD+"${RUN_CMD[@]}"}
+        )
+    }
+    [ "${#RUN_CMD[@]}" -eq "0" ] || {
         printf '%s\n' \
             "runcmd:" \
-            "  - mkdir -pv ${MOUNT_DIRS[*]}" \
-            "${FSTAB_CMD[@]}"
+            "${RUN_CMD[@]}"
     }
-    # ubuntu-16.04-minimal leaves /etc/resolv.conf unconfigured if a static IP is assigned (no resolvconf package?)
+    # ubuntu-16.04-minimal leaves /etc/resolv.conf unconfigured if a static IP
+    # is assigned (no resolvconf package?)
     [ -z "$VM_IPV4_ADDRESS" ] || [ "$IMAGE_NAME" != "ubuntu-16.04-minimal" ] || echo "\
 write_files:
   - content: |
       nameserver ${SUBNET}1
     path: /etc/resolv.conf"
     # cloud-init on ubuntu-14.04 doesn't recognise the "apt" schema
-    [ "$IMAGE_NAME" != "ubuntu-14.04" ] && [ "$IMAGE_NAME" != "ubuntu-12.04" ] || echo "\
+    [[ ! "$IMAGE_NAME" =~ ^ubuntu-(14.04|12.04)$ ]] ||
+        echo "\
 apt_mirror: ${UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}"
 )"
 
@@ -335,7 +538,9 @@ instance-id: $(uuidgen)
 local-hostname: $VM_HOSTNAME
 $(
     # cloud-init on ubuntu-14.04 ignores the network-config file
-    [ -z "$VM_IPV4_ADDRESS" ] || { [ "$IMAGE_NAME" != "ubuntu-14.04" ] && [ "$IMAGE_NAME" != "ubuntu-12.04" ]; } || echo "\
+    [ -z "$VM_IPV4_ADDRESS" ] ||
+        [[ ! "$IMAGE_NAME" =~ ^ubuntu-(14.04|12.04)$ ]] ||
+        echo "\
 network-interfaces: |
   auto eth0
   iface eth0 inet static
@@ -344,11 +549,22 @@ network-interfaces: |
   dns-nameservers ${SUBNET}1"
 )"
 
-echo "$NETWORK_CONFIG" >network-config.latest.yml
-echo "$USER_DATA" >user-data.latest.yml
-echo "$META_DATA" >meta-data.latest.yml
+NOCLOUD_META_DIR="$CACHE_DIR/cloud-images/$(lk_get_hostname)-$VM_HOSTNAME-NoCloud-$(lk_date_ymdhms)"
+mkdir -p "$NOCLOUD_META_DIR"
 
-cloud-localds -N <(echo "$NETWORK_CONFIG") "$NOCLOUD_TEMP_PATH" <(echo "$USER_DATA") <(echo "$META_DATA") &&
+echo "$NETWORK_CONFIG" >"$NOCLOUD_META_DIR/network-config.yml"
+echo "$USER_DATA" >"$NOCLOUD_META_DIR/user-data.yml"
+echo "$META_DATA" >"$NOCLOUD_META_DIR/meta-data.yml"
+
+if lk_confirm "Customise cloud-init data source?" N; then
+    xdg-open "$NOCLOUD_META_DIR" || :
+    lk_pause "Press any key to continue after making changes in $NOCLOUD_META_DIR . . . "
+fi
+
+cloud-localds -N "$NOCLOUD_META_DIR/network-config.yml" \
+    "$NOCLOUD_TEMP_PATH" \
+    "$NOCLOUD_META_DIR/user-data.yml" \
+    "$NOCLOUD_META_DIR/meta-data.yml" &&
     maybe_sudo cp -fv "$NOCLOUD_TEMP_PATH" "$NOCLOUD_PATH" &&
     rm -f "$NOCLOUD_TEMP_PATH" || die
 
