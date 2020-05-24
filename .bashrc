@@ -53,8 +53,8 @@ function lk_prompt() {
     local EXIT_STATUS="$?" PS=() SECS COMMAND IFS DIM STR LEN=25
     history -a
     [ "${LK_HISTORY_READ_NEW:-N}" = "N" ] || history -n
-    # if terminal doesn't support `dim`, use yellow
-    DIM="$(lk_coalesce "$LK_DIM" "$LK_YELLOW")"
+    # if terminal doesn't support `dim`, use grey
+    DIM="${LK_DIM:-$LK_GREY}"
     if [ "${#LK_LAST_COMMAND[@]}" -gt "0" ]; then
         ((SECS = $(lk_date "%s") - LK_LAST_COMMAND_START)) || true
         if [ "$EXIT_STATUS" -ne "0" ] ||

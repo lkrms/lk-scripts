@@ -26,7 +26,7 @@ for j in $(seq -1 8); do
 
         else
 
-            tput setaf "$i"
+            lk_safe_tput setaf "$i"
 
         fi
 
@@ -36,33 +36,33 @@ for j in $(seq -1 8); do
 
         else
 
-            tput setab "$j"
+            lk_safe_tput setab "$j"
 
         fi
 
         printf 'This is %s on %s. ' "$FG_COLOUR" "$BG_COLOUR"
 
-        tput dim
+        lk_safe_tput dim
 
         printf '%s with dim. ' "$(upper_first "$FG_COLOUR")"
 
-        tput bold
+        lk_safe_tput bold
 
         printf '%s with bold. ' "$(upper_first "$FG_COLOUR")"
 
-        tput sgr0
-        [ "$i" -eq "-1" ] || tput setaf "$i"
-        [ "$j" -eq "-1" ] || tput setab "$j"
+        lk_safe_tput sgr0
+        [ "$i" -eq "-1" ] || lk_safe_tput setaf "$i"
+        [ "$j" -eq "-1" ] || lk_safe_tput setab "$j"
 
-        tput smso
+        lk_safe_tput smso
 
         printf '%s with standout. ' "$(upper_first "$FG_COLOUR")"
 
-        tput bold
+        lk_safe_tput bold
 
         printf '%s with standout and bold.' "$(upper_first "$FG_COLOUR")"
 
-        tput sgr0
+        lk_safe_tput sgr0
 
         printf '\n'
 
