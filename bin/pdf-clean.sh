@@ -32,7 +32,7 @@ for FILE in "$@"; do
 
     mv "$PDF_PATH" "$BACKUP_PATH"
 
-    console_message "Cleaning" "$FILE" "$CYAN"
+    lk_console_item "Cleaning" "$FILE"
 
     time_command mutool clean -gggg -zfi "$BACKUP_PATH" "$PDF_PATH" &&
         touch -r "$BACKUP_PATH" "$PDF_PATH" || {
@@ -66,7 +66,7 @@ done
 
 [ "${#ERRORS[@]}" -eq "0" ] || {
 
-    console_warning "Unable to process ${#ERRORS[@]} PDF $(single_or_plural ${#ERRORS[@]} file files)" "" "$BOLD$RED"
+    lk_console_error "Unable to process ${#ERRORS[@]} PDF $(single_or_plural ${#ERRORS[@]} file files)"
     printf '%s\n' "${ERRORS[@]}" >&2
     die
 

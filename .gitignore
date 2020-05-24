@@ -1,13 +1,12 @@
-/cache
-/local
-/log
 /tmp
+/var/cache
+/var/log
 
-/config/*
-!/config/*/
-!/config/*-default*
-!/config/*-example*
-!/config/README.md
+/etc/*
+!/etc/*/
+!/etc/*-default*
+!/etc/*-example*
+!/etc/README.md
 sxhkdrc
 
 .githooks/*.sample

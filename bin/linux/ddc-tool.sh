@@ -89,19 +89,19 @@ for i in "${DISPLAYS[@]}"; do
     case "$COMMAND" in
 
     reset | factory-reset)
-        console_message "Resetting $DISPLAY_NAME to factory defaults" "" "$BOLD" "$CYAN"
+        lk_console_message "Resetting $DISPLAY_NAME to factory defaults" "$BOLD$CYAN"
         sudo ddcutil --edid "$DISPLAY_EDID" setvcp 0x04 1 || EXIT_CODE="$?"
         ;;
 
     set-brightness)
         [ "${#ARGS[@]}" -eq "1" ] || die "$USAGE"
-        console_message "Setting brightness on $DISPLAY_NAME to ${ARGS[0]}" "" "$BOLD" "$CYAN"
+        lk_console_message "Setting brightness on $DISPLAY_NAME to ${ARGS[0]}" "$BOLD$CYAN"
         sudo ddcutil --edid "$DISPLAY_EDID" setvcp 0x10 "${ARGS[0]}" || EXIT_CODE="$?"
         echo "To make ${ARGS[0]} the default, use: setvcp 0x10 ${ARGS[0]}"
         ;;
 
     test-brightness)
-        console_message "Running brightness test on $DISPLAY_NAME" "" "$BOLD" "$CYAN"
+        lk_console_message "Running brightness test on $DISPLAY_NAME" "$BOLD$CYAN"
         if ! RESULT=($(sudo ddcutil --edid "$DISPLAY_EDID" getvcp 0x10 | grep -Eo '\b[0-9]+\b' || exit "${PIPESTATUS[0]}")); then
             EXIT_CODE="$?"
         else
@@ -136,7 +136,7 @@ for i in "${DISPLAYS[@]}"; do
     test-range)
         SEQ=($(seq "${ARGS[1]}" "${ARGS[2]}" "${ARGS[3]}" 2>/dev/null)) && [ "${#SEQ[@]}" -gt "0" ] || die "$USAGE"
         TEST_SLEEP="${ARGS[4]:-$DEFAULT_TEST_SLEEP}"
-        console_message "Applying range of values to feature ${ARGS[0]} on $DISPLAY_NAME at ${TEST_SLEEP}s intervals" "${SEQ[*]}" "$BOLD" "$CYAN"
+        lk_echo_array "${SEQ[@]}" | lk_console_list "Applying range of values to feature ${ARGS[0]} on $DISPLAY_NAME at ${TEST_SLEEP}s intervals" "$BOLD$CYAN"
         for v in "${SEQ[@]}"; do
             echo "Setting feature ${ARGS[0]} value to $v"
             sudo ddcutil --edid "$DISPLAY_EDID" setvcp "${ARGS[0]}" "$v" || {
@@ -149,7 +149,7 @@ for i in "${DISPLAYS[@]}"; do
 
     *)
         ARGS=("$COMMAND" "${ARGS[@]}")
-        console_message "Running ddcutil command \"${ARGS[*]}\" on $DISPLAY_NAME" "" "$BOLD" "$CYAN"
+        lk_console_message "Running ddcutil command \"${ARGS[*]}\" on $DISPLAY_NAME" "$BOLD$CYAN"
         sudo ddcutil --edid "$DISPLAY_EDID" "${ARGS[@]}" || EXIT_CODE="$?"
         ;;
 

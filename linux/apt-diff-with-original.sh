@@ -27,11 +27,11 @@ for p in "${PACKAGES[@]}"; do
     apt_package_installed "$p" || continue
 
     DOWNLOAD_INFO=($(apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} download --print-uris "$p" 2>/dev/null)) && [ "${#DOWNLOAD_INFO[@]}" -ge "2" ] || {
-        console_message "Unable to get archive URI for package:" "$p" "$BOLD" "$RED" >&2
+        lk_console_item "Unable to get archive URI for package:" "$p" "$BOLD$RED"
         continue
     }
 
-    console_message "File appears to belong to package:" "$p" "$CYAN" >&2
+    lk_console_item "File appears to belong to package:" "$p"
 
     # easiest way to eliminate the enclosing quotes
     eval "URL=${DOWNLOAD_INFO[0]}"
@@ -43,11 +43,11 @@ for p in "${PACKAGES[@]}"; do
         rm -Rf "$EXTRACT_PATH"
 
         pushd "$APT_DEB_PATH" >/dev/null || die
-        console_message "Downloading package archive:" "${WRAP_OFF}${URL}${WRAP}" "$CYAN" >&2
+        lk_console_item "Downloading package archive:" "${WRAP_OFF}${URL}${WRAP}"
         DEB_PATH="$(download_urls "$URL")" || die
         popd >/dev/null
 
-        console_message "Extracting package archive to temporary folder" "" "$CYAN" >&2
+        lk_console_message "Extracting package archive to temporary folder"
         dpkg-deb -x "$DEB_PATH" "$EXTRACT_PATH" || {
             rm -Rf "$EXTRACT_PATH"
             die
@@ -55,21 +55,21 @@ for p in "${PACKAGES[@]}"; do
 
     else
 
-        console_message "Package archive already available in temporary folder" "" "$CYAN" >&2
+        lk_console_message "Package archive already available in temporary folder"
 
     fi
 
     if [ -e "${EXTRACT_PATH}${FILE_PATH}" ]; then
 
-        console_message "Comparing with original version:" "$FILE_PATH" "$BOLD" "$MAGENTA" >&2
+        lk_console_item "Comparing with original version:" "$FILE_PATH" "$BOLD$MAGENTA"
 
         if diff "$@" "${EXTRACT_PATH}${FILE_PATH}" "$FILE_PATH"; then
 
-            console_message "No differences found" "" "$BOLD" "$GREEN" >&2
+            lk_console_message "No differences found" "$BOLD$GREEN"
 
         else
 
-            console_message "Original version is available at:" "${EXTRACT_PATH}${FILE_PATH}" "$BOLD" >&2
+            lk_console_item "Original version is available at:" "${EXTRACT_PATH}${FILE_PATH}" "$BOLD"
 
         fi
 
@@ -77,10 +77,10 @@ for p in "${PACKAGES[@]}"; do
 
     else
 
-        console_message "Original version of file not found in package:" "$p" "$BOLD" "$RED" >&2
+        lk_console_item "Original version of file not found in package:" "$p" "$BOLD$RED"
 
     fi
 
 done
 
-console_message "Unable to find original version of file. ${#PACKAGES[@]} $(single_or_plural "${#PACKAGES[@]}" package packages) checked:" "${PACKAGES[*]}" >&2
+lk_echo_array "${PACKAGES[@]}" | lk_console_list "Unable to find original version of file. ${#PACKAGES[@]} $(single_or_plural "${#PACKAGES[@]}" package packages) checked:"

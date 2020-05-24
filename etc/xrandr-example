@@ -91,7 +91,7 @@ case "${XDG_CURRENT_DESKTOP:-}" in
     # 4K connected?
     if [ "$EDID_DISPLAY_0_ACTIVE" -eq "1" ]; then
 
-        EDID_DISPLAY_0_OPTIONS+=(--mode 3840x2160 --scale-from 3840x2160)
+        EDID_DISPLAY_0_OPTIONS+=(--mode 3840x2160 --scale-from 3840x2160 --set "audio" "off")
         POS_0=0x0
         SCALING_FACTOR=1
         DPI_MULTIPLIER=0.75
@@ -127,6 +127,7 @@ case "${XDG_CURRENT_DESKTOP:-}" in
                 # AOC U2790VQ does 60Hz+limited RGB or 30Hz+full RGB but not 60Hz+full RGB,
                 # no matter what its EDID says
                 --set "Broadcast RGB" "Limited 16:235"
+                --set "audio" "off"
             )
             POS_0=3840x0
 

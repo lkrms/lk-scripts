@@ -26,39 +26,16 @@ function git_version_at_least() {
 
 }
 
-function git_load_code_roots() {
-
-    assert_command_exists realpath
-
-    local ROOTS=() ROOT
-
-    variable_exists "DEFAULT_CODE_ROOTS" || DEFAULT_CODE_ROOTS=()
-
-    if [ "${#ORIGINAL_ARGUMENTS[@]}" -gt "0" ]; then
-
-        ROOTS=("${ORIGINAL_ARGUMENTS[@]}")
-
-    elif [ "${#DEFAULT_CODE_ROOTS[@]}" -gt "0" ]; then
-
-        ROOTS=("${DEFAULT_CODE_ROOTS[@]}")
-
-    fi
-
-    CODE_ROOTS=()
-
-    if [ "${#ROOTS[@]}" -gt "0" ]; then
-
-        for ROOT in "${ROOTS[@]}"; do
-
-            [ ! -d "$ROOT" ] || CODE_ROOTS+=("$(realpath "$ROOT")")
-
+function git_get_code_roots() {
+    local ROOTS ROOT
+    ROOTS=("$@")
+    [ "${#ROOTS[@]}" -gt "0" ] ||
+        ROOTS=(${DEFAULT_CODE_ROOTS[@]+"${DEFAULT_CODE_ROOTS[@]}"})
+    {
+        for ROOT in ${ROOTS[@]+"${ROOTS[@]}"}; do
+            [ ! -d "$ROOT" ] || realpath "$ROOT" || return
         done
-
-    fi
-
-    # guarantee uniqueness
-    IFS=$'\n' read -d '' -ra CODE_ROOTS < <(printf '%s\n' "${CODE_ROOTS[@]}" | sort | uniq) || true
-
+    } | sort | uniq
 }
 
 function git_has_remote() {

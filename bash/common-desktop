@@ -76,7 +76,7 @@ function lk_openconnect() {
         NAMESPACE="${3:-$(basename "$0")}"
         lk_command_exists secret-tool || lk_warn "secret-tool: command not found" || return
         if ! LK_SECRET_PASSWORD="$(secret-tool lookup "$NAMESPACE" "$1" 2>/dev/null)"; then
-            lk_console_item "Password not found in keychain" "$NAMESPACE:$1" "${RED:-$(lk_safe_tput setaf 1)}" >&2
+            lk_console_item "Password not found in keychain" "$NAMESPACE:$1" "$LK_RED" >&2
             [ -t 0 ] &&
                 [ -t 1 ] &&
                 lk_console_message "Please enter the password for $2 now" &&

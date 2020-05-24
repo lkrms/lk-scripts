@@ -4,50 +4,19 @@
 set -euo pipefail
 
 function is_virtual() {
-    lk_is_linux && grep -Eq '^flags\s*:.*\shypervisor(\s|$)' /proc/cpuinfo
+    lk_is_virtual
 }
 
 function is_qemu() {
-    is_virtual && grep -Eiq qemu /sys/devices/virtual/dmi/id/*_vendor
+    lk_is_qemu
 }
 
 function is_desktop() {
-
-    assert_is_linux
-
-    local CHASSIS_TYPE PORTABLE_CHASSIS_TYPES=(
-
-        # Portable
-        8
-
-        # Laptop
-        9
-
-        # Notebook
-        10
-
-        # Hand Held
-        11
-
-        # Sub Notebook
-        14
-
-    )
-
-    CHASSIS_TYPE="$(</sys/class/dmi/id/chassis_type)" || die
-
-    [ -n "$CHASSIS_TYPE" ] || die "No chassis type"
-
-    ! printf '%s\n' "${PORTABLE_CHASSIS_TYPES[@]}" | grep "^${CHASSIS_TYPE}\$" >/dev/null
-
+    ! lk_is_portable
 }
 
 function is_lid_closed() {
-
-    assert_is_linux
-
-    grep -q 'closed$' /proc/acpi/button/lid/*/state
-
+    lk_is_lid_closed
 }
 
 function assert_is_macos() {
@@ -118,87 +87,24 @@ function is_root() {
     lk_is_root
 }
 
-# Usage: filename_maybe_add_extension "/path/to/file" ".pdf"
-# (output would be "/path/to/file.ext.pdf")
-function filename_maybe_add_extension() {
-
-    local FILENAME BASENAME
-
-    FILENAME="$1"
-    BASENAME="$(basename "$1")" || die
-
-    [[ "$BASENAME" =~ .+\..+ ]] && [ "$(lower ".${1##*.}")" = "$(lower "$2")" ] || FILENAME="${1}${2}"
-
-    echo "$FILENAME"
-
-}
-
 function filename_add_suffix() {
     lk_add_file_suffix "$@"
 }
 
-# filename_get_next_backup: filename_get_next_backup filename [backup-identifier]
 function filename_get_next_backup() {
-
-    local i=0 BACKUP_PATH
-
-    BACKUP_PATH="$(filename_add_suffix "$1" "${2:+_$2}_backup")"
-
-    while [ -e "$BACKUP_PATH" ]; do
-
-        BACKUP_PATH="$(filename_add_suffix "$1" "${2:+_$2}_$((++i))_backup")"
-
-    done
-
-    echo "$BACKUP_PATH"
-
-}
-
-function file_mime_type() {
-
-    [ -f "$1" ] || die "$1 isn't a file"
-
-    file -b --mime-type "$1" || die
-
+    lk_next_backup_file "$@"
 }
 
 function is_pdf() {
-
-    local MIME_TYPE
-
-    MIME_TYPE="$(file_mime_type "$1")" || die
-    [ "$MIME_TYPE" = "application/pdf" ]
-
+    lk_is_pdf "$@"
 }
 
-# returns non-zero if any of the arguments aren't directories
 function are_directories() {
-
-    local DIR
-
-    for DIR in "$@"; do
-
-        [ -d "$DIR" ] || return
-
-    done
-
-    return
-
+    lk_dirs_exist "$@"
 }
 
-# returns non-zero if any of the arguments aren't files
 function are_files() {
-
-    local FILE
-
-    for FILE in "$@"; do
-
-        [ -f "$FILE" ] || return
-
-    done
-
-    return
-
+    lk_files_exist "$@"
 }
 
 function command_exists() {
@@ -210,28 +116,7 @@ function variable_exists() {
 }
 
 function user_exists() {
-
-    id "$1" >/dev/null 2>&1
-
-}
-
-function is_bool() {
-
-    [[ "$1" =~ ^(true|false)$ ]]
-
-}
-
-function is_int() {
-
-    [[ "$1" =~ ^[0-9]+$ ]]
-
-}
-
-function is_url() {
-
-    # TODO: replace with uri_get_parts regex
-    gnu_grep -Pq '\b(([\w-]+://?|www[.])[^\s()<>]+(?:\([\w\d]+\)|([^[:punct:]\s]|/)))' <<<"$1"
-
+    lk_users_exist "$1"
 }
 
 function echoc() {
@@ -254,196 +139,28 @@ function pause() {
     lk_pause "$@"
 }
 
-# console_message: console_message message [entity_list [colour_sequence ...] ]
-#
-# Output MESSAGE on the standard output, followed by a list of entities.
-# Apply colour control sequences to improve readability.
-#
-# Output is one of the following:
-#
-# multiple entities
-#     >
-#     > ==> MESSAGE:
-#     > ENTITIES...
-#     >
-#
-# one entity
-#     ==> MESSAGE: ENTITY
-#
-# no entities
-#     ==> MESSAGE
-#
-# On interactive terminals, MESSAGE is bold and colour control sequences
-# are applied to "==>", entities, and any MESSAGE text surrounded by
-# __double underscores__.
-#
-# If MESSAGE contains a trailing colon, it is removed. Entities are
-# piped to `column`.
-#
-function console_message() {
-
-    local MESSAGE1 MESSAGE2 MESSAGE2_COUNT OUTPUT
-
-    MESSAGE1="${1%:}"
-    MESSAGE2=(${2:-})
-    shift || die
-    shift || true
-
-    MESSAGE2_COUNT="${#MESSAGE2[@]}"
-
-    [ "$MESSAGE2_COUNT" -eq "0" ] || MESSAGE1="${MESSAGE1}:"
-
-    OUTPUT=$(
-
-        echoc -n "==> " "$@"
-        echoc -n "$MESSAGE1" "$BOLD"
-
-        # case statements don't parse in Bash 3.2.57 subshells
-        if [ "$MESSAGE2_COUNT" -eq "0" ]; then
-
-            :
-
-        elif [ "$MESSAGE2_COUNT" -eq "1" ]; then
-
-            echoc " ${MESSAGE2[0]}" "$@"
-
-        else
-
-            echo
-            echoc "$(printf '%s\n' "${MESSAGE2[@]}" | column)" "$@"
-
-        fi
-
-    )
-
-    if [ "$MESSAGE2_COUNT" -gt "1" ]; then
-
-        printf '\n%s\n\n' "$OUTPUT"
-
-    else
-
-        echo "$OUTPUT"
-
-    fi
-
-}
-
-function console_warning() {
-
-    console_message "$@" >&2
-
-}
-
 function get_value() {
-
-    local PROMPT=() DEFAULT="${2:-}" VALUE
-
-    PROMPT+=("$1")
-
-    [ -z "$DEFAULT" ] || PROMPT+=("[$DEFAULT]")
-
-    read -rp "${PROMPT[*]} " VALUE
-
-    [ -n "$VALUE" ] || VALUE="$DEFAULT"
-
-    echo "$VALUE"
-
+    lk_console_read "$@"
 }
 
-# Usage: get_confirmation "Do this?" [default response (y/n)] [force valid response? (y/N)] && { do_it; }
 function get_confirmation() {
-
-    local PROMPT=() DEFAULT="${2:-}" FORCE="${3:-N}" YN
-
-    [ -z "$1" ] || PROMPT+=("$1")
-
-    case "$DEFAULT" in
-
-    Y)
-        PROMPT+=("[Y/n]")
-        ;;
-
-    N)
-        PROMPT+=("[y/N]")
-        ;;
-
-    *)
-        PROMPT+=("[y/n]")
-        DEFAULT=
-        ;;
-
-    esac
-
-    while :; do
-
-        read -rp "${PROMPT[*]} " YN
-
-        [ -n "$YN" ] || YN="$DEFAULT"
-
-        YN="$(upper "$YN")"
-
-        if [ "$FORCE" != "Y" ] || [[ "$YN" =~ ^(Y|YES|N|NO)$ ]]; then
-
-            break
-
-        fi
-
-    done
-
-    [[ "$YN" =~ ^(Y|YES)$ ]]
-
+    lk_confirm "$@"
 }
 
-# Usage: file_to_array "/path/to/file" [exclude-pattern...]
-#
-# If "/path/to/file" doesn't exist, "/path/to/file-default" is tried.
-#
-# The following are excluded by default:
-# - lines that are empty or only contain whitespace: /^\s*$/
-# - comments (lines that start with "#" or ";"): /^[#;]/
-#
-# To include all lines: file_to_array "/path/to/file" ""
+# file_to_array file_path [filter_pattern...]
 function file_to_array() {
-
-    local FILENAME LINE COMMAND=(cat) EXCLUDE=('^\s*$' '^[#;]')
-
-    FILENAME="${1:-}"
-    [ -n "$FILENAME" ] || die "Filename required"
+    local FILENAME="$1" EXCLUDE=()
+    [ -e "$FILENAME" ] ||
+        FILENAME="$FILENAME-default"
+    [ -e "$FILENAME" ] || lk_warn "file not found: $1" || return
     shift
-
-    if [ "$#" -gt "0" ]; then
-
-        EXCLUDE=("$@")
-
-    fi
-
-    FILE_TO_ARRAY=()
-    FILE_TO_ARRAY_FILENAME=
-
-    if [ ! -e "$FILENAME" ]; then
-
-        FILENAME="${FILENAME}-default"
-
-    fi
-
-    if [ -e "$FILENAME" ]; then
-
-        FILE_TO_ARRAY_FILENAME="$(realpath "$FILENAME")" || die
-
-        if [ "${#EXCLUDE[@]}" -gt "1" ] || [ -n "${EXCLUDE[0]}" ]; then
-
-            COMMAND=(grep -Ev "($(array_join_by ")|(" "${EXCLUDE[@]}"))")
-
-        fi
-
-        while IFS= read -r LINE || [ -n "$LINE" ]; do
-
-            FILE_TO_ARRAY+=("$LINE")
-
-        done < <("${COMMAND[@]}" "$FILENAME" || true)
-
-    fi
-
+    [ "$#" -eq "0" ] &&
+        EXCLUDE=('^\s*$' '^[#;]') || {
+        [ -z "$1" ] ||
+            EXCLUDE=("$@")
+    }
+    FILE_TO_ARRAY_FILENAME="$FILENAME"
+    lk_mapfile "$FILENAME" "FILE_TO_ARRAY" ${EXCLUDE[@]+"($(lk_implode ")|(" "${EXCLUDE[@]}"))"}
 }
 
 function single_or_plural() {
@@ -451,142 +168,35 @@ function single_or_plural() {
 }
 
 function upper_first() {
-
-    echo "$(echo "$1" | cut -c1 | tr "[:lower:]" "[:upper:]")$(echo "$1" | cut -c2-)"
-
+    lk_upper_first "$@"
 }
 
 function lower() {
-
-    echo "$1" | tr "[:upper:]" "[:lower:]"
-
+    lk_lower "$@"
 }
 
 function upper() {
-
-    echo "$1" | tr "[:lower:]" "[:upper:]"
-
+    lk_upper "$@"
 }
 
-# Searches the array (must be global, passed by name) for the given value and outputs the first corresponding key if found.
-# Plays nicely with globs and sparse arrays. Outputs nothing and exits non-zero if the value isn't found.
-#
-# Usage: array_search "needle" HAYSTACK_NAME [allow globbing? (Y/n)]
 function array_search() {
-
-    local GLOBBING="${3:-Y}" KEYS VALUE i
-
-    eval "KEYS=\"\${!$2[@]}\""
-
-    # two loops = faster than testing GLOBBING inside the loop
-    if [ "$GLOBBING" = "Y" ]; then
-
-        for i in $KEYS; do
-
-            eval "VALUE=\"\${$2[$i]}\""
-
-            # shellcheck disable=SC2053
-            if [[ "$1" == $VALUE ]] || [[ "$VALUE" == $1 ]]; then
-
-                echo "$i"
-                return
-
-            fi
-
-        done
-
-    else
-
-        for i in $KEYS; do
-
-            eval "VALUE=\"\${$2[$i]}\""
-
-            if [ "$1" = "$VALUE" ]; then
-
-                echo "$i"
-                return
-
-            fi
-
-        done
-
-    fi
-
-    return 1
-
+    lk_array_search "$@"
 }
 
-# Usage: in_array "needle" HAYSTACK_NAME [allow globbing? (y/N)]
 function in_array() {
-
-    array_search "$1" "$2" "${3:-N}" >/dev/null
-
+    lk_in_array "$@"
 }
 
-# Usage: array_join_by ":" "${MY_ARRAY[@]}"
 function array_join_by() {
-
-    local SEP ARR
-
-    SEP="$1"
-    shift
-
-    if [ "$#" -gt "0" ]; then
-
-        ARR=("${@/#/$SEP}")
-        ARR[0]="$1"
-        printf '%s' "${ARR[@]}"
-
-    fi
-
+    lk_implode "$@"
 }
 
-# Usage: array_join_oxford "${MY_ARRAY[@]}"
-function array_join_oxford() {
-
-    local THREE_OR_MORE=0
-
-    echo -n "${1:-}"
-    shift
-
-    while [ "$#" -gt "1" ]; do
-
-        THREE_OR_MORE=1
-        echo -n ", $1"
-        shift
-
-    done
-
-    [ "$THREE_OR_MORE" -eq "0" ] || echo -n ','
-    [ "$#" -eq "0" ] || echo -n " and $1"
-
-}
-
-# Usage: sort_words "these words need sorting"
-# (output would be "need sorting these words")
-function sort_words() {
-
-    local WORDS
-
-    WORDS=(${1:-})
-
-    [ "${#WORDS[@]}" -eq "0" ] || {
-        WORDS=($(printf '%s\n' "${WORDS[@]}" | sort | uniq))
-        echo "${WORDS[*]}"
-    }
-
-}
-
-function has_argument() {
-
-    in_array "$1" ORIGINAL_ARGUMENTS
-
+function has_arg() {
+    lk_in_array "$1" LK_ARGV
 }
 
 function is_autostart() {
-
-    has_argument "--autostart"
-
+    has_arg "--autostart"
 }
 
 function offer_sudo_password_bypass() {
@@ -594,11 +204,11 @@ function offer_sudo_password_bypass() {
     lk_user_in_group "$USER" admin sudo wheel || return
     CHECK_FILENAME="$CACHE_DIR/.nopasswd-$USER"
     FILENAME="/etc/sudoers.d/nopasswd-$USER"
-    [ ! -e "$CHECK_FILENAME" ] || ! sudo -n true 2>/dev/null || ! sudo test -e "$FILENAME" || return 0
+    [ ! -e "$CHECK_FILENAME" ] || ! sudo -n test -e "$FILENAME" 2>/dev/null || return 0
     sudo -n true 2>/dev/null || lk_console_message "Please enter your computer password if requested"
     sudo true || return
     sudo test -e "$FILENAME" ||
-        ! get_confirmation "Allow user $USER to skip future password prompts from sudo?" Y Y || {
+        ! lk_confirm "Allow user $USER to skip future password prompts from sudo?" Y || {
         sudo tee "$FILENAME" >/dev/null <<<"$USER ALL=(ALL) NOPASSWD:ALL" &&
             sudo chmod 440 "$FILENAME" &&
             lk_console_message "Password bypass enabled for $USER"
@@ -606,178 +216,46 @@ function offer_sudo_password_bypass() {
     touch "$CHECK_FILENAME" 2>/dev/null || sudo touch "$CHECK_FILENAME" 2>/dev/null || true
 }
 
-function escape_separators() {
-
-    local ARG
-
-    ARG="$1" || die
-
-    ARG="${ARG// /\\ }"
-    ARG="${ARG//$'\t'/$'\\\t'}"
-    ARG="${ARG//$'\n'/$'\\\n'}"
-
-    printf '%s' "$ARG"
-
-}
-
-# Usage: sed_escape_search "text to escape" [extended regular expressions? (Y/n)]
 function sed_escape_search() {
-
-    local ESCAPE EXTENDED="${2:-Y}"
-
-    ESCAPE="$1" || die
-
-    if [ "$EXTENDED" != "N" ]; then
-
-        # shellcheck disable=SC2016
-        gnu_sed 's/[]$()*+./?\^{|}[]/\\&/g' <<<"$ESCAPE"
-
-    else
-
-        gnu_sed 's/[]$*./\^[]/\\&/g' <<<"$ESCAPE"
-
-    fi
-
+    lk_escape_ere "$1"
 }
 
 function sed_escape_replace() {
-
-    local ESCAPE ESCAPED
-
-    ESCAPE="$1" || die
-
-    ESCAPED="$(gnu_sed 's/[\/&]/\\&/g' <<<"$ESCAPE")"
-    printf '%s' "${ESCAPED//$'\n'/\\n}"
-
+    lk_escape_ere_replace "$1"
 }
 
-# Usage: search_replace "find" "replace with" "string"
 function search_replace() {
     lk_replace "$@"
 }
 
 function date_get_log() {
-
-    date +'%b %_d %H:%M:%S %z'
-
+    lk_date_log
 }
 
 function date_get_log_nano() {
-
-    gnu_date +'%b %_d %H:%M:%S.%N %z'
-
+    lk_date_log_nano
 }
 
 function date_get_ymdhms() {
-
-    date +'%Y%m%d%H%M%S'
-
+    lk_date_ymdhms
 }
 
 function date_get_timestamp() {
-
-    date +'%s'
-
+    lk_date_timestamp
 }
 
 function url_decode() {
-
-    echo -e "${*//%/\\x}"
-
+    lk_decode_uri "$@"
 }
 
-# Results are returned in document order without de-duplication.
-#
-# Usage: get_urls_from_url "http://url.to/page-with-urls" [regex to limit results...]
 function get_urls_from_url() {
-
-    local TEMP_FILE URLS PATTERN
-
-    TEMP_FILE="$(create_temp_file)"
-
-    wget --quiet --convert-links --output-document "$TEMP_FILE" "$1" || {
-        rm -f "$TEMP_FILE" || true
-        die
-    }
-
-    shift
-
-    # `scheme:` is required (otherwise pretty much everything would be a 'URL')
-    URLS="$(grep -Eo '\b(([a-zA-Z][-a-zA-Z0-9+.]*):)(//(([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+)(:([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]*))?@)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+|\[([0-9a-fA-F:]+)\])(:([0-9]+))?)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@/]+)?(\?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]+))?(#([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]*))?\b' "$TEMP_FILE")" || true
-
-    rm -f "$TEMP_FILE"
-
-    for PATTERN in "$@"; do
-
-        URLS="$(echo "$URLS" | grep -E "$PATTERN")" || true
-
-    done
-
-    echo "$URLS"
-
-}
-
-# Usage: uri_get_parts "any://valid.uri?with=any#parts" <scheme|username|password|host|ipv6_address|port|path|query|fragment...>
-# See: https://en.wikipedia.org/wiki/Uniform_Resource_Identifier
-function uri_get_parts() {
-
-    local URI="$1" FMT=() EXPR=() PART
-
-    shift
-
-    for PART in "$@"; do
-
-        FMT+=("%s")
-
-        case "$PART" in
-
-        scheme)
-            EXPR+=("a[2]")
-            ;;
-
-        username)
-            EXPR+=("a[5]")
-            ;;
-
-        password)
-            EXPR+=("a[7]")
-            ;;
-
-        host)
-            # with brackets if IPv6 address
-            EXPR+=("a[8]")
-            ;;
-
-        ipv6_address)
-            EXPR+=("a[9]")
-            ;;
-
-        port)
-            EXPR+=("a[11]")
-            ;;
-
-        path)
-            EXPR+=("a[12]")
-            ;;
-
-        query)
-            EXPR+=("a[14]")
-            ;;
-
-        fragment)
-            EXPR+=("a[16]")
-            ;;
-
-        *)
-            die "Unknown URI component: $PART"
-            ;;
-
-        esac
-
-    done
-
-    gnu_awk '{match($0,/^(([a-zA-Z][-a-zA-Z0-9+.]*):)?(\/\/(([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+)(:([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]*))?@)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+|\[([0-9a-fA-F:]+)\])(:([0-9]+))?)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@/]+)?(\?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]+))?(#([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]*))?$/,a);printf "'"$(array_join_by '\n' "${FMT[@]}")"'\n",'"$(array_join_by ',' "${EXPR[@]}")"'}' <<<"$URI"
-
+    local URLS
+    if [ -z "${2:-}" ]; then
+        lk_wget_uris "$1"
+    else
+        URLS="$(lk_wget_uris "$1")" || return
+        grep -E "$2" <<<"$URLS" || true
+    fi
 }
 
 # files are downloaded to the current directory, and local filenames are output
@@ -918,32 +396,6 @@ function maybe_sudo() {
     lk_maybe_sudo "$@"
 }
 
-# Usage: echo_run command [arg1...]
-function echo_run() {
-
-    local EXTRA_NEWLINE="\n" ARG ARGS=() EXIT_CODE="0" EXIT_COLOR="${GREEN}"
-
-    [ -t 1 ] || EXTRA_NEWLINE=
-
-    for ARG in "$@"; do
-
-        ARGS+=("$(escape_separators "$ARG")")
-
-    done
-
-    printf "${GREY}[%s] ${BOLD}${CYAN}Running command:${RESET}%s\n${EXTRA_NEWLINE}" "$(date_get_log)" "$(printf ' %s' "${ARGS[@]}")" >&2
-
-    time_command "$@" || {
-        EXIT_CODE="$?"
-        EXIT_COLOR="${RED}"
-    }
-
-    [ "${ECHO_RUN_EXIT_MESSAGE:-N}" = "N" ] && [ "$EXIT_CODE" -eq "0" ] || printf "${EXTRA_NEWLINE}${GREY}[%s] ${BOLD}${EXIT_COLOR}Exit code:${RESET} %s ${GREY}(after %s)${RESET}\n${EXTRA_NEWLINE}" "$(date_get_log)" "$EXIT_CODE" "$COMMAND_TIME" >&2
-
-    return "$EXIT_CODE"
-
-}
-
 function safe_symlink() {
     lk_safe_symlink "$@"
 }
@@ -1009,45 +461,16 @@ function maybe_dryrun() {
 
 }
 
-# Usage: create_temp_file [use $TEMP_DIR? (y/N)]
 function create_temp_file() {
-
-    local TEMP_ROOT="/tmp" TEMP_PATH
-
-    [ "${1:-N}" = "N" ] || TEMP_ROOT="$TEMP_DIR"
-
-    TEMP_PATH="$(mktemp "$TEMP_ROOT/$(basename "$0").$(date_get_timestamp).XXXXXXXX")" ||
-        die "Unable to create temporary file"
-
-    echo "$TEMP_PATH"
-
+    lk_mktemp_file
 }
 
-# Usage: create_temp_dir [use $TEMP_DIR? (y/N)]
 function create_temp_dir() {
-
-    local TEMP_ROOT="/tmp" TEMP_PATH
-
-    [ "${1:-N}" = "N" ] || TEMP_ROOT="$TEMP_DIR"
-
-    TEMP_PATH="$(mktemp -d "$TEMP_ROOT/$(basename "$0").$(date_get_timestamp).XXXXXXXX")" ||
-        die "Unable to create temporary directory"
-
-    echo "$TEMP_PATH"
-
+    lk_mktemp_dir
 }
 
-# Usage: create_temp_fifo [use $TEMP_DIR? (y/N)]
 function create_temp_fifo() {
-
-    local FIFO_DIR FIFO_PATH
-
-    FIFO_PATH="$(create_temp_dir "$@")/fifo"
-    mkfifo "$FIFO_PATH" ||
-        die "Unable to create temporary FIFO"
-
-    echo "$FIFO_PATH"
-
+    lk_mktemp_fifo
 }
 
 function flush_fifo() {
@@ -1103,66 +526,6 @@ function eval_test() {
 
 }
 
-function link_settings() {
-
-    local i TO
-
-    assert_command_exists realpath
-
-    APP_NAME="${APP_NAME:-app}"
-
-    if [ -n "${COMMAND_CHECK:-}" ]; then
-
-        if ! command_exists "$COMMAND_CHECK"; then
-
-            die "$APP_NAME isn't installed (command doesn't exist: $COMMAND_CHECK)"
-
-        fi
-
-    fi
-
-    if [ -n "${RUNNING_CHECK:-}" ]; then
-
-        if eval_test "$RUNNING_CHECK"; then
-
-            die "$APP_NAME is currently running"
-
-        fi
-
-    fi
-
-    if [ -n "${DIRECTORY_CHECK:-}" ]; then
-
-        if [ ! -d "$DIRECTORY_CHECK" ]; then
-
-            die "$DIRECTORY_CHECK doesn't exist (have you run $APP_NAME yet?)"
-
-        fi
-
-    fi
-
-    if is_windows && ! windows_running_as_administrator; then
-
-        die "$(basename "$0") must be run as administrator for symbolic links to work"
-
-    fi
-
-    console_message "Linking settings files for $APP_NAME" "" "$BOLD" "$CYAN"
-
-    for i in "${!LINK_FROM[@]}"; do
-
-        [ -e "${LINK_TO[$i]}" ] || {
-            console_warning "Can't link to missing file ${LINK_TO[$i]}" "" "$BOLD" "$RED"
-            continue
-        }
-
-        TO="$(realpath "${LINK_TO[$i]}")" || die
-        safe_symlink "$TO" "${LINK_FROM[$i]}"
-
-    done
-
-}
-
 function array_filter_platform() {
 
     printf '%s\n' "$@" | gnu_grep -Po "^[^:]+(?=(:([^:|]+\|)*$PLATFORM(\|[^:|]+)*)?\$)" || true
@@ -1174,7 +537,7 @@ function install_or_queue() {
 
     local REQUESTED=($2) UI="$3" SINGLE="$4" PLURAL="$5" ITEMS_INSTALLED ITEMS_AVAILABLE INSTALL_TARGET="$8" ALREADY_INSTALLED_TARGET="${9:-}"
 
-    console_message "Checking ${BOLD}${1}${RESET} $PLURAL" "" "$CYAN"
+    lk_console_message "Checking ${BOLD}${1}${RESET} $PLURAL"
 
     local i=6 j k
     for j in ITEMS_INSTALLED ITEMS_AVAILABLE; do
@@ -1221,7 +584,7 @@ function install_or_queue() {
 
             if [ "${#IOQ_UNAVAILABLE[@]}" -gt "0" ]; then
 
-                console_message "${#IOQ_UNAVAILABLE[@]} $(single_or_plural "${#IOQ_UNAVAILABLE[@]}" "$SINGLE" "$PLURAL") unavailable for installation:" "${IOQ_UNAVAILABLE[*]}" "$BOLD" "$RED"
+                lk_echo_array "${IOQ_UNAVAILABLE[@]}" | lk_console_list "${#IOQ_UNAVAILABLE[@]} $(single_or_plural "${#IOQ_UNAVAILABLE[@]}" "$SINGLE" "$PLURAL") unavailable for installation:" "$BOLD$RED"
 
                 IOQ_INSTALL=($(comm -12 <(printf '%s\n' "${IOQ_INSTALL[@]}" | sort | uniq) <(printf '%s\n' "${ITEMS_AVAILABLE[@]}")))
 
@@ -1233,13 +596,13 @@ function install_or_queue() {
 
         if [ "$UI" = "Y" ]; then
 
-            console_message "Missing ${#IOQ_INSTALL[@]} $1 $(single_or_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "${IOQ_INSTALL[*]}" "$BOLD" "$MAGENTA"
+            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Missing ${#IOQ_INSTALL[@]} $1 $(single_or_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$BOLD$MAGENTA"
 
             get_confirmation "Add the $1 $(single_or_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL") listed above?" Y Y || return 0
 
         else
 
-            console_message "Adding ${#IOQ_INSTALL[@]} $1 $(single_or_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "${IOQ_INSTALL[*]}" "$GREEN"
+            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Adding ${#IOQ_INSTALL[@]} $1 $(single_or_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$GREEN"
 
         fi
 
@@ -1303,9 +666,9 @@ lk_is_server || . "$LK_ROOT/bash/common-desktop"
 
 lk_trap_err
 
-CONFIG_DIR="$LK_ROOT/config"
-CACHE_DIR="$LK_ROOT/cache"
-LOG_DIR="$LK_ROOT/log"
+CONFIG_DIR="$LK_ROOT/etc"
+CACHE_DIR="$LK_ROOT/var/cache"
+LOG_DIR="$LK_ROOT/var/log"
 TEMP_DIR="$LK_ROOT/tmp"
 
 FONTPATH=
@@ -1323,9 +686,9 @@ if [[ "${1:-}" =~ --(dry)?run ]]; then
 
 fi
 
-ORIGINAL_ARGUMENTS=("$@")
+LK_ARGV=("$@")
 
-mkdir -p "$CONFIG_DIR" "$CACHE_DIR" "$LOG_DIR" "$TEMP_DIR"
+mkdir -p "$CACHE_DIR" "$LOG_DIR" "$TEMP_DIR"
 
 eval "$(lk_get_colours '')"
 

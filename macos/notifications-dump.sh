@@ -25,4 +25,4 @@ DUMP_COUNT="$(
 
 plutil -convert xml1 "$DUMP_DIR"/*.plist
 
-console_message "$DUMP_COUNT $(single_or_plural "$DUMP_COUNT" notification notifications) dumped to:" "$DUMP_DIR" "$BLUE"
+lk_console_item "$DUMP_COUNT $(single_or_plural "$DUMP_COUNT" notification notifications) dumped to:" "$DUMP_DIR" "$BLUE"

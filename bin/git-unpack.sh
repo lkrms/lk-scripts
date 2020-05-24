@@ -32,17 +32,17 @@ i=0
 for PACK in "${PACKS[@]}"; do
 
     ((++i))
-    console_message "Verifying pack ($i of $PACK_COUNT):" "$(basename "${PACK%.idx}")" "$CYAN"
+    lk_console_item "Verifying pack ($i of $PACK_COUNT):" "$(basename "${PACK%.idx}")"
 
     [ -e "${PACK%.idx}.pack" ] && git verify-pack "$PACK" || die "verify-pack failed for $PWD/$PACK"
 
 done
 
-console_message "$PACK_COUNT $(single_or_plural "$PACK_COUNT" pack packs) verified in $REPO_ROOT" "" "$GREEN"
+lk_console_message "$PACK_COUNT $(single_or_plural "$PACK_COUNT" pack packs) verified in $REPO_ROOT" "$GREEN"
 
-PACK_ROOT="$(create_temp_dir Y)"
+PACK_ROOT="$(create_temp_dir)"
 
-console_message "Moving $PACK_COUNT $(single_or_plural "$PACK_COUNT" pack packs)" "" "$CYAN"
+lk_console_message "Moving $PACK_COUNT $(single_or_plural "$PACK_COUNT" pack packs)"
 
 for PACK in "${PACKS[@]}"; do
 
@@ -50,14 +50,14 @@ for PACK in "${PACKS[@]}"; do
 
 done
 
-console_message "Unpacking $PACK_COUNT $(single_or_plural "$PACK_COUNT" pack packs) in $REPO_ROOT" "" "$CYAN"
+lk_console_message "Unpacking $PACK_COUNT $(single_or_plural "$PACK_COUNT" pack packs) in $REPO_ROOT"
 
 i=0
 
 for PACK in "${PACKS[@]}"; do
 
     ((++i))
-    console_message "Unpacking pack ($i of $PACK_COUNT):" "$(basename "${PACK%.idx}")" "$CYAN"
+    lk_console_item "Unpacking pack ($i of $PACK_COUNT):" "$(basename "${PACK%.idx}")"
 
     if ! is_dryrun; then
 

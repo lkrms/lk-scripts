@@ -23,24 +23,4 @@ else
 
 fi
 
-if [ -t 1 ]; then
-
-    PARTS_RETURNED=()
-
-    while IFS= read -r PART; do
-
-        PARTS_RETURNED+=("$PART")
-
-    done < <(uri_get_parts "$URI" "${PARTS[@]}")
-
-    for i in "${!PARTS[@]}"; do
-
-        printf "%s: %s\n" "${BOLD}${PARTS[$i]}${RESET}" "${PARTS_RETURNED[$i]}"
-
-    done
-
-else
-
-    uri_get_parts "$URI" "${PARTS[@]}"
-
-fi
+lk_uri_parts "$URI" "${PARTS[@]}"

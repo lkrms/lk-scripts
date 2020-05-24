@@ -188,7 +188,7 @@ gcc@7 \
 
     if brew_formula_installed_or_queued "httpd"; then
 
-        console_message "Disabling built-in Apache web server..." "" "$CYAN"
+        lk_console_message "Disabling built-in Apache web server..."
         sudo /usr/sbin/apachectl stop 2>/dev/null || true
 
     fi

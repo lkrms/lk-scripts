@@ -22,7 +22,7 @@ mkdir -p "$FONT_CACHE_PATH" &&
     [ -w "$FONT_CACHE_PATH" ] &&
     cd "$FONT_CACHE_PATH" || die "Can't write to $FONT_CACHE_PATH"
 
-UNPACK_ROOT="$(create_temp_dir Y)"
+UNPACK_ROOT="$(create_temp_dir)"
 lk_delete_on_exit "$UNPACK_ROOT"
 
 lk_console_message "Downloading ${#FONT_URLS[@]} $(single_or_plural "${#FONT_URLS[@]}" font fonts)"

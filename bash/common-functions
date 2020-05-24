@@ -29,16 +29,17 @@ function lk_warn() {
 function lk_die() {
     local EXIT_STATUS="$?"
     [ "$EXIT_STATUS" -ne "0" ] || EXIT_STATUS="1"
-    [ "$#" -eq "0" ] || echo "$(lk_caller): $1" >&2
+    [ "$#" -eq "0" ] || echo "$(lk_caller --short): $1" >&2
     lk_is_true "${LK_DIE_HAPPY:-0}" || exit "$EXIT_STATUS"
     exit 0
 }
 
 function lk_trap_err() {
     function lk_err_trap() {
-        lk_die "unhandled error at $1:$2"
+        echo "$(lk_caller): unhandled error" >&2
+        lk_die
     }
-    trap 'lk_err_trap "${BASH_SOURCE[0]}" "$LINENO"' ERR
+    trap 'lk_err_trap' ERR
 }
 
 function lk_trap_exit() {
@@ -71,18 +72,29 @@ function lk_kill_on_exit() {
 }
 
 function lk_mktemp_file() {
-    TMPDIR="${TMPDIR:-/tmp}" gnu_mktemp -t "$(basename "$0").$(lk_timestamp).XXX"
+    gnu_mktemp -t "$(basename "$0").$(lk_timestamp).XXX"
 }
 
 function lk_mktemp_dir() {
-    TMPDIR="${TMPDIR:-/tmp}" gnu_mktemp -dt "$(basename "$0").$(lk_timestamp).XXX"
+    gnu_mktemp -dt "$(basename "$0").$(lk_timestamp).XXX"
 }
 
-function lk_command_exists() {
+function lk_mktemp_fifo() {
+    local FIFO_PATH
+    FIFO_PATH="$(lk_mktemp_dir)/fifo" &&
+        mkfifo "$FIFO_PATH" &&
+        echo "$FIFO_PATH"
+}
+
+function lk_commands_exist() {
     while [ "$#" -gt "0" ]; do
         command -v "$1" >/dev/null 2>&1 || return
         shift
     done
+}
+
+function lk_command_exists() {
+    lk_commands_exist "$@"
 }
 
 function lk_first_existing_command() {
@@ -93,7 +105,7 @@ function lk_first_existing_command() {
             return
         fi
     done
-    return 1
+    false
 }
 
 # lk_bash_at_least major minor
@@ -113,6 +125,30 @@ else
         date +"$1"
     }
 fi
+
+function lk_date_log() {
+    lk_date "%b %_d %H:%M:%S %z"
+}
+
+function lk_date_log_nano() {
+    gnu_date +"%b %_d %H:%M:%S.%N %z"
+}
+
+function lk_date_ymdhms() {
+    lk_date "%Y%m%d%H%M%S"
+}
+
+function lk_date_Ymd() {
+    lk_date "%Y%m%d"
+}
+
+function lk_date_ymd() {
+    lk_date "%y%m%d"
+}
+
+function lk_date_timestamp() {
+    lk_date "%s"
+}
 
 if lk_bash_at_least 4 1; then
     function lk_pause() {
@@ -205,6 +241,10 @@ function lk_upper() {
         tr '[:lower:]' '[:upper:]'
 }
 
+function lk_upper_first() {
+    printf '%s%s\n' "$(lk_upper "${1:0:1}")" "$(lk_lower "${1:1}")"
+}
+
 function lk_trim() {
     [ "$#" -gt "0" ] &&
         echo "$1" | sed -Ee 's/^\s+//' -e 's/\s+$//' ||
@@ -271,6 +311,8 @@ function lk_echo_array() {
 
 function lk_implode() {
     local DELIM="$1"
+    DELIM="${DELIM//\\/\\\\}"
+    DELIM="${DELIM//%/%%}"
     shift
     [ "$#" -eq "0" ] || {
         printf '%s' "$1"
@@ -278,6 +320,46 @@ function lk_implode() {
     }
     [ "$#" -eq "0" ] ||
         printf "$DELIM%s" "$@"
+}
+
+# lk_in_array value array_name
+#   True if VALUE exists in ARRAY_NAME.
+#   Pattern matching is not applied.
+function lk_in_array() {
+    [ -n "$1" ] || return
+    eval "[ \"\${#$2[@]}\" -gt \"0\" ]" || return
+    eval "printf '%s\0' \"\${$2[@]}\"" | grep -zFx "$1" >/dev/null
+}
+
+# lk_array_search value array_name
+#   Search ARRAY_NAME for VALUE and output the key at which it first appears.
+#   False if VALUE is not matched.
+#   Array values are compared with VALUE using Bash pattern matching.
+function lk_array_search() {
+    local KEYS KEY
+    eval "KEYS=(\"\${!$2[@]}\")"
+    for KEY in "${KEYS[@]}"; do
+        eval "[[ \"\${$2[\$KEY]}\" != \$1 ]]" || {
+            echo "$KEY"
+            return
+        }
+    done
+    false
+}
+
+# lk_mapfile file_path array_name [ignore_pattern]
+function lk_mapfile() {
+    local LINE
+    [ -e "$1" ] || lk_warn "file not found: $1" || return
+    lk_is_identifier "$2" || lk_warn "not a valid identifier: $2" || return
+    eval "$2=()"
+    while IFS= read -r LINE || [ -n "$LINE" ]; do
+        eval "$2+=(\"\$LINE\")"
+    done < <(
+        [ -n "${3:-}" ] &&
+            { grep -Ev "$3" "$1" || true; } ||
+            cat "$1"
+    )
 }
 
 # lk_echoc [-neE] message [colour_sequence...]
@@ -355,6 +437,37 @@ function lk_console_list() {
     [ -z "${SINGLE_NOUN:-}" ] || echo "(${#ITEMS[@]} $(lk_maybe_plural "${#ITEMS[@]}" "$SINGLE_NOUN" "$PLURAL_NOUN"))" >&2
 }
 
+# lk_console_read prompt [default]
+function lk_console_read() {
+    local PROMPT=("$1") DEFAULT="${2:-}" VALUE
+    [ -z "$DEFAULT" ] || PROMPT+=("[$DEFAULT]")
+    read -rep "${PROMPT[*]} " VALUE
+    [ -n "$VALUE" ] || VALUE="$DEFAULT"
+    echo "$VALUE"
+}
+
+# lk_confirm prompt [default]
+function lk_confirm() {
+    local PROMPT=("$1") DEFAULT="${2:-}" VALUE
+    if lk_is_true "$DEFAULT"; then
+        PROMPT+=("[Y/n]")
+        DEFAULT=Y
+    elif lk_is_false "$DEFAULT"; then
+        PROMPT+=("[y/N]")
+        DEFAULT=N
+    else
+        PROMPT+=("[y/n]")
+        DEFAULT=
+    fi
+    while ! [[ "${VALUE:-}" =~ ^(Y|YES|N|NO)$ ]]; do
+        read -rep "${PROMPT[*]} " VALUE
+        [ -n "$VALUE" ] &&
+            VALUE="$(lk_upper "$VALUE")" ||
+            VALUE="$DEFAULT"
+    done
+    [[ "$VALUE" =~ ^(Y|YES)$ ]]
+}
+
 # lk_add_file_suffix file_path suffix [ext]
 #   Add SUFFIX to FILE_PATH without changing FILE_PATH's extension.
 #   Use EXT for special extensions like ".tar.gz".
@@ -368,6 +481,140 @@ function lk_add_file_suffix() {
     else
         echo "${1}${2}"
     fi
+}
+
+# lk_next_backup_file file_path
+#   Output FILE_PATH with suffix "_backup" or "_backup.N", where N is 2 or
+#   greater, after finding the first such path that doesn't exist on the
+#   filesystem.
+function lk_next_backup_file() {
+    local BACKUP i=1
+    BACKUP="$(lk_add_file_suffix "$1" "_backup")"
+    while [ -e "$BACKUP" ]; do
+        ((++i))
+        BACKUP="$(lk_add_file_suffix "$1" "_backup.$i")"
+    done
+    echo "$BACKUP"
+}
+
+# lk_maybe_add_extension file_path ext
+#   Output ${FILE_PATH}${EXT} unless FILE_PATH already ends with EXT.
+function lk_maybe_add_extension() {
+    [ -n "$1" ] || lk_warn "no filename" || return
+    [[ "$(lk_lower "$1")" =~ $(lk_escape_ere "$(lk_lower "$2")")$ ]] &&
+        echo "$1" ||
+        echo "$1$2"
+}
+
+function lk_mime_type() {
+    [ -e "$1" ] || lk_warn "file not found: $1" || return
+    file --brief --mime-type "$1"
+}
+
+function lk_is_pdf() {
+    local MIME_TYPE
+    MIME_TYPE="$(lk_mime_type "$1")" &&
+        [ "$MIME_TYPE" = "application/pdf" ]
+}
+
+# lk_is_uri uri
+#   True if URI is a valid Uniform Resource Identifier with explicit scheme
+#   and authority components ("scheme://host" at minimum).
+#   See https://en.wikipedia.org/wiki/Uniform_Resource_Identifier
+function lk_is_uri() {
+    local URI_REGEX='^(([a-zA-Z][-a-zA-Z0-9+.]*):)(//(([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+)(:([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]*))?@)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+|\[([0-9a-fA-F:]+)\])(:([0-9]+))?)([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@/]+)?(\?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]+))?(#([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]*))?$'
+    [[ "$1" =~ $URI_REGEX ]]
+}
+
+# lk_uri_parts uri uri_component...
+#   Output KEY="VALUE" for each URI_COMPONENT in URI.
+#   URI_COMPONENT must be one of the following (case insensitive):
+#     scheme
+#     username
+#     password
+#     host
+#       Brackets are included for IPv6 addresses.
+#     ipv6_address
+#     port
+#     path
+#     query
+#     fragment
+function lk_uri_parts() {
+    local FORMAT EXPRESSION KEY PART VALUE \
+        URI_REGEX='^(([a-zA-Z][-a-zA-Z0-9+.]*):)?(\/\/(([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+)(:([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]*))?@)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+|\[([0-9a-fA-F:]+)\])(:([0-9]+))?)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@/]+)?(\?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]+))?(#([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]*))?$'
+    FORMAT=()
+    EXPRESSION=()
+    KEY=()
+    for PART in "${@:2}"; do
+        FORMAT+=('%s')
+        KEY+=("$(lk_upper "_${PART#_}")")
+        PART="$(lk_lower "${PART#_}")"
+        case "$PART" in
+        scheme)
+            EXPRESSION+=("a[2]")
+            ;;
+        username)
+            EXPRESSION+=("a[5]")
+            ;;
+        password)
+            EXPRESSION+=("a[7]")
+            ;;
+        host)
+            EXPRESSION+=("a[8]")
+            ;;
+        ipv6_address)
+            EXPRESSION+=("a[9]")
+            ;;
+        port)
+            EXPRESSION+=("a[11]")
+            ;;
+        path)
+            EXPRESSION+=("a[12]")
+            ;;
+        query)
+            EXPRESSION+=("a[14]")
+            ;;
+        fragment)
+            EXPRESSION+=("a[16]")
+            ;;
+        *)
+            lk_warn "unknown URI component '$PART'"
+            return 1
+            ;;
+        esac
+    done
+    for PART in "${KEY[@]}"; do
+        IFS= read -r VALUE || VALUE=
+        echo "$PART=\"$(lk_escape_double_quotes "$VALUE")\""
+    done < <(gnu_awk "{match(\$0,/$URI_REGEX/,a);printf \"$(lk_implode '\n' "${FORMAT[@]}")\n\",$(lk_implode ',' "${EXPRESSION[@]}")}" <<<"$1")
+}
+
+# lk_get_uris [file_path...]
+#   Match and output URIs ("scheme://host" at minimum) in standard input or
+#   each FILE_PATH.
+function lk_get_uris() {
+    local EXIT_STATUS=0 \
+        URI_REGEX='\b(([a-zA-Z][-a-zA-Z0-9+.]*):)(//(([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+)(:([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]*))?@)?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=]+|\[([0-9a-fA-F:]+)\])(:([0-9]+))?)([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@/]+)?(\?([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]+))?(#([-a-zA-Z0-9._~%!$&'"'"'()*+,;=:@?/]*))?\b'
+    grep -Eo "$URI_REGEX" "$@" || EXIT_STATUS="$?"
+    # exit 0 unless there's an actual error
+    [ "$EXIT_STATUS" -eq 0 ] || [ "$EXIT_STATUS" -eq 1 ]
+}
+
+# lk_wget_uris url
+#   Match and output URIs ("scheme://host" at minimum) in the file downloaded
+#   from URL. URIs are converted during download using `wget --convert-links`.
+function lk_wget_uris() {
+    local TEMP_FILE
+    # without --output-document, --convert-links doesn't work
+    TEMP_FILE="$(lk_mktemp_file)" &&
+        lk_delete_on_exit "$TEMP_FILE" &&
+        wget --quiet --convert-links --output-document "$TEMP_FILE" "$1" ||
+        return
+    lk_get_uris "$TEMP_FILE"
+}
+
+function lk_decode_uri() {
+    echo -e "${1//%/\\x}"
 }
 
 # SUDO_OR_NOT=<1|0|Y|N> lk_maybe_sudo command [arg1...]
@@ -423,12 +670,19 @@ function lk_install_gnu_commands() {
     for COMMAND in ${COMMANDS[@]+"${COMMANDS[@]}"}; do
         GCOMMAND="$PREFIX$COMMAND"
         { lk_command_exists "$GCOMMAND" ||
-            lk_warn "$GCOMMAND: command not found"; } &&
+            lk_warn "$GCOMMAND not found"; } &&
             COMMAND_PATH="$(command -v "$GCOMMAND" 2>/dev/null)" &&
             lk_safe_symlink "$COMMAND_PATH" "${GNU_PATH:-/usr/local/bin}/gnu_$COMMAND" ||
             EXIT_STATUS="$?"
     done
     return "$EXIT_STATUS"
+}
+
+function lk_users_exist() {
+    while [ "$#" -gt "0" ]; do
+        id "$1" >/dev/null 2>&1 || return
+        shift
+    done
 }
 
 function lk_test_many() {
@@ -466,7 +720,7 @@ function lk_variable_set() {
 # lk_version_at_least installed_version minimum_version
 function lk_version_at_least() {
     local MIN
-    MIN="$(printf '%s\n' "$1" "$2" | gnu_sort --version-sort | head -n1 || lk_warn "lk_version_at_least: error sorting versions")" &&
+    MIN="$(printf '%s\n' "$1" "$2" | gnu_sort --version-sort | head -n1 || lk_warn "error sorting versions")" &&
         [ "$MIN" = "$2" ]
 }
 
@@ -513,8 +767,33 @@ function lk_is_server() {
     ! lk_is_desktop
 }
 
-function lk_get_gpg_keyids() {
-    gpg --list-keys --with-colons | { grep -E '^(pub|sub):' || true; } | cut -d: -f5
+function lk_is_virtual() {
+    lk_return_cached LK_IS_VIRTUAL 'lk_is_linux && grep -Eq "^flags\\s*:.*\\shypervisor(\\s|\$)" /proc/cpuinfo'
+}
+
+function lk_is_qemu() {
+    lk_return_cached LK_IS_QEMU 'lk_is_virtual && grep -Eiq qemu /sys/devices/virtual/dmi/id/*_vendor'
+}
+
+function lk_is_portable() {
+    # 8  = Portable
+    # 9  = Laptop
+    # 10 = Notebook
+    # 11 = Hand Held
+    # 12 = Docking Station
+    # 14 = Sub Notebook
+    # 30 = Tablet
+    # 31 = Convertible
+    # 32 = Detachable
+    lk_return_cached LK_IS_PORTABLE 'lk_is_linux && grep -Eq "^(8|9|10|11|12|14|30|31|32)\$" /sys/class/dmi/id/chassis_type'
+}
+
+function lk_is_lid_closed() {
+    local LID_FILE
+    shopt -s nullglob
+    LID_FILE=(/proc/acpi/button/lid/*/state)
+    shopt -u nullglob
+    [ "${#LID_FILE[@]}" -gt "0" ] && grep -q 'closed$' "${LID_FILE[0]}"
 }
 
 function lk_ssl_client() {
@@ -647,22 +926,22 @@ function lk_enable_httpd_entry() {
 }
 
 function lk_in_path() {
-    [[ ":$PATH:" =~ :$(lk_escape_ere "${1%/}"): ]]
+    [[ ":${LK_PATH:-$PATH}:" =~ :$(lk_escape_ere "${1%/}"): ]]
 }
 
 function lk_path_add() {
-    if [ -d "$1" ]; then
-        echo "$(sed -Ee "s/(:|^)$(lk_escape_ere "$1")(:|$)/\\1\\2/g" -e 's/:+/:/g' -e 's/(^:|:$)//' <<<"$PATH"):$1"
+    if ! lk_in_path "$1" && [ -d "$1" ]; then
+        echo "$(sed -Ee 's/:+/:/g' -e 's/(^:|:$)//' <<<"${LK_PATH:-$PATH}"):$1"
     else
-        echo "$PATH"
+        echo "${LK_PATH:-$PATH}"
     fi
 }
 
 function lk_path_add_to_front() {
     if [ -d "$1" ]; then
-        echo "$1:$(sed -Ee "s/(:|^)$(lk_escape_ere "$1")(:|$)/\\1\\2/g" -e 's/:+/:/g' -e 's/(^:|:$)//' <<<"$PATH")"
+        echo "$1:$(sed -Ee "s/(:|^)$(lk_escape_ere "$1")(:|$)/\\1\\2/g" -e 's/:+/:/g' -e 's/(^:|:$)//' <<<"${LK_PATH:-$PATH}")"
     else
-        echo "$PATH"
+        echo "${LK_PATH:-$PATH}"
     fi
 }
 
@@ -735,7 +1014,6 @@ lk_register_gnu_commands date ln mktemp sort stat
 lk_register_gnu_commands awk find grep nc sed tar
 
 ! lk_is_linux || {
-
     function lk_load_linuxbrew() {
         local PREFIX="${1:-/home/linuxbrew/.linuxbrew}"
         [ -d "$PREFIX" ] || return
@@ -755,23 +1033,6 @@ brew() {
 }
 EOF
     }
-
-    function lk_check_ext4() {
-        local PAIRS SOURCE TARGET FSTYPE SIZE AVAIL
-        findmnt -Pt ext4,ext3,ext2 -o SOURCE,TARGET,FSTYPE,SIZE,AVAIL | while IFS= read -r PAIRS; do
-            eval "$PAIRS"
-            lk_console_item "Mounted $FSTYPE filesystem found at:" "$SOURCE"
-            sudo tune2fs -l "$SOURCE" | command grep -Ei '(filesystem state|mount count|last checked):'
-            lk_echoc "($SIZE with $AVAIL available, mounted at $TARGET)" "${YELLOW:-$(lk_safe_tput setaf 3)}"
-            echo
-        done
-    }
-
-    function lk_check_sysctl() {
-        lk_console_message "IPv4 and IPv6 parameters:"
-        sysctl -ar 'net\..*\.(((default|all)\.rp_filter|tcp_syncookies|ip_forward|all\.forwarding)|accept_ra)$'
-    }
-
 }
 
 eval "$(lk_get_colours)"

@@ -16,7 +16,7 @@ assert_command_exists git
 # don't support anything before Debian "jessie"
 assert_git_version_at_least 2.1.4
 
-git_load_code_roots
+lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
 
 # shellcheck disable=SC2153
 [ "${#CODE_ROOTS[@]}" -gt "0" ] || die "Usage: $(basename "$0") [/code/root...]"
@@ -98,7 +98,7 @@ git_load_code_roots
 
     if [ "$DO_FETCH" -eq "1" ]; then
 
-        console_message "Fetching from all remotes in ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories)" "" "$BOLD" "$MAGENTA"
+        lk_console_message "Fetching from all remotes in ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories)" "$BOLD$MAGENTA"
 
         for i in "${!REPO_ROOTS[@]}"; do
 
@@ -146,7 +146,7 @@ git_load_code_roots
 
         pushd "$REPO_ROOT" >/dev/null || die
 
-        console_message "$MAIN_VERB repository:" "${REPO_LONG_NAME}" "$CYAN"
+        lk_console_item "$MAIN_VERB repository:" "${REPO_LONG_NAME}" "$CYAN"
 
         git update-index --refresh -q >/dev/null || true
 
@@ -184,12 +184,12 @@ git_load_code_roots
 
                             if [ "$IS_CURRENT_BRANCH" = '*' ]; then
 
-                                console_message "Attempting to merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) (fast-forward only):" "$PRETTY_BRANCH" "$GREEN"
+                                lk_console_item "Attempting to merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) (fast-forward only):" "$PRETTY_BRANCH" "$GREEN"
                                 git merge --ff-only "$UPSTREAM" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             else
 
-                                console_message "Attempting to fast-forward branch from upstream:" "$PRETTY_BRANCH" "$GREEN"
+                                lk_console_item "Attempting to fast-forward branch from upstream:" "$PRETTY_BRANCH" "$GREEN"
                                 git fetch . "$UPSTREAM":"$BRANCH" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             fi
@@ -227,7 +227,7 @@ git_load_code_roots
                         else
 
                             echo
-                            console_message "${BOLD}${AHEAD_PUSH} $(single_or_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(single_or_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${RESET}" "" "$BOLD" "$YELLOW"
+                            lk_console_message "${BOLD}${AHEAD_PUSH} $(single_or_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(single_or_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${RESET}" "$BOLD$YELLOW"
                             echo
                             echo "${WRAP_OFF}$(git log "-$GIT_LOG_LIMIT" --oneline --decorate --color=always "${PUSH_COMMIT}..${LOCAL_COMMIT}")${WRAP}"
 
@@ -299,7 +299,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
         if [ "${#CHANGES[@]}" -gt "0" ]; then
 
-            echo "$(upper_first "$(array_join_oxford "${CHANGES[@]}")") changes" >>"$WARNINGS_FILE"
+            echo "$(upper_first "$(lk_implode "/" "${CHANGES[@]}")") changes" >>"$WARNINGS_FILE"
 
         fi
 
@@ -377,7 +377,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
         if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-            console_message "${BOLD}${RED}${#FILE_TO_ARRAY[@]} $(single_or_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention in:${RESET}" "${REPO_LONG_NAMES[$i]}" "$RED"
+            lk_console_item "${BOLD}${RED}${#FILE_TO_ARRAY[@]} $(single_or_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention in:${RESET}" "${REPO_LONG_NAMES[$i]}" "$RED"
             printf -- '- [ ] %s\n' "${FILE_TO_ARRAY[@]}"
             echo
 
@@ -388,7 +388,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
     done
 
     [ "$DIRTY_REPO_COUNT" -gt "0" ] || {
-        console_message "No issues found" "" "$BOLD" "$RED"
+        lk_console_message "No issues found" "$BOLD$RED"
         echo
     }
 

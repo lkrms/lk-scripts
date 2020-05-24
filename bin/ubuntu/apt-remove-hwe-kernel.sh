@@ -49,9 +49,9 @@ if [ "${#CURRENT_KERNEL[@]}" -eq "1" ] && apt_package_installed "${CURRENT_KERNE
 
     if [ "${#OTHER_KERNEL_PACKAGES[@]}" -gt "0" ]; then
 
-        console_message "Most recent kernel provided by the ${BOLD}linux-generic${RESET} package:" "$CURRENT_KERNEL_VERSION" "$CYAN"
+        lk_console_item "Most recent kernel provided by the ${BOLD}linux-generic${RESET} package:" "$CURRENT_KERNEL_VERSION"
 
-        console_message "${#OTHER_KERNEL_PACKAGES[@]} kernel $(single_or_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) to delete:" "${OTHER_KERNEL_PACKAGES[*]}" "$BOLD" "$YELLOW"
+        lk_echo_array "${OTHER_KERNEL_PACKAGES[@]}" | lk_console_list "${#OTHER_KERNEL_PACKAGES[@]} kernel $(single_or_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) to delete:" "$BOLD$YELLOW"
 
         if get_confirmation "Delete the kernel $(single_or_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) listed above?" N Y; then
 
@@ -67,7 +67,7 @@ EOF
 
 else
 
-    console_message "Unable to identify most recent kernel provided by the ${BOLD}linux-generic${RESET} package" "" "$BOLD" "$RED"
+    lk_console_message "Unable to identify most recent kernel provided by the ${BOLD}linux-generic${RESET} package" "$BOLD$RED"
 
 fi
 

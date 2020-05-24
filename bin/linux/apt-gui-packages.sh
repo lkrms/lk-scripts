@@ -30,19 +30,19 @@ UNKNOWN_PACKAGES=($(comm -13 <(apt_list_available_packages) <(echo "$PACKAGES"))
 
 if [ "${#GUI_PACKAGES[@]}" -gt "0" ]; then
 
-    console_message "${#GUI_PACKAGES[@]} $(single_or_plural "${#GUI_PACKAGES[@]}" package packages) likely to have a GUI:" "" "$BOLD" "$GREEN"
+    lk_console_message "${#GUI_PACKAGES[@]} $(single_or_plural "${#GUI_PACKAGES[@]}" package packages) likely to have a GUI:" "$BOLD$GREEN"
     printf '%s\n' "${GUI_PACKAGES[@]}" | column
 
 else
 
     PACKAGE_COUNT="$(echo "$PACKAGES" | wc -w)"
-    console_message "No packages likely to have a GUI ($PACKAGE_COUNT considered)" "" "$BOLD" "$GREEN"
+    lk_console_message "No packages likely to have a GUI ($PACKAGE_COUNT considered)" "$BOLD$GREEN"
 
 fi
 
 if [ "${#UNKNOWN_PACKAGES[@]}" -gt "0" ]; then
 
-    console_message "${#UNKNOWN_PACKAGES[@]} unknown $(single_or_plural "${#UNKNOWN_PACKAGES[@]}" package packages):" "" "$BOLD" "$RED"
+    lk_console_message "${#UNKNOWN_PACKAGES[@]} unknown $(single_or_plural "${#UNKNOWN_PACKAGES[@]}" package packages):" "$BOLD$RED"
     printf '%s\n' "${UNKNOWN_PACKAGES[@]}" | column
 
 fi

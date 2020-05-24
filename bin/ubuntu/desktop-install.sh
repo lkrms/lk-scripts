@@ -407,7 +407,7 @@ EOF
 
     esac
 
-    if ! has_argument "--skip-debs"; then
+    if ! has_arg "--skip-debs"; then
 
         DEB_URLS=(
             "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
@@ -507,7 +507,7 @@ EOF
 
     if apt_package_installed "samba"; then
 
-        console_message "Configuring Samba..." "" "$CYAN"
+        lk_console_message "Configuring Samba..."
 
         if apt_package_just_installed "samba"; then
 
@@ -526,7 +526,7 @@ EOF
 
     if apt_package_installed "ntp"; then
 
-        console_message "Configuring NTP..." "" "$CYAN"
+        lk_console_message "Configuring NTP..."
 
         safe_symlink "$CONFIG_DIR/ntp.conf" "/etc/ntp.conf" Y Y
 
@@ -544,7 +544,7 @@ EOF
 
     if apt_package_installed "apache2"; then
 
-        console_message "Configuring Apache..." "" "$CYAN"
+        lk_console_message "Configuring Apache..."
 
         dir_make_and_own /var/www/virtual
 
@@ -574,7 +574,7 @@ EOF
 
     if apt_package_installed "mariadb-server"; then
 
-        console_message "Configuring MariaDB..." "" "$CYAN"
+        lk_console_message "Configuring MariaDB..."
 
         safe_symlink "$CONFIG_DIR/mariadb.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf" Y Y
 
@@ -613,12 +613,12 @@ EOF
     ESPANSO_TEMP="$TEMP_DIR/espanso"
     rm -f "$ESPANSO_TEMP"
 
-    console_message "Downloading latest espanso binary" "" "$CYAN"
+    lk_console_message "Downloading latest espanso binary"
     curl -sSL "https://github.com/federico-terzi/espanso/releases/latest/download/espanso-linux.tar.gz" | tar -xz --overwrite -C "$TEMP_DIR" && [ -x "$ESPANSO_TEMP" ] || die "Error downloading espanso"
 
     if ! cmp -s "$ESPANSO_PATH" "$ESPANSO_TEMP"; then
 
-        console_message "Installing latest espanso" "" "$CYAN"
+        lk_console_message "Installing latest espanso"
 
         if pgrep -x espanso >/dev/null; then
 
@@ -680,7 +680,7 @@ EOF
 
     if apt_package_installed "virtualbox-[0-9.]+"; then
 
-        console_message "Configuring VirtualBox..." "" "$CYAN"
+        lk_console_message "Configuring VirtualBox..."
 
         groups | grep -Eq '(\s|^)(vboxusers)(\s|$)' || sudo adduser "$(id -un)" "vboxusers"
 
@@ -702,13 +702,13 @@ EOF
     apt_purge
 
     # ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | grep -Eo '[^/]+$' | sort | uniq))
-    # console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "" "$BLUE"
+    # lk_console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "$BLUE"
     # COLUMNS="$(tput cols)" && apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")" || apt_pretty_packages "${ALL_PACKAGES[*]}" Y
 
     if apt_package_available "linux-generic-hwe-$DISTRIB_RELEASE" && apt_package_available "xserver-xorg-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "xserver-xorg-hwe-$DISTRIB_RELEASE"; then
 
         echo
-        console_message "To use the Ubuntu LTS enablement stack, but only for X server, run:" "sudo apt-get install linux-generic-hwe-${DISTRIB_RELEASE}- xserver-xorg-hwe-$DISTRIB_RELEASE" "$BOLD" "$CYAN"
+        lk_console_item "To use the Ubuntu LTS enablement stack, but only for X server, run:" "sudo apt-get install linux-generic-hwe-${DISTRIB_RELEASE}- xserver-xorg-hwe-$DISTRIB_RELEASE" "$BOLD$CYAN"
 
     fi
 

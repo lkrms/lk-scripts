@@ -100,10 +100,7 @@ EOF
 }
 
 function disable_update_motd() {
-
-    local DISABLE FILE
-
-    DISABLE=(
+    local FILE DISABLE=(
         10-help-text
         50-motd-news
         80-esm
@@ -112,17 +109,10 @@ function disable_update_motd() {
         91-release-upgrade
         95-hwe-eol
     )
-
     [ "$#" -eq "0" ] || DISABLE=("$@")
-
-    lk_echo_array "${DISABLE[@]}" | lk_console_list "Disabling in /etc/update-motd.d" "entry" "entries"
-
     for FILE in "${DISABLE[@]}"; do
-
-        [ ! -x "/etc/update-motd.d/$FILE" ] || maybe_dryrun sudo chmod -v a-x "/etc/update-motd.d/$FILE"
-
+        [ ! -x "/etc/update-motd.d/$FILE" ] || maybe_dryrun sudo chmod -c a-x "/etc/update-motd.d/$FILE"
     done
-
 }
 
 # load_linuxbrew [eval? (Y/n)] [echo? (y/N)]

@@ -8,9 +8,9 @@ function check_developer_tools() {
 
     while ! xcode-select -p >/dev/null; do
 
-        [ "$ATTEMPTS" -eq "0" ] || console_message "Command line developer tools aren't installed ($ATTEMPTS $(single_or_plural "$ATTEMPTS" attempt attempts) so far)" "" "$BOLD" "$RED"
+        [ "$ATTEMPTS" -eq "0" ] || lk_console_message "Command line developer tools aren't installed ($ATTEMPTS $(single_or_plural "$ATTEMPTS" attempt attempts) so far)" "$BOLD$RED"
 
-        console_message "Requesting installation of the command line developer tools" "" "$CYAN"
+        lk_console_message "Requesting installation of the command line developer tools"
         sudo xcode-select --install
 
         lk_pause "Press return when command line developer tools installation has completed"

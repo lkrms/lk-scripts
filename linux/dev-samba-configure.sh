@@ -43,7 +43,7 @@ SETTINGS+=(
 
 TESTPARM_EXTRA=()
 
-if has_argument --reset; then
+if has_arg --reset; then
 
     [ -e "$SAMBA_DEFAULT_CONF_PATH" ] || die "Unable to reset Samba settings without defaults file ($SAMBA_DEFAULT_CONF_PATH)"
     TESTPARM_EXTRA+=("$SAMBA_DEFAULT_CONF_PATH")

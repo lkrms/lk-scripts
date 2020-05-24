@@ -110,7 +110,7 @@ HISTTIMEFORMAT="%b %_d %Y %H:%M:%S %z "
 
 . /dev/stdin <<<"$(
     shopt -s nullglob
-    [ ! -e "$LK_ROOT/config/settings" ] || . "$LK_ROOT/config/settings"
+    [ ! -e "$LK_ROOT/etc/settings" ] || . "$LK_ROOT/etc/settings"
     LK_EXPORT="$(lk_load_env)"
     echo "$LK_EXPORT"
     eval "$LK_EXPORT"
@@ -162,13 +162,29 @@ function find_all() {
     gnu_find -L . -xdev -iname "*$FIND*" "$@"
 }
 
-! lk_is_arch || {
+! lk_is_linux || {
+    function lk_check_ext4() {
+        local PAIRS SOURCE TARGET FSTYPE SIZE AVAIL
+        findmnt -Pt ext4,ext3,ext2 -o SOURCE,TARGET,FSTYPE,SIZE,AVAIL | while IFS= read -r PAIRS; do
+            eval "$PAIRS"
+            lk_console_item "Mounted $FSTYPE filesystem found at:" "$SOURCE"
+            sudo tune2fs -l "$SOURCE" | command grep -Ei '(filesystem state|mount count|last checked):'
+            lk_echoc "($SIZE with $AVAIL available, mounted at $TARGET)" "$LK_YELLOW"
+            echo
+        done
+    }
 
+    function lk_check_sysctl() {
+        lk_console_message "IPv4 and IPv6 parameters:"
+        sysctl -ar 'net\..*\.(((default|all)\.rp_filter|tcp_syncookies|ip_forward|all\.forwarding)|accept_ra)$'
+    }
+}
+
+! lk_is_arch || {
     function lk_makepkg() {
         makepkg --syncdeps --rmdeps --clean "$@" &&
             makepkg --printsrcinfo >.SRCINFO && {
             [ "$#" -gt "0" ] || lk_console_item "To install:" "${FUNCNAME[0]} --install"
         }
     }
-
 }

@@ -1,5 +1,5 @@
 #!/bin/bash
-# shellcheck disable=SC2015,SC2034,SC2206,SC2207,SC2046
+# shellcheck disable=SC1091,SC2015,SC2034,SC2206,SC2207,SC2046,SC2086
 
 assert_command_exists apt-get
 
@@ -133,7 +133,7 @@ function apt_filter_packages() {
 
     local PACKAGES INCLUDE_REMOVED="${2:-Y}" FILTERED=() p
 
-    PACKAGES=($(sort_words "$1"))
+    PACKAGES=($(printf '%s\n' $1 | sort | uniq))
 
     # TODO: replace loop with comm-based method (as in apt_pretty_packages)
     for p in ${PACKAGES[@]+"${PACKAGES[@]}"}; do
@@ -341,12 +341,10 @@ EOF
 }
 
 function apt_mark_cache_clean() {
-
     [ "$APT_CACHE_DIRTY" -eq "0" ] || {
         apt_check_sources
         APT_CACHE_DIRTY=0
     }
-
 }
 
 function apt_make_cache_clean() {
@@ -650,7 +648,7 @@ function apt_add_repo() {
 
         echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || die
 
-        if is_url "$KEY_URL"; then
+        if lk_is_uri "$KEY_URL"; then
 
             wget -qO - "$KEY_URL" | sudo apt-key add - >/dev/null 2>&1 || die "Error: unable to add GPG key from $KEY_URL"
 
@@ -872,51 +870,30 @@ function apt_process_queue() {
 }
 
 function apt_check_sources() {
-
-    local APT_PROXY='' PROXY_GOOD PROXY_HOST PROXY_PORT
-
+    local APT_PROXY='' PROXY_GOOD _HOST _PORT
     sudo rm -f "/etc/apt/apt.conf.d/99noproxy"
-
-    # shellcheck disable=SC1091
     . /dev/stdin <<<"$(apt-config shell APT_PROXY "Acquire::http::Proxy")"
-
     if [ -n "$APT_PROXY" ]; then
-
         PROXY_GOOD=0
-
-        PROXY_HOST="$(uri_get_parts "$APT_PROXY" host)"
-        PROXY_PORT="$(uri_get_parts "$APT_PROXY" port)"
-
-        if [ -n "$PROXY_HOST" ] && [ -n "$PROXY_PORT" ]; then
-
-            if test_host_port "$PROXY_HOST" "$PROXY_PORT"; then
-
+        eval "$(lk_uri_parts "$APT_PROXY" "_HOST" "_PORT")"
+        if [ -n "$_HOST" ] && [ -n "$_PORT" ]; then
+            if test_host_port "$_HOST" "$_PORT"; then
                 PROXY_GOOD=1
-
             fi
-
         fi
-
         [ "$PROXY_GOOD" -eq "1" ] || {
             lk_console_item "APT proxy disabled (unreachable):" "$APT_PROXY" "$BOLD$YELLOW"
             echo 'Acquire::http::Proxy "";' | sudo tee "/etc/apt/apt.conf.d/99noproxy" >/dev/null
             APT_PROXY=
         }
-
     fi
-
     if [ "${APT_PROXY/:3142/}" != "$APT_PROXY" ]; then
-
         # if we're using Apt-Cacher NG, replace every "https://" with "http://"
         sudo find /etc/apt /etc/apt/sources.list.d -maxdepth 1 -type f -name '*.list' -exec grep -q '\bhttps://' '{}' \; -exec sed -i.https.orig 's/\bhttps:\/\//http:\/\//' '{}' \;
-
     else
-
         # otherwise, move any active https sources back
         sudo find /etc/apt /etc/apt/sources.list.d -maxdepth 1 -type f -name '*.list.https.orig' -exec sh -c 'ORIG="${1%.https.orig}"; if [ -e "$ORIG" ]; then mv "$1" "$ORIG" || exit; fi' sh '{}' \;
-
     fi
-
 }
 
 function apt_upgrade_all() {

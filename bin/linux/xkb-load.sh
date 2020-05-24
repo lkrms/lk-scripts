@@ -22,7 +22,7 @@ done
 [ ! -f "$CONFIG_DIR/${1:-xkbcomp}" ] || [ -z "$DISPLAY" ] || {
 
     # give it a second for keys to be (physically) released
-    has_argument "--no-sleep" || sleep 1
+    has_arg "--no-sleep" || sleep 1
 
     xkbcomp -I"$SCRIPT_DIR/xkb" "$CONFIG_DIR/${1:-xkbcomp}" "$DISPLAY"
 

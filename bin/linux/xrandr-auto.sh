@@ -7,7 +7,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../../bash/common"
 
-if has_argument "--lightdm"; then
+if has_arg "--lightdm"; then
 
     LK_DIE_HAPPY=Y
     assert_root
@@ -21,7 +21,7 @@ fi
 assert_command_exists xrandr
 assert_command_exists bc
 
-if has_argument "-h" || has_argument "--help"; then
+if has_arg "-h" || has_arg "--help"; then
 
     die "Usage: $(basename "$0") [--autostart] [--set-all] [--suggest] [--get-shell-env] [--set-dpi] [--update-lightdm]"
 
@@ -152,7 +152,7 @@ function get_edid_index() {
 
 }
 
-if [ ! -e "$CONFIG_DIR/xrandr" ] || has_argument "--suggest"; then
+if [ ! -e "$CONFIG_DIR/xrandr" ] || has_arg "--suggest"; then
 
     {
 
@@ -202,7 +202,7 @@ EOF
 
     } >"$CONFIG_DIR/xrandr-suggested"
 
-    ! has_argument "--suggest" || exit 0
+    ! has_arg "--suggest" || exit 0
 
 fi
 
@@ -220,7 +220,7 @@ DPI="$(echo "scale=10;dpi=$DPI*$DPI_MULTIPLIER;scale=0;dpi/1" | bc)"
     echo "Effective DPI: $DPI"
 } >&2
 
-if has_argument "--get-shell-env"; then
+if has_arg "--get-shell-env"; then
 
     ((QT_FONT_DPI = DPI / SCALING_FACTOR))
 
@@ -230,7 +230,7 @@ if has_argument "--get-shell-env"; then
 
 fi
 
-if has_argument "--set-dpi"; then
+if has_arg "--set-dpi"; then
 
     {
         xrandr --dpi "$DPI"
@@ -288,7 +288,7 @@ for i in "${ALL_OUTPUTS[@]}"; do
 
 done
 
-if has_argument "--set-all" || has_argument "--lightdm" || is_autostart; then
+if has_arg "--set-all" || has_arg "--lightdm" || is_autostart; then
 
     # check that our configuration is valid
     xrandr --dryrun "${RESET_OPTIONS[@]}" >/dev/null || die
@@ -300,12 +300,12 @@ if has_argument "--set-all" || has_argument "--lightdm" || is_autostart; then
     echo "xrandr ${OPTIONS[*]}" >&2
     xrandr "${OPTIONS[@]}" || die
 
-    has_argument "--lightdm" || ! lk_command_exists "displaycal-apply-profiles" ||
+    has_arg "--lightdm" || ! lk_command_exists "displaycal-apply-profiles" ||
         displaycal-apply-profiles
 
 fi
 
-! has_argument "--lightdm" || exit 0
+! has_arg "--lightdm" || exit 0
 
 function get_lightdm_conf() {
 
@@ -318,7 +318,7 @@ EOF
 
 LIGHTDM_CONF_FILE="/etc/lightdm/lightdm.conf.d/90-xrandr-auto.conf"
 
-if has_argument "--update-lightdm" &&
+if has_arg "--update-lightdm" &&
     [ -d "/etc/lightdm/lightdm.conf.d" ] &&
     { [ ! -e "$LIGHTDM_CONF_FILE" ] || diff "$LIGHTDM_CONF_FILE" <(get_lightdm_conf) >/dev/null; }; then
 

@@ -29,7 +29,7 @@ for COMMON in "$LK_ROOT/bash/common-"*; do
 
     esac
 
-    console_message "Sourcing:" "$COMMON" "$CYAN" >&2
+    lk_console_item "Sourcing:" "$COMMON" "$CYAN" >&2
     . "$COMMON"
 
 done

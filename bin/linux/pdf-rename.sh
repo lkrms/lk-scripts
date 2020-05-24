@@ -36,7 +36,7 @@ for FILE_PATH in "$@"; do
 
     [ -n "$NEW_NAME" ] || continue
 
-    NEW_NAME="$(filename_maybe_add_extension "$NEW_NAME" ".pdf")"
+    NEW_NAME="$(lk_maybe_add_extension "$NEW_NAME" ".pdf")"
 
     [ "$(lower "$FILE_NAME")" != "$(lower "$NEW_NAME")" ] || continue
 

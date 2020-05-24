@@ -44,7 +44,7 @@ function brew_check_taps() {
 
     if [ "${#MISSING_TAPS[@]}" -gt "0" ]; then
 
-        console_message "Adding ${#MISSING_TAPS[@]} Homebrew $(single_or_plural "${#MISSING_TAPS[@]}" tap taps):" "${MISSING_TAPS[*]}" "$GREEN"
+        lk_echo_array "${MISSING_TAPS[@]}" | lk_console_list "Adding ${#MISSING_TAPS[@]} Homebrew $(single_or_plural "${#MISSING_TAPS[@]}" tap taps):" "$GREEN"
 
         for TAP in "${MISSING_TAPS[@]}"; do
 
@@ -141,7 +141,7 @@ function brew_make_cache_clean() {
 
     if [ "$BREW_CACHE_DIRTY" -ne "0" ]; then
 
-        console_message "Updating Homebrew formula and cask lists..." "" "$CYAN"
+        lk_console_message "Updating Homebrew formula and cask lists..."
 
         brew update && brew_refresh && BREW_CACHE_DIRTY=0 || die
 
@@ -209,7 +209,7 @@ function brew_process_queue() {
 
     if [ "${#BREW_FORMULA_REMOVE_QUEUE[@]}" -gt "0" ]; then
 
-        console_message "Removing ${#BREW_FORMULA_REMOVE_QUEUE[@]} $(single_or_plural "${#BREW_FORMULA_REMOVE_QUEUE[@]}" formula formulae):" "${BREW_FORMULA_REMOVE_QUEUE[*]}" "$BOLD" "$RED"
+        lk_echo_array "${BREW_FORMULA_REMOVE_QUEUE[@]}" | lk_console_list "Removing ${#BREW_FORMULA_REMOVE_QUEUE[@]} $(single_or_plural "${#BREW_FORMULA_REMOVE_QUEUE[@]}" formula formulae):" "$BOLD$RED"
 
         brew uninstall "${BREW_FORMULA_REMOVE_QUEUE[@]}" &&
             BREW_FORMULA_REMOVE_QUEUE=() ||
@@ -219,7 +219,7 @@ function brew_process_queue() {
 
     if [ "${#BREW_CASK_REMOVE_QUEUE[@]}" -gt "0" ]; then
 
-        console_message "Uninstalling ${#BREW_CASK_REMOVE_QUEUE[@]} $(single_or_plural "${#BREW_CASK_REMOVE_QUEUE[@]}" cask casks):" "${BREW_CASK_REMOVE_QUEUE[*]}" "$BOLD" "$RED"
+        lk_echo_array "${BREW_CASK_REMOVE_QUEUE[@]}" | lk_console_list "Uninstalling ${#BREW_CASK_REMOVE_QUEUE[@]} $(single_or_plural "${#BREW_CASK_REMOVE_QUEUE[@]}" cask casks):" "$BOLD$RED"
 
         brew cask uninstall "${BREW_CASK_REMOVE_QUEUE[@]}" &&
             BREW_CASK_REMOVE_QUEUE=() ||
@@ -229,7 +229,7 @@ function brew_process_queue() {
 
     if [ "${#BREW_FORMULA_QUEUE[@]}" -gt "0" ]; then
 
-        console_message "Installing ${#BREW_FORMULA_QUEUE[@]} $(single_or_plural "${#BREW_FORMULA_QUEUE[@]}" formula formulae):" "${BREW_FORMULA_QUEUE[*]}" "$GREEN"
+        lk_echo_array "${BREW_FORMULA_QUEUE[@]}" | lk_console_list "Installing ${#BREW_FORMULA_QUEUE[@]} $(single_or_plural "${#BREW_FORMULA_QUEUE[@]}" formula formulae):" "$GREEN"
 
         brew install "${BREW_FORMULA_QUEUE[@]}" && {
             BREW_INSTALLED+=("${BREW_FORMULA_QUEUE[@]}")
@@ -242,7 +242,7 @@ function brew_process_queue() {
 
         is_macos || return
 
-        console_message "Installing ${#BREW_CASK_QUEUE[@]} $(single_or_plural "${#BREW_CASK_QUEUE[@]}" cask casks):" "${BREW_CASK_QUEUE[*]}" "$GREEN"
+        lk_echo_array "${BREW_CASK_QUEUE[@]}" | lk_console_list "Installing ${#BREW_CASK_QUEUE[@]} $(single_or_plural "${#BREW_CASK_QUEUE[@]}" cask casks):" "$GREEN"
 
         brew cask install --no-quarantine --force "${BREW_CASK_QUEUE[@]}" && {
             BREW_INSTALLED+=("${BREW_CASK_QUEUE[@]}")
@@ -261,13 +261,13 @@ function brew_upgrade_all() {
 
     brew_make_cache_clean
 
-    console_message "Installing all available formula updates..." "" "$GREEN"
+    lk_console_message "Installing all available formula updates..." "$GREEN"
 
     brew upgrade || die "\"brew upgrade\" failed"
 
     if is_macos; then
 
-        console_message "Installing all available cask updates..." "" "$GREEN"
+        lk_console_message "Installing all available cask updates..." "$GREEN"
 
         brew cask upgrade --no-quarantine || die "\"brew cask upgrade\" failed"
 

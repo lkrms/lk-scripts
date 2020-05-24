@@ -40,7 +40,7 @@ fi
 
 git config push.default current
 
-console_message "Checking remote branches..." "" "$CYAN"
+lk_console_message "Checking remote branches..."
 
 ORIGIN_BRANCHES=($(
     git ls-remote --heads "$ORIGIN" | gnu_grep -Po '(?<=refs/heads/).*$' | sort
@@ -61,15 +61,15 @@ MATCHING_BRANCHES=($(comm -12 <(printf '%s\n' "${LOCAL_BRANCHES[@]}") <(printf '
 
 if [ "${#MATCHING_BRANCHES[@]}" -gt "0" ]; then
 
-    console_message "${#MATCHING_BRANCHES[@]} local $(single_or_plural "${#MATCHING_BRANCHES[@]}" "branch matches" "branches match") remote \"$UPSTREAM\":" "${MATCHING_BRANCHES[*]}" "$BOLD" "$MAGENTA"
+    lk_echo_array "${MATCHING_BRANCHES[@]}" | lk_console_list "${#MATCHING_BRANCHES[@]} local $(single_or_plural "${#MATCHING_BRANCHES[@]}" "branch matches" "branches match") remote \"$UPSTREAM\":" "$BOLD$MAGENTA"
 
     if get_confirmation "Track \"$UPSTREAM\" and push to \"$ORIGIN\" for the $(single_or_plural "${#MATCHING_BRANCHES[@]}" branch branches) listed above?" Y; then
 
         # unfetched remote branches can't be tracked
-        console_message "Fetching from remotes \"$ORIGIN\" and \"$UPSTREAM\"..." "" "$CYAN"
+        lk_console_message "Fetching from remotes \"$ORIGIN\" and \"$UPSTREAM\"..."
         git fetch --multiple --quiet "$UPSTREAM" "$ORIGIN"
 
-        console_message "Configuring ${#MATCHING_BRANCHES[@]} local $(single_or_plural "${#MATCHING_BRANCHES[@]}" branch branches)..." "" "$BOLD" "$BLUE"
+        lk_console_message "Configuring ${#MATCHING_BRANCHES[@]} local $(single_or_plural "${#MATCHING_BRANCHES[@]}" branch branches)..." "$BOLD$BLUE"
 
         for BRANCH in "${MATCHING_BRANCHES[@]}"; do
 
@@ -88,11 +88,11 @@ MATCHING_BRANCHES=($(comm -23 <(printf '%s\n' "${LOCAL_BRANCHES[@]}") <(printf '
 
 if [ "${#MATCHING_BRANCHES[@]}" -gt "0" ]; then
 
-    console_message "${#MATCHING_BRANCHES[@]} local $(single_or_plural "${#MATCHING_BRANCHES[@]}" "branch doesn't" "branches don't") exist in remote \"$UPSTREAM\":" "${MATCHING_BRANCHES[*]}" "$BOLD" "$MAGENTA"
+    lk_echo_array "${MATCHING_BRANCHES[@]}" | lk_console_list "${#MATCHING_BRANCHES[@]} local $(single_or_plural "${#MATCHING_BRANCHES[@]}" "branch doesn't" "branches don't") exist in remote \"$UPSTREAM\":" "$BOLD$MAGENTA"
 
     if get_confirmation "Track \"$ORIGIN\" for the $(single_or_plural "${#MATCHING_BRANCHES[@]}" branch branches) listed above?" Y; then
 
-        console_message "Configuring ${#MATCHING_BRANCHES[@]} local $(single_or_plural "${#MATCHING_BRANCHES[@]}" branch branches)..." "" "$BOLD" "$BLUE"
+        lk_console_message "Configuring ${#MATCHING_BRANCHES[@]} local $(single_or_plural "${#MATCHING_BRANCHES[@]}" branch branches)..." "$BOLD$BLUE"
 
         for BRANCH in "${MATCHING_BRANCHES[@]}"; do
 

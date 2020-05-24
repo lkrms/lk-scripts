@@ -47,7 +47,7 @@ for f in "${LIST_FILES[@]}"; do
 
     if [ "${#BAD_PACKAGES[@]}" -gt "0" ]; then
 
-        console_message "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae) found in $f:" "${BAD_PACKAGES[*]}" "$BOLD" "$RED" >&2
+        lk_echo_array "${BAD_PACKAGES[@]}" | lk_console_list "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae) found in $f:" "$BOLD$RED"
 
         if [ "$f" = "$MAIN_LIST_FILE" ]; then
 
@@ -71,7 +71,7 @@ if [ "$#" -gt "0" ]; then
 
     if [ "${#BAD_PACKAGES[@]}" -gt "0" ]; then
 
-        console_message "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae):" "${BAD_PACKAGES[*]}" "$BOLD" "$RED" >&2
+        lk_echo_array "${BAD_PACKAGES[@]}" | lk_console_list "Invalid $(single_or_plural "${#BAD_PACKAGES[@]}" formula formulae):" "$BOLD$RED"
         die "$USAGE"
 
     fi
@@ -102,18 +102,18 @@ if [ "${#REMOVE_LIST[@]}" -gt "0" ]; then
 
     NOUN="$(single_or_plural "${#REMOVE_LIST[@]}" formula formulae)"
 
-    console_message "Found ${#REMOVE_LIST[@]} $NOUN to uninstall:" "" "$BOLD" "$MAGENTA"
+    lk_console_message "Found ${#REMOVE_LIST[@]} $NOUN to uninstall:" "$BOLD$MAGENTA"
     echo "${REMOVE_LIST[@]}" | column
 
     if get_confirmation "Uninstall the $NOUN listed above?" Y Y; then
 
-        console_message "Uninstalling $NOUN..." "" "$GREEN"
+        lk_console_message "Uninstalling $NOUN..." "$GREEN"
         brew uninstall "${REMOVE_LIST[@]}"
 
     fi
 
 else
 
-    console_message "No formulae to uninstall" "" "$GREEN"
+    lk_console_message "No formulae to uninstall" "$GREEN"
 
 fi

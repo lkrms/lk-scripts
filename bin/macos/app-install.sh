@@ -30,17 +30,17 @@ function install_from_folder() {
 
             if [ "${#DEPLOY_FILES[@]}" -eq "1" ] && [ -f "${DEPLOY_FILES[0]}" ]; then
 
-                console_message "Running Adobe installer:" "$2" "$BOLD" "$BLUE"
+                lk_console_item "Running Adobe installer:" "$2" "$BOLD$BLUE"
                 maybe_dryrun sudo "$ADOBE_INSTALLER" --mode=silent --deploymentFile="${DEPLOY_FILES[0]}" || EXIT_CODE="$?"
 
                 if [ "$EXIT_CODE" -eq "0" ]; then
 
-                    console_message "Installed successfully:" "$2" "$BOLD" "$GREEN"
+                    lk_console_item "Installed successfully:" "$2" "$BOLD$GREEN"
                     return
 
                 else
 
-                    console_message "Error installing (exit code ${BOLD}${EXIT_CODE}${RESET}):" "$2" "$BOLD" "$RED"
+                    lk_console_item "Error installing (exit code ${BOLD}${EXIT_CODE}${RESET}):" "$2" "$BOLD$RED"
                     die
 
                 fi
@@ -65,17 +65,17 @@ function install_pkg() {
 
     PACKAGE_NAME="$(basename "$1")"
 
-    console_message "Installing package:" "$PACKAGE_NAME" "$BOLD" "$BLUE"
+    lk_console_item "Installing package:" "$PACKAGE_NAME" "$BOLD$BLUE"
 
     maybe_dryrun sudo installer -allowUntrusted -package "$1" -target / || EXIT_CODE="$?"
 
     if [ "$EXIT_CODE" -eq "0" ]; then
 
-        console_message "Package installed successfully:" "$PACKAGE_NAME" "$BOLD" "$GREEN"
+        lk_console_item "Package installed successfully:" "$PACKAGE_NAME" "$BOLD$GREEN"
 
     else
 
-        console_message "Error installing package (exit code ${BOLD}${EXIT_CODE}${RESET}):" "$PACKAGE_NAME" "$BOLD" "$RED"
+        lk_console_item "Error installing package (exit code ${BOLD}${EXIT_CODE}${RESET}):" "$PACKAGE_NAME" "$BOLD$RED"
         die
 
     fi
@@ -93,7 +93,7 @@ for FILE in "$@"; do
 
     *.dmg)
 
-        console_message "Mounting:" "$(basename "$FILE")" "$CYAN"
+        lk_console_item "Mounting:" "$(basename "$FILE")"
 
         MOUNT="$(hdiutil attach -mountroot "$MOUNT_ROOT" "$FILE")"
 
@@ -110,12 +110,12 @@ for FILE in "$@"; do
 
     # *.zip)
 
-    #     console_message "Extracting:" "$FILE" "$CYAN"
+    #     lk_console_item "Extracting:" "$FILE"
     #     ;;
 
     *)
 
-        console_message "File type not supported:" "$FILE" "$BOLD" "$RED"
+        lk_console_item "File type not supported:" "$FILE" "$BOLD$RED"
         ;;
 
     esac
