@@ -8,16 +8,16 @@ import os
 import requests
 import sys
 
-lc_root_dir = os.path.normpath(
+lk_root_dir = os.path.normpath(
     os.path.dirname(os.path.realpath(__file__)) + "/..")
-lc_config_dir = lc_root_dir + "/config"
-lc_cache_dir = lc_root_dir + "/cache"
+lk_config_dir = lk_root_dir + "/etc"
+lk_cache_dir = lk_root_dir + "/var/cache"
 
-os.makedirs(lc_config_dir, exist_ok=True)
-os.makedirs(lc_cache_dir + "/overcast", exist_ok=True)
+os.makedirs(lk_config_dir, exist_ok=True)
+os.makedirs(lk_cache_dir + "/overcast", exist_ok=True)
 
-config_file = lc_config_dir + "/overcast.ini"
-cache_file = lc_cache_dir + "/overcast/overcast.opml"
+config_file = lk_config_dir + "/overcast.ini"
+cache_file = lk_cache_dir + "/overcast/overcast.opml"
 
 config = configparser.ConfigParser()
 config.read_dict({

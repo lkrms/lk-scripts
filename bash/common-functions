@@ -4,6 +4,10 @@
 # common-functions
 #   Provide various portable, self-contained Bash functions.
 
+function basename() {
+    command basename -- "$@"
+}
+
 function lk_caller() {
     local CALLER=() SOURCE="${BASH_SOURCE[2]:-}" FUNC="${FUNCNAME[2]:-}"
     [ "$SOURCE" = "$0" ] && [ "$SOURCE" != "main" ] || CALLER=("$(basename "$0")")
@@ -617,6 +621,61 @@ function lk_decode_uri() {
     echo -e "${1//%/\\x}"
 }
 
+function lk_download() {
+    local IGNORE_FILENAMES="${IGNORE_FILENAMES:-0}" CURL_VERSION URI FILENAME \
+        DOWNLOAD_ONE DOWNLOAD_ARGS _PATH FILENAMES=() ONE_DOWNLOAD_ARGS=() MANY_DOWNLOAD_ARGS=() \
+        CURL_ARGS=(--location --remote-time) ARGS
+    CURL_VERSION="$(curl --version | grep -Eo '\b[0-9]+(\.[0-9]+){1,2}\b' | head -n1)" ||
+        lk_warn "curl version unknown" || return
+    lk_is_false "$IGNORE_FILENAMES" || {
+        lk_version_at_least "$CURL_VERSION" "7.26.0" ||
+            lk_warn "installed version of curl too old to output effective filename" || return
+        CURL_ARGS+=(--remote-header-name --write-out "%{filename_effective}\n")
+    }
+    ! lk_version_at_least "$CURL_VERSION" "7.66.0" ||
+        CURL_ARGS+=(--parallel)
+    while IFS='|' read -r URI FILENAME; do
+        [ -n "$URI" ] || continue
+        lk_is_uri "$URI" || lk_warn "not a URI: $URI" || return
+        DOWNLOAD_ONE=0
+        DOWNLOAD_ARGS=()
+        if lk_is_true "$IGNORE_FILENAMES"; then
+            DOWNLOAD_ARGS+=(--remote-name)
+        else
+            [ -n "$FILENAME" ] || {
+                eval "$(lk_uri_parts "$URI" "_PATH")"
+                FILENAME="${_PATH##*/}"
+            }
+            [ -n "$FILENAME" ] || lk_warn "no filename found in '$URI'" || return
+            [ ! -f "$FILENAME" ] || {
+                DOWNLOAD_ONE=1
+                DOWNLOAD_ARGS+=(--time-cond "$(date -Rd "$(gnu_stat --printf '%y' "$FILENAME")")")
+            }
+            DOWNLOAD_ARGS+=(--output "$FILENAME")
+            FILENAMES+=("$FILENAME")
+        fi
+        DOWNLOAD_ARGS+=("$URI")
+        if lk_is_true "$DOWNLOAD_ONE"; then
+            ONE_DOWNLOAD_ARGS+=("$(declare -p DOWNLOAD_ARGS)")
+        else
+            MANY_DOWNLOAD_ARGS+=("${DOWNLOAD_ARGS[@]}")
+        fi
+    done < <(
+        [ "$#" -gt "0" ] &&
+            printf '%s\n' "$@" ||
+            cat
+    )
+    [ "${#MANY_DOWNLOAD_ARGS[@]}" -eq "0" ] ||
+        curl "${CURL_ARGS[@]}" "${MANY_DOWNLOAD_ARGS[@]}" || return
+    [ "${#ONE_DOWNLOAD_ARGS[@]}" -eq "0" ] ||
+        for ARGS in "${ONE_DOWNLOAD_ARGS[@]}"; do
+            eval "$ARGS"
+            curl "${CURL_ARGS[@]}" "${DOWNLOAD_ARGS[@]}" || return
+        done
+    lk_is_true "$IGNORE_FILENAMES" ||
+        lk_echo_array "${FILENAMES[@]}"
+}
+
 # SUDO_OR_NOT=<1|0|Y|N> lk_maybe_sudo command [arg1...]
 function lk_maybe_sudo() {
     if lk_is_true "${SUDO_OR_NOT:-0}"; then
@@ -654,11 +713,22 @@ function lk_safe_symlink() {
     lk_maybe_sudo ln -sv "$TARGET" "$LINK"
 }
 
+function _lk_get_gnu_command() {
+    case "$1" in
+    awk)
+        echo "gawk"
+        ;;
+    *)
+        echo "$PREFIX$1"
+        ;;
+    esac
+}
+
 function lk_register_gnu_commands() {
     local COMMAND PREFIX=
     ! lk_is_macos || PREFIX="g"
     for COMMAND in "$@"; do
-        eval "function gnu_$COMMAND() { $PREFIX$COMMAND \"\$@\"; }"
+        eval "function gnu_$COMMAND() { $(_lk_get_gnu_command "$COMMAND") \"\$@\"; }"
     done
     LK_GNU_COMMANDS=($(printf '%s\n' ${LK_GNU_COMMANDS[@]+"${LK_GNU_COMMANDS[@]}"} "$@" | sort | uniq))
 }
@@ -668,7 +738,7 @@ function lk_install_gnu_commands() {
     ! lk_is_macos || PREFIX="g"
     [ "$#" -gt "0" ] || COMMANDS=(${LK_GNU_COMMANDS[@]+"${LK_GNU_COMMANDS[@]}"})
     for COMMAND in ${COMMANDS[@]+"${COMMANDS[@]}"}; do
-        GCOMMAND="$PREFIX$COMMAND"
+        GCOMMAND="$(_lk_get_gnu_command "$COMMAND")"
         { lk_command_exists "$GCOMMAND" ||
             lk_warn "$GCOMMAND not found"; } &&
             COMMAND_PATH="$(command -v "$GCOMMAND" 2>/dev/null)" &&

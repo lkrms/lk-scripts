@@ -260,81 +260,7 @@ function get_urls_from_url() {
 
 # files are downloaded to the current directory, and local filenames are output
 function download_urls() {
-
-    local URL FILENAME HEADERS DOWNLOAD_FAILED=0 ERROR_MESSAGE HEADER IFS HEADER_PARTS i
-
-    for URL in "$@"; do
-
-        FILENAME=
-        HEADERS="$(wget --server-response --timestamping --no-verbose "$URL" 2>&1 >/dev/null)" || DOWNLOAD_FAILED=1
-
-        if [ "$DOWNLOAD_FAILED" -eq "1" ]; then
-
-            ERROR_MESSAGE="Unable to download ($(echo "$HEADERS" | head -n1)): $URL"
-
-            if [ -n "${DOWNLOAD_URLS_SKIP_REGEX:-}" ] && [[ "$(echo "$HEADERS" | head -n1)" =~ $DOWNLOAD_URLS_SKIP_REGEX ]]; then
-
-                echoc "$ERROR_MESSAGE" "$BOLD" "$RED" >&2
-                DOWNLOAD_FAILED=0
-                continue
-
-            else
-
-                die "$ERROR_MESSAGE"
-
-            fi
-
-        fi
-
-        if HEADER="$(
-            echo "$HEADERS" | grep -Ei '^[[:space:]]*Content-Disposition:' | tail -n1 | sed -E 's/(^[[:space:]]*Content-Disposition:)//ig'
-        )"; then
-
-            IFS=" ;"
-            HEADER_PARTS=($HEADER)
-            unset IFS
-
-            for i in "${!HEADER_PARTS[@]}"; do
-
-                HEADER="${HEADER_PARTS[$i]}"
-
-                if FILENAME="$(
-                    echo "$HEADER" | gnu_grep -Pio '(?<=^filename=).*' | sed -E 's/^[[:space:]]*("?)(.*)\1[[:space:]]*$/\2/g'
-                )"; then
-
-                    break
-
-                else
-
-                    FILENAME=
-
-                fi
-
-            done
-
-        fi
-
-        if [ -z "$FILENAME" ] || [ ! -e "$FILENAME" ]; then
-
-            FILENAME="$(url_decode "$URL")"
-            FILENAME="${FILENAME##*/}"
-
-        fi
-
-        # TODO: use the final "Location:" header to make an additional filename guess
-        # (this should mean wget's --content-disposition option can be used safely)
-        if [ ! -e "$FILENAME" ]; then
-
-            die "Unable to determine filename for $URL"
-
-        fi
-
-        echo "$PWD/$FILENAME"
-
-        echoc "Finished downloading $URL" "$CYAN" >&2
-
-    done
-
+    lk_download "$@"
 }
 
 # get_log_file [suffix]
@@ -675,7 +601,6 @@ FONTPATH=
 
 shopt -s expand_aliases
 alias pop_return1='{ popd >/dev/null; return 1; }'
-alias basename='basename --'
 
 ORIGINAL_DRYRUN_ARGUMENT=
 
