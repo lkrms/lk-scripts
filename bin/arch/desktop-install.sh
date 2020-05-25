@@ -72,6 +72,7 @@ PAC_INSTALL+=(
     jq
     lsb-release
     mediainfo
+    ncdu
     p7zip
     pv
     sox
@@ -80,6 +81,7 @@ PAC_INSTALL+=(
     unzip
     vim
     wimlib
+    yq
 
     # networking
     bridge-utils
