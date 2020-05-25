@@ -296,7 +296,8 @@ ${DEFAULT+ $CYAN<default=\"$DEFAULT\">$RESET}
         xargs -d $'\n' -n 6 printf '%s.\n%s.\n%s.\n%s.\n%s.\n%s.\0')
     STACKSCRIPT_ENV=
     [ "${#STACKSCRIPT_FIELDS[@]}" -eq "0" ] ||
-        STACKSCRIPT_ENV="$(set | grep -E "^($(lk_implode '|' "${STACKSCRIPT_FIELDS[@]}"))=.+$" | sort)"
+        # printenv does no escaping, and cloud-init does no unescaping: perfect
+        STACKSCRIPT_ENV="$(printenv | grep -E "^($(lk_implode '|' "${STACKSCRIPT_FIELDS[@]}"))=.+$" | sort)"
 fi
 
 lk_console_message "Ready to download and deploy:"
