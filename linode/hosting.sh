@@ -167,6 +167,7 @@ fi
 
 NODE_TIMEZONE="${NODE_TIMEZONE:-UTC}"
 NODE_SERVICES="${NODE_SERVICES:-}"
+HOST_DOMAIN="${HOST_DOMAIN:-}"
 HOST_DOMAIN="${HOST_DOMAIN#www.}"
 HOST_ACCOUNT="${HOST_ACCOUNT:-${HOST_DOMAIN%%.*}}"
 ADMIN_USERS="${ADMIN_USERS:-${PATH_PREFIX}admin}"
@@ -187,16 +188,23 @@ log "Environment:" \
 
 . /etc/lsb-release
 
-# TODO: set PHP version per-release
+EXCLUDE_PACKAGES=()
 case "$DISTRIB_RELEASE" in
 *)
     # "-yn" disables add-apt-repository's automatic package cache update
     ADD_APT_REPOSITORY_ARGS=(-yn)
+    CERTBOT_REPO="ppa:certbot/certbot"
+    PHPVER=7.2
     ;;&
-
 16.04)
     # in 16.04, the package cache isn't automatically updated by default
     ADD_APT_REPOSITORY_ARGS=(-y)
+    PHPVER=7.0
+    ;;
+20.04)
+    unset CERTBOT_REPO
+    PHPVER=7.4
+    EXCLUDE_PACKAGES+=(php-gettext)
     ;;
 esac
 
@@ -432,7 +440,7 @@ case ",$NODE_SERVICES," in
 *)
     REPOS=(
         universe
-        ppa:certbot/certbot
+        ${CERTBOT_REPO+"$CERTBOT_REPO"}
     )
 
     PACKAGES=(
@@ -499,6 +507,10 @@ case ",$NODE_SERVICES," in
     ;;&
 
 *)
+    # shellcheck disable=SC2207,SC2116
+    [ "${#EXCLUDE_PACKAGES[@]}" -eq "0" ] ||
+        PACKAGES=($(printf '%s\n' "${PACKAGES[@]}" | grep -Fxv "$(printf '%s\n' "${EXCLUDE_PACKAGES[@]}")"))
+
     log "Adding APT repositories:" "${REPOS[@]}"
     for REPO in "${REPOS[@]}"; do
         keep_trying add-apt-repository "${ADD_APT_REPOSITORY_ARGS[@]}" "$REPO"
@@ -623,7 +635,7 @@ if is_installed apache2; then
     </IfModule>
 </VirtualHost>
 <IfModule mod_macro.c>
-    <Macro PhpFpmVirtualHostCommon72 %sitename%>
+    <Macro PhpFpmVirtualHostCommon${PHPVER//./} %sitename%>
         ServerAdmin $ADMIN_EMAIL
         DocumentRoot /srv/www/%sitename%/public_html
         ErrorLog /srv/www/%sitename%/log/error.log
@@ -633,26 +645,26 @@ if is_installed apache2; then
         </IfModule>
         <IfModule mod_proxy_fcgi.c>
             <FilesMatch \.ph(p[3457]?|t|tml)$>
-                SetHandler proxy:unix:/run/php/php7.2-fpm-%sitename%.sock|fcgi://%sitename%/
+                SetHandler proxy:unix:/run/php/php$PHPVER-fpm-%sitename%.sock|fcgi://%sitename%/
             </FilesMatch>
         </IfModule>
         <IfModule mod_alias.c>
             RedirectMatch 404 .*/\.git
         </IfModule>
     </Macro>
-    <Macro PhpFpmVirtualHost72 %sitename%>
-        Use PhpFpmVirtualHostCommon72 %sitename%
+    <Macro PhpFpmVirtualHost${PHPVER//./} %sitename%>
+        Use PhpFpmVirtualHostCommon${PHPVER//./} %sitename%
         <IfModule mod_proxy_fcgi.c>
             <Proxy fcgi://%sitename%/ enablereuse=on timeout=60>
             </Proxy>
             <LocationMatch ^/(status|ping)$>
-                SetHandler proxy:unix:/run/php/php7.2-fpm-%sitename%.sock|fcgi://%sitename%/
+                SetHandler proxy:unix:/run/php/php$PHPVER-fpm-%sitename%.sock|fcgi://%sitename%/
                 Require local
             </LocationMatch>
         </IfModule>
     </Macro>
-    <Macro PhpFpmVirtualHostSsl72 %sitename%>
-        Use PhpFpmVirtualHostCommon72 %sitename%
+    <Macro PhpFpmVirtualHostSsl${PHPVER//./} %sitename%>
+        Use PhpFpmVirtualHostCommon${PHPVER//./} %sitename%
     </Macro>
 </IfModule>
 EOF
@@ -660,11 +672,11 @@ EOF
     ln -s "../sites-available/${PATH_PREFIX}default.conf" "/etc/apache2/sites-enabled/000-${PATH_PREFIX}default.conf"
     log_file "/etc/apache2/sites-available/${PATH_PREFIX}default.conf"
 
-    PHP_FPM_POOLS=("/etc/php/7.2/fpm/pool.d"/*)
+    PHP_FPM_POOLS=("/etc/php/$PHPVER/fpm/pool.d"/*)
     if [ "${#PHP_FPM_POOLS[@]}" -gt "0" ]; then
         log "Disabling pre-installed PHP-FPM pools"
-        install -d -m 0755 "/etc/php/7.2/fpm/pool.d.orig"
-        mv "${PHP_FPM_POOLS[@]}" "/etc/php/7.2/fpm/pool.d.orig/"
+        install -d -m 0755 "/etc/php/$PHPVER/fpm/pool.d.orig"
+        mv "${PHP_FPM_POOLS[@]}" "/etc/php/$PHPVER/fpm/pool.d.orig/"
     fi
 
     if [ -n "$HOST_DOMAIN" ]; then
@@ -673,12 +685,12 @@ EOF
 <VirtualHost *:80>
     ServerName $HOST_DOMAIN
     ServerAlias www.$HOST_DOMAIN
-    Use PhpFpmVirtualHost72 $HOST_ACCOUNT
+    Use PhpFpmVirtualHost${PHPVER//./} $HOST_ACCOUNT
 </VirtualHost>
 <VirtualHost *:443>
     ServerName $HOST_DOMAIN
     ServerAlias www.$HOST_DOMAIN
-    Use PhpFpmVirtualHostSsl72 $HOST_ACCOUNT
+    Use PhpFpmVirtualHostSsl${PHPVER//./} $HOST_ACCOUNT
 </VirtualHost>
 EOF
         install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/error.log"
@@ -687,10 +699,10 @@ EOF
         log_file "/etc/apache2/sites-available/$HOST_ACCOUNT.conf"
 
         log "Adding pool to PHP-FPM: $HOST_ACCOUNT"
-        cat <<EOF >"/etc/php/7.2/fpm/pool.d/$HOST_ACCOUNT.conf"
+        cat <<EOF >"/etc/php/$PHPVER/fpm/pool.d/$HOST_ACCOUNT.conf"
 [$HOST_ACCOUNT]
 user = \$pool
-listen = /run/php/php7.2-fpm-\$pool.sock
+listen = /run/php/php$PHPVER-fpm-\$pool.sock
 listen.owner = www-data
 listen.group = www-data
 ; ondemand can't handle sudden bursts: https://github.com/php/php-src/pull/1308
@@ -703,27 +715,27 @@ pm.max_requests = 10000
 rlimit_files = 1048576
 pm.status_path = /status
 ping.path = /ping
-access.log = "/srv/www/\$pool/log/php7.2-fpm.access.log"
+access.log = "/srv/www/\$pool/log/php$PHPVER-fpm.access.log"
 access.format = "%{REMOTE_ADDR}e - %u %t \"%m %r%Q%q\" %s %f %{mili}d %{kilo}M %C%%"
 catch_workers_output = yes
 ; tune based on system resources
 php_admin_value[opcache.memory_consumption] = 256
 php_admin_value[opcache.file_cache] = "/var/cache/php/opcache/\$pool"
-php_admin_value[error_log] = "/srv/www/\$pool/log/php7.2-fpm.error.log"
+php_admin_value[error_log] = "/srv/www/\$pool/log/php$PHPVER-fpm.error.log"
 php_admin_flag[log_errors] = On
 php_flag[display_errors] = Off
 php_flag[display_startup_errors] = Off
 EOF
         install -d -m 0700 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/var/cache/php/opcache/$HOST_ACCOUNT"
-        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php7.2-fpm.access.log"
-        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php7.2-fpm.error.log"
-        log_file "/etc/php/7.2/fpm/pool.d/$HOST_ACCOUNT.conf"
+        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.access.log"
+        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.error.log"
+        log_file "/etc/php/$PHPVER/fpm/pool.d/$HOST_ACCOUNT.conf"
     fi
 
-    PHP_FPM_POOLS=("/etc/php/7.2/fpm/pool.d"/*)
+    PHP_FPM_POOLS=("/etc/php/$PHPVER/fpm/pool.d"/*)
     if [ "${#PHP_FPM_POOLS[@]}" -gt "0" ]; then
-        log "Starting php7.2-fpm.service"
-        systemctl start php7.2-fpm.service
+        log "Starting php$PHPVER-fpm.service"
+        systemctl start php$PHPVER-fpm.service
     fi
 
     log "Starting apache2.service"

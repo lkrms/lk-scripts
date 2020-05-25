@@ -1,26 +1,11 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2015
+# shellcheck disable=SC1090,SC2015,SC2163
 
 set -euo pipefail
 SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
 SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../../bash/common"
-
-CLOUDIMG_POOL_ROOT="$(realpath "${CLOUDIMG_POOL_ROOT:-/var/lib/libvirt/images}")"
-case "$(basename "$0")" in
-*session*)
-    VM_POOL_ROOT="$(realpath "${CLOUDIMG_SESSION_POOL_ROOT:-$HOME/.local/share/libvirt/images}")"
-    VM_NETWORK="bridge=virbr0"
-    LIBVIRT_URI="qemu:///session"
-    ;;
-*)
-    VM_POOL_ROOT="$CLOUDIMG_POOL_ROOT"
-    VM_NETWORK="default"
-    LIBVIRT_URI="qemu:///system"
-    SUDO_OR_NOT=1
-    ;;
-esac
 
 IMAGE="ubuntu-18.04-minimal"
 VM_PACKAGES=
@@ -46,10 +31,11 @@ Options:
   -c, --cpus <count>                                                  [$VM_CPUS]
   -m, --memory <size>               size is in MiB                    [$VM_MEMORY]
   -s, --disk-size <size>            size is in GiB                    [$VM_DISK_SIZE]
-  -n, --network <network_name>      may be given as: 'bridge=ifname'  [$VM_NETWORK]
+  -n, --network <network_name>      may be given as: 'bridge=ifname'
   -I, --ip-address <ipv4_address>   format must be: 'a.b.c.d/prefix'
   -M, --mac <52:54:00:xx:xx:xx>     uniqueness is not checked
   -S, --stackscript <script_path>   overrides --packages
+  -u, --session                     qemu:///system -> qemu:///session
 
   Supported images:
     ubuntu-20.04-minimal
@@ -74,12 +60,18 @@ Options:
     - the specified script will be minified and added to runcmd in cloud-init
 "
 
-OPTS="$(getopt --options "i:p:f:P:m:c:s:n:I:M:S:" \
-    --longoptions "image:,packages:,fs-maps:,preset:,memory:,cpus:,disk-size:,network:,ip-address:,mac:,stackscript:" \
+OPTS="$(getopt --options "i:p:f:P:m:c:s:n:I:M:S:u" \
+    --longoptions "image:,packages:,fs-maps:,preset:,memory:,cpus:,disk-size:,network:,ip-address:,mac:,stackscript:,session" \
     --name "$(basename "$0")" \
     -- "$@")" || die "$USAGE"
 
 eval "set -- $OPTS"
+
+CLOUDIMG_POOL_ROOT="$(realpath "${CLOUDIMG_POOL_ROOT:-/var/lib/libvirt/images}")"
+VM_POOL_ROOT="$CLOUDIMG_POOL_ROOT"
+VM_NETWORK_DEFAULT="default"
+LIBVIRT_URI="qemu:///system"
+SUDO_OR_NOT=1
 
 while :; do
     OPT="$1"
@@ -152,12 +144,20 @@ while :; do
         }
         STACKSCRIPT="$1"
         ;;
+    -u | --session)
+        VM_POOL_ROOT="$(realpath "${CLOUDIMG_SESSION_POOL_ROOT:-$HOME/.local/share/libvirt/images}")"
+        VM_NETWORK_DEFAULT="bridge=virbr0"
+        LIBVIRT_URI="qemu:///session"
+        unset SUDO_OR_NOT
+        continue
+        ;;
     --)
         break
         ;;
     esac
     shift
 done
+VM_NETWORK="${VM_NETWORK:-$VM_NETWORK_DEFAULT}"
 
 VM_HOSTNAME="${1:-}"
 [ -n "$VM_HOSTNAME" ] || die "$USAGE"
@@ -291,13 +291,14 @@ ${DEFAULT+ $CYAN<default=\"$DEFAULT\">$RESET}
             [ -z "${!NAME}" ] && [ -z "$DEFAULT_EXISTS" ] || break
         done
         STACKSCRIPT_FIELDS+=("$NAME")
+        export "$NAME"
     done 4< <(cat <<<"$STACKSCRIPT_TAGS" |
         sed -E 's/<(udf|UDF)(\s+(name="([a-zA-Z_][a-zA-Z0-9_]*)"|label="([^"]*)"|(default)="([^"]*)"|(oneof|manyof)="([^"]*)"|[a-zA-Z]+="[^"]*"))*\s*\/>/\4\n\5\n\6\n\7\n\8\n\9/' |
         xargs -d $'\n' -n 6 printf '%s.\n%s.\n%s.\n%s.\n%s.\n%s.\0')
     STACKSCRIPT_ENV=
     [ "${#STACKSCRIPT_FIELDS[@]}" -eq "0" ] ||
         # printenv does no escaping, and cloud-init does no unescaping: perfect
-        STACKSCRIPT_ENV="$(printenv | grep -E "^($(lk_implode '|' "${STACKSCRIPT_FIELDS[@]}"))=.+$" | sort)"
+        STACKSCRIPT_ENV="$(printenv | grep -E "^($(lk_implode '|' "${STACKSCRIPT_FIELDS[@]}"))=.+$" | sort || true)"
 fi
 
 lk_console_message "Ready to download and deploy:"
@@ -312,10 +313,10 @@ Disk size:          $VM_DISK_SIZE
 Network:            $VM_NETWORK
 IPv4 address:       ${VM_IPV4_ADDRESS:-<automatic>}
 MAC address:        $VM_MAC_ADDRESS
-StackScript:        ${STACKSCRIPT:-<none>}${STACKSCRIPT_ENV:+
+StackScript:        ${STACKSCRIPT:-<none>}${STACKSCRIPT_ENV+
 
 StackScript environment:
-  ${STACKSCRIPT_ENV//$'\n'/$'\n'  }}
+  $([ -n "$STACKSCRIPT_ENV" ] && echo "${STACKSCRIPT_ENV//$'\n'/$'\n'  }" || echo "<empty>")}
 "
 lk_confirm "OK to proceed?" Y
 
@@ -550,7 +551,7 @@ network-interfaces: |
   dns-nameservers ${SUBNET}1"
 )"
 
-NOCLOUD_META_DIR="$CACHE_DIR/cloud-images/$(lk_hostname)-$VM_HOSTNAME-NoCloud-$(lk_date_ymdhms)"
+NOCLOUD_META_DIR="$TEMP_DIR/NoCloud/$(lk_hostname)-$VM_HOSTNAME-$(lk_date_ymdhms)"
 mkdir -p "$NOCLOUD_META_DIR"
 
 echo "$NETWORK_CONFIG" >"$NOCLOUD_META_DIR/network-config.yml"
