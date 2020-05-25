@@ -1,14 +1,11 @@
 #!/bin/bash
-# shellcheck disable=SC1003,SC2005,SC2015,SC2016,SC2034,SC2120,SC2162,SC2207
-
-# common-functions
-#   Provide various portable, self-contained Bash functions.
+# shellcheck disable=SC1003,SC2015,SC2016,SC2034,SC2120,SC2162,SC2207
 
 function basename() {
     command basename -- "$@"
 }
 
-function lk_caller() {
+function _lk_caller() {
     local DIM CALLER=() SOURCE="${BASH_SOURCE[2]:-}" FUNC="${FUNCNAME[2]:-}"
     DIM="${LK_DIM:-$LK_GREY}"
     [ "$SOURCE" = "$0" ] && [ "$SOURCE" != "main" ] || CALLER=("$(basename "$0")")
@@ -25,7 +22,7 @@ function lk_caller() {
 # lk_warn message
 function lk_warn() {
     local EXIT_STATUS="$?"
-    echo "$(lk_caller --short): $1" >&2
+    lk_console_warning "$LK_BOLD$(_lk_caller --short):$LK_RESET $1"
     return "$EXIT_STATUS"
 }
 
@@ -34,14 +31,14 @@ function lk_warn() {
 function lk_die() {
     local EXIT_STATUS="$?"
     [ "$EXIT_STATUS" -ne "0" ] || EXIT_STATUS="1"
-    [ "$#" -eq "0" ] || echo "$(lk_caller --short): $1" >&2
+    [ "$#" -eq "0" ] || lk_console_error "$LK_BOLD$(_lk_caller --short):$LK_RESET $1"
     lk_is_true "${LK_DIE_HAPPY:-0}" || exit "$EXIT_STATUS"
     exit 0
 }
 
 function lk_trap_err() {
     function lk_err_trap() {
-        echo "$(lk_caller): unhandled error" >&2
+        lk_console_error "$(_lk_caller): unhandled error"
         lk_die
     }
     trap 'lk_err_trap' ERR
@@ -99,7 +96,7 @@ function lk_commands_exist() {
 }
 
 function lk_command_exists() {
-    lk_commands_exist "$@"
+    lk_commands_exist "$1"
 }
 
 function lk_first_existing_command() {
@@ -151,7 +148,7 @@ function lk_date_ymd() {
     lk_date "%y%m%d"
 }
 
-function lk_date_timestamp() {
+function lk_timestamp() {
     lk_date "%s"
 }
 
@@ -166,10 +163,6 @@ else
         echo
     }
 fi
-
-function lk_timestamp() {
-    lk_date "%s"
-}
 
 function lk_is_root() {
     [ "$EUID" -eq "0" ]
@@ -234,6 +227,12 @@ function lk_replace() {
     echo "${3//$(lk_escape "$1" '*' '?' '[' ']' '(')/$2}"
 }
 
+# lk_in_string needle haystack
+#   True if NEEDLE is a substring of HAYSTACK.
+function lk_in_string() {
+    [ "$(lk_replace "$1" "" "$2")" != "$2" ]
+}
+
 function lk_lower() {
     [ "$#" -gt "0" ] &&
         echo "$*" | tr '[:upper:]' '[:lower:]' ||
@@ -256,19 +255,11 @@ function lk_trim() {
         sed -Ee 's/^\s+//' -e 's/\s+$//'
 }
 
-function lk_coalesce() {
-    while [ "$#" -gt "0" ] && [ -z "$1" ]; do
-        shift
-    done
-    echo "${1:-}"
-}
-
-function lk_get_hostname() {
+function lk_hostname() {
     hostname -s | lk_lower
 }
 
 function lk_safe_tput() {
-    # to improve performance, scripts running without a terminal can set LK_ON_TERMINAL=0
     if lk_is_true "${LK_ON_TERMINAL:-1}" && tput "$@" >/dev/null 2>&1; then
         tput "$@"
     fi
@@ -361,9 +352,11 @@ function lk_mapfile() {
     while IFS= read -r LINE || [ -n "$LINE" ]; do
         eval "$2+=(\"\$LINE\")"
     done < <(
-        [ -n "${3:-}" ] &&
-            { grep -Ev "$3" "$1" || true; } ||
+        if [ -n "${3:-}" ]; then
+            grep -Ev "$3" "$1" || true
+        else
             cat "$1"
+        fi
     )
 }
 
@@ -388,8 +381,8 @@ function lk_echoc() {
 # lk_console_message message [[secondary_message] colour_sequence]
 function lk_console_message() {
     local MESSAGE COLOURS MESSAGE2=
-    MESSAGE="${1:-}"
-    shift || true
+    MESSAGE="$1"
+    shift
     [ "$#" -le "1" ] || {
         MESSAGE2="$1"
         shift
@@ -400,22 +393,30 @@ function lk_console_message() {
         # - there's no portable way to determine buffer size
         # - writing <=512 bytes with echo or printf should be atomic on all
         #   platforms, but this can't be guaranteed
-        lk_echoc -n "==> " "$COLOURS"
-        lk_echoc -n "$MESSAGE" "$LK_BOLD"
-        [ -z "$MESSAGE2" ] || lk_echoc -n " $MESSAGE2" "$COLOURS"
+        lk_echoc -n "${LK_CONSOLE_PREFIX-==> }" "${LK_CONSOLE_PREFIX_COLOURS-$COLOURS}"
+        lk_echoc -n "$MESSAGE" "${LK_CONSOLE_MESSAGE_COLOURS-$LK_BOLD}"
+        [ -z "$MESSAGE2" ] || lk_echoc -n " $MESSAGE2" "${LK_CONSOLE_SECONDARY_COLOURS-$COLOURS}"
     )" >&2
 }
 
-function lk_console_log() {
+function _lk_console() {
+    local LK_CONSOLE_PREFIX=":: " \
+        LK_CONSOLE_MESSAGE_COLOURS="$2" \
+        LK_CONSOLE_PREFIX_COLOURS="${3-$2}"
     lk_console_message "$1"
 }
 
+function lk_console_log() {
+    _lk_console "$1" "$LK_DEFAULT_CONSOLE_COLOUR"
+}
+
 function lk_console_warning() {
-    lk_console_message "$1" "$LK_WARNING_COLOUR"
+    _lk_console "$1" "$LK_WARNING_COLOUR"
 }
 
 function lk_console_error() {
-    lk_console_message "$1" "$LK_ERROR_COLOUR"
+    # apply bold unless already applied in the message
+    _lk_console "$1" "$(lk_in_string "$LK_BOLD" "$1" || echo "$LK_BOLD")$LK_ERROR_COLOUR" "$LK_BOLD$LK_ERROR_COLOUR"
 }
 
 # lk_console_item message item [colour_sequence]
@@ -426,8 +427,8 @@ function lk_console_item() {
 # lk_console_list message [single_noun plural_noun] [colour_sequence]
 function lk_console_list() {
     local MESSAGE SINGLE_NOUN PLURAL_NOUN COLOURS ITEM ITEMS=()
-    MESSAGE="${1:-}"
-    shift || true
+    MESSAGE="$1"
+    shift
     [ "$#" -le "1" ] || {
         SINGLE_NOUN="$1"
         PLURAL_NOUN="$2"
@@ -439,7 +440,7 @@ function lk_console_list() {
     done
     lk_console_message "${MESSAGE%:}:" "$COLOURS"
     [ "${#ITEMS[@]}" -eq "0" ] || lk_echoc "$(printf '%s\n' "${ITEMS[@]}" | column)" "$COLOURS" >&2
-    [ -z "${SINGLE_NOUN:-}" ] || echo "(${#ITEMS[@]} $(lk_maybe_plural "${#ITEMS[@]}" "$SINGLE_NOUN" "$PLURAL_NOUN"))" >&2
+    [ -z "${SINGLE_NOUN:-}" ] || echo "$COLOURS>$LK_RESET $LK_BOLD${#ITEMS[@]}$LK_RESET $(lk_maybe_plural "${#ITEMS[@]}" "$SINGLE_NOUN" "$PLURAL_NOUN")" >&2
 }
 
 # lk_console_read prompt [default]
@@ -478,7 +479,7 @@ function lk_confirm() {
 #   Use EXT for special extensions like ".tar.gz".
 function lk_add_file_suffix() {
     local BASENAME
-    BASENAME="$(basename "$1")" || return
+    BASENAME="$(basename "$1")"
     if [ -z "${3:-}" ] && [[ "$BASENAME" =~ .+\..+ ]]; then
         echo "${1%.*}${2}.${1##*.}"
     elif [ -n "${3:-}" ] && eval "[[ \"$BASENAME\" =~ .+${3//./\\.}\$ ]]"; then
@@ -490,8 +491,7 @@ function lk_add_file_suffix() {
 
 # lk_next_backup_file file_path
 #   Output FILE_PATH with suffix "_backup" or "_backup.N", where N is 2 or
-#   greater, after finding the first such path that doesn't exist on the
-#   filesystem.
+#   greater, after finding the first that doesn't already exist.
 function lk_next_backup_file() {
     local BACKUP i=1
     BACKUP="$(lk_add_file_suffix "$1" "_backup")"
@@ -532,8 +532,8 @@ function lk_is_uri() {
 }
 
 # lk_uri_parts uri uri_component...
-#   Output KEY="VALUE" for each URI_COMPONENT in URI.
-#   URI_COMPONENT must be one of the following (case insensitive):
+#   Output _KEY="VALUE" for each URI_COMPONENT in URI. URI_COMPONENT must be
+#   one of the following (case insensitive, leading underscores accepted):
 #     scheme
 #     username
 #     password
@@ -622,6 +622,13 @@ function lk_decode_uri() {
     echo -e "${1//%/\\x}"
 }
 
+# lk_download file_uri...
+#   Download each FILE_URI to the current directory unless an up-to-date
+#   version already exists.
+#
+#   Add "|filename.ext" after each FILE_URI that doesn't include a filename,
+#   or call with IGNORE_FILENAMES=1 to use the server-specified filename.
+#   If IGNORE_FILENAMES=1, existing downloads are ignored and/or overwritten.
 function lk_download() {
     local IGNORE_FILENAMES="${IGNORE_FILENAMES:-0}" CURL_VERSION URI FILENAME \
         DOWNLOAD_ONE DOWNLOAD_ARGS _PATH FILENAMES=() ONE_DOWNLOAD_ARGS=() MANY_DOWNLOAD_ARGS=() \
@@ -629,6 +636,7 @@ function lk_download() {
     CURL_VERSION="$(curl --version | grep -Eo '\b[0-9]+(\.[0-9]+){1,2}\b' | head -n1)" ||
         lk_warn "curl version unknown" || return
     lk_is_false "$IGNORE_FILENAMES" || {
+        # TODO: download to a temporary directory and move to $PWD only if successful
         lk_version_at_least "$CURL_VERSION" "7.26.0" ||
             lk_warn "installed version of curl too old to output effective filename" || return
         CURL_ARGS+=(--remote-header-name --write-out "%{filename_effective}\n")
@@ -647,7 +655,7 @@ function lk_download() {
                 eval "$(lk_uri_parts "$URI" "_PATH")"
                 FILENAME="${_PATH##*/}"
             }
-            [ -n "$FILENAME" ] || lk_warn "no filename found in '$URI'" || return
+            [ -n "$FILENAME" ] || lk_warn "no filename in '$URI'" || return
             [ ! -f "$FILENAME" ] || {
                 DOWNLOAD_ONE=1
                 DOWNLOAD_ARGS+=(--time-cond "$(date -Rd "$(gnu_stat --printf '%y' "$FILENAME")")")
@@ -725,7 +733,7 @@ function _lk_get_gnu_command() {
     esac
 }
 
-function lk_register_gnu_commands() {
+function _lk_register_gnu_commands() {
     local COMMAND PREFIX=
     ! lk_is_macos || PREFIX="g"
     for COMMAND in "$@"; do
@@ -879,8 +887,7 @@ function lk_ssl_client() {
 #   background and disown it.
 function lk_start_or_restart() {
     local COMMAND
-    [ -n "$1" ] &&
-        COMMAND="$(basename "$1")" || return
+    COMMAND="$(basename "$1")"
     is_root ||
         ! pgrep -xu "$USER" "$COMMAND" >/dev/null || # limit to processes owned by $USER
         pkill -xu "$USER" "$COMMAND"                 #
@@ -1055,14 +1062,14 @@ function lk_user_in_group() {
     [ "$(comm -12 <(groups "$1" | sed -E 's/^.*://' | grep -Eo '[^[:space:]]+' | sort) <(lk_echo_array "${@:2}" | sort | uniq) | wc -l)" -gt "0" ]
 }
 
-# lk_make_iso path1...
+# lk_make_iso path...
+#  Add each PATH to a new ISO image in the current directory. The .iso file
+#  is named after the first file or directory specified.
 function lk_make_iso() {
     local ISOFILE
-    lk_paths_exist "$@" || lk_warn "lk_make_iso path1..." || return
-    ISOFILE="$(basename "$1").iso" &&
-        [ ! -e "$ISOFILE" ] ||
-        lk_warn "$ISOFILE already exists" ||
-        return
+    lk_paths_exist "$@" || lk_warn "all paths must exist" || return
+    ISOFILE="$(basename "$1").iso"
+    [ ! -e "$ISOFILE" ] || lk_warn "$ISOFILE already exists" || return
     mkisofs -V "$(lk_date "%y%m%d")$(basename "$1")" -J -r -hfs -o "$ISOFILE" "$@"
 }
 
@@ -1079,10 +1086,10 @@ set -o pipefail
 #   sort split stat stdbuf stty sum sync tac tail tee test timeout touch
 #   tr true truncate tsort tty uname unexpand uniq unlink users vdir wc
 #   who whoami yes
-lk_register_gnu_commands date ln mktemp sort stat
+_lk_register_gnu_commands date ln mktemp sort stat
 
 # gawk, findutils, grep, netcat, sed, tar
-lk_register_gnu_commands awk find grep nc sed tar
+_lk_register_gnu_commands awk find grep nc sed tar
 
 ! lk_is_linux || {
     function lk_load_linuxbrew() {
@@ -1109,5 +1116,5 @@ EOF
 eval "$(lk_get_colours)"
 
 LK_DEFAULT_CONSOLE_COLOUR="$LK_CYAN"
-LK_WARNING_COLOUR="$LK_BOLD$LK_YELLOW"
-LK_ERROR_COLOUR="$LK_BOLD$LK_RED"
+LK_WARNING_COLOUR="$LK_YELLOW"
+LK_ERROR_COLOUR="$LK_RED"

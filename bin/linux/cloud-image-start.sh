@@ -549,7 +549,7 @@ network-interfaces: |
   dns-nameservers ${SUBNET}1"
 )"
 
-NOCLOUD_META_DIR="$CACHE_DIR/cloud-images/$(lk_get_hostname)-$VM_HOSTNAME-NoCloud-$(lk_date_ymdhms)"
+NOCLOUD_META_DIR="$CACHE_DIR/cloud-images/$(lk_hostname)-$VM_HOSTNAME-NoCloud-$(lk_date_ymdhms)"
 mkdir -p "$NOCLOUD_META_DIR"
 
 echo "$NETWORK_CONFIG" >"$NOCLOUD_META_DIR/network-config.yml"

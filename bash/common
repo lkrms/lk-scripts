@@ -241,7 +241,7 @@ function date_get_ymdhms() {
 }
 
 function date_get_timestamp() {
-    lk_date_timestamp
+    lk_timestamp
 }
 
 function url_decode() {
