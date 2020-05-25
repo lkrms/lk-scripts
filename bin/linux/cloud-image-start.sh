@@ -556,7 +556,7 @@ echo "$NETWORK_CONFIG" >"$NOCLOUD_META_DIR/network-config.yml"
 echo "$USER_DATA" >"$NOCLOUD_META_DIR/user-data.yml"
 echo "$META_DATA" >"$NOCLOUD_META_DIR/meta-data.yml"
 
-if lk_confirm "Customise cloud-init data source?" N; then
+if lk_confirm "Customise cloud-init data source?" N -t 5; then
     xdg-open "$NOCLOUD_META_DIR" || :
     lk_pause "Press any key to continue after making changes in $NOCLOUD_META_DIR . . . "
 fi
