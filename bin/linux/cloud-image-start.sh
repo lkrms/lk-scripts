@@ -423,7 +423,7 @@ MOUNT_DIRS=()
         [ "${#FILESYSTEM_DIRS[@]}" -ge "2" ] || die "invalid filesystem map: $FILESYSTEM"
         SOURCE_DIR="${FILESYSTEM_DIRS[0]}"
         MOUNT_DIR="${FILESYSTEM_DIRS[1]}"
-        MOUNT_NAME="${MOUNT_DIR//\//_}"
+        MOUNT_NAME="qemufs${#MOUNT_DIRS[@]}"
         [ -d "$SOURCE_DIR" ] || die "$SOURCE_DIR: directory does not exist"
 
         FILESYSTEM_DIRS[1]="$MOUNT_NAME"

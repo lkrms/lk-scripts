@@ -226,6 +226,7 @@ log "Public IPv6 address: ${IPV6_ADDRESS:-not assigned to an interface}"
 REMOVE_PACKAGES=(
     mlocate # waste of CPU
     rsyslog # waste of space (assuming journald storage is persistent)
+    snapd   # unnecessary
 )
 for i in "${!REMOVE_PACKAGES[@]}"; do
     is_installed "${REMOVE_PACKAGES[$i]}" ||
@@ -439,9 +440,12 @@ case ",$NODE_SERVICES," in
 
 *)
     REPOS=(
-        universe
         ${CERTBOT_REPO+"$CERTBOT_REPO"}
     )
+    grep -Eq \
+        "^deb\s+http://\w+(\.\w+)*(:[0-9]+)?(/ubuntu)?/?\s+(\w+\s+)*$DISTRIB_CODENAME\s+(\w+\s+)*universe(\s|\$)" \
+        /etc/apt/sources.list ||
+        REPOS+=(universe)
 
     PACKAGES=(
         #
