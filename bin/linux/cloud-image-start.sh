@@ -301,19 +301,21 @@ ${DEFAULT+ $CYAN<default=\"$DEFAULT\">$RESET}
         STACKSCRIPT_ENV="$(printenv | grep -E "^($(lk_implode '|' "${STACKSCRIPT_FIELDS[@]}"))=.+$" | sort || true)"
 fi
 
-lk_console_message "Ready to download and deploy:"
+lk_console_message "Ready to download and deploy"
 echo "\
-Name:               $VM_HOSTNAME
-Image:              $IMAGE_NAME (${IMAGE_URL##*/})
-Packages:           ${VM_PACKAGES:+${VM_PACKAGES//,/, }, }qemu-guest-agent
-Filesystem maps:    ${VM_FILESYSTEM_MAPS:-<none>}
-Memory:             $VM_MEMORY
-CPUs:               $VM_CPUS
-Disk size:          $VM_DISK_SIZE
-Network:            $VM_NETWORK
-IPv4 address:       ${VM_IPV4_ADDRESS:-<automatic>}
-MAC address:        $VM_MAC_ADDRESS
-StackScript:        ${STACKSCRIPT:-<none>}${STACKSCRIPT_ENV+
+${BOLD}Name:$RESET               $BOLD$YELLOW$VM_HOSTNAME$RESET
+${BOLD}Image:$RESET              $BOLD$CYAN$IMAGE_NAME$RESET
+${BOLD}Memory:$RESET             $BOLD$YELLOW$VM_MEMORY$RESET
+${BOLD}CPUs:$RESET               $BOLD$YELLOW$VM_CPUS$RESET
+${BOLD}Disk size:$RESET          $VM_DISK_SIZE
+${BOLD}Network:$RESET            $VM_NETWORK
+${BOLD}IPv4 address:$RESET       ${VM_IPV4_ADDRESS:-<automatic>}
+${BOLD}MAC address:$RESET        $VM_MAC_ADDRESS
+${BOLD}Packages:$RESET           ${VM_PACKAGES:+${VM_PACKAGES//,/, }, }qemu-guest-agent
+${BOLD}Filesystem maps:$RESET    ${VM_FILESYSTEM_MAPS:-<none>}
+${BOLD}Libvirt service:$RESET    $BOLD$CYAN$LIBVIRT_URI$RESET
+${BOLD}Disk image path:$RESET    $VM_POOL_ROOT
+${BOLD}StackScript:$RESET        ${STACKSCRIPT:-<none>}${STACKSCRIPT_ENV+
 
 StackScript environment:
   $([ -n "$STACKSCRIPT_ENV" ] && echo "${STACKSCRIPT_ENV//$'\n'/$'\n'  }" || echo "<empty>")}
@@ -444,7 +446,7 @@ unset IFS
 
 PACKAGES=()
 [ "$IMAGE_NAME" = "ubuntu-12.04" ] || PACKAGES+=("qemu-guest-agent")
-[ -z "$VM_PACKAGES" ] || {
+[ -z "$VM_PACKAGES" ] || [ -n "$STACKSCRIPT" ] || {
     IFS=","
     # shellcheck disable=SC2206
     PACKAGES+=($VM_PACKAGES)
@@ -470,7 +472,6 @@ $(
         [ "$IMAGE_NAME" != "ubuntu-12.04" ] || printf '%s\n' \
             "apt_upgrade: true" \
             "ssh_authorized_keys:" "${SSH_AUTHORIZED_KEYS[@]/#/  - }"
-        [ "${#PACKAGES[@]}" -eq "0" ] || printf '%s\n' "packages:" "${PACKAGES[@]/#/  - }"
     )"
 else
     USER_DATA="\
@@ -506,6 +507,8 @@ apt:
     - arches: [default]
       uri: ${UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}
 $(
+    [ "${#PACKAGES[@]}" -eq "0" ] ||
+        printf '%s\n' "packages:" "${PACKAGES[@]/#/  - }"
     [ "${#FSTAB[@]}" -eq "0" ] || {
         FSTAB_CMD=("${FSTAB[@]/#/  - echo \"}")
         FSTAB_CMD=("${FSTAB_CMD[@]/%/\" >>/etc/fstab}")
@@ -558,7 +561,7 @@ echo "$NETWORK_CONFIG" >"$NOCLOUD_META_DIR/network-config.yml"
 echo "$USER_DATA" >"$NOCLOUD_META_DIR/user-data.yml"
 echo "$META_DATA" >"$NOCLOUD_META_DIR/meta-data.yml"
 
-if lk_confirm "Customise cloud-init data source?" N -t 5; then
+if lk_confirm "Customise cloud-init data source?" N -t 60; then
     xdg-open "$NOCLOUD_META_DIR" || :
     lk_pause "Press any key to continue after making changes in $NOCLOUD_META_DIR . . . "
 fi
