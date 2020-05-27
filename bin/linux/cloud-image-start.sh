@@ -60,7 +60,7 @@ Options:
     - the specified script will be minified and added to runcmd in cloud-init
 "
 
-OPTS="$(getopt --options "i:p:f:P:m:c:s:n:I:M:S:u" \
+OPTS="$(getopt --options "i:p:f:P:m:c:s:n:I:M:S:uy" \
     --longoptions "image:,packages:,fs-maps:,preset:,memory:,cpus:,disk-size:,network:,ip-address:,mac:,stackscript:,session" \
     --name "$(basename "$0")" \
     -- "$@")" || die "$USAGE"
@@ -151,6 +151,10 @@ while :; do
         unset SUDO_OR_NOT
         continue
         ;;
+    -y)
+        SKIP_PROMPTS=1
+        continue
+        ;;
     --)
         break
         ;;
@@ -161,9 +165,6 @@ VM_NETWORK="${VM_NETWORK:-$VM_NETWORK_DEFAULT}"
 
 VM_HOSTNAME="${1:-}"
 [ -n "$VM_HOSTNAME" ] || die "$USAGE"
-if lk_maybe_sudo virsh list --all --name | grep -Fx "$VM_HOSTNAME" >/dev/null; then
-    die "domain '$VM_HOSTNAME' already exists"
-fi
 
 # OS_VARIANT: run `osinfo-query os` for options
 case "$IMAGE" in
@@ -286,7 +287,11 @@ $PROMPT${SELECT_TYPE:+ $BOLD$MAGENTA<$SELECT_TYPE=\"$SELECT_OPTIONS\">$RESET}\
 ${DEFAULT+ $CYAN<default=\"$DEFAULT\">$RESET}
 "
         while :; do
-            eval "INITIAL_VALUE=\"\${$NAME:-\${DEFAULT:-}}\""
+            lk_is_false "${SKIP_PROMPTS:-0}" || {
+                eval "$NAME=\"\${$NAME-\${DEFAULT:-}}\""
+                [ -z "${!NAME}" ] && [ -z "$DEFAULT_EXISTS" ] || break
+            }
+            eval "INITIAL_VALUE=\"\${$NAME-\${DEFAULT:-}}\""
             eval "read -rep \"\${PROMPT}Value for \$BOLD\$NAME\$RESET: \" \${INITIAL_VALUE:+-i \"\$INITIAL_VALUE\"} $NAME"
             [ -z "${!NAME}" ] && [ -z "$DEFAULT_EXISTS" ] || break
         done
@@ -300,6 +305,14 @@ ${DEFAULT+ $CYAN<default=\"$DEFAULT\">$RESET}
         # printenv does no escaping, and cloud-init does no unescaping: perfect
         STACKSCRIPT_ENV="$(printenv | grep -E "^($(lk_implode '|' "${STACKSCRIPT_FIELDS[@]}"))=.+$" | sort || true)"
 fi
+
+while VM_STATE="$(lk_maybe_sudo virsh domstate "$VM_HOSTNAME" 2>/dev/null)"; do
+    [ "$VM_STATE" != "shut off" ] || unset VM_STATE
+    lk_console_warning "Domain already exists: $VM_HOSTNAME"
+    lk_confirm "$BOLD${RED}OK to ${VM_STATE+force off, }delete and permanently remove all storage volumes for '$VM_HOSTNAME'?$RESET" N || die
+    ${VM_STATE+lk_maybe_sudo virsh destroy "$VM_HOSTNAME"} || :
+    lk_maybe_sudo virsh undefine --remove-all-storage "$VM_HOSTNAME" || :
+done
 
 lk_console_message "Ready to download and deploy"
 echo "\
@@ -320,7 +333,7 @@ ${BOLD}StackScript:$RESET        ${STACKSCRIPT:-<none>}${STACKSCRIPT_ENV+
 StackScript environment:
   $([ -n "$STACKSCRIPT_ENV" ] && echo "${STACKSCRIPT_ENV//$'\n'/$'\n'  }" || echo "<empty>")}
 "
-lk_confirm "OK to proceed?" Y
+lk_is_true "${SKIP_PROMPTS:-0}" || lk_confirm "OK to proceed?" Y
 
 mkdir -p "$CACHE_DIR/cloud-images" &&
     cd "$CACHE_DIR/cloud-images" || die
@@ -561,7 +574,7 @@ echo "$NETWORK_CONFIG" >"$NOCLOUD_META_DIR/network-config.yml"
 echo "$USER_DATA" >"$NOCLOUD_META_DIR/user-data.yml"
 echo "$META_DATA" >"$NOCLOUD_META_DIR/meta-data.yml"
 
-if lk_confirm "Customise cloud-init data source?" N -t 60; then
+if lk_is_false "${SKIP_PROMPTS:-0}" && lk_confirm "Customise cloud-init data source?" N -t 60; then
     xdg-open "$NOCLOUD_META_DIR" || :
     lk_pause "Press any key to continue after making changes in $NOCLOUD_META_DIR . . . "
 fi
