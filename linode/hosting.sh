@@ -33,7 +33,7 @@ function log() {
         shift
         [ "$#" -eq "0" ] ||
             printf '  %s\n' "${@//$'\n'/$'\n  '}" ""
-    } | tee -a "/var/log/${PATH_PREFIX}install.log"
+    } | tee -a "$LOG_FILE"
 }
 
 function die() {
@@ -96,8 +96,6 @@ function keep_trying() {
 
 function exit_trap() {
     local EXIT_STATUS="$?"
-    # restore stdout and stderr
-    exec 1>&6 2>&7 6>&- 7>&-
     # TODO: replace with an HTTP-based notification mechanism
     if [ -n "${CALL_HOME_MX:-}" ]; then
         if [ "$EXIT_STATUS" -eq "0" ]; then
@@ -123,11 +121,11 @@ $EMAIL_INFO
 }
 Install log:
 
-<<</var/log/${PATH_PREFIX}install.log
-$(cat "/var/log/${PATH_PREFIX}install.log" 2>&1 || :)
+<<<$LOG_FILE
+$(cat "$LOG_FILE" 2>&1 || :)
 >>>
 
-Full output: $NODE_HOSTNAME:/var/log/${PATH_PREFIX}install.out
+Full output: $NODE_HOSTNAME:$OUT_FILE
 
 .
 QUIT
@@ -142,22 +140,26 @@ if [ "${SCRIPT_DEBUG:-N}" = "Y" ]; then
     set -x
 fi
 
+PATH_PREFIX="${PATH_PREFIX:-lk-}"
+LOCK_FILE="/tmp/${PATH_PREFIX}install.lock"
+LOG_FILE="/var/log/${PATH_PREFIX}install.log"
+OUT_FILE="/var/log/${PATH_PREFIX}install.out"
+
+install -m 0640 -g "adm" "/dev/null" "$LOG_FILE"
+install -m 0640 -g "adm" "/dev/null" "$OUT_FILE"
+
 trap 'exit_trap' EXIT
 
-PATH_PREFIX="${PATH_PREFIX:-lk-}"
+exec 9>"$LOCK_FILE"
+flock -n 9 || die "unable to acquire a lock on $LOCK_FILE"
+
+exec > >(tee -a "$OUT_FILE") 2>&1
+
 PATH_PREFIX_ALPHA="$(sed 's/[^a-zA-Z0-9]//g' <<<"$PATH_PREFIX")"
 
 export DEBIAN_FRONTEND=noninteractive \
     DEBCONF_NONINTERACTIVE_SEEN=true \
     PIP_NO_INPUT=1
-
-# restrict access to log files
-install -m 0640 -g "adm" "/dev/null" "/var/log/${PATH_PREFIX}install.log"
-install -m 0640 -g "adm" "/dev/null" "/var/log/${PATH_PREFIX}install.out"
-
-# save stdout and stderr for later
-exec 6>&1 7>&2
-exec > >(tee -a "/var/log/${PATH_PREFIX}install.out") 2>&1
 
 # TODO: better validation here
 FIELD_ERRORS=()
@@ -365,10 +367,25 @@ log_file "$APT_CONF_FILE"
 # see `man invoke-rc.d` for more information
 log "Disabling automatic \"systemctl start\" when new services are installed"
 cat <<EOF >"/usr/sbin/policy-rc.d"
-#!/bin/sh
-
+#!/bin/bash
 # Created by $(basename "$0") at $(now)
-exit 101
+$(declare -f now)
+INSTALL_PENDING=N
+exec 9>"/tmp/${PATH_PREFIX}install.lock"
+flock -n 9||INSTALL_PENDING=Y
+ARGS=("\$@")
+while [ "\$#" -gt "0" ]&&[[ \$1 =~ ^-- ]];do
+shift
+done
+EXIT_STATUS=101
+[ "\${2:-}" = start ]||[ "\$INSTALL_PENDING" = Y ]||EXIT_STATUS=0
+printf '%s %s\n' \
+"\$(now)" "==== \$(basename "\$0"): init script policy helper invoked" \
+"\$(now)" "Arguments:
+\$([ "\${#ARGS[@]}" -gt 0 ]&&printf '  - %s\n' "\${ARGS[@]}"||echo "  <none>")" \
+"\$(now)" "Install pending: \$INSTALL_PENDING" \
+"\$(now)" "Exit status: \$EXIT_STATUS" >>"/var/log/${PATH_PREFIX}install.log"
+exit "\$EXIT_STATUS"
 EOF
 chmod a+x "/usr/sbin/policy-rc.d"
 log_file "/usr/sbin/policy-rc.d"
