@@ -155,7 +155,7 @@ flock -n 9 || die "unable to acquire a lock on $LOCK_FILE"
 
 exec > >(tee -a "$OUT_FILE") 2>&1
 
-# TODO: better validation here
+# TODO: more validation here
 FIELD_ERRORS=()
 PATH_PREFIX_ALPHA="$(sed 's/[^a-zA-Z0-9]//g' <<<"$PATH_PREFIX")"
 [ -n "$PATH_PREFIX_ALPHA" ] || FIELD_ERRORS+=("PATH_PREFIX must contain at least one letter or number")
@@ -302,7 +302,7 @@ for i in "${!REMOVE_PACKAGES[@]}"; do
 done
 if [ "${#REMOVE_PACKAGES[@]}" -gt "0" ]; then
     log "Removing APT packages:" "${REMOVE_PACKAGES[*]}"
-    apt-get -yq remove "${REMOVE_PACKAGES[@]}"
+    apt-get -yq purge "${REMOVE_PACKAGES[@]}"
 fi
 
 log "Disabling unnecessary motd scripts"
@@ -451,12 +451,6 @@ keep_trying apt-get -yq install "${PACKAGES[@]}"
 
 log "Setting system timezone to '$NODE_TIMEZONE'"
 timedatectl set-timezone "$NODE_TIMEZONE"
-
-log "Starting atop.service"
-systemctl start atop.service
-
-log "Starting ntp.service"
-systemctl start ntp.service
 
 log "Configuring apt-listchanges"
 [ ! -e "/etc/apt/listchanges.conf" ] ||
@@ -621,9 +615,8 @@ case ",$NODE_SERVICES," in
 esac
 
 if is_installed fail2ban; then
-    # TODO: monitor other logs
-    log "Starting fail2ban.service"
-    systemctl start fail2ban.service
+    # TODO: configure jails other than sshd
+    :
 fi
 
 if is_installed postfix; then
@@ -631,8 +624,6 @@ if is_installed postfix; then
     /usr/sbin/postconf -e "inet_interfaces = loopback-only"
     log_file "/etc/postfix/main.cf"
     log_file "/etc/aliases"
-    log "Starting postfix.service"
-    systemctl start postfix.service
 fi
 
 if is_installed apache2; then
@@ -846,15 +837,6 @@ EOF
         install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.error.log"
         log_file "/etc/php/$PHPVER/fpm/pool.d/$HOST_ACCOUNT.conf"
     fi
-
-    PHP_FPM_POOLS=("/etc/php/$PHPVER/fpm/pool.d"/*)
-    if [ "${#PHP_FPM_POOLS[@]}" -gt "0" ]; then
-        log "Starting php$PHPVER-fpm.service"
-        systemctl start php$PHPVER-fpm.service
-    fi
-
-    log "Starting apache2.service"
-    systemctl start apache2.service
 fi
 
 if is_installed mariadb-server; then
@@ -882,9 +864,5 @@ fi
 log "Running apt-get autoremove"
 apt-get -yq autoremove
 
-if [ -f "/var/run/reboot-required" ]; then
-    log "Scheduling a system reboot in 4 minutes (required after upgrading pre-installed packages)"
-    shutdown --reboot +4 "Reboot required after kernel upgrade (use 'sudo shutdown -c' to cancel)"
-fi
-
-log "==== $(basename "$0"): deployment complete"
+log "==== $(basename "$0"): deployment complete; rebooting"
+shutdown --reboot +"${REBOOT_DELAY:-0}"
