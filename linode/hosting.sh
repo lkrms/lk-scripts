@@ -520,6 +520,7 @@ case ",$NODE_SERVICES," in
     PACKAGES+=(
         #
         apache2
+        libapache2-mod-qos
         php-fpm
         python3-certbot-apache
 
@@ -666,6 +667,9 @@ if is_installed apache2; then
         rewrite
         socache_shmcb # dependency of "ssl"
         ssl
+
+        # third-party
+        qos
     )
     APACHE_MODS_ENABLED="$(a2query -m | grep -Eo '^[^ ]+' | sort | uniq || :)"
     APACHE_DISABLE_MODS=($(comm -13 <(printf '%s\n' "${APACHE_MODS[@]}" | sort | uniq) <(echo "$APACHE_MODS_ENABLED")))
@@ -713,6 +717,11 @@ if is_installed apache2; then
         <Location /httpd-info>
             SetHandler server-info
             Require local
+        </Location>
+    </IfModule>
+    <IfModule mod_qos.c>
+        <Location /qos>
+           SetHandler qos-viewer
         </Location>
     </IfModule>
 </VirtualHost>
