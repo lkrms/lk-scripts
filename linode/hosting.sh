@@ -145,8 +145,8 @@ LOCK_FILE="/tmp/${PATH_PREFIX}install.lock"
 LOG_FILE="/var/log/${PATH_PREFIX}install.log"
 OUT_FILE="/var/log/${PATH_PREFIX}install.out"
 
-install -m 0640 -g "adm" "/dev/null" "$LOG_FILE"
-install -m 0640 -g "adm" "/dev/null" "$OUT_FILE"
+install -v -m 0640 -g "adm" "/dev/null" "$LOG_FILE"
+install -v -m 0640 -g "adm" "/dev/null" "$OUT_FILE"
 
 trap 'exit_trap' EXIT
 
@@ -233,38 +233,6 @@ log "Enabling persistent journald storage"
 edit_file "/etc/systemd/journald.conf" "^#?Storage=.*$" "Storage=persistent"
 systemctl restart systemd-journald.service
 
-REMOVE_PACKAGES=(
-    mlocate # waste of CPU
-    rsyslog # waste of space (assuming journald storage is persistent)
-
-    # Canonical cruft
-    landscape-common
-    snapd
-    ubuntu-advantage-tools
-)
-for i in "${!REMOVE_PACKAGES[@]}"; do
-    is_installed "${REMOVE_PACKAGES[$i]}" ||
-        unset "REMOVE_PACKAGES[$i]"
-done
-if [ "${#REMOVE_PACKAGES[@]}" -gt "0" ]; then
-    log "Removing APT packages:" "${REMOVE_PACKAGES[*]}"
-    apt-get -yq remove "${REMOVE_PACKAGES[@]}"
-fi
-
-log "Disabling unnecessary motd scripts"
-for FILE in 10-help-text 50-motd-news 91-release-upgrade; do
-    [ ! -x "/etc/update-motd.d/$FILE" ] || chmod -c a-x "/etc/update-motd.d/$FILE"
-done
-
-log "Configuring kernel parameters"
-FILE="/etc/sysctl.d/90-${PATH_PREFIX}defaults.conf"
-cat <<EOF >"$FILE"
-# Created by $(basename "$0") at $(now)
-vm.swappiness = 1
-EOF
-log_file "$FILE"
-sysctl --system
-
 log "Setting system hostname to '$NODE_HOSTNAME'"
 hostnamectl set-hostname "$NODE_HOSTNAME"
 
@@ -278,75 +246,6 @@ $IPV4_ADDRESS $NODE_FQDN}${IPV6_ADDRESS:+
 $IPV6_ADDRESS $NODE_FQDN}
 EOF
 log_file "$FILE"
-
-log "Hardening default home directory permissions"
-edit_file "/etc/login.defs" "^#?(UMASK\s+).*$" "\1027" $'UMASK\t\t027'
-
-log "Sourcing /opt/${PATH_PREFIX}platform/server/.bashrc in ~/.bashrc for all users"
-BASH_SKEL="
-# Added by $(basename "$0") at $(now)
-if [ -f '/opt/${PATH_PREFIX}platform/server/.bashrc' ]; then
-    . '/opt/${PATH_PREFIX}platform/server/.bashrc'
-fi"
-echo "$BASH_SKEL" >>"/etc/skel/.bashrc"
-if [ -f "/root/.bashrc" ]; then
-    echo "$BASH_SKEL" >>"/root/.bashrc"
-else
-    cp "/etc/skel/.bashrc" "/root/.bashrc"
-fi
-
-DIR="/etc/skel.$PATH_PREFIX_ALPHA"
-[ ! -e "$DIR" ] || die "already exists: $DIR"
-log "Creating $DIR (for hosting accounts)"
-cp -av "/etc/skel" "$DIR"
-install -d -m 0755 "$DIR/.ssh"
-install -m 0644 /dev/null "$DIR/.ssh/authorized_keys"
-[ -z "$HOST_KEYS" ] || echo "$HOST_KEYS" >>"$DIR/.ssh/authorized_keys"
-
-for USERNAME in ${ADMIN_USERS//,/ }; do
-    FIRST_ADMIN="${FIRST_ADMIN:-$USERNAME}"
-    log "Creating superuser '$USERNAME'"
-    # HOME_DIR may already exist, e.g. if filesystems have been mounted in it
-    useradd --no-create-home --groups "adm,sudo" --shell "/bin/bash" "$USERNAME"
-    USER_GROUP="$(id -gn "$USERNAME")"
-    USER_HOME="$(getent passwd "$USERNAME" | cut -d: -f6)"
-    install -d -m 0750 -o "$USERNAME" -g "$USER_GROUP" "$USER_HOME"
-    sudo -Hu "$USERNAME" cp -nRTv "/etc/skel" "$USER_HOME"
-    if [ -z "$ADMIN_USER_KEYS" ]; then
-        [ ! -e "/root/.ssh" ] || {
-            log "Moving /root/.ssh to /home/$USERNAME/.ssh"
-            mv "/root/.ssh" "/home/$USERNAME/" &&
-                chown -R "$USERNAME": "/home/$USERNAME/.ssh"
-        }
-    else
-        install -d -m 0700 -o "$USERNAME" -g "$USER_GROUP" "$USER_HOME/.ssh"
-        install -m 0600 -o "$USERNAME" -g "$USER_GROUP" /dev/null "$USER_HOME/.ssh/authorized_keys"
-        grep -E "\s$USERNAME\$" <<<"$ADMIN_USER_KEYS" >>"$USER_HOME/.ssh/authorized_keys" || :
-    fi
-    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/nopasswd-$USERNAME"
-done
-
-log "Disabling email notifications related to failed sudo attempts"
-cat <<EOF >"/etc/sudoers.d/${PATH_PREFIX}defaults"
-# Created by $(basename "$0") at $(now)
-Defaults !mail_no_user
-Defaults !mail_badpass
-EOF
-
-log "Creating virtual host root directory at /srv/www"
-install -d -m 0751 -g "adm" "/srv/www"
-install -d -m 0751 -g "adm" "/var/cache/php/opcache"
-
-log "Disabling root login"
-passwd -l root
-
-# TODO: configure chroot jail
-log "Disabling clear text passwords when authenticating with SSH"
-sed -Ei.orig \
-    "s/^#?(PasswordAuthentication${FIRST_ADMIN+|PermitRootLogin})\b.*/\1 no/" \
-    /etc/ssh/sshd_config
-systemctl restart sshd.service
-FIRST_ADMIN="${FIRST_ADMIN:-root}"
 
 log "Configuring unattended APT upgrades and disabling optional dependencies"
 APT_CONF_FILE="/etc/apt/apt.conf.d/90${PATH_PREFIX}defaults"
@@ -387,6 +286,104 @@ exit "\$EXIT_STATUS"
 EOF
 chmod a+x "/usr/sbin/policy-rc.d"
 log_file "/usr/sbin/policy-rc.d"
+
+REMOVE_PACKAGES=(
+    mlocate # waste of CPU
+    rsyslog # waste of space (assuming journald storage is persistent)
+
+    # Canonical cruft
+    landscape-common
+    snapd
+    ubuntu-advantage-tools
+)
+for i in "${!REMOVE_PACKAGES[@]}"; do
+    is_installed "${REMOVE_PACKAGES[$i]}" ||
+        unset "REMOVE_PACKAGES[$i]"
+done
+if [ "${#REMOVE_PACKAGES[@]}" -gt "0" ]; then
+    log "Removing APT packages:" "${REMOVE_PACKAGES[*]}"
+    apt-get -yq remove "${REMOVE_PACKAGES[@]}"
+fi
+
+log "Disabling unnecessary motd scripts"
+for FILE in 10-help-text 50-motd-news 91-release-upgrade; do
+    [ ! -x "/etc/update-motd.d/$FILE" ] || chmod -c a-x "/etc/update-motd.d/$FILE"
+done
+
+log "Configuring kernel parameters"
+FILE="/etc/sysctl.d/90-${PATH_PREFIX}defaults.conf"
+cat <<EOF >"$FILE"
+# Created by $(basename "$0") at $(now)
+vm.swappiness = 1
+EOF
+log_file "$FILE"
+sysctl --system
+
+log "Hardening default home directory permissions"
+edit_file "/etc/login.defs" "^#?(UMASK\s+).*$" "\1027" $'UMASK\t\t027'
+
+log "Sourcing /opt/${PATH_PREFIX}platform/server/.bashrc in ~/.bashrc for all users"
+BASH_SKEL="
+# Added by $(basename "$0") at $(now)
+if [ -f '/opt/${PATH_PREFIX}platform/server/.bashrc' ]; then
+    . '/opt/${PATH_PREFIX}platform/server/.bashrc'
+fi"
+echo "$BASH_SKEL" >>"/etc/skel/.bashrc"
+if [ -f "/root/.bashrc" ]; then
+    echo "$BASH_SKEL" >>"/root/.bashrc"
+else
+    cp "/etc/skel/.bashrc" "/root/.bashrc"
+fi
+
+DIR="/etc/skel.$PATH_PREFIX_ALPHA"
+[ ! -e "$DIR" ] || die "already exists: $DIR"
+log "Creating $DIR (for hosting accounts)"
+cp -av "/etc/skel" "$DIR"
+install -v -d -m 0755 "$DIR/.ssh"
+install -v -m 0644 /dev/null "$DIR/.ssh/authorized_keys"
+[ -z "$HOST_KEYS" ] || echo "$HOST_KEYS" >>"$DIR/.ssh/authorized_keys"
+
+for USERNAME in ${ADMIN_USERS//,/ }; do
+    FIRST_ADMIN="${FIRST_ADMIN:-$USERNAME}"
+    log "Creating superuser '$USERNAME'"
+    # HOME_DIR may already exist, e.g. if filesystems have been mounted in it
+    useradd --no-create-home --groups "adm,sudo" --shell "/bin/bash" "$USERNAME"
+    USER_GROUP="$(id -gn "$USERNAME")"
+    USER_HOME="$(getent passwd "$USERNAME" | cut -d: -f6)"
+    install -v -d -m 0750 -o "$USERNAME" -g "$USER_GROUP" "$USER_HOME"
+    sudo -Hu "$USERNAME" cp -nRTv "/etc/skel" "$USER_HOME"
+    if [ -z "$ADMIN_USER_KEYS" ]; then
+        [ ! -e "/root/.ssh" ] || {
+            log "Moving /root/.ssh to /home/$USERNAME/.ssh"
+            mv "/root/.ssh" "/home/$USERNAME/" &&
+                chown -R "$USERNAME": "/home/$USERNAME/.ssh"
+        }
+    else
+        install -v -d -m 0700 -o "$USERNAME" -g "$USER_GROUP" "$USER_HOME/.ssh"
+        install -v -m 0600 -o "$USERNAME" -g "$USER_GROUP" /dev/null "$USER_HOME/.ssh/authorized_keys"
+        grep -E "\s$USERNAME\$" <<<"$ADMIN_USER_KEYS" >>"$USER_HOME/.ssh/authorized_keys" || :
+    fi
+    echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/nopasswd-$USERNAME"
+done
+
+log "Disabling root password"
+passwd -l root
+
+# TODO: configure chroot jail
+log "Disabling clear text passwords when authenticating with SSH"
+sed -Ei.orig \
+    "s/^#?(PasswordAuthentication${FIRST_ADMIN+|PermitRootLogin})\b.*/\1 no/" \
+    /etc/ssh/sshd_config
+systemctl restart sshd.service
+FIRST_ADMIN="${FIRST_ADMIN:-root}"
+
+log "Disabling email notifications related to failed sudo attempts"
+cat <<EOF >"/etc/sudoers.d/${PATH_PREFIX}defaults"
+# Created by $(basename "$0") at $(now)
+Defaults !mail_no_user
+Defaults !mail_badpass
+EOF
+log_file "/etc/sudoers.d/${PATH_PREFIX}defaults"
 
 log "Upgrading pre-installed packages"
 keep_trying apt-get -q update
@@ -478,12 +475,12 @@ EOF
 log_file "/etc/apt/listchanges.conf"
 
 log "Cloning 'https://github.com/lkrms/lk-platform.git' to '/opt/${PATH_PREFIX}platform'"
-install -d -m 2775 -o "$FIRST_ADMIN" -g "adm" "/opt/${PATH_PREFIX}platform"
+install -v -d -m 2775 -o "$FIRST_ADMIN" -g "adm" "/opt/${PATH_PREFIX}platform"
 keep_trying sudo -Hu "$FIRST_ADMIN" \
     git clone "https://github.com/lkrms/lk-platform.git" \
     "/opt/${PATH_PREFIX}platform"
 export LK_ROOT="/opt/${PATH_PREFIX}platform"
-install -d -m 2775 -o "$FIRST_ADMIN" -g "adm" "/opt/${PATH_PREFIX}platform/etc"
+install -v -d -m 2775 -o "$FIRST_ADMIN" -g "adm" "/opt/${PATH_PREFIX}platform/etc"
 set | grep -E '^(LK_ROOT|NODE_(HOSTNAME|FQDN|TIMEZONE|SERVICES)|PATH_PREFIX|ADMIN_EMAIL)=' |
     sudo -Hu "$FIRST_ADMIN" tee "/opt/${PATH_PREFIX}platform/etc/server.conf" >/dev/null
 
@@ -492,6 +489,9 @@ log "Installing pip, ps_mem, glances"
 keep_trying curl --output /root/get-pip.py "https://bootstrap.pypa.io/get-pip.py"
 python3 /root/get-pip.py
 pip install ps_mem glances
+
+log "Creating virtual host base directory at /srv/www"
+install -v -d -m 0751 -g "adm" "/srv/www"
 
 case ",$NODE_SERVICES," in
 ,,) ;;
@@ -554,6 +554,9 @@ case ",$NODE_SERVICES," in
         php-yaml
         php-zip
     )
+
+    log "Creating PHP OPcache base directory at /var/cache/php/opcache"
+    install -v -d -m 0751 -g "adm" "/var/cache/php/opcache"
     ;;&
 
 *,mysql,*)
@@ -599,17 +602,18 @@ case ",$NODE_SERVICES," in
             COPY_SKEL=1
         }
         HOST_ACCOUNT_GROUP="$(id -gn "$HOST_ACCOUNT")"
-        install -d -m 0750 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT"
-        install -d -m 2775 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/public_html"
-        install -d -m 2550 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/log"
-        if [ "$COPY_SKEL" -eq "1" ]; then
-            sudo -Hu "$HOST_ACCOUNT" cp -nRTv "/etc/skel.$PATH_PREFIX_ALPHA" "/srv/www/$HOST_ACCOUNT"
-            chmod -Rc -077 "/srv/www/$HOST_ACCOUNT/.ssh"
-        fi
-        if is_installed apache2; then
+        install -v -d -m 0750 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT"
+        install -v -d -m 2775 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/public_html"
+        install -v -d -m 2550 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/log"
+        install -v -d -m 0750 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/ssl"
+        [ "$COPY_SKEL" -eq "0" ] || {
+            sudo -Hu "$HOST_ACCOUNT" cp -nRTv "/etc/skel.$PATH_PREFIX_ALPHA" "/srv/www/$HOST_ACCOUNT" &&
+                chmod -Rc -077 "/srv/www/$HOST_ACCOUNT/.ssh"
+        }
+        ! is_installed apache2 || {
             log "Adding user 'www-data' to group '$HOST_ACCOUNT_GROUP'"
             usermod --append --groups "$HOST_ACCOUNT_GROUP" "www-data"
-        fi
+        }
     fi
     ;;
 
@@ -667,11 +671,11 @@ if is_installed apache2; then
     APACHE_DISABLE_MODS=($(comm -13 <(printf '%s\n' "${APACHE_MODS[@]}" | sort | uniq) <(echo "$APACHE_MODS_ENABLED")))
     APACHE_ENABLE_MODS=($(comm -23 <(printf '%s\n' "${APACHE_MODS[@]}" | sort | uniq) <(echo "$APACHE_MODS_ENABLED")))
     [ "${#APACHE_DISABLE_MODS[@]}" -eq "0" ] || {
-        log "Disabling with a2dismod:" "${APACHE_DISABLE_MODS[*]}"
+        log "Disabling Apache HTTPD modules:" "${APACHE_DISABLE_MODS[*]}"
         a2dismod --force "${APACHE_DISABLE_MODS[@]}"
     }
     [ "${#APACHE_ENABLE_MODS[@]}" -eq "0" ] || {
-        log "Enabling with a2enmod:" "${APACHE_ENABLE_MODS[*]}"
+        log "Enabling Apache HTTPD modules:" "${APACHE_ENABLE_MODS[*]}"
         a2enmod --force "${APACHE_ENABLE_MODS[@]}"
     }
 
@@ -753,7 +757,7 @@ EOF
     PHP_FPM_POOLS=("/etc/php/$PHPVER/fpm/pool.d"/*)
     if [ "${#PHP_FPM_POOLS[@]}" -gt "0" ]; then
         log "Disabling pre-installed PHP-FPM pools"
-        install -d -m 0755 "/etc/php/$PHPVER/fpm/pool.d.orig"
+        install -v -d -m 0755 "/etc/php/$PHPVER/fpm/pool.d.orig"
         mv "${PHP_FPM_POOLS[@]}" "/etc/php/$PHPVER/fpm/pool.d.orig/"
     fi
 
@@ -769,10 +773,34 @@ EOF
     ServerName $HOST_DOMAIN
     ServerAlias www.$HOST_DOMAIN
     Use PhpFpmVirtualHostSsl${PHPVER//./} $HOST_ACCOUNT
+    SSLEngine on
+    SSLCertificateFile /srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.cert
+    SSLCertificateKeyFile /srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.key
 </VirtualHost>
 EOF
-        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/error.log"
-        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/access.log"
+        install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/error.log"
+        install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/access.log"
+        install -v -m 0640 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.cert"
+        install -v -m 0640 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.key"
+
+        log "Creating a self-signed SSL certificate for '$HOST_DOMAIN'"
+        # `openssl req -newkey` requires a passphrase
+        # `openssl rsa -out` removes it
+        SSL_PASSPHRASE="$(openssl rand -base64 32)"
+        openssl req -x509 -newkey rsa:2048 -days 365 \
+            -subj "/C=AU/CN=$HOST_DOMAIN" \
+            -addext "subjectAltName = DNS:www.$HOST_DOMAIN" \
+            -out "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.cert" \
+            -keyout "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN-encrypted.key" \
+            -passout stdin \
+            <<<"$SSL_PASSPHRASE"
+        openssl rsa \
+            -in "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN-encrypted.key" \
+            -passin stdin \
+            -out "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.key" \
+            <<<"$SSL_PASSPHRASE"
+        rm -f "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN-encrypted.key"
+
         ln -s "../sites-available/$HOST_ACCOUNT.conf" "/etc/apache2/sites-enabled/$HOST_ACCOUNT.conf"
         log_file "/etc/apache2/sites-available/$HOST_ACCOUNT.conf"
 
@@ -804,9 +832,9 @@ php_admin_flag[log_errors] = On
 php_flag[display_errors] = Off
 php_flag[display_startup_errors] = Off
 EOF
-        install -d -m 0700 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/var/cache/php/opcache/$HOST_ACCOUNT"
-        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.access.log"
-        install -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.error.log"
+        install -v -d -m 0700 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/var/cache/php/opcache/$HOST_ACCOUNT"
+        install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.access.log"
+        install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.error.log"
         log_file "/etc/php/$PHPVER/fpm/pool.d/$HOST_ACCOUNT.conf"
     fi
 
