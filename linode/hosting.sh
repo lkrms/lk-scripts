@@ -155,14 +155,9 @@ flock -n 9 || die "unable to acquire a lock on $LOCK_FILE"
 
 exec > >(tee -a "$OUT_FILE") 2>&1
 
-PATH_PREFIX_ALPHA="$(sed 's/[^a-zA-Z0-9]//g' <<<"$PATH_PREFIX")"
-
-export DEBIAN_FRONTEND=noninteractive \
-    DEBCONF_NONINTERACTIVE_SEEN=true \
-    PIP_NO_INPUT=1
-
 # TODO: better validation here
 FIELD_ERRORS=()
+PATH_PREFIX_ALPHA="$(sed 's/[^a-zA-Z0-9]//g' <<<"$PATH_PREFIX")"
 [ -n "$PATH_PREFIX_ALPHA" ] || FIELD_ERRORS+=("PATH_PREFIX must contain at least one letter or number")
 [ -n "${NODE_HOSTNAME:-}" ] || FIELD_ERRORS+=("NODE_HOSTNAME not set")
 [ -n "${NODE_FQDN:-}" ] || FIELD_ERRORS+=("NODE_FQDN not set")
@@ -214,6 +209,10 @@ case "$DISTRIB_RELEASE" in
     EXCLUDE_PACKAGES+=(php-gettext)
     ;;
 esac
+
+export DEBIAN_FRONTEND=noninteractive \
+    DEBCONF_NONINTERACTIVE_SEEN=true \
+    PIP_NO_INPUT=1
 
 IPV4_ADDRESS="$(
     ip a |
@@ -379,12 +378,11 @@ shift
 done
 EXIT_STATUS=101
 [ "\${2:-}" = start ]||[ "\$INSTALL_PENDING" = Y ]||EXIT_STATUS=0
-printf '%s %s\n' \
-"\$(now)" "==== \$(basename "\$0"): init script policy helper invoked" \
-"\$(now)" "Arguments:
-\$([ "\${#ARGS[@]}" -gt 0 ]&&printf '  - %s\n' "\${ARGS[@]}"||echo "  <none>")" \
-"\$(now)" "Install pending: \$INSTALL_PENDING" \
-"\$(now)" "Exit status: \$EXIT_STATUS" >>"/var/log/${PATH_PREFIX}install.log"
+printf '%s %s\n%s\n' \\
+"\$(now)" "==== \$(basename "\$0"): init script policy helper invoked" \\
+"  Arguments:\$([ "\${#ARGS[@]}" -gt 0 ]&&printf '\n    - %s' "\${ARGS[@]}"||echo " <none>")
+  Install pending: \$INSTALL_PENDING
+  Exit status: \$EXIT_STATUS" >>"/var/log/${PATH_PREFIX}install.log"
 exit "\$EXIT_STATUS"
 EOF
 chmod a+x "/usr/sbin/policy-rc.d"
