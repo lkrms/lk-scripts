@@ -178,6 +178,11 @@ SMTP_RELAY="${SMTP_RELAY:-}"
 AUTO_REBOOT="${AUTO_REBOOT:-N}"
 AUTO_REBOOT_TIME="${AUTO_REBOOT_TIME:-02:00}"
 
+# don't export privileged information to other commands
+export -n \
+    HOST_DOMAIN HOST_ACCOUNT \
+    ADMIN_USERS MYSQL_USERNAME MYSQL_PASSWORD SMTP_RELAY
+
 [ -s "/root/.ssh/authorized_keys" ] ||
     die "at least one SSH key must be added to Linodes deployed with this StackScript"
 
@@ -268,20 +273,21 @@ cat <<EOF >"/usr/sbin/policy-rc.d"
 #!/bin/bash
 # Created by $(basename "$0") at $(now)
 $(declare -f now)
-INSTALL_PENDING=N
+LOG=(
+"==== \$(basename "\$0"): init script policy helper invoked"
+"Arguments:
+\$([ "\$#" -eq 0 ]||printf '  - %s\n' "\$@")")
+DEPLOY_PENDING=N
+EXIT_STATUS=0
 exec 9>"/tmp/${PATH_PREFIX}install.lock"
-flock -n 9||INSTALL_PENDING=Y
-ARGS=("\$@")
-while [ "\$#" -gt "0" ]&&[[ \$1 =~ ^-- ]];do
-shift
-done
-EXIT_STATUS=101
-[ "\${2:-}" = start ]||[ "\$INSTALL_PENDING" = Y ]||EXIT_STATUS=0
-printf '%s %s\n%s\n' \\
-"\$(now)" "==== \$(basename "\$0"): init script policy helper invoked" \\
-"  Arguments:\$([ "\${#ARGS[@]}" -gt 0 ]&&printf '\n    - %s' "\${ARGS[@]}"||echo " <none>")
-  Install pending: \$INSTALL_PENDING
-  Exit status: \$EXIT_STATUS" >>"/var/log/${PATH_PREFIX}install.log"
+if ! flock -n 9;then
+DEPLOY_PENDING=Y
+[ "\${DPKG_MAINTSCRIPT_NAME:-}" != postinst ]||EXIT_STATUS=101
+fi
+LOG+=("Deploy pending: \$DEPLOY_PENDING")
+LOG+=("Exit status: \$EXIT_STATUS")
+printf '%s %s\n%s\n' "\$(now)" "\${LOG[0]}" "\$(LOG=("\${LOG[@]:1}")
+printf '  %s\n' "\${LOG[@]//\$'\n'/\$'\n'  }")" >>"/var/log/${PATH_PREFIX}install.log"
 exit "\$EXIT_STATUS"
 EOF
 chmod a+x "/usr/sbin/policy-rc.d"
@@ -468,6 +474,12 @@ save_seen=/var/lib/apt/listchanges.db
 EOF
 log_file "/etc/apt/listchanges.conf"
 
+FILE="/boot/config-$(uname -r)"
+if [ -f "$FILE" ] && ! grep -Fxq "CONFIG_BSD_PROCESS_ACCT=y" "$FILE"; then
+    log "Disabling atopacct.service (process accounting not available)"
+    systemctl disable atopacct.service
+fi
+
 log "Cloning 'https://github.com/lkrms/lk-platform.git' to '/opt/${PATH_PREFIX}platform'"
 install -v -d -m 2775 -o "$FIRST_ADMIN" -g "adm" "/opt/${PATH_PREFIX}platform"
 keep_trying sudo -Hu "$FIRST_ADMIN" \
@@ -531,17 +543,14 @@ case ",$NODE_SERVICES," in
         php-intl
         php-json
         php-ldap
-        # php-libsodium
         php-mbstring
         php-memcache
         php-memcached
         php-mysql
-        # php-net-socket
         php-opcache
         php-pear
         php-pspell
         php-readline
-        # php-snmp
         php-soap
         php-sqlite3
         php-xml
@@ -685,14 +694,6 @@ if is_installed apache2; then
 <IfModule mod_status.c>
     ExtendedStatus On
 </IfModule>
-<IfModule event.c>
-    # If MaxRequestWorkers exceeds pm.max_children, PHP-FPM will eventually
-    # stop responding because its processes are all "busy" handling persistent
-    # idle connections.
-    # TODO: introduce mod_qos
-    MaxRequestWorkers 8
-    ThreadsPerChild 8
-</IfModule>
 <VirtualHost *:80>
     ServerAdmin $ADMIN_EMAIL
     DocumentRoot /var/www/html
@@ -712,7 +713,8 @@ if is_installed apache2; then
     </IfModule>
     <IfModule mod_qos.c>
         <Location /qos>
-           SetHandler qos-viewer
+            SetHandler qos-viewer
+            Require local
         </Location>
     </IfModule>
 </VirtualHost>
@@ -727,20 +729,21 @@ if is_installed apache2; then
         </IfModule>
         <IfModule mod_proxy_fcgi.c>
             <FilesMatch \.ph(p[3457]?|t|tml)$>
-                SetHandler proxy:unix:/run/php/php$PHPVER-fpm-%sitename%.sock|fcgi://%sitename%/
+                SetHandler proxy:fcgi://%sitename%
             </FilesMatch>
         </IfModule>
         <IfModule mod_alias.c>
             RedirectMatch 404 .*/\.git
         </IfModule>
     </Macro>
-    <Macro PhpFpmVirtualHost${PHPVER//./} %sitename%>
+    <Macro PhpFpmVirtualHost${PHPVER//./} %sitename% %request_terminate_timeout% %pm.max_children%>
         Use PhpFpmVirtualHostCommon${PHPVER//./} %sitename%
         <IfModule mod_proxy_fcgi.c>
-            <Proxy fcgi://%sitename%/ enablereuse=on timeout=60>
+            <Proxy unix:/run/php/php$PHPVER-fpm-%sitename%.sock|fcgi://%sitename%>
+                ProxySet enablereuse=On timeout=%request_terminate_timeout% max=%pm.max_children%
             </Proxy>
             <LocationMatch ^/(status|ping)$>
-                SetHandler proxy:unix:/run/php/php$PHPVER-fpm-%sitename%.sock|fcgi://%sitename%/
+                SetHandler proxy:fcgi://%sitename%
                 Require local
             </LocationMatch>
         </IfModule>
@@ -767,7 +770,9 @@ EOF
 <VirtualHost *:80>
     ServerName $HOST_DOMAIN
     ServerAlias www.$HOST_DOMAIN
-    Use PhpFpmVirtualHost${PHPVER//./} $HOST_ACCOUNT
+    # Values should be the same as \`request_terminate_timeout\` and
+    # \`pm.max_children\` in /etc/php/$PHPVER/fpm/pool.d/$HOST_ACCOUNT.conf
+    Use PhpFpmVirtualHost${PHPVER//./} $HOST_ACCOUNT 60 8
 </VirtualHost>
 <VirtualHost *:443>
     ServerName $HOST_DOMAIN
@@ -806,6 +811,8 @@ EOF
 
         log "Adding pool to PHP-FPM: $HOST_ACCOUNT"
         cat <<EOF >"/etc/php/$PHPVER/fpm/pool.d/$HOST_ACCOUNT.conf"
+; Values in /etc/apache2/sites-available/$HOST_ACCOUNT.conf should be updated
+; if \`request_terminate_timeout\` or \`pm.max_children\` are changed here
 [$HOST_ACCOUNT]
 user = \$pool
 listen = /run/php/php$PHPVER-fpm-\$pool.sock
@@ -817,6 +824,8 @@ pm = static
 pm.max_children = 8
 ; respawn occasionally in case of memory leaks
 pm.max_requests = 10000
+; because \`max_execution_time\` and \`ProxySet timeout\` aren't always enough
+request_terminate_timeout = 60
 ; check \`ulimit -Hn\` and raise in /etc/security/limits.d/ if needed
 rlimit_files = 1048576
 pm.status_path = /status
