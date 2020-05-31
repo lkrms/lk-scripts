@@ -734,7 +734,7 @@ if is_installed apache2; then
     ErrorLog /srv/www/%sitename%/log/error.log
     CustomLog /srv/www/%sitename%/log/access.log combined
     DirectoryIndex index.php index.html index.htm
-    ProxyPassMatch ^/(.*\.php(/.*)?)\$ fcgi://%sitename%/public_html/\$1
+    ProxyPassMatch ^/(.*\.php(/.*)?)\$ fcgi://%sitename%/srv/www/$HOST_ACCOUNT/public_html/\$1
     <LocationMatch ^/(php-fpm-(status|ping))\$>
         ProxyPassMatch fcgi://%sitename%/\$1
         Use RequireTrusted
@@ -830,7 +830,6 @@ pm.max_requests = 10000
 request_terminate_timeout = 300
 ; check \`ulimit -Hn\` and raise in /etc/security/limits.d/ if needed
 rlimit_files = 1048576
-chroot = "/srv/www/\$pool"
 pm.status_path = /php-fpm-status
 ping.path = /php-fpm-ping
 access.log = "/srv/www/\$pool/log/php$PHPVER-fpm.access.log"
@@ -838,8 +837,8 @@ access.format = "%{REMOTE_ADDR}e - %u %t \"%m %r%Q%q\" %s %f %{mili}d %{kilo}M %
 catch_workers_output = yes
 ; tune based on system resources
 php_admin_value[opcache.memory_consumption] = 256
-php_admin_value[opcache.file_cache] = "/.cache/opcache"
-php_admin_value[error_log] = "/log/php$PHPVER-fpm.error.log"
+php_admin_value[opcache.file_cache] = "/srv/www/$HOST_ACCOUNT/.cache/opcache"
+php_admin_value[error_log] = "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.error.log"
 php_admin_flag[log_errors] = On
 php_flag[display_errors] = Off
 php_flag[display_startup_errors] = Off
