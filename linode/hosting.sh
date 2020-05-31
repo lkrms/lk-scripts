@@ -9,6 +9,7 @@
 # <UDF name="HOST_ACCOUNT" label="Initial hosting account name (default: automatic)" example="clientname" default="" />
 # <UDF name="ADMIN_USERS" label="Admin users to create (comma-delimited)" default="linac" />
 # <UDF name="ADMIN_EMAIL" label="Forwarding address for system email" default="tech@linacreative.com" />
+# <UDF name="TRUSTED_IP_ADDRESSES" label="Trusted IP addresses (comma-delimited)" default="10.0.0.0/8,172.16.0.0/12,192.168.0.0/16" />
 # <UDF name="MYSQL_USERNAME" label="MySQL admin username" default="dbadmin" />
 # <UDF name="MYSQL_PASSWORD" label="MySQL password (admin user not created if blank)" default="" />
 # <UDF name="SMTP_RELAY" label="SMTP relay (system-wide)" example="[mail.clientname.com.au]:587" default="" />
@@ -172,6 +173,7 @@ HOST_DOMAIN="${HOST_DOMAIN:-}"
 HOST_DOMAIN="${HOST_DOMAIN#www.}"
 HOST_ACCOUNT="${HOST_ACCOUNT:-${HOST_DOMAIN%%.*}}"
 ADMIN_USERS="${ADMIN_USERS:-}"
+TRUSTED_IP_ADDRESSES="${TRUSTED_IP_ADDRESSES:-}"
 MYSQL_USERNAME="${MYSQL_USERNAME:-}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-}"
 SMTP_RELAY="${SMTP_RELAY:-}"
@@ -320,7 +322,13 @@ log "Configuring kernel parameters"
 FILE="/etc/sysctl.d/90-${PATH_PREFIX}defaults.conf"
 cat <<EOF >"$FILE"
 # Created by $(basename "$0") at $(now)
+
+# Avoid paging and swapping if at all possible
 vm.swappiness = 1
+
+# Apache and PHP-FPM both default to listen.backlog = 511, but the
+# default value of SOMAXCONN is only 128
+net.core.somaxconn = 1024
 EOF
 log_file "$FILE"
 sysctl --system
@@ -558,9 +566,6 @@ case ",$NODE_SERVICES," in
         php-yaml
         php-zip
     )
-
-    log "Creating PHP OPcache base directory at /var/cache/php/opcache"
-    install -v -d -m 0751 -g "adm" "/var/cache/php/opcache"
     ;;&
 
 *,mysql,*)
@@ -610,6 +615,7 @@ case ",$NODE_SERVICES," in
         install -v -d -m 2775 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/public_html"
         install -v -d -m 2550 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/log"
         install -v -d -m 0750 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/ssl"
+        install -v -d -m 0750 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/.cache"
         [ "$COPY_SKEL" -eq "0" ] || {
             sudo -Hu "$HOST_ACCOUNT" cp -nRTv "/etc/skel.$PATH_PREFIX_ALPHA" "/srv/www/$HOST_ACCOUNT" &&
                 chmod -Rc -077 "/srv/www/$HOST_ACCOUNT/.ssh"
@@ -694,6 +700,10 @@ if is_installed apache2; then
 <IfModule mod_status.c>
     ExtendedStatus On
 </IfModule>
+<Macro RequireTrusted>
+    Require local${TRUSTED_IP_ADDRESSES:+
+    Require ip ${TRUSTED_IP_ADDRESSES//,/ }}
+</Macro>
 <VirtualHost *:80>
     ServerAdmin $ADMIN_EMAIL
     DocumentRoot /var/www/html
@@ -702,56 +712,49 @@ if is_installed apache2; then
     <IfModule mod_status.c>
         <Location /httpd-status>
             SetHandler server-status
-            Require local
+            Use RequireTrusted
         </Location>
     </IfModule>
     <IfModule mod_info.c>
         <Location /httpd-info>
             SetHandler server-info
-            Require local
+            Use RequireTrusted
         </Location>
     </IfModule>
     <IfModule mod_qos.c>
-        <Location /qos>
+        <Location /httpd-qos>
             SetHandler qos-viewer
-            Require local
+            Use RequireTrusted
         </Location>
     </IfModule>
 </VirtualHost>
-<IfModule mod_macro.c>
-    <Macro PhpFpmVirtualHostCommon${PHPVER//./} %sitename%>
-        ServerAdmin $ADMIN_EMAIL
-        DocumentRoot /srv/www/%sitename%/public_html
-        ErrorLog /srv/www/%sitename%/log/error.log
-        CustomLog /srv/www/%sitename%/log/access.log combined
-        <IfModule mod_dir.c>
-            DirectoryIndex index.php index.html index.htm
-        </IfModule>
-        <IfModule mod_proxy_fcgi.c>
-            <FilesMatch \.ph(p[3457]?|t|tml)$>
-                SetHandler proxy:fcgi://%sitename%
-            </FilesMatch>
-        </IfModule>
-        <IfModule mod_alias.c>
-            RedirectMatch 404 .*/\.git
-        </IfModule>
-    </Macro>
-    <Macro PhpFpmVirtualHost${PHPVER//./} %sitename% %request_terminate_timeout% %pm.max_children%>
-        Use PhpFpmVirtualHostCommon${PHPVER//./} %sitename%
-        <IfModule mod_proxy_fcgi.c>
-            <Proxy unix:/run/php/php$PHPVER-fpm-%sitename%.sock|fcgi://%sitename%>
-                ProxySet enablereuse=On timeout=%request_terminate_timeout% max=%pm.max_children%
-            </Proxy>
-            <LocationMatch ^/(status|ping)$>
-                SetHandler proxy:fcgi://%sitename%
-                Require local
-            </LocationMatch>
-        </IfModule>
-    </Macro>
-    <Macro PhpFpmVirtualHostSsl${PHPVER//./} %sitename%>
-        Use PhpFpmVirtualHostCommon${PHPVER//./} %sitename%
-    </Macro>
-</IfModule>
+<Macro PhpFpmVirtualHost${PHPVER//./} %sitename%>
+    ServerAdmin $ADMIN_EMAIL
+    DocumentRoot /srv/www/%sitename%/public_html
+    ErrorLog /srv/www/%sitename%/log/error.log
+    CustomLog /srv/www/%sitename%/log/access.log combined
+    DirectoryIndex index.php index.html index.htm
+    ProxyPassMatch ^/(.*\.php(/.*)?)\$ fcgi://%sitename%/public_html/\$1
+    <LocationMatch ^/(php-fpm-(status|ping))\$>
+        ProxyPassMatch fcgi://%sitename%/\$1
+        Use RequireTrusted
+    </LocationMatch>
+    <IfModule mod_rewrite.c>
+        RewriteEngine On
+        RewriteRule ^/php-fpm-(status|ping)\$ - [END]
+    </IfModule>
+    <IfModule mod_alias.c>
+        RedirectMatch 404 .*/\.git
+    </IfModule>
+</Macro>
+<Macro PhpFpmVirtualHostSsl${PHPVER//./} %sitename%>
+    Use PhpFpmVirtualHost${PHPVER//./} %sitename%
+</Macro>
+<Macro PhpFpmProxy${PHPVER//./} %sitename% %timeout%>
+    <Proxy unix:/run/php/php$PHPVER-fpm-%sitename%.sock|fcgi://%sitename%>
+        ProxySet enablereuse=Off timeout=%timeout%
+    </Proxy>
+</Macro>
 EOF
     rm -f "/etc/apache2/sites-enabled"/*
     ln -s "../sites-available/${PATH_PREFIX}default.conf" "/etc/apache2/sites-enabled/000-${PATH_PREFIX}default.conf"
@@ -770,9 +773,7 @@ EOF
 <VirtualHost *:80>
     ServerName $HOST_DOMAIN
     ServerAlias www.$HOST_DOMAIN
-    # Values should be the same as \`request_terminate_timeout\` and
-    # \`pm.max_children\` in /etc/php/$PHPVER/fpm/pool.d/$HOST_ACCOUNT.conf
-    Use PhpFpmVirtualHost${PHPVER//./} $HOST_ACCOUNT 60 8
+    Use PhpFpmVirtualHost${PHPVER//./} $HOST_ACCOUNT
 </VirtualHost>
 <VirtualHost *:443>
     ServerName $HOST_DOMAIN
@@ -782,6 +783,10 @@ EOF
     SSLCertificateFile /srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.cert
     SSLCertificateKeyFile /srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.key
 </VirtualHost>
+# PhpFpmProxy${PHPVER//./} %sitename% %timeout%
+#   %timeout% should correlate with \`request_terminate_timeout\`
+#   in /etc/php/$PHPVER/fpm/pool.d/$HOST_ACCOUNT.conf
+Use PhpFpmProxy${PHPVER//./} $HOST_ACCOUNT 300
 EOF
         install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/error.log"
         install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/access.log"
@@ -824,24 +829,25 @@ pm = static
 pm.max_children = 8
 ; respawn occasionally in case of memory leaks
 pm.max_requests = 10000
-; because \`max_execution_time\` and \`ProxySet timeout\` aren't always enough
-request_terminate_timeout = 60
+; because \`max_execution_time\` only counts CPU time
+request_terminate_timeout = 300
 ; check \`ulimit -Hn\` and raise in /etc/security/limits.d/ if needed
 rlimit_files = 1048576
-pm.status_path = /status
-ping.path = /ping
+chroot = "/srv/www/\$pool"
+pm.status_path = /php-fpm-status
+ping.path = /php-fpm-ping
 access.log = "/srv/www/\$pool/log/php$PHPVER-fpm.access.log"
 access.format = "%{REMOTE_ADDR}e - %u %t \"%m %r%Q%q\" %s %f %{mili}d %{kilo}M %C%%"
 catch_workers_output = yes
 ; tune based on system resources
 php_admin_value[opcache.memory_consumption] = 256
-php_admin_value[opcache.file_cache] = "/var/cache/php/opcache/\$pool"
-php_admin_value[error_log] = "/srv/www/\$pool/log/php$PHPVER-fpm.error.log"
+php_admin_value[opcache.file_cache] = "/.cache/opcache"
+php_admin_value[error_log] = "/log/php$PHPVER-fpm.error.log"
 php_admin_flag[log_errors] = On
 php_flag[display_errors] = Off
 php_flag[display_startup_errors] = Off
 EOF
-        install -v -d -m 0700 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/var/cache/php/opcache/$HOST_ACCOUNT"
+        install -v -d -m 0700 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/.cache/opcache"
         install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.access.log"
         install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.error.log"
         log_file "/etc/php/$PHPVER/fpm/pool.d/$HOST_ACCOUNT.conf"
