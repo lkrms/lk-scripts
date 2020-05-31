@@ -794,22 +794,19 @@ EOF
         install -v -m 0640 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.key"
 
         log "Creating a self-signed SSL certificate for '$HOST_DOMAIN'"
-        # `openssl req -newkey` requires a passphrase
-        # `openssl rsa -out` removes it
-        SSL_PASSPHRASE="$(openssl rand -base64 32)"
-        openssl req -x509 -newkey rsa:2048 -days 365 \
+        openssl genrsa \
+            -out "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.key" \
+            2048
+        openssl req -new \
+            -key "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.key" \
             -subj "/C=AU/CN=$HOST_DOMAIN" \
             -addext "subjectAltName = DNS:www.$HOST_DOMAIN" \
-            -out "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.cert" \
-            -keyout "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN-encrypted.key" \
-            -passout stdin \
-            <<<"$SSL_PASSPHRASE"
-        openssl rsa \
-            -in "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN-encrypted.key" \
-            -passin stdin \
-            -out "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.key" \
-            <<<"$SSL_PASSPHRASE"
-        rm -f "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN-encrypted.key"
+            -out "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.csr"
+        openssl x509 -req -days 365 \
+            -in "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.csr" \
+            -signkey "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.key" \
+            -out "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.cert"
+        rm -f "/srv/www/$HOST_ACCOUNT/ssl/$HOST_DOMAIN.csr"
 
         ln -s "../sites-available/$HOST_ACCOUNT.conf" "/etc/apache2/sites-enabled/$HOST_ACCOUNT.conf"
         log_file "/etc/apache2/sites-available/$HOST_ACCOUNT.conf"
