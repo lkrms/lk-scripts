@@ -8,7 +8,7 @@
 # <UDF name="HOST_DOMAIN" label="Initial hosting domain" example="clientname.com.au" default="" />
 # <UDF name="HOST_ACCOUNT" label="Initial hosting account name (default: automatic)" example="clientname" default="" />
 # <UDF name="ADMIN_USERS" label="Admin users to create (comma-delimited)" default="linac" />
-# <UDF name="ADMIN_EMAIL" label="Forwarding address for system email" default="tech@linacreative.com" />
+# <UDF name="ADMIN_EMAIL" label="Forwarding address for system email" example="tech@linacreative.com" />
 # <UDF name="TRUSTED_IP_ADDRESSES" label="Trusted IP addresses (comma-delimited)" default="10.0.0.0/8,172.16.0.0/12,192.168.0.0/16" />
 # <UDF name="MYSQL_USERNAME" label="MySQL admin username" default="dbadmin" />
 # <UDF name="MYSQL_PASSWORD" label="MySQL password (admin user not created if blank)" default="" />
@@ -163,6 +163,7 @@ PATH_PREFIX_ALPHA="$(sed 's/[^a-zA-Z0-9]//g' <<<"$PATH_PREFIX")"
 [ -n "${NODE_HOSTNAME:-}" ] || FIELD_ERRORS+=("NODE_HOSTNAME not set")
 [ -n "${NODE_FQDN:-}" ] || FIELD_ERRORS+=("NODE_FQDN not set")
 [ -n "${ADMIN_EMAIL:-}" ] || FIELD_ERRORS+=("ADMIN_EMAIL not set")
+[ -n "${AUTO_REBOOT:-}" ] || FIELD_ERRORS+=("AUTO_REBOOT not set")
 [ "${#FIELD_ERRORS[@]}" -eq "0" ] ||
     die "invalid field values" \
         "${FIELD_ERRORS[@]}"
@@ -177,7 +178,6 @@ TRUSTED_IP_ADDRESSES="${TRUSTED_IP_ADDRESSES:-}"
 MYSQL_USERNAME="${MYSQL_USERNAME:-}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-}"
 SMTP_RELAY="${SMTP_RELAY:-}"
-AUTO_REBOOT="${AUTO_REBOOT:-N}"
 AUTO_REBOOT_TIME="${AUTO_REBOOT_TIME:-02:00}"
 
 # don't export privileged information to other commands

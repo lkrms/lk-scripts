@@ -24,13 +24,13 @@ Usage:
 Boot a new QEMU/KVM instance from the current release of a cloud image.
 
 Options:
-  -i, --image <image_name>                                            [$IMAGE]
+  -i, --image <image_name>                              [$IMAGE]
   -p, --packages <package,...>
   -f, --fs-maps <host_path,guest_path|...>
   -P, --preset <preset_name>
-  -c, --cpus <count>                                                  [$VM_CPUS]
-  -m, --memory <size>               size is in MiB                    [$VM_MEMORY]
-  -s, --disk-size <size>            size is in GiB                    [$VM_DISK_SIZE]
+  -c, --cpus <count>                                    [$VM_CPUS]
+  -m, --memory <size>               size is in MiB      [$VM_MEMORY]
+  -s, --disk-size <size>            size is in GiB      [$VM_DISK_SIZE]
   -n, --network <network_name>      may be given as: 'bridge=ifname'
   -I, --ip-address <ipv4_address>   format must be: 'a.b.c.d/prefix'
   -M, --mac <52:54:00:xx:xx:xx>     uniqueness is not checked
@@ -261,49 +261,53 @@ case "$IMAGE" in
 esac
 
 if [ -n "$STACKSCRIPT" ]; then
-    STACKSCRIPT="$(realpath "$STACKSCRIPT")"
+    lk_console_item "Processing StackScript" "$STACKSCRIPT"
     STACKSCRIPT_TAGS="$(grep -Eo '<(udf|UDF)(\s+[a-z]+="[^"]*")*\s*/>' "$STACKSCRIPT")"
     STACKSCRIPT_TAG_COUNT="$(wc -l <<<"$STACKSCRIPT_TAGS")"
     STACKSCRIPT_FIELDS=()
     while IFS=$'\n' read -rd $'\0' -u 4 NAME LABEL DEFAULT_EXISTS DEFAULT SELECT_TYPE SELECT_OPTIONS; do
         [ "${#STACKSCRIPT_FIELDS[@]}" -gt "0" ] ||
-            lk_console_message "'$(basename "$STACKSCRIPT")' has $STACKSCRIPT_TAG_COUNT StackScript $(lk_maybe_plural "$STACKSCRIPT_TAG_COUNT" "variable" "variables")"
+            lk_console_detail "$STACKSCRIPT_TAG_COUNT UDF $(lk_maybe_plural "$STACKSCRIPT_TAG_COUNT" "tag" "tags") found"
         NAME="${NAME%.}"
         LABEL="${LABEL%.}"
         DEFAULT_EXISTS="${DEFAULT_EXISTS%.}"
         DEFAULT="${DEFAULT%.}"
         SELECT_TYPE="${SELECT_TYPE%.}"
         SELECT_OPTIONS="${SELECT_OPTIONS%.}"
+        echo
         if [ -n "$DEFAULT_EXISTS" ]; then
-            PROMPT="$BOLD$GREEN<optional>$RESET"
+            lk_console_item "Optional:" "$NAME" "$BOLD$GREEN"
         else
             unset DEFAULT
-            PROMPT="$BOLD$RED<required>$RESET"
+            lk_console_item "Value required for" "$NAME" "$BOLD$RED"
         fi
-        PROMPT="\
-${DIM:-$GREY}($(("${#STACKSCRIPT_FIELDS[@]}" + 1))/$STACKSCRIPT_TAG_COUNT)$RESET \
-$YELLOW$BOLD$LABEL$RESET \
-$PROMPT${SELECT_TYPE:+ $BOLD$MAGENTA<$SELECT_TYPE=\"$SELECT_OPTIONS\">$RESET}\
-${DEFAULT+ $CYAN<default=\"$DEFAULT\">$RESET}
-"
+        lk_console_detail "field $(("${#STACKSCRIPT_FIELDS[@]}" + 1)) of $STACKSCRIPT_TAG_COUNT"
+        [ -z "$SELECT_TYPE" ] || lk_console_detail "$SELECT_TYPE:" "$SELECT_OPTIONS"
+        [ -z "${DEFAULT:-}" ] || lk_console_detail "default:" "$DEFAULT"
         while :; do
             lk_is_false "${SKIP_PROMPTS:-0}" || {
-                eval "$NAME=\"\${$NAME-\${DEFAULT:-}}\""
-                [ -z "${!NAME}" ] && [ -z "$DEFAULT_EXISTS" ] || break
+                [ -z "${!NAME:-}" ] && [ -z "$DEFAULT_EXISTS" ] || {
+                    lk_console_detail "using value:" "${!NAME-${DEFAULT:-}}" "$CYAN"
+                    break
+                }
             }
             eval "INITIAL_VALUE=\"\${$NAME-\${DEFAULT:-}}\""
-            eval "read -rep \"\${PROMPT}Value for \$BOLD\$NAME\$RESET: \" \${INITIAL_VALUE:+-i \"\$INITIAL_VALUE\"} $NAME"
+            eval "$NAME=\"\$(lk_console_read \"\$LABEL:\" \"\" \${INITIAL_VALUE:+-i \"\$INITIAL_VALUE\"})\""
             [ -z "${!NAME}" ] && [ -z "$DEFAULT_EXISTS" ] || break
+            lk_console_warning "$NAME is a required field"
         done
+        [ "${!NAME:-}" != "${DEFAULT:-}" ] || eval "$NAME="
         STACKSCRIPT_FIELDS+=("$NAME")
         export "$NAME"
     done 4< <(cat <<<"$STACKSCRIPT_TAGS" |
         sed -E 's/<(udf|UDF)(\s+(name="([a-zA-Z_][a-zA-Z0-9_]*)"|label="([^"]*)"|(default)="([^"]*)"|(oneof|manyof)="([^"]*)"|[a-zA-Z]+="[^"]*"))*\s*\/>/\4\n\5\n\6\n\7\n\8\n\9/' |
         xargs -d $'\n' -n 6 printf '%s.\n%s.\n%s.\n%s.\n%s.\n%s.\0')
     STACKSCRIPT_ENV=
-    [ "${#STACKSCRIPT_FIELDS[@]}" -eq "0" ] ||
-        # printenv does no escaping, and cloud-init does no unescaping: perfect
+    [ "${#STACKSCRIPT_FIELDS[@]}" -eq "0" ] || {
+        # printenv does no escaping, and cloud-init does no unescaping
         STACKSCRIPT_ENV="$(printenv | grep -E "^($(lk_implode '|' "${STACKSCRIPT_FIELDS[@]}"))=.+$" | sort || true)"
+        echo
+    }
 fi
 
 while VM_STATE="$(lk_maybe_sudo virsh domstate "$VM_HOSTNAME" 2>/dev/null)"; do

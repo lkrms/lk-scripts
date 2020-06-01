@@ -409,9 +409,9 @@ function lk_console_message() {
 
 function lk_console_detail() {
     local LK_CONSOLE_PREFIX LK_CONSOLE_MESSAGE_COLOUR
-    LK_CONSOLE_PREFIX=" -> "
+    LK_CONSOLE_PREFIX="   -> "
     LK_CONSOLE_MESSAGE_COLOUR=""
-    lk_console_message "$1" "$2" "${3-$LK_YELLOW}"
+    lk_console_message "$1" "${2:-}" "${3-$LK_YELLOW}"
 }
 
 function _lk_console() {
