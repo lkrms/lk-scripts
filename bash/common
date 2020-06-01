@@ -112,7 +112,7 @@ function command_exists() {
 }
 
 function variable_exists() {
-    lk_is_identifier "$1" && lk_variable_set "$1"
+    lk_is_identifier "$1" && lk_variable_declared "$1"
 }
 
 function user_exists() {

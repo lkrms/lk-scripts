@@ -4,13 +4,13 @@
 # <UDF name="NODE_HOSTNAME" label="Short hostname" example="web01-dev-syd" />
 # <UDF name="NODE_FQDN" label="Host FQDN" example="web01-dev-syd.linode.linacreative.com" />
 # <UDF name="NODE_TIMEZONE" label="System timezone" default="Australia/Sydney" />
-# <UDF name="NODE_SERVICES" label="Services to install and configure" manyof="apache+php,mysql,fail2ban,wp-cli" default="apache+php,mysql,fail2ban,wp-cli" />
+# <UDF name="NODE_SERVICES" label="Services to install and configure" manyof="apache+php,mysql,fail2ban,wp-cli" default="" />
 # <UDF name="HOST_DOMAIN" label="Initial hosting domain" example="clientname.com.au" default="" />
 # <UDF name="HOST_ACCOUNT" label="Initial hosting account name (default: automatic)" example="clientname" default="" />
 # <UDF name="ADMIN_USERS" label="Admin users to create (comma-delimited)" default="linac" />
 # <UDF name="ADMIN_EMAIL" label="Forwarding address for system email" example="tech@linacreative.com" />
-# <UDF name="TRUSTED_IP_ADDRESSES" label="Trusted IP addresses (comma-delimited)" default="10.0.0.0/8,172.16.0.0/12,192.168.0.0/16" />
-# <UDF name="MYSQL_USERNAME" label="MySQL admin username" default="dbadmin" />
+# <UDF name="TRUSTED_IP_ADDRESSES" label="Trusted IP addresses (comma-delimited)" example="10.0.0.0/8,172.16.0.0/12,192.168.0.0/16" default="" />
+# <UDF name="MYSQL_USERNAME" label="MySQL admin username" example="dbadmin" default="" />
 # <UDF name="MYSQL_PASSWORD" label="MySQL password (admin user not created if blank)" default="" />
 # <UDF name="SMTP_RELAY" label="SMTP relay (system-wide)" example="[mail.clientname.com.au]:587" default="" />
 # <UDF name="AUTO_REBOOT" label="Reboot automatically after unattended upgrades" oneof="Y,N" />
@@ -168,12 +168,12 @@ PATH_PREFIX_ALPHA="$(sed 's/[^a-zA-Z0-9]//g' <<<"$PATH_PREFIX")"
     die "invalid field values" \
         "${FIELD_ERRORS[@]}"
 
-NODE_TIMEZONE="${NODE_TIMEZONE:-UTC}"
+NODE_TIMEZONE="${NODE_TIMEZONE:-Australia/Sydney}"
 NODE_SERVICES="${NODE_SERVICES:-}"
 HOST_DOMAIN="${HOST_DOMAIN:-}"
 HOST_DOMAIN="${HOST_DOMAIN#www.}"
 HOST_ACCOUNT="${HOST_ACCOUNT:-${HOST_DOMAIN%%.*}}"
-ADMIN_USERS="${ADMIN_USERS:-}"
+ADMIN_USERS="${ADMIN_USERS:-linac}"
 TRUSTED_IP_ADDRESSES="${TRUSTED_IP_ADDRESSES:-}"
 MYSQL_USERNAME="${MYSQL_USERNAME:-}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-}"

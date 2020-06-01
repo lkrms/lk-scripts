@@ -55,7 +55,7 @@ Options:
     linode1gb
 
   If --stackscript is specified:
-    - you will be prompted to set StackScript variables found in the script
+    - you will be prompted to set StackScript fields found in the script
     - cloud-init will be configured to initialize a Linode-like environment
     - the specified script will be minified and added to runcmd in cloud-init
 "
@@ -274,6 +274,9 @@ if [ -n "$STACKSCRIPT" ]; then
         DEFAULT="${DEFAULT%.}"
         SELECT_TYPE="${SELECT_TYPE%.}"
         SELECT_OPTIONS="${SELECT_OPTIONS%.}"
+        ! lk_variable_declared "$NAME" ||
+            ! declare -p "$NAME" | grep -Eq "^declare -x $NAME=" ||
+            die "StackScript field $NAME conflicts with variable $NAME"
         echo
         if [ -n "$DEFAULT_EXISTS" ]; then
             lk_console_item "Optional:" "$NAME" "$BOLD$GREEN"
