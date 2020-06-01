@@ -275,7 +275,7 @@ if [ -n "$STACKSCRIPT" ]; then
         SELECT_TYPE="${SELECT_TYPE%.}"
         SELECT_OPTIONS="${SELECT_OPTIONS%.}"
         ! lk_variable_declared "$NAME" ||
-            ! declare -p "$NAME" | grep -Eq "^declare -x $NAME=" ||
+            declare -p "$NAME" | grep -Eq "^declare -x $NAME=" ||
             die "StackScript field $NAME conflicts with variable $NAME"
         echo
         if [ -n "$DEFAULT_EXISTS" ]; then

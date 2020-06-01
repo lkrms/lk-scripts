@@ -488,15 +488,17 @@ if [ -f "$FILE" ] && ! grep -Fxq "CONFIG_BSD_PROCESS_ACCT=y" "$FILE"; then
     systemctl disable atopacct.service
 fi
 
-log "Cloning 'https://github.com/lkrms/lk-platform.git' to '/opt/${PATH_PREFIX}platform'"
-install -v -d -m 2775 -o "$FIRST_ADMIN" -g "adm" "/opt/${PATH_PREFIX}platform"
-keep_trying sudo -Hu "$FIRST_ADMIN" \
-    git clone "https://github.com/lkrms/lk-platform.git" \
-    "/opt/${PATH_PREFIX}platform"
-export LK_BASE="/opt/${PATH_PREFIX}platform"
-install -v -d -m 2775 -o "$FIRST_ADMIN" -g "adm" "/opt/${PATH_PREFIX}platform/etc"
-set | grep -E '^(LK_BASE|NODE_(HOSTNAME|FQDN|TIMEZONE|SERVICES)|PATH_PREFIX|ADMIN_EMAIL)=' |
-    sudo -Hu "$FIRST_ADMIN" tee "/opt/${PATH_PREFIX}platform/etc/server.conf" >/dev/null
+[ -e "/opt/${PATH_PREFIX}platform" ] || {
+    log "Cloning 'https://github.com/lkrms/lk-platform.git' to '/opt/${PATH_PREFIX}platform'"
+    install -v -d -m 2775 -o "$FIRST_ADMIN" -g "adm" "/opt/${PATH_PREFIX}platform"
+    keep_trying sudo -Hu "$FIRST_ADMIN" \
+        git clone "https://github.com/lkrms/lk-platform.git" \
+        "/opt/${PATH_PREFIX}platform"
+    export LK_BASE="/opt/${PATH_PREFIX}platform"
+    install -v -d -m 2775 -o "$FIRST_ADMIN" -g "adm" "/opt/${PATH_PREFIX}platform/etc"
+    set | grep -E '^(LK_BASE|NODE_(HOSTNAME|FQDN|TIMEZONE|SERVICES)|PATH_PREFIX|ADMIN_EMAIL)=' |
+        sudo -Hu "$FIRST_ADMIN" tee "/opt/${PATH_PREFIX}platform/etc/server.conf" >/dev/null
+}
 
 # TODO: verify downloads
 log "Installing pip, ps_mem, glances"
