@@ -222,19 +222,30 @@ export DEBIAN_FRONTEND=noninteractive \
     PIP_NO_INPUT=1
 
 IPV4_ADDRESS="$(
-    ip a |
-        awk '/inet / { print $2 }' |
-        grep -Ev '^(127|10|172\.(1[6-9]|2[0-9]|3[01])|192\.168)\.'
+    for REGEX in \
+        '^(127|10|172\.(1[6-9]|2[0-9]|3[01])|192\.168)\.' \
+        '^127\.'; do
+        ip a |
+            awk '/inet / { print $2 }' |
+            grep -Ev "$REGEX" |
+            head -n1 |
+            sed -E 's/\/[0-9]+$//' && break
+    done
 )" || IPV4_ADDRESS=
-log "Public IPv4 address: ${IPV4_ADDRESS:-not assigned to an interface}"
+log "IPv4 address: ${IPV4_ADDRESS:-<none>}"
 
 IPV6_ADDRESS="$(
-    ip a |
-        awk '/inet6 / { print $2 }' |
-        grep -Eiv '^(::1/128|fe80::|f[cd])' |
-        sed -E 's/\/[0-9]+$//'
+    for REGEX in \
+        '^(::1/128|fe80::|f[cd])' \
+        '^::1/128'; do
+        ip a |
+            awk '/inet6 / { print $2 }' |
+            grep -Eiv "$REGEX" |
+            head -n1 |
+            sed -E 's/\/[0-9]+$//' && break
+    done
 )" || IPV6_ADDRESS=
-log "Public IPv6 address: ${IPV6_ADDRESS:-not assigned to an interface}"
+log "IPv6 address: ${IPV6_ADDRESS:-<none>}"
 
 log "Enabling persistent journald storage"
 edit_file "/etc/systemd/journald.conf" "^#?Storage=.*$" "Storage=persistent"
@@ -244,13 +255,17 @@ log "Setting system hostname to '$NODE_HOSTNAME'"
 hostnamectl set-hostname "$NODE_HOSTNAME"
 
 FILE="/etc/hosts"
-log "Adding entries for '$NODE_HOSTNAME' and '$NODE_FQDN' to $FILE"
+log "Adding entries to $FILE"
 cat <<EOF >>"$FILE"
 
 # Added by $(basename "$0") at $(now)
 127.0.1.1 $NODE_HOSTNAME${IPV4_ADDRESS:+
 $IPV4_ADDRESS $NODE_FQDN}${IPV6_ADDRESS:+
-$IPV6_ADDRESS $NODE_FQDN}
+$IPV6_ADDRESS $NODE_FQDN}${HOST_DOMAIN:+
+
+# Virtual hosts${IPV4_ADDRESS:+
+$IPV4_ADDRESS $HOST_DOMAIN www.$HOST_DOMAIN}${IPV6_ADDRESS:+
+$IPV6_ADDRESS $HOST_DOMAIN www.$HOST_DOMAIN}}
 EOF
 log_file "$FILE"
 
@@ -332,9 +347,6 @@ net.core.somaxconn = 1024
 EOF
 log_file "$FILE"
 sysctl --system
-
-log "Hardening default home directory permissions"
-edit_file "/etc/login.defs" "^#?(UMASK\s+).*$" "\1027" $'UMASK\t\t027'
 
 log "Sourcing /opt/${PATH_PREFIX}platform/server/.bashrc in ~/.bashrc for all users"
 BASH_SKEL="
@@ -614,10 +626,10 @@ case ",$NODE_SERVICES," in
         }
         HOST_ACCOUNT_GROUP="$(id -gn "$HOST_ACCOUNT")"
         install -v -d -m 0750 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT"
-        install -v -d -m 2775 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/public_html"
-        install -v -d -m 2550 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/log"
+        install -v -d -m 0750 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/public_html"
         install -v -d -m 0750 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/ssl"
         install -v -d -m 0750 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/.cache"
+        install -v -d -m 2750 -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/log"
         [ "$COPY_SKEL" -eq "0" ] || {
             sudo -Hu "$HOST_ACCOUNT" cp -nRTv "/etc/skel.$PATH_PREFIX_ALPHA" "/srv/www/$HOST_ACCOUNT" &&
                 chmod -Rc -077 "/srv/www/$HOST_ACCOUNT/.ssh"
