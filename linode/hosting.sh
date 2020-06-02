@@ -12,6 +12,7 @@
 # <UDF name="TRUSTED_IP_ADDRESSES" label="Trusted IP addresses (comma-delimited)" example="10.0.0.0/8,172.16.0.0/12,192.168.0.0/16" default="" />
 # <UDF name="MYSQL_USERNAME" label="MySQL admin username" example="dbadmin" default="" />
 # <UDF name="MYSQL_PASSWORD" label="MySQL password (admin user not created if blank)" default="" />
+# <UDF name="INNODB_BUFFER_SIZE" label="InnoDB buffer size (~80% of RAM for MySQL-only servers)" oneof="128M,256M,512M,768M,1024M,1536M,2048M,2560M,3072M,4096M,5120M,6144M,7168M,8192M" default="256M" />
 # <UDF name="SMTP_RELAY" label="SMTP relay (system-wide)" example="[mail.clientname.com.au]:587" default="" />
 # <UDF name="AUTO_REBOOT" label="Reboot automatically after unattended upgrades" oneof="Y,N" />
 # <UDF name="AUTO_REBOOT_TIME" label="Preferred automatic reboot time" oneof="02:00,03:00,04:00,05:00,06:00,07:00,08:00,09:00,10:00,11:00,12:00,13:00,14:00,15:00,16:00,17:00,18:00,19:00,20:00,21:00,22:00,23:00,00:00,01:00,now" default="02:00" />
@@ -177,6 +178,7 @@ ADMIN_USERS="${ADMIN_USERS:-linac}"
 TRUSTED_IP_ADDRESSES="${TRUSTED_IP_ADDRESSES:-}"
 MYSQL_USERNAME="${MYSQL_USERNAME:-}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-}"
+INNODB_BUFFER_SIZE="${INNODB_BUFFER_SIZE:-256M}"
 SMTP_RELAY="${SMTP_RELAY:-}"
 AUTO_REBOOT_TIME="${AUTO_REBOOT_TIME:-02:00}"
 
@@ -336,8 +338,6 @@ done
 log "Configuring kernel parameters"
 FILE="/etc/sysctl.d/90-${PATH_PREFIX}defaults.conf"
 cat <<EOF >"$FILE"
-# Created by $(basename "$0") at $(now)
-
 # Avoid paging and swapping if at all possible
 vm.swappiness = 1
 
@@ -405,7 +405,6 @@ FIRST_ADMIN="${FIRST_ADMIN:-root}"
 
 log "Disabling email notifications related to failed sudo attempts"
 cat <<EOF >"/etc/sudoers.d/${PATH_PREFIX}defaults"
-# Created by $(basename "$0") at $(now)
 Defaults !mail_no_user
 Defaults !mail_badpass
 EOF
@@ -513,10 +512,22 @@ fi
 }
 
 # TODO: verify downloads
-log "Installing pip, ps_mem, glances"
+log "Installing pip, ps_mem, Glances"
 keep_trying curl --output /root/get-pip.py "https://bootstrap.pypa.io/get-pip.py"
 python3 /root/get-pip.py
 pip install ps_mem glances
+
+log "Configuring Glances"
+install -v -d -m 0755 "/etc/glances"
+cat <<EOF >"/etc/glances/glances.conf"
+# Created by $(basename "$0") at $(now)
+
+[global]
+check_update=false
+
+[ip]
+disable=true
+EOF
 
 log "Creating virtual host base directory at /srv/www"
 install -v -d -m 0751 -g "adm" "/srv/www"
@@ -865,7 +876,15 @@ EOF
 fi
 
 if is_installed mariadb-server; then
-    # TODO: configure innodb_buffer_pool_size as a percentage of system memory
+    FILE="/etc/mysql/mariadb.conf.d/90-${PATH_PREFIX}defaults.cnf"
+    cat <<EOF >"$FILE"
+[mysqld]
+innodb_buffer_pool_size = $INNODB_BUFFER_SIZE
+innodb_buffer_pool_instances = $(((${INNODB_BUFFER_SIZE%M} - 1) / 1024 + 1))
+innodb_buffer_pool_dump_at_shutdown = 1
+innodb_buffer_pool_load_at_startup = 1
+EOF
+    log_file "$FILE"
     log "Starting mysql.service (MariaDB)"
     systemctl start mysql.service
     if [ -n "$MYSQL_PASSWORD" ]; then
