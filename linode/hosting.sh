@@ -361,6 +361,34 @@ else
     cp "/etc/skel/.bashrc" "/root/.bashrc"
 fi
 
+log "Sourcing Byobu in ~/.profile by default"
+cat <<EOF >>"/etc/skel/.profile"
+_byobu_sourced=1 . /usr/bin/byobu-launch 2>/dev/null || true
+EOF
+DIR="/etc/skel/.byobu"
+install -v -d -m 0755 "$DIR"
+# disable byobu-prompt
+cat <<EOF >"$DIR/prompt"
+[ -r /usr/share/byobu/profiles/bashrc ] && . /usr/share/byobu/profiles/bashrc  #byobu-prompt#
+EOF
+# configure status line
+cat <<EOF >"$DIR/status"
+screen_upper_left="color"
+screen_upper_right="color whoami hostname #ip_address menu"
+screen_lower_left="color #logo #distro release #arch #session"
+screen_lower_right="color #network #disk_io #custom #entropy raid reboot_required #updates_available #apport #services #mail users uptime #ec2_cost #rcs_cost #fan_speed #cpu_temp #battery #wifi_quality #processes load_average cpu_count cpu_freq memory swap disk #time_utc date time"
+tmux_left="#logo #distro release #arch #session"
+tmux_right="#network #disk_io #custom #entropy raid reboot_required #updates_available #apport #services #mail users uptime #ec2_cost #rcs_cost #fan_speed #cpu_temp #battery #wifi_quality #processes load_average cpu_count cpu_freq memory swap disk whoami hostname #ip_address #time_utc date time"
+EOF
+cat <<EOF >"$DIR/datetime.tmux"
+BYOBU_DATE="%-d%b"
+BYOBU_TIME="%H:%M:%S%z"
+EOF
+# disable UTF-8 support by default
+cat <<EOF >"$DIR/statusrc"
+BYOBU_CHARMAP=x
+EOF
+
 DIR="/etc/skel.$PATH_PREFIX_ALPHA"
 [ ! -e "$DIR" ] || die "already exists: $DIR"
 log "Creating $DIR (for hosting accounts)"
@@ -512,10 +540,10 @@ fi
 }
 
 # TODO: verify downloads
-log "Installing pip, ps_mem, Glances"
+log "Installing pip, ps_mem, Glances, awscli"
 keep_trying curl --output /root/get-pip.py "https://bootstrap.pypa.io/get-pip.py"
 python3 /root/get-pip.py
-pip install ps_mem glances
+keep_trying pip install ps_mem glances awscli
 
 log "Configuring Glances"
 install -v -d -m 0755 "/etc/glances"
