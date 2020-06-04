@@ -502,6 +502,9 @@ EOF
 log "Installing APT packages:" "${PACKAGES[*]}"
 keep_trying apt-get -yq install "${PACKAGES[@]}"
 
+log "Configuring logrotate"
+edit_file "/etc/logrotate.conf" "^#?su( .*)?$" "su root adm"
+
 log "Setting system timezone to '$NODE_TIMEZONE'"
 timedatectl set-timezone "$NODE_TIMEZONE"
 
@@ -890,17 +893,45 @@ access.format = "%{REMOTE_ADDR}e - %u %t \"%m %r%Q%q\" %s %f %{mili}d %{kilo}M %
 catch_workers_output = yes
 ; tune based on system resources
 php_admin_value[opcache.memory_consumption] = 256
-php_admin_value[opcache.file_cache] = "/srv/www/$HOST_ACCOUNT/.cache/opcache"
-php_admin_value[error_log] = "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.error.log"
+php_admin_value[opcache.file_cache] = "/srv/www/\$pool/.cache/opcache"
+php_admin_flag[opcache.validate_permission] = On
+php_admin_value[error_log] = "/srv/www/\$pool/log/php$PHPVER-fpm.error.log"
 php_admin_flag[log_errors] = On
 php_flag[display_errors] = Off
 php_flag[display_startup_errors] = Off
+
+; do not uncomment the following in production (also, install php-xdebug first)
+;php_admin_flag[opcache.enable] = Off
+;php_admin_flag[xdebug.remote_enable] = On
+;php_admin_flag[xdebug.remote_autostart] = On
+;php_admin_flag[xdebug.remote_connect_back] = On
+;php_admin_value[xdebug.remote_log] = "/srv/www/\$pool/log/php$PHPVER-fpm.xdebug.log"
 EOF
-        install -v -d -m 0700 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/.cache/opcache"
         install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.access.log"
-        install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.error.log"
+        install -v -m 0640 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.error.log"
+        install -v -d -m 0700 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/.cache/opcache"
         log_file "/etc/php/$PHPVER/fpm/pool.d/$HOST_ACCOUNT.conf"
     fi
+
+    log "Adding virtual host log files to logrotate.d"
+    mv -v "/etc/logrotate.d/apache2" "/etc/logrotate.d/apache2.disabled"
+    mv -v "/etc/logrotate.d/php$PHPVER-fpm" "/etc/logrotate.d/php$PHPVER-fpm.disabled"
+    cat <<EOF >"/etc/logrotate.d/${PATH_PREFIX}log"
+/var/log/apache2/*.log /var/log/php$PHPVER-fpm.log /srv/www/*/log/*.log {
+    daily
+    missingok
+    rotate 14
+    compress
+    delaycompress
+    notifempty
+    create
+    sharedscripts
+    postrotate
+        test ! -x /usr/lib/php/php$PHPVER-fpm-reopenlogs || /usr/lib/php/php$PHPVER-fpm-reopenlogs
+        ! invoke-rc.d apache2 status >/dev/null 2>&1 || invoke-rc.d apache2 reload >/dev/null 2>&1
+    endscript
+}
+EOF
 fi
 
 if is_installed mariadb-server; then
@@ -929,7 +960,6 @@ WITH GRANT OPTION" | mysql -uroot
     # TODO: create $HOST_ACCOUNT database
 fi
 
-# TODO: add logrotate.d config
 # TODO: add iptables rules
 # TODO: collectd+nagios
 
