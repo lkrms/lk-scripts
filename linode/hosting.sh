@@ -47,15 +47,23 @@ function die() {
     exit "$EXIT_STATUS"
 }
 
-# edit_file FILE SEARCH_PATTERN REPLACE_PATTERN ADD_TEXT
-function edit_file() {
-    if [ -f "$1" ]; then
+function keep_original() {
+    [ ! -e "$1" ] ||
         cp -nav "$1" "$1.orig"
-    else
-        [ -n "${4:-}" ] || die "file not found: $1"
-    fi
+}
+
+# edit_file FILE SEARCH_PATTERN REPLACE_PATTERN [ADD_TEXT]
+function edit_file() {
+    local SED_SCRIPT="0,/$2/{s/$2/$3/}" BEFORE AFTER
+    [ -f "$1" ] || [ -n "${4:-}" ] || die "file not found: $1"
+    [ "${MATCH_MANY:-N}" = "N" ] || SED_SCRIPT="s/$2/$3/"
     if grep -Eq "$2" "$1" 2>/dev/null; then
-        sed -Ei "s/$2/$3/" "$1"
+        BEFORE="$(cat "$1")"
+        AFTER="$(sed -E "$SED_SCRIPT" "$1")"
+        [ "$BEFORE" = "$AFTER" ] || {
+            keep_original "$1"
+            sed -Ei "$SED_SCRIPT" "$1"
+        }
     elif [ -n "${4:-}" ]; then
         echo "$4" >>"$1"
     else
@@ -192,11 +200,13 @@ export -n \
     ADMIN_USERS TRUSTED_IP_ADDRESSES MYSQL_USERNAME MYSQL_PASSWORD \
     SMTP_RELAY EMAIL_BLACKHOLE
 
+S="[[:space:]]"
+
 [ -s "/root/.ssh/authorized_keys" ] ||
     die "at least one SSH key must be added to Linodes deployed with this StackScript"
 
-ADMIN_USER_KEYS="$([ -z "$ADMIN_USERS" ] || grep -E "\s(${ADMIN_USERS//,/|})\$" "/root/.ssh/authorized_keys" || :)"
-HOST_KEYS="$([ -z "$ADMIN_USERS" ] && cat "/root/.ssh/authorized_keys" || grep -Ev "\s(${ADMIN_USERS//,/|})\$" "/root/.ssh/authorized_keys" || :)"
+ADMIN_USER_KEYS="$([ -z "$ADMIN_USERS" ] || grep -E "$S(${ADMIN_USERS//,/|})\$" "/root/.ssh/authorized_keys" || :)"
+HOST_KEYS="$([ -z "$ADMIN_USERS" ] && cat "/root/.ssh/authorized_keys" || grep -Ev "$S(${ADMIN_USERS//,/|})\$" "/root/.ssh/authorized_keys" || :)"
 
 log "==== $(basename "$0"): preparing system"
 log "Environment:" \
@@ -255,7 +265,7 @@ IPV6_ADDRESS="$(
 log "IPv6 address: ${IPV6_ADDRESS:-<none>}"
 
 log "Enabling persistent journald storage"
-edit_file "/etc/systemd/journald.conf" "^#?Storage=.*$" "Storage=persistent"
+edit_file "/etc/systemd/journald.conf" "^#?Storage=.*\$" "Storage=persistent"
 systemctl restart systemd-journald.service
 
 log "Setting system hostname to '$NODE_HOSTNAME'"
@@ -420,7 +430,7 @@ for USERNAME in ${ADMIN_USERS//,/ }; do
     else
         install -v -d -m 0700 -o "$USERNAME" -g "$USER_GROUP" "$USER_HOME/.ssh"
         install -v -m 0600 -o "$USERNAME" -g "$USER_GROUP" /dev/null "$USER_HOME/.ssh/authorized_keys"
-        grep -E "\s$USERNAME\$" <<<"$ADMIN_USER_KEYS" >>"$USER_HOME/.ssh/authorized_keys" || :
+        grep -E "$S$USERNAME\$" <<<"$ADMIN_USER_KEYS" >>"$USER_HOME/.ssh/authorized_keys" || :
     fi
     echo "$USERNAME ALL=(ALL) NOPASSWD:ALL" >"/etc/sudoers.d/nopasswd-$USERNAME"
 done
@@ -430,9 +440,10 @@ passwd -l root
 
 # TODO: configure chroot jail
 log "Disabling clear text passwords when authenticating with SSH"
-sed -Ei.orig \
-    "s/^#?(PasswordAuthentication${FIRST_ADMIN+|PermitRootLogin})\b.*/\1 no/" \
-    /etc/ssh/sshd_config
+MATCH_MANY=Y edit_file "/etc/ssh/sshd_config" \
+    "^#?(PasswordAuthentication${FIRST_ADMIN+|PermitRootLogin})\b.*\$" \
+    "\1 no"
+
 systemctl restart sshd.service
 FIRST_ADMIN="${FIRST_ADMIN:-root}"
 
@@ -508,14 +519,13 @@ log "Installing APT packages:" "${PACKAGES[*]}"
 keep_trying apt-get -yq install "${PACKAGES[@]}"
 
 log "Configuring logrotate"
-edit_file "/etc/logrotate.conf" "^#?su( .*)?$" "su root adm"
+edit_file "/etc/logrotate.conf" "^#?su( .*)?\$" "su root adm" "su root adm"
 
 log "Setting system timezone to '$NODE_TIMEZONE'"
 timedatectl set-timezone "$NODE_TIMEZONE"
 
 log "Configuring apt-listchanges"
-[ ! -e "/etc/apt/listchanges.conf" ] ||
-    mv "/etc/apt/listchanges.conf" "/etc/apt/listchanges.conf.orig"
+keep_original "/etc/apt/listchanges.conf"
 cat <<EOF >"/etc/apt/listchanges.conf"
 [apt]
 frontend=pager
@@ -576,7 +586,7 @@ case ",$NODE_SERVICES," in
         ${CERTBOT_REPO+"$CERTBOT_REPO"}
     )
     grep -Eq \
-        "^deb\s+http://\w+(\.\w+)*(:[0-9]+)?(/ubuntu)?/?\s+(\w+\s+)*$DISTRIB_CODENAME\s+(\w+\s+)*universe(\s|\$)" \
+        "^deb$S+http://\w+(\.\w+)*(:[0-9]+)?(/ubuntu)?/?$S+(\w+$S+)*$DISTRIB_CODENAME$S+(\w+$S+)*universe($S|\$)" \
         /etc/apt/sources.list ||
         REPOS+=(universe)
 
@@ -655,15 +665,17 @@ case ",$NODE_SERVICES," in
     [ "${#EXCLUDE_PACKAGES[@]}" -eq "0" ] ||
         PACKAGES=($(printf '%s\n' "${PACKAGES[@]}" | grep -Fxv "$(printf '%s\n' "${EXCLUDE_PACKAGES[@]}")"))
 
-    log "Adding APT repositories:" "${REPOS[@]}"
-    for REPO in "${REPOS[@]}"; do
-        keep_trying add-apt-repository "${ADD_APT_REPOSITORY_ARGS[@]}" "$REPO"
-    done
+    if [ "${#REPOS[@]}" -gt "0" ]; then
+        log "Adding APT repositories:" "${REPOS[@]}"
+        for REPO in "${REPOS[@]}"; do
+            keep_trying add-apt-repository "${ADD_APT_REPOSITORY_ARGS[@]}" "$REPO"
+        done
+    fi
 
     log "Installing APT packages:" "${PACKAGES[*]}"
     keep_trying apt-get -q update
     # new repos may include updates for pre-installed packages
-    keep_trying apt-get -yq upgrade
+    [ "${#REPOS[@]}" -eq "0" ] || keep_trying apt-get -yq upgrade
     keep_trying apt-get -yq install "${PACKAGES[@]}"
 
     if [ -n "$HOST_DOMAIN" ]; then
@@ -694,7 +706,10 @@ esac
 
 if is_installed fail2ban; then
     # TODO: configure jails other than sshd
-    :
+    log "Configuring Fail2Ban"
+    edit_file "/etc/fail2ban/jail.conf" \
+        "^#?backend$S*=($S*(pyinotify|gamin|polling|systemd|auto))?($S*; .*)?\$" \
+        "backend = systemd\3"
 fi
 
 if is_installed postfix; then
@@ -749,6 +764,7 @@ if is_installed apache2; then
 
         # third-party
         qos
+        unique_id # used by "qos"
     )
     APACHE_MODS_ENABLED="$(a2query -m | grep -Eo '^[^ ]+' | sort | uniq || :)"
     APACHE_DISABLE_MODS=($(comm -13 <(printf '%s\n' "${APACHE_MODS[@]}" | sort | uniq) <(echo "$APACHE_MODS_ENABLED")))
@@ -763,20 +779,33 @@ if is_installed apache2; then
     }
 
     # TODO: make PHP-FPM setup conditional
+    [ -e "/opt/opcache-gui" ] || {
+        log "Cloning 'https://github.com/lkrms/opcache-gui.git' to '/opt/opcache-gui'"
+        install -v -d -m 2775 -o "$FIRST_ADMIN" -g "adm" "/opt/opcache-gui"
+        keep_trying sudo -Hu "$FIRST_ADMIN" \
+            git clone "https://github.com/lkrms/opcache-gui.git" \
+            "/opt/opcache-gui"
+    }
+
     log "Configuring Apache HTTPD to serve PHP-FPM virtual hosts"
     cat <<EOF >"/etc/apache2/sites-available/${PATH_PREFIX}default.conf"
-<Directory /srv/www/*/public_html>
-    Options SymLinksIfOwnerMatch
-    AllowOverride All Options=Indexes,MultiViews,SymLinksIfOwnerMatch
-    Require all granted
-</Directory>
-<IfModule mod_status.c>
-    ExtendedStatus On
-</IfModule>
 <Macro RequireTrusted>
     Require local${TRUSTED_IP_ADDRESSES:+
     Require ip ${TRUSTED_IP_ADDRESSES//,/ }}
 </Macro>
+<Directory /srv/www/*/public_html>
+    Options SymLinksIfOwnerMatch
+    AllowOverride All Options=Indexes,MultiViews,SymLinksIfOwnerMatch,ExecCGI
+    Require all granted
+</Directory>
+<Directory /opt/opcache-gui>
+    Options None
+    AllowOverride None
+    Use RequireTrusted
+</Directory>
+<IfModule mod_status.c>
+    ExtendedStatus On
+</IfModule>
 <VirtualHost *:80>
     ServerAdmin $ADMIN_EMAIL
     DocumentRoot /var/www/html
@@ -804,9 +833,11 @@ if is_installed apache2; then
 <Macro PhpFpmVirtualHost${PHPVER//./} %sitename%>
     ServerAdmin $ADMIN_EMAIL
     DocumentRoot /srv/www/%sitename%/public_html
+    Alias /php-opcache /opt/opcache-gui
     ErrorLog /srv/www/%sitename%/log/error.log
     CustomLog /srv/www/%sitename%/log/access.log combined
     DirectoryIndex index.php index.html index.htm
+    ProxyPassMatch ^/php-opcache/(.*\.php(/.*)?)\$ fcgi://%sitename%/opt/opcache-gui/\$1
     ProxyPassMatch ^/(.*\.php(/.*)?)\$ fcgi://%sitename%/srv/www/$HOST_ACCOUNT/public_html/\$1
     <LocationMatch ^/(php-fpm-(status|ping))\$>
         ProxyPassMatch fcgi://%sitename%/\$1
@@ -833,12 +864,9 @@ EOF
     ln -s "../sites-available/${PATH_PREFIX}default.conf" "/etc/apache2/sites-enabled/000-${PATH_PREFIX}default.conf"
     log_file "/etc/apache2/sites-available/${PATH_PREFIX}default.conf"
 
-    PHP_FPM_POOLS=("/etc/php/$PHPVER/fpm/pool.d"/*)
-    if [ "${#PHP_FPM_POOLS[@]}" -gt "0" ]; then
-        log "Disabling pre-installed PHP-FPM pools"
-        install -v -d -m 0755 "/etc/php/$PHPVER/fpm/pool.d.orig"
-        mv "${PHP_FPM_POOLS[@]}" "/etc/php/$PHPVER/fpm/pool.d.orig/"
-    fi
+    log "Disabling pre-installed PHP-FPM pools"
+    keep_original "/etc/php/$PHPVER/fpm/pool.d"
+    rm -f "/etc/php/$PHPVER/fpm/pool.d"/*.conf
 
     if [ -n "$HOST_DOMAIN" ]; then
         log "Adding site to Apache HTTPD: $HOST_DOMAIN"
@@ -926,6 +954,7 @@ php_flag[display_startup_errors] = Off
 EOF
         install -v -m 0640 -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.access.log"
         install -v -m 0640 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.error.log"
+        install -v -m 0640 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" /dev/null "/srv/www/$HOST_ACCOUNT/log/php$PHPVER-fpm.xdebug.log"
         install -v -d -m 0700 -o "$HOST_ACCOUNT" -g "$HOST_ACCOUNT_GROUP" "/srv/www/$HOST_ACCOUNT/.cache/opcache"
         log_file "/etc/php/$PHPVER/fpm/pool.d/$HOST_ACCOUNT.conf"
     fi
