@@ -13,6 +13,7 @@
 # <UDF name="MYSQL_USERNAME" label="MySQL admin username" example="dbadmin" default="" />
 # <UDF name="MYSQL_PASSWORD" label="MySQL password (admin user not created if blank)" default="" />
 # <UDF name="INNODB_BUFFER_SIZE" label="InnoDB buffer size (~80% of RAM for MySQL-only servers)" oneof="128M,256M,512M,768M,1024M,1536M,2048M,2560M,3072M,4096M,5120M,6144M,7168M,8192M" default="256M" />
+# <UDF name="OPCACHE_MEMORY_CONSUMPTION" label="PHP OPcache size" oneof="128,256,512,768,1024" default="256" />
 # <UDF name="SMTP_RELAY" label="SMTP relay (system-wide)" example="[mail.clientname.com.au]:587" default="" />
 # <UDF name="EMAIL_BLACKHOLE" label="Email black hole (system-wide, STAGING ONLY)" example="/dev/null" default="" />
 # <UDF name="AUTO_REBOOT" label="Reboot automatically after unattended upgrades" oneof="Y,N" />
@@ -189,6 +190,7 @@ TRUSTED_IP_ADDRESSES="${TRUSTED_IP_ADDRESSES:-}"
 MYSQL_USERNAME="${MYSQL_USERNAME:-}"
 MYSQL_PASSWORD="${MYSQL_PASSWORD:-}"
 INNODB_BUFFER_SIZE="${INNODB_BUFFER_SIZE:-256M}"
+OPCACHE_MEMORY_CONSUMPTION="${OPCACHE_MEMORY_CONSUMPTION:-256}"
 SMTP_RELAY="${SMTP_RELAY:-}"
 EMAIL_BLACKHOLE="${EMAIL_BLACKHOLE:-}"
 AUTO_REBOOT_TIME="${AUTO_REBOOT_TIME:-02:00}"
@@ -937,7 +939,7 @@ access.log = "/srv/www/\$pool/log/php$PHPVER-fpm.access.log"
 access.format = "%{REMOTE_ADDR}e - %u %t \"%m %r%Q%q\" %s %f %{mili}d %{kilo}M %C%%"
 catch_workers_output = yes
 ; tune based on system resources
-php_admin_value[opcache.memory_consumption] = 256
+php_admin_value[opcache.memory_consumption] = $OPCACHE_MEMORY_CONSUMPTION
 php_admin_value[opcache.file_cache] = "/srv/www/\$pool/.cache/opcache"
 php_admin_flag[opcache.validate_permission] = On
 php_admin_value[error_log] = "/srv/www/\$pool/log/php$PHPVER-fpm.error.log"
