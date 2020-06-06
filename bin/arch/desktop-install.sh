@@ -28,6 +28,7 @@ PAC_KEEP=(
 )
 
 PAC_REMOVE=(
+    code                   # replaced with vscodium-bin
     visual-studio-code-bin # replaced with OSS version
     xfce4-screensaver      # buggy and insecure
 )
@@ -249,7 +250,6 @@ AUR_INSTALL+=(
 PAC_INSTALL+=(
     autopep8
     bash-language-server
-    code
     dbeaver
     eslint
     geckodriver
@@ -314,6 +314,7 @@ PAC_INSTALL+=(
 AUR_INSTALL+=(
     sublime-text-dev
     trickle
+    vscodium-bin
 
     #
     git-cola
