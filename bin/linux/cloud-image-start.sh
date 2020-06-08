@@ -15,7 +15,10 @@ VM_CPUS="2"
 VM_DISK_SIZE="80G"
 VM_IPV4_ADDRESS=
 VM_MAC_ADDRESS="$(printf '52:54:00:%02x:%02x:%02x' $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256)))"
+REFRESH_CLOUDIMG=0
 STACKSCRIPT=
+SKIP_PROMPTS=0
+FORCE_DELETE=0
 
 USAGE="
 Usage:
@@ -25,6 +28,7 @@ Boot a new QEMU/KVM instance from the current release of a cloud image.
 
 Options:
   -i, --image <image_name>                              [$IMAGE]
+  -r, --refresh-image
   -p, --packages <package,...>
   -f, --fs-maps <host_path,guest_path|...>
   -P, --preset <preset_name>
@@ -36,6 +40,8 @@ Options:
   -M, --mac <52:54:00:xx:xx:xx>     uniqueness is not checked
   -S, --stackscript <script_path>   overrides --packages
   -u, --session                     qemu:///system -> qemu:///session
+  -y, --yes                         skip prompts if possible
+  -F, --force                       force off/delete if needed (implies -y)
 
   Supported images:
     ubuntu-20.04-minimal
@@ -60,8 +66,8 @@ Options:
     - the specified script will be minified and added to runcmd in cloud-init
 "
 
-OPTS="$(getopt --options "i:p:f:P:m:c:s:n:I:M:S:uy" \
-    --longoptions "image:,packages:,fs-maps:,preset:,memory:,cpus:,disk-size:,network:,ip-address:,mac:,stackscript:,session" \
+OPTS="$(getopt --options "i:rp:f:P:m:c:s:n:I:M:S:uyF" \
+    --longoptions "image:,refresh-image,packages:,fs-maps:,preset:,memory:,cpus:,disk-size:,network:,ip-address:,mac:,stackscript:,session,yes,force" \
     --name "$(basename "$0")" \
     -- "$@")" || die "$USAGE"
 
@@ -79,6 +85,10 @@ while :; do
     case "$OPT" in
     -i | --image)
         IMAGE="$1"
+        ;;
+    -r | --refresh-image)
+        REFRESH_CLOUDIMG=1
+        continue
         ;;
     -p | --packages)
         VM_PACKAGES="$1"
@@ -151,7 +161,10 @@ while :; do
         unset SUDO_OR_NOT
         continue
         ;;
-    -y)
+    -F | --force)
+        FORCE_DELETE=1
+        ;&
+    -y | --yes)
         SKIP_PROMPTS=1
         continue
         ;;
@@ -288,7 +301,7 @@ if [ -n "$STACKSCRIPT" ]; then
         [ -z "$SELECT_TYPE" ] || lk_console_detail "$SELECT_TYPE:" "$SELECT_OPTIONS"
         [ -z "${DEFAULT:-}" ] || lk_console_detail "default:" "$DEFAULT"
         while :; do
-            lk_is_false "${SKIP_PROMPTS:-0}" || {
+            lk_is_false "$SKIP_PROMPTS" || {
                 [ -z "${!NAME:-}" ] && [ -z "$DEFAULT_EXISTS" ] || {
                     lk_console_detail "using value:" "${!NAME-${DEFAULT:-}}" "$CYAN"
                     break
@@ -316,7 +329,7 @@ fi
 while VM_STATE="$(lk_maybe_sudo virsh domstate "$VM_HOSTNAME" 2>/dev/null)"; do
     [ "$VM_STATE" != "shut off" ] || unset VM_STATE
     lk_console_warning "Domain already exists: $VM_HOSTNAME"
-    lk_confirm "$BOLD${RED}OK to ${VM_STATE+force off, }delete and permanently remove all storage volumes for '$VM_HOSTNAME'?$RESET" N || die
+    lk_is_true "$FORCE_DELETE" || lk_confirm "$BOLD${RED}OK to ${VM_STATE+force off, }delete and permanently remove all storage volumes for '$VM_HOSTNAME'?$RESET" N || die
     ${VM_STATE+lk_maybe_sudo virsh destroy "$VM_HOSTNAME"} || :
     lk_maybe_sudo virsh undefine --remove-all-storage "$VM_HOSTNAME" || :
 done
@@ -340,7 +353,7 @@ ${BOLD}StackScript:$RESET        ${STACKSCRIPT:-<none>}${STACKSCRIPT_ENV+
 StackScript environment:
   $([ -n "$STACKSCRIPT_ENV" ] && echo "${STACKSCRIPT_ENV//$'\n'/$'\n'  }" || echo "<empty>")}
 "
-lk_is_true "${SKIP_PROMPTS:-0}" || lk_confirm "OK to proceed?" Y
+lk_is_true "$SKIP_PROMPTS" || lk_confirm "OK to proceed?" Y
 
 mkdir -p "$CACHE_DIR/cloud-images" &&
     cd "$CACHE_DIR/cloud-images" || die
@@ -348,7 +361,7 @@ mkdir -p "$CACHE_DIR/cloud-images" &&
 FILENAME="${IMAGE_URL##*/}"
 IMG_NAME="${FILENAME%.*}"
 
-if [ ! -f "$FILENAME" ] || lk_is_true "${LK_CLOUDIMG_REFRESH:-1}"; then
+if [ ! -f "$FILENAME" ] || lk_is_true "$REFRESH_CLOUDIMG"; then
 
     lk_console_item "Downloading" "$FILENAME"
 
@@ -396,7 +409,7 @@ NOCLOUD_PATH="$VM_POOL_ROOT/$NOCLOUD_TEMP_PATH"
 
 if [ -e "$DISK_PATH" ]; then
     lk_console_item "Disk image already exists:" "$DISK_PATH"
-    lk_confirm "Destroy the existing image and start over?" N || exit
+    lk_is_true "$FORCE_DELETE" || lk_confirm "Destroy the existing image and start over?" N || exit
 fi
 
 NETWORK_CONFIG="\
@@ -581,7 +594,7 @@ echo "$NETWORK_CONFIG" >"$NOCLOUD_META_DIR/network-config.yml"
 echo "$USER_DATA" >"$NOCLOUD_META_DIR/user-data.yml"
 echo "$META_DATA" >"$NOCLOUD_META_DIR/meta-data.yml"
 
-if lk_is_false "${SKIP_PROMPTS:-0}" && lk_confirm "Customise cloud-init data source?" N -t 60; then
+if lk_is_false "$SKIP_PROMPTS" && lk_confirm "Customise cloud-init data source?" N -t 60; then
     xdg-open "$NOCLOUD_META_DIR" || :
     lk_pause "Press any key to continue after making changes in $NOCLOUD_META_DIR . . . "
 fi
