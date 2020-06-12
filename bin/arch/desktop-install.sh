@@ -111,6 +111,7 @@ PAC_INSTALL+=(
     cloud-utils
     cronie
     hwinfo
+    mlocate
     sysfsutils
 )
 
@@ -196,7 +197,9 @@ PAC_INSTALL+=(
     mkvtoolnix-cli
     mkvtoolnix-gui
     mpv
+    openshot
     rtmpdump
+    simplescreenrecorder
     youtube-dl
 
     # system
