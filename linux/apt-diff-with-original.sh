@@ -42,10 +42,9 @@ for p in "${PACKAGES[@]}"; do
         mkdir -p "$APT_DEB_PATH" "$(dirname "$EXTRACT_PATH")"
         rm -Rf "$EXTRACT_PATH"
 
-        pushd "$APT_DEB_PATH" >/dev/null || die
+        cd "$APT_DEB_PATH" || die
         lk_console_item "Downloading package archive:" "${WRAP_OFF}${URL}${WRAP}"
         DEB_PATH="$(download_urls "$URL")" || die
-        popd >/dev/null
 
         lk_console_message "Extracting package archive to temporary folder"
         dpkg-deb -x "$DEB_PATH" "$EXTRACT_PATH" || {
