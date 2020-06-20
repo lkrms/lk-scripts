@@ -1031,7 +1031,6 @@ APT_ESSENTIALS=(
     iotop
     nethogs
     nload
-    sysstat
 
     # HARDWARE
     hwinfo

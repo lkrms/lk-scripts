@@ -241,7 +241,7 @@ function lk_replace() {
         _LK_SEARCH="${_LK_SEARCH%.}"
     }
     [ "$#" -gt "2" ] &&
-        printf '%s' "${3//$_LK_SEARCH/$2}${_LK_APPEND:-}" ||
+        echo "${3//$_LK_SEARCH/$2}${_LK_APPEND:-}" ||
         lk_xargs lk_replace "$1" "$2"
 }
 
@@ -363,7 +363,7 @@ function lk_in_array() {
 function lk_array_search() {
     local KEYS KEY
     eval "KEYS=(\"\${!$2[@]}\")"
-    for KEY in "${KEYS[@]}"; do
+    for KEY in ${KEYS[@]+"${KEYS[@]}"}; do
         eval "[[ \"\${$2[\$KEY]}\" != \$1 ]]" || {
             echo "$KEY"
             return
@@ -496,9 +496,14 @@ function lk_console_list() {
 function lk_console_read() {
     local PROMPT=("$1") DEFAULT="${2:-}" VALUE
     [ -z "$DEFAULT" ] || PROMPT+=("[$DEFAULT]")
-    read -rep "$LK_BOLD${LK_CONSOLE_PREFIX_COLOUR-$LK_DEFAULT_CONSOLE_COLOUR}:: $LK_RESET$LK_BOLD${PROMPT[*]}$LK_RESET " "${@:3}" VALUE || VALUE="$DEFAULT"
+    read -rep "$LK_BOLD${LK_CONSOLE_PREFIX_COLOUR-$LK_DEFAULT_CONSOLE_COLOUR}:: $LK_RESET$LK_BOLD${PROMPT[*]}$LK_RESET " "${@:3}" VALUE || return
     [ -n "$VALUE" ] || VALUE="$DEFAULT"
     echo "$VALUE"
+}
+
+# lk_console_read_secret prompt [read_arg...]
+function lk_console_read_secret() {
+    lk_console_read "$1" "" -s "${@:2}" && echo >&2
 }
 
 # lk_confirm prompt [default [read_arg...]]
@@ -521,6 +526,11 @@ function lk_confirm() {
             VALUE="$DEFAULT"
     done
     [[ "$VALUE" =~ ^(Y|YES)$ ]]
+}
+
+function lk_no_input() {
+    [ ! -t 0 ] ||
+        lk_is_true "${LK_NO_INPUT:-}"
 }
 
 # lk_add_file_suffix file_path suffix [ext]
@@ -734,6 +744,15 @@ function lk_download() {
         lk_echo_array "${FILENAMES[@]}"
 }
 
+function lk_can_sudo() {
+    local ERROR
+    lk_command_exists sudo && {
+        ERROR="$(sudo -nv 2>&1)" ||
+            # "sudo: a password is required" means the user can sudo
+            grep -i password <<<"$ERROR" >/dev/null
+    }
+}
+
 # SUDO_OR_NOT=<1|0|Y|N> lk_maybe_sudo command [arg1...]
 function lk_maybe_sudo() {
     if lk_is_true "${SUDO_OR_NOT:-0}"; then
@@ -944,22 +963,59 @@ function lk_ssl_client() {
     openssl s_client -connect "$HOST":"$PORT" -servername "$SERVER_NAME"
 }
 
+# lk_grep_ipv4
+#   Print each input line that is a valid dotted-decimal IPv4 address or CIDR.
+function lk_grep_ipv4() {
+    local OCTET='(25[0-5]|2[0-4][0-9]|(1[0-9]|[1-9])?[0-9])'
+    grep -E "^($OCTET\.){3}$OCTET(/(3[0-2]|[12][0-9]|[1-9]))?\$"
+}
+
+# lk_grep_ipv6
+#   Print each input line that is a valid 8-hextet IPv6 address or CIDR.
+function lk_grep_ipv6() {
+    local HEXTET='[0-9a-fA-F]{1,4}' \
+        PREFIX='/(12[0-8]|1[01][0-9]|[1-9][0-9]|[1-9])'
+    grep -E \
+        "^(:|($HEXTET:)+)((:$HEXTET)+|$HEXTET|:)($PREFIX)?\$" |
+        grep -E "^(($HEXTET)?:){1,7}($HEXTET)?($PREFIX)?\$"
+}
+
+# lk_resolve host...
+function lk_resolve() {
+    local HOSTS IP_ADDRESSES
+    IP_ADDRESSES=($({
+        lk_echo_array "$@" | lk_grep_ipv4 || :
+        lk_echo_array "$@" | lk_grep_ipv6 || :
+    }))
+    HOSTS=($(comm -23 <(lk_echo_array "$@" | sort | uniq) \
+        <(lk_echo_array "${IP_ADDRESSES[@]}" | sort | uniq)))
+    IP_ADDRESSES+=($(eval \
+        "dig +short ${HOSTS[*]/%/ A} ${HOSTS[*]/%/ AAAA}" |
+        sed -E '/\.$/d')) || return
+    lk_echo_array "${IP_ADDRESSES[@]}" | sort | uniq
+}
+
 # lk_start_or_restart command [arg1...]
 #   Kill any running COMMAND processes, then run COMMAND in the
 #   background and disown it.
 function lk_start_or_restart() {
     local COMMAND
     COMMAND="$(basename "$1")"
-    is_root ||
+    lk_is_root ||
         ! pgrep -xu "$USER" "$COMMAND" >/dev/null || # limit to processes owned by $USER
         pkill -xu "$USER" "$COMMAND"                 #
-    ! is_root ||                                     #
+    ! lk_is_root ||                                  #
         ! pgrep -x "$COMMAND" >/dev/null ||          # ...unless we're running as root
         pkill -x "$COMMAND"
-    ! command_exists "$1" || {
+    ! lk_command_exists "$1" || {
         nohup "$@" </dev/null >/dev/null 2>&1 &
         disown
     }
+}
+
+function lk_keep_original() {
+    [ ! -e "$1" ] ||
+        lk_maybe_sudo cp -nav "$1" "$1.orig"
 }
 
 # lk_apply_setting file_path setting_name setting_value [delimiter] [comment_chars] [space_chars]
@@ -991,7 +1047,7 @@ function lk_apply_setting() {
             SEARCH_PATTERN="^($SPACE_PATTERN)$COMMENT_PATTERN($SPACE_PATTERN)$NAME_ESCAPED$SPACE_PATTERN$DELIMITER_ESCAPED.*\$"
             REPLACED="$(sed -E "0,/$SEARCH_PATTERN/{s/$SEARCH_PATTERN/\\1\\2$(lk_escape_ere_replace "$REPLACE")/}" "$FILE_PATH")" || return
         }
-        [ -f "$FILE_PATH.orig" ] || lk_maybe_sudo cp -pv "$FILE_PATH" "$FILE_PATH.orig" || return
+        lk_keep_original "$FILE_PATH" || return
         if grep -Eq "$CHECK_PATTERN" <<<"$REPLACED"; then
             lk_maybe_sudo tee "$FILE_PATH" <<<"$REPLACED" >/dev/null || return
         else
@@ -1033,7 +1089,7 @@ function lk_enable_entry() {
         # try to replace a commented entry
         SEARCH_PATTERN="^($SPACE_PATTERN)$OPTIONAL_COMMENT_PATTERN($SPACE_PATTERN$ENTRY_ESCAPED${TRAILING_PATTERN:+($TRAILING_PATTERN)?})\$"
         REPLACED="$(sed -E "0,/$SEARCH_PATTERN/{s/$SEARCH_PATTERN/\1\2/}" "$FILE_PATH")" || return
-        [ -f "$FILE_PATH.orig" ] || lk_maybe_sudo cp -pv "$FILE_PATH" "$FILE_PATH.orig" || return
+        lk_keep_original "$FILE_PATH" || return
         if grep -Eq "$CHECK_PATTERN" <<<"$REPLACED"; then
             lk_maybe_sudo tee "$FILE_PATH" <<<"$REPLACED" >/dev/null || return
         else

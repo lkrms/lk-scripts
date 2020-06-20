@@ -47,11 +47,9 @@ PACKAGES=(
     #
     htop    # 'top' alternative
     iftop   # shows network traffic by service and host
-    ifstat  # dumps network statistics by interface
     iotop   #
     nethogs # groups bandwidth by process ('nettop')
     nload   # shows bandwidth by interface
-    sysstat
 
     #
     jq
