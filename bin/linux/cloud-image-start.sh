@@ -487,6 +487,7 @@ PACKAGES=()
 }
 
 RUN_CMD=()
+WRITE_FILES=()
 if [ -z "$STACKSCRIPT" ]; then
     USER_DATA="\
 #cloud-config
@@ -549,25 +550,47 @@ $(
         RUN_CMD=(
             "  - mkdir -pv ${MOUNT_DIRS[*]}"
             "${FSTAB_CMD[@]}"
-            ${RUN_CMD+"${RUN_CMD[@]}"}
+            ${RUN_CMD[@]+"${RUN_CMD[@]}"}
         )
     }
+    # ubuntu-16.04-minimal leaves /etc/resolv.conf unconfigured if a static IP
+    # is assigned (no resolvconf package?)
+    [ -z "$VM_IPV4_ADDRESS" ] || [ "$IMAGE_NAME" != "ubuntu-16.04-minimal" ] ||
+        WRITE_FILES+=(
+            "  - content: |"
+            "      nameserver ${SUBNET}1"
+            "    path: /etc/resolv.conf"
+        )
+    # ubuntu-12.04 doesn't start a serial getty (or implement write_files)
+    [ "$IMAGE_NAME" != "ubuntu-12.04" ] || {
+        GETTY_SH='cat <<EOF >"/etc/init/ttyS0.conf"
+start on stopped rc RUNLEVEL=[2345]
+stop on runlevel [!2345]
+respawn
+exec /sbin/getty --keep-baud 115200,38400,9600 ttyS0 vt220
+EOF
+/sbin/initctl start ttyS0'
+        RUN_CMD+=(
+            "  - - bash"
+            "    - -c"
+            "    - |"
+            "      ${GETTY_SH//$'\n'/$'\n'      }"
+        )
+    }
+    # cloud-init on ubuntu-14.04 doesn't recognise the "apt" schema
+    [[ ! "$IMAGE_NAME" =~ ^ubuntu-(14.04|12.04)$ ]] ||
+        echo "\
+apt_mirror: ${UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}"
     [ "${#RUN_CMD[@]}" -eq "0" ] || {
         printf '%s\n' \
             "runcmd:" \
             "${RUN_CMD[@]}"
     }
-    # ubuntu-16.04-minimal leaves /etc/resolv.conf unconfigured if a static IP
-    # is assigned (no resolvconf package?)
-    [ -z "$VM_IPV4_ADDRESS" ] || [ "$IMAGE_NAME" != "ubuntu-16.04-minimal" ] || echo "\
-write_files:
-  - content: |
-      nameserver ${SUBNET}1
-    path: /etc/resolv.conf"
-    # cloud-init on ubuntu-14.04 doesn't recognise the "apt" schema
-    [[ ! "$IMAGE_NAME" =~ ^ubuntu-(14.04|12.04)$ ]] ||
-        echo "\
-apt_mirror: ${UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}"
+    [ "${#WRITE_FILES[@]}" -eq "0" ] || {
+        printf '%s\n' \
+            "write_files:" \
+            "${WRITE_FILES[@]}"
+    }
 )"
 
 META_DATA="\
