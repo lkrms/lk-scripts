@@ -57,7 +57,7 @@ function lk_openconnect() {
     COMMAND=(
         openconnect
         --background
-        --script "vpn-slice ${*:---route-internal}"
+        --script "vpn-slice --verbose --dump ${*:---route-internal}"
         --verbose
         --dump-http-traffic
         --passwd-on-stdin

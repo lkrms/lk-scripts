@@ -3,7 +3,7 @@
 set -euo pipefail
 
 PULL_FROM="${PWD%/.git}"
-cd "/opt/linac-scripts"
+cd "/opt/lk-scripts"
 unset GIT_DIR
 
 echo "[$PWD] git remote set-url local \"$PULL_FROM\"" >&2
