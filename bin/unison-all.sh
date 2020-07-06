@@ -42,7 +42,9 @@ for i in "${!UNISON_PROFILES[@]}"; do
 
     UNISON_PROFILE="${UNISON_PROFILES[$i]}"
     UNISON_PROFILE="$(basename "${UNISON_PROFILE%.prf}")"
-    LOCAL_DIR="$HOME/$(upper_first "$UNISON_PROFILE")"
+    LOCAL_DIR="$HOME/$UNISON_PROFILE"
+    [ -d "$LOCAL_DIR" ] ||
+        LOCAL_DIR="$HOME/$(upper_first "$UNISON_PROFILE")"
 
     case "$UNISON_PROFILE" in
 
