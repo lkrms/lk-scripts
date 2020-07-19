@@ -155,7 +155,8 @@ while :; do
         STACKSCRIPT="$1"
         ;;
     -u | --session)
-        VM_POOL_ROOT="$(realpath "${CLOUDIMG_SESSION_POOL_ROOT:-$HOME/.local/share/libvirt/images}")"
+        VM_POOL_ROOT="$(realpath --canonicalize-missing \
+            "${CLOUDIMG_SESSION_POOL_ROOT:-$HOME/.local/share/libvirt/images}")"
         VM_NETWORK_DEFAULT="bridge=virbr0"
         LIBVIRT_URI="qemu:///session"
         unset SUDO_OR_NOT

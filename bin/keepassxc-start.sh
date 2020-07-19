@@ -9,10 +9,16 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 assert_not_root
 
-USAGE="Usage: $(basename "$0") [--daemon] </path/to/database> [/path/to/another/database...]"
+USAGE="Usage: $(basename "$0") [--daemon] [--check-has-password] [--reset-password] </path/to/database> [/path/to/another/database...]"
 
 DAEMON=1
 [ "${1:-}" = "--daemon" ] && shift || DAEMON=0
+
+CHECK_HAS_PASSWORD=1
+[ "${1:-}" = "--check-has-password" ] && shift || CHECK_HAS_PASSWORD=0
+
+RESET_PASSWORD=1
+[ "${1:-}" = "--reset-password" ] && shift || RESET_PASSWORD=0
 
 [ "$#" -gt "0" ] || die "$USAGE"
 
@@ -50,8 +56,10 @@ for DATABASE_PATH in "$@"; do
     [ -f "$DATABASE_PATH" ] || die "$USAGE"
     DATABASE_PATH="$(realpath "$DATABASE_PATH")"
 
-    NO_PASSWORD=0
-    PASSWORD="$("${GET_SECRET[@]//%DATABASE_PATH%/$DATABASE_PATH}" 2>/dev/null)" || NO_PASSWORD=1
+    NO_PASSWORD="$RESET_PASSWORD"
+    [ "$RESET_PASSWORD" -eq "1" ] ||
+        PASSWORD="$("${GET_SECRET[@]//%DATABASE_PATH%/$DATABASE_PATH}" 2>/dev/null)" ||
+        NO_PASSWORD=1
 
     if [ "$NO_PASSWORD" -eq "1" ]; then
 
@@ -70,6 +78,10 @@ for DATABASE_PATH in "$@"; do
     PASSWORDS+=("$PASSWORD")
 
 done
+
+if [ "$CHECK_HAS_PASSWORD" -eq "1" ]; then
+    exit
+fi
 
 IFS=$'\n\n\n'
 
