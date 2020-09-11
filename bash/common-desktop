@@ -34,7 +34,7 @@ function lk_open_firefox_ssb() {
 
 function lk_open_chrome_ssb() {
     local CHROME_COMMAND INSTANCE_NAME
-    for CHROME_COMMAND in google-chrome-stable google-chrome chrome; do
+    for CHROME_COMMAND in chromium google-chrome-stable google-chrome chrome; do
         lk_command_exists "$CHROME_COMMAND" && break || CHROME_COMMAND=
     done
     [ -n "$CHROME_COMMAND" ] || return
