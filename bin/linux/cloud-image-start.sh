@@ -276,7 +276,7 @@ esac
 
 if [ -n "$STACKSCRIPT" ]; then
     lk_console_item "Processing StackScript" "$STACKSCRIPT"
-    STACKSCRIPT_TAGS="$(grep -Eo '<(udf|UDF)(\s+[a-z]+="[^"]*")*\s*/>' "$STACKSCRIPT")"
+    STACKSCRIPT_TAGS="$(grep -Eo '<(udf|UDF|lk:udf|lk:UDF)(\s+[a-z]+="[^"]*")*\s*/>' "$STACKSCRIPT")"
     STACKSCRIPT_TAG_COUNT="$(wc -l <<<"$STACKSCRIPT_TAGS")"
     STACKSCRIPT_FIELDS=()
     while IFS=$'\n' read -rd $'\0' -u 4 NAME LABEL DEFAULT_EXISTS DEFAULT SELECT_TYPE SELECT_OPTIONS; do
@@ -317,7 +317,7 @@ if [ -n "$STACKSCRIPT" ]; then
         STACKSCRIPT_FIELDS+=("$NAME")
         export "$NAME"
     done 4< <(cat <<<"$STACKSCRIPT_TAGS" |
-        sed -E 's/<(udf|UDF)(\s+(name="([a-zA-Z_][a-zA-Z0-9_]*)"|label="([^"]*)"|(default)="([^"]*)"|(oneof|manyof)="([^"]*)"|[a-zA-Z]+="[^"]*"))*\s*\/>/\4\n\5\n\6\n\7\n\8\n\9/' |
+        sed -E 's/<(udf|UDF|lk:udf|lk:UDF)(\s+(name="([a-zA-Z_][a-zA-Z0-9_]*)"|label="([^"]*)"|(default)="([^"]*)"|(oneof|manyof)="([^"]*)"|[a-zA-Z]+="[^"]*"))*\s*\/>/\4\n\5\n\6\n\7\n\8\n\9/' |
         xargs -d $'\n' -n 6 printf '%s.\n%s.\n%s.\n%s.\n%s.\n%s.\0')
     STACKSCRIPT_ENV=
     [ "${#STACKSCRIPT_FIELDS[@]}" -eq "0" ] || {

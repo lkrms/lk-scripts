@@ -3,6 +3,10 @@
 
 include='' . lk-bash-load.sh || exit
 
+LK_USAGE="\
+Usage: ${0##*/} <SOURCE_FILE>... [<TARGET_DIR>]
+   or: ${0##*/} <SOURCE_DIR> [[<SOURCE_EXT>] <TARGET_DIR>]"
+
 if lk_files_exist "$@"; then
     # <SOURCE_FILE>...
     SOURCE_FILES=("$@")
@@ -30,11 +34,8 @@ else
     SOURCE_FILES=()
 fi
 
-[ "${#SOURCE_FILES[@]}" -gt "0" ] ||
-    lk_usage "\
-Usage:
-  ${0##*/} <SOURCE_FILE>... [<TARGET_DIR>]
-  ${0##*/} <SOURCE_DIR> [[<SOURCE_EXT>] <TARGET_DIR>]"
+lk_check_args
+[ "${#SOURCE_FILES[@]}" -gt "0" ] || lk_usage
 
 TARGET_ROOT="${TARGET_ROOT:-${HANDBRAKE_TARGET:-$PWD}}"
 TARGET_ROOT="${TARGET_ROOT%/}"
