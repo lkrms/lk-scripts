@@ -1,100 +1,105 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2015,SC2163
+# shellcheck disable=SC1091,SC2015,SC2016
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+include=validate . lk-bash-load.sh || exit
 
-. "$SCRIPT_DIR/../../bash/common"
-
-IMAGE="ubuntu-18.04-minimal"
+IMAGE=ubuntu-18.04-minimal
 VM_PACKAGES=
 VM_FILESYSTEM_MAPS=
-VM_MEMORY="4096"
-VM_CPUS="2"
-VM_DISK_SIZE="80G"
+VM_MEMORY=4096
+VM_CPUS=2
+VM_DISK_SIZE=80G
 VM_IPV4_ADDRESS=
-VM_MAC_ADDRESS="$(printf '52:54:00:%02x:%02x:%02x' $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256)))"
+VM_MAC_ADDRESS=$(printf '52:54:00:%02x:%02x:%02x' \
+    $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256)))
 REFRESH_CLOUDIMG=0
 STACKSCRIPT=
-SKIP_PROMPTS=0
 FORCE_DELETE=0
 
-USAGE="
-Usage:
-  $(basename "$0") [options] vm_name
+# shellcheck disable=SC2034
+LK_USAGE="\
+Usage: ${0##*/} [OPTIONS] VM_NAME
 
-Boot a new QEMU/KVM instance from the current release of a cloud image.
+Boot a new QEMU/KVM virtual machine from the current release of a cloud-init
+based image.
 
 Options:
-  -i, --image <image_name>                              [$IMAGE]
-  -r, --refresh-image
-  -p, --packages <package,...>
-  -f, --fs-maps <host_path,guest_path|...>
-  -P, --preset <preset_name>
-  -c, --cpus <count>                                    [$VM_CPUS]
-  -m, --memory <size>               size is in MiB      [$VM_MEMORY]
-  -s, --disk-size <size>            size is in GiB      [$VM_DISK_SIZE]
-  -n, --network <network_name>      may be given as: 'bridge=ifname'
-  -I, --ip-address <ipv4_address>   format must be: 'a.b.c.d/prefix'
-  -M, --mac <52:54:00:xx:xx:xx>     uniqueness is not checked
-  -S, --stackscript <script_path>   overrides --packages
-  -u, --session                     qemu:///system -> qemu:///session
-  -y, --yes                         skip prompts if possible
-  -F, --force                       force off/delete if needed (implies -y)
+  -i, --image=IMAGE             boot from IMAGE (default: $IMAGE)
+  -r, --refresh-image           download latest IMAGE if cached version is
+                                out-of-date
+  -p, --packages=PACKAGE,...    install each PACKAGE in guest after booting
+  -f, --fs-maps=PATHS|...       export HOST_PATH to guest as GUEST_PATH for
+                                each HOST_PATH,GUEST_PATH in PATHS
+  -P, --preset=PRESET           use PRESET to configure -m, -c, -s
+  -m, --memory=SIZE             allocate SIZE memory in MiB (default: $VM_MEMORY)
+  -c, --cpus=COUNT              allocate COUNT virtual CPUs (default: $VM_CPUS)
+  -s, --disk-size=SIZE          resize IMAGE to SIZE in GiB (default: $VM_DISK_SIZE)
+  -n, --network=NETWORK         connect guest to libvirt network NETWORK, or
+                                IFNAME if bridge=IFNAME specified
+  -I, --ip-address=CIDR         use CIDR to configure static IP in guest
+  -M, --mac=52:54:00:xx:xx:xx   set MAC address of guest network interface
+                                (default: <random>)
+  -S, --stackscript=SCRIPT      use cloud-init to run SCRIPT in guest after
+                                booting (see below)
+  -u, --session                 launch guest as user instead of system
+  -y, --yes                     do not prompt for input
+  -F, --force                   delete existing guest VM_NAME without prompting
+                                (implies -y)
 
-  Supported images:
-    ubuntu-20.04-minimal
-    ubuntu-18.04-minimal
-    ubuntu-16.04-minimal
-    ubuntu-20.04
-    ubuntu-18.04
-    ubuntu-16.04
-    ubuntu-14.04
-    ubuntu-12.04
+Supported images:
+  ubuntu-20.04      ubuntu-20.04-minimal
+  ubuntu-18.04      ubuntu-18.04-minimal
+  ubuntu-16.04      ubuntu-16.04-minimal
+  ubuntu-14.04
+  ubuntu-12.04
 
-  Presets:
-    linode16gb
-    linode8gb
-    linode4gb
-    linode2gb
-    linode1gb
+Presets:
+  linode16gb
+  linode8gb
+  linode4gb
+  linode2gb
+  linode1gb
 
-  If --stackscript is specified:
-    - you will be prompted to set StackScript fields found in the script
-    - cloud-init will be configured to initialize a Linode-like environment
-    - the specified script will be minified and added to runcmd in cloud-init
-"
+StackScript notes:
+- The user is prompted for any UDF tags found in the script
+- cloud-init is configured to create a Linode-like environment, and the entire
+  script is added to the runcmd module
+- The --packages option is ignored when booting with --stackscript"
 
+lk_check_args
 OPTS="$(getopt --options "i:rp:f:P:m:c:s:n:I:M:S:uyF" \
-    --longoptions "image:,refresh-image,packages:,fs-maps:,preset:,memory:,cpus:,disk-size:,network:,ip-address:,mac:,stackscript:,session,yes,force" \
-    --name "$(basename "$0")" \
-    -- "$@")" || die "$USAGE"
+    --longoptions "image:,refresh-image,packages:,fs-maps:,preset:,memory:,\
+cpus:,disk-size:,network:,ip-address:,mac:,stackscript:,session,yes,force" \
+    --name "${0##*/}" \
+    -- "$@")" || lk_usage
 
 eval "set -- $OPTS"
 
-CLOUDIMG_POOL_ROOT="$(realpath "${CLOUDIMG_POOL_ROOT:-/var/lib/libvirt/images}")"
-VM_POOL_ROOT="$CLOUDIMG_POOL_ROOT"
-VM_NETWORK_DEFAULT="default"
-LIBVIRT_URI="qemu:///system"
-SUDO_OR_NOT=1
+UBUNTU_HOST=${LK_UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}
+S="[[:blank:]]"
+
+CLOUDIMG_ROOT=${LK_CLOUDIMG_ROOT:-/var/lib/libvirt/images}
+VM_POOL_ROOT=$CLOUDIMG_ROOT
+VM_NETWORK_DEFAULT=default
+LIBVIRT_URI=qemu:///system
+LK_SUDO=1
 
 while :; do
-    OPT="$1"
+    OPT=$1
     shift
     case "$OPT" in
     -i | --image)
-        IMAGE="$1"
+        IMAGE=$1
         ;;
     -r | --refresh-image)
         REFRESH_CLOUDIMG=1
         continue
         ;;
     -p | --packages)
-        VM_PACKAGES="$1"
+        VM_PACKAGES=$1
         ;;
     -f | --fs-maps)
-        VM_FILESYSTEM_MAPS="$1"
+        VM_FILESYSTEM_MAPS=$1
         ;;
     -P | --preset)
         case "$1" in
@@ -124,49 +129,50 @@ while :; do
             VM_DISK_SIZE=320G
             ;;
         *)
-            lk_warn "invalid preset '$1'"
-            die "$USAGE"
+            lk_warn "invalid preset: $1"
+            lk_usage
             ;;
         esac
         ;;
     -m | --memory)
-        VM_MEMORY="$1"
+        VM_MEMORY=$1
         ;;
     -c | --cpus)
-        VM_CPUS="$1"
+        VM_CPUS=$1
         ;;
     -s | --disk-size)
-        VM_DISK_SIZE="$1"
+        VM_DISK_SIZE=$1
         ;;
     -n | --network)
-        VM_NETWORK="$1"
+        VM_NETWORK=$1
         ;;
     -I | --ip-address)
-        VM_IPV4_ADDRESS="$1"
+        VM_IPV4_ADDRESS=$1
         ;;
     -M | --mac)
-        VM_MAC_ADDRESS="$1"
+        VM_MAC_ADDRESS=$1
         ;;
     -S | --stackscript)
         [ -f "$1" ] || {
-            lk_warn "invalid StackScript '$1'"
-            die "$USAGE"
+            lk_warn "invalid StackScript: $1"
+            lk_usage
         }
-        STACKSCRIPT="$1"
+        STACKSCRIPT=$1
         ;;
     -u | --session)
-        VM_POOL_ROOT="$(realpath --canonicalize-missing \
-            "${CLOUDIMG_SESSION_POOL_ROOT:-$HOME/.local/share/libvirt/images}")"
-        VM_NETWORK_DEFAULT="bridge=virbr0"
-        LIBVIRT_URI="qemu:///session"
-        unset SUDO_OR_NOT
+        VM_POOL_ROOT=${LK_CLOUDIMG_SESSION_ROOT:-$HOME/.local/share/libvirt/images}
+        VM_NETWORK_DEFAULT=bridge=virbr0
+        LIBVIRT_URI=qemu:///session
+        unset LK_SUDO
+        continue
+        ;;
+    -y | --yes)
+        LK_NO_INPUT=1
         continue
         ;;
     -F | --force)
         FORCE_DELETE=1
-        ;&
-    -y | --yes)
-        SKIP_PROMPTS=1
+        LK_NO_INPUT=1
         continue
         ;;
     --)
@@ -175,189 +181,212 @@ while :; do
     esac
     shift
 done
-VM_NETWORK="${VM_NETWORK:-$VM_NETWORK_DEFAULT}"
+
+VM_NETWORK=${VM_NETWORK:-$VM_NETWORK_DEFAULT}
 
 VM_HOSTNAME="${1:-}"
-[ -n "$VM_HOSTNAME" ] || die "$USAGE"
+[ -n "$VM_HOSTNAME" ] || lk_usage
 
-# OS_VARIANT: run `osinfo-query os` for options
+SHA_KEYRING=
 case "$IMAGE" in
-
 *20.04*minimal)
-    IMAGE_NAME="ubuntu-20.04-minimal"
-    IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/minimal/releases/focal/release/ubuntu-20.04-minimal-cloudimg-amd64.img"
+    IMAGE_NAME=ubuntu-20.04-minimal
+    IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/focal/release/ubuntu-20.04-minimal-cloudimg-amd64.img
     SHA_URLS=(
         "https://cloud-images.ubuntu.com/minimal/releases/focal/release/SHA256SUMS.gpg"
     )
-    SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-    OS_VARIANT="ubuntu20.04"
+    OS_VARIANT=ubuntu20.04
     ;;
-
 *20.04*)
-    IMAGE_NAME="ubuntu-20.04"
-    IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/focal/current/focal-server-cloudimg-amd64.img"
+    IMAGE_NAME=ubuntu-20.04
+    IMAGE_URL=http://$UBUNTU_HOST/focal/current/focal-server-cloudimg-amd64.img
     SHA_URLS=(
         "https://cloud-images.ubuntu.com/focal/current/SHA256SUMS.gpg"
         "https://cloud-images.ubuntu.com/focal/current/SHA256SUMS"
     )
-    SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-    OS_VARIANT="ubuntu20.04"
+    OS_VARIANT=ubuntu20.04
     ;;
-
 *18.04*minimal)
-    IMAGE_NAME="ubuntu-18.04-minimal"
-    IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/minimal/releases/bionic/release/ubuntu-18.04-minimal-cloudimg-amd64.img"
+    IMAGE_NAME=ubuntu-18.04-minimal
+    IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/bionic/release/ubuntu-18.04-minimal-cloudimg-amd64.img
     SHA_URLS=(
         "https://cloud-images.ubuntu.com/minimal/releases/bionic/release/SHA256SUMS.gpg"
     )
-    SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-    OS_VARIANT="ubuntu18.04"
+    OS_VARIANT=ubuntu18.04
     ;;
-
 *18.04*)
-    IMAGE_NAME="ubuntu-18.04"
-    IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/bionic/current/bionic-server-cloudimg-amd64.img"
+    IMAGE_NAME=ubuntu-18.04
+    IMAGE_URL=http://$UBUNTU_HOST/bionic/current/bionic-server-cloudimg-amd64.img
     SHA_URLS=(
         "https://cloud-images.ubuntu.com/bionic/current/SHA256SUMS.gpg"
         "https://cloud-images.ubuntu.com/bionic/current/SHA256SUMS"
     )
-    SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-    OS_VARIANT="ubuntu18.04"
+    OS_VARIANT=ubuntu18.04
     ;;
-
 *16.04*minimal)
-    IMAGE_NAME="ubuntu-16.04-minimal"
-    IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/minimal/releases/xenial/release/ubuntu-16.04-minimal-cloudimg-amd64-disk1.img"
+    IMAGE_NAME=ubuntu-16.04-minimal
+    IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/xenial/release/ubuntu-16.04-minimal-cloudimg-amd64-disk1.img
     SHA_URLS=(
         "https://cloud-images.ubuntu.com/minimal/releases/xenial/release/SHA256SUMS.gpg"
     )
-    SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-    OS_VARIANT="ubuntu16.04"
+    OS_VARIANT=ubuntu16.04
     ;;
-
 *16.04*)
-    IMAGE_NAME="ubuntu-16.04"
-    IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/xenial/current/xenial-server-cloudimg-amd64-disk1.img"
+    IMAGE_NAME=ubuntu-16.04
+    IMAGE_URL=http://$UBUNTU_HOST/xenial/current/xenial-server-cloudimg-amd64-disk1.img
     SHA_URLS=(
         "https://cloud-images.ubuntu.com/xenial/current/SHA256SUMS.gpg"
         "https://cloud-images.ubuntu.com/xenial/current/SHA256SUMS"
     )
-    SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-    OS_VARIANT="ubuntu16.04"
+    OS_VARIANT=ubuntu16.04
     ;;
-
 *14.04*)
-    IMAGE_NAME="ubuntu-14.04"
-    IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/trusty/current/trusty-server-cloudimg-amd64-disk1.img"
+    IMAGE_NAME=ubuntu-14.04
+    IMAGE_URL=http://$UBUNTU_HOST/trusty/current/trusty-server-cloudimg-amd64-disk1.img
     SHA_URLS=(
         "https://cloud-images.ubuntu.com/trusty/current/SHA256SUMS.gpg"
         "https://cloud-images.ubuntu.com/trusty/current/SHA256SUMS"
     )
-    SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-    OS_VARIANT="ubuntu14.04"
+    OS_VARIANT=ubuntu14.04
     ;;
-
 *12.04*)
-    IMAGE_NAME="ubuntu-12.04"
-    IMAGE_URL="http://${UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}/precise/current/precise-server-cloudimg-amd64-disk1.img"
+    IMAGE_NAME=ubuntu-12.04
+    IMAGE_URL=http://$UBUNTU_HOST/precise/current/precise-server-cloudimg-amd64-disk1.img
     SHA_URLS=(
         "https://cloud-images.ubuntu.com/precise/current/SHA256SUMS.gpg"
         "https://cloud-images.ubuntu.com/precise/current/SHA256SUMS"
     )
-    SHA_KEYRING="$LK_ROOT/share/keyrings/ubuntu-cloudimage-keyring.gpg"
-    OS_VARIANT="ubuntu12.04"
+    OS_VARIANT=ubuntu12.04
     ;;
-
 *)
-    die "$IMAGE: cloud image unknown"
+    lk_warn "invalid cloud image: $IMAGE"
+    lk_usage
     ;;
-
 esac
 
 if [ -n "$STACKSCRIPT" ]; then
-    lk_console_item "Processing StackScript" "$STACKSCRIPT"
-    STACKSCRIPT_TAGS="$(grep -Eo '<(udf|UDF|lk:udf|lk:UDF)(\s+[a-z]+="[^"]*")*\s*/>' "$STACKSCRIPT")"
-    STACKSCRIPT_TAG_COUNT="$(wc -l <<<"$STACKSCRIPT_TAGS")"
-    STACKSCRIPT_FIELDS=()
-    while IFS=$'\n' read -rd $'\0' -u 4 NAME LABEL DEFAULT_EXISTS DEFAULT SELECT_TYPE SELECT_OPTIONS; do
-        [ "${#STACKSCRIPT_FIELDS[@]}" -gt "0" ] ||
-            lk_console_detail "$STACKSCRIPT_TAG_COUNT UDF $(lk_maybe_plural "$STACKSCRIPT_TAG_COUNT" "tag" "tags") found"
-        NAME="${NAME%.}"
-        LABEL="${LABEL%.}"
-        DEFAULT_EXISTS="${DEFAULT_EXISTS%.}"
-        DEFAULT="${DEFAULT%.}"
-        SELECT_TYPE="${SELECT_TYPE%.}"
-        SELECT_OPTIONS="${SELECT_OPTIONS%.}"
-        ! lk_is_declared "$NAME" ||
-            declare -p "$NAME" | grep -Eq "^declare -x $NAME=" ||
-            die "StackScript field $NAME conflicts with variable $NAME"
-        echo
-        if [ -n "$DEFAULT_EXISTS" ]; then
-            lk_console_item "Optional:" "$NAME" "$BOLD$GREEN"
-        else
-            unset DEFAULT
-            lk_console_item "Value required for" "$NAME" "$BOLD$RED"
-        fi
-        lk_console_detail "field $(("${#STACKSCRIPT_FIELDS[@]}" + 1)) of $STACKSCRIPT_TAG_COUNT"
-        [ -z "$SELECT_TYPE" ] || lk_console_detail "$SELECT_TYPE:" "$SELECT_OPTIONS"
-        [ -z "${DEFAULT:-}" ] || lk_console_detail "default:" "$DEFAULT"
-        while :; do
-            lk_is_false "$SKIP_PROMPTS" || {
-                [ -z "${!NAME:-}" ] && [ -z "$DEFAULT_EXISTS" ] || {
-                    lk_console_detail "using value:" "${!NAME-${DEFAULT:-}}" "$CYAN"
-                    break
-                }
-            }
-            eval "INITIAL_VALUE=\"\${$NAME-\${DEFAULT:-}}\""
-            eval "$NAME=\"\$(lk_console_read \"\$LABEL:\" \"\" \${INITIAL_VALUE:+-i \"\$INITIAL_VALUE\"})\""
-            [ -z "${!NAME}" ] && [ -z "$DEFAULT_EXISTS" ] || break
-            lk_console_warning "$NAME is a required field"
+    lk_console_log "Processing StackScript"
+    SS_TAGS=()
+    lk_mapfile <(grep -Eo \
+        "<(lk:)?[uU][dD][fF]($S+[a-zA-Z]+=\"[^\"]*\")*$S*/>" \
+        "$STACKSCRIPT") SS_TAGS
+    SS_FIELDS=()
+    for SS_TAG in ${SS_TAGS[@]+"${SS_TAGS[@]}"}; do
+        SS_ATTRIBS=()
+        lk_mapfile <(grep -Eo "[a-z]+=\"[^\"]*\"" <<<"$SS_TAG") SS_ATTRIBS
+        unset NAME LABEL DEFAULT SELECT_OPTIONS SELECT_TEXT VALIDATE_COMMAND
+        LK_REQUIRED=1
+        REQUIRED_TEXT=required
+        for SS_ATTRIB in ${SS_ATTRIBS[@]+"${SS_ATTRIBS[@]}"}; do
+            [[ $SS_ATTRIB =~ ^([a-z]+)=\"([^\"]*)\"$ ]]
+            case "${BASH_REMATCH[1]}" in
+            name)
+                NAME=${BASH_REMATCH[2]}
+                ;;
+            label)
+                LABEL=${BASH_REMATCH[2]}
+                ;;
+            default)
+                DEFAULT=${BASH_REMATCH[2]}
+                unset LK_REQUIRED
+                REQUIRED_TEXT=optional
+                ;;
+            oneof | manyof)
+                # shellcheck disable=SC2206
+                SELECT_OPTIONS=(${BASH_REMATCH[2]//,/ })
+                if [ "${BASH_REMATCH[1]}" = oneof ]; then
+                    SELECT_TEXT="Value must be one of the following"
+                    VALIDATE_COMMAND=(
+                        lk_validate_one_of VALUE "${SELECT_OPTIONS[@]}")
+                else
+                    SELECT_TEXT="Value can be any number of the following (comma-delimited)"
+                    VALIDATE_COMMAND=(
+                        lk_validate_many_of VALUE "${SELECT_OPTIONS[@]}")
+                fi
+                ;;
+            esac
         done
-        [ "${!NAME:-}" != "${DEFAULT:-}" ] || eval "$NAME="
-        STACKSCRIPT_FIELDS+=("$NAME")
-        export "$NAME"
-    done 4< <(cat <<<"$STACKSCRIPT_TAGS" |
-        sed -E 's/<(udf|UDF|lk:udf|lk:UDF)(\s+(name="([a-zA-Z_][a-zA-Z0-9_]*)"|label="([^"]*)"|(default)="([^"]*)"|(oneof|manyof)="([^"]*)"|[a-zA-Z]+="[^"]*"))*\s*\/>/\4\n\5\n\6\n\7\n\8\n\9/' |
-        xargs -d $'\n' -n 6 printf '%s.\n%s.\n%s.\n%s.\n%s.\n%s.\0')
+        ! lk_is_true "${LK_REQUIRED:-}" ||
+            [ -n "${VALIDATE_COMMAND+1}" ] ||
+            VALIDATE_COMMAND=(lk_validate_not_null VALUE)
+        lk_console_item \
+            "Checking field $((${#SS_FIELDS[@]} + 1)) of ${#SS_TAGS[@]}:" \
+            "$NAME"
+        [ -z "${SELECT_TEXT:-}" ] ||
+            lk_echo_array SELECT_OPTIONS |
+            lk_console_detail_list "$SELECT_TEXT:"
+        [ -z "${DEFAULT:-}" ] ||
+            lk_console_detail "Default value:" "$DEFAULT"
+        VALUE=$(lk_get_env "$NAME") || unset VALUE
+        i=0
+        while ((++i)); do
+            NO_ERROR_DISPLAYED=1
+            IS_VALID=1
+            [ -z "${VALIDATE_COMMAND+1}" ] ||
+                FIELD_ERROR=$("${VALIDATE_COMMAND[@]}") ||
+                IS_VALID=0
+            INITIAL_VALUE=${VALUE-${DEFAULT:-}}
+            lk_is_true "$IS_VALID" ||
+                ! { lk_no_input || [ "$i" -gt 1 ]; } || {
+                lk_console_warning0 "${FIELD_ERROR/VALUE/$NAME}"
+                unset NO_ERROR_DISPLAYED
+            }
+            if lk_is_true "$IS_VALID" && { lk_no_input || [ "$i" -gt 1 ]; }; then
+                lk_console_detail "Using value:" "$INITIAL_VALUE" "$LK_GREEN"
+                break
+            else
+                VALUE=$(LK_FORCE_INPUT=1 lk_console_read \
+                    "$LABEL${NO_ERROR_DISPLAYED+ ($REQUIRED_TEXT)}:" \
+                    "" ${INITIAL_VALUE:+-i "$INITIAL_VALUE"})
+            fi
+        done
+        [ "${VALUE:=}" != "${DEFAULT:-}" ] || VALUE=
+        SS_FIELDS+=("$NAME=$VALUE")
+    done
     STACKSCRIPT_ENV=
-    [ "${#STACKSCRIPT_FIELDS[@]}" -eq "0" ] || {
-        # printenv does no escaping, and cloud-init does no unescaping
-        STACKSCRIPT_ENV="$(printenv | grep -E "^($(lk_implode '|' "${STACKSCRIPT_FIELDS[@]}"))=.+$" | sort || true)"
-        echo
+    [ ${#SS_FIELDS[@]} -eq 0 ] || {
+        # This works because cloud-init does no unescaping
+        STACKSCRIPT_ENV=$(lk_echo_array SS_FIELDS | sort)
     }
 fi
+
+#####
 
 while VM_STATE="$(lk_maybe_sudo virsh domstate "$VM_HOSTNAME" 2>/dev/null)"; do
     [ "$VM_STATE" != "shut off" ] || unset VM_STATE
     lk_console_warning "Domain already exists: $VM_HOSTNAME"
-    lk_is_true "$FORCE_DELETE" || lk_confirm "$BOLD${RED}OK to ${VM_STATE+force off, }delete and permanently remove all storage volumes for '$VM_HOSTNAME'?$RESET" N || die
+    lk_is_true "$FORCE_DELETE" ||
+        LK_FORCE_INPUT=1 lk_confirm "\
+${LK_RED}OK to ${VM_STATE+force off, }delete and permanently remove all \
+storage volumes for '$VM_HOSTNAME'?$LK_RESET" N || lk_die
     ${VM_STATE+lk_maybe_sudo virsh destroy "$VM_HOSTNAME"} || :
     lk_maybe_sudo virsh undefine --remove-all-storage "$VM_HOSTNAME" || :
 done
 
 lk_console_message "Ready to download and deploy"
 echo "\
-${BOLD}Name:$RESET               $BOLD$YELLOW$VM_HOSTNAME$RESET
-${BOLD}Image:$RESET              $BOLD$CYAN$IMAGE_NAME$RESET
-${BOLD}Memory:$RESET             $BOLD$YELLOW$VM_MEMORY$RESET
-${BOLD}CPUs:$RESET               $BOLD$YELLOW$VM_CPUS$RESET
-${BOLD}Disk size:$RESET          $VM_DISK_SIZE
-${BOLD}Network:$RESET            $VM_NETWORK
-${BOLD}IPv4 address:$RESET       ${VM_IPV4_ADDRESS:-<automatic>}
-${BOLD}MAC address:$RESET        $VM_MAC_ADDRESS
-${BOLD}Packages:$RESET           ${VM_PACKAGES:+${VM_PACKAGES//,/, }, }qemu-guest-agent
-${BOLD}Filesystem maps:$RESET    ${VM_FILESYSTEM_MAPS:-<none>}
-${BOLD}Libvirt service:$RESET    $BOLD$CYAN$LIBVIRT_URI$RESET
-${BOLD}Disk image path:$RESET    $VM_POOL_ROOT
-${BOLD}StackScript:$RESET        ${STACKSCRIPT:-<none>}${STACKSCRIPT_ENV+
+${LK_BOLD}Name:$LK_RESET               $LK_BOLD$LK_YELLOW$VM_HOSTNAME$LK_RESET
+${LK_BOLD}Image:$LK_RESET              $LK_BOLD$LK_CYAN$IMAGE_NAME$LK_RESET
+${LK_BOLD}Memory:$LK_RESET             $LK_BOLD$LK_YELLOW$VM_MEMORY$LK_RESET
+${LK_BOLD}CPUs:$LK_RESET               $LK_BOLD$LK_YELLOW$VM_CPUS$LK_RESET
+${LK_BOLD}Disk size:$LK_RESET          $VM_DISK_SIZE
+${LK_BOLD}Network:$LK_RESET            $VM_NETWORK
+${LK_BOLD}IPv4 address:$LK_RESET       ${VM_IPV4_ADDRESS:-<automatic>}
+${LK_BOLD}MAC address:$LK_RESET        $VM_MAC_ADDRESS
+${LK_BOLD}Packages:$LK_RESET           ${VM_PACKAGES:+${VM_PACKAGES//,/, }, }qemu-guest-agent
+${LK_BOLD}Filesystem maps:$LK_RESET    ${VM_FILESYSTEM_MAPS:-<none>}
+${LK_BOLD}Libvirt service:$LK_RESET    $LK_BOLD$LK_CYAN$LIBVIRT_URI$LK_RESET
+${LK_BOLD}Disk image path:$LK_RESET    $VM_POOL_ROOT
+${LK_BOLD}StackScript:$LK_RESET        ${STACKSCRIPT:-<none>}${STACKSCRIPT_ENV+
 
 StackScript environment:
   $([ -n "$STACKSCRIPT_ENV" ] && echo "${STACKSCRIPT_ENV//$'\n'/$'\n'  }" || echo "<empty>")}
 "
-lk_is_true "$SKIP_PROMPTS" || lk_confirm "OK to proceed?" Y
+lk_confirm "OK to proceed?" Y
 
-mkdir -p "$CACHE_DIR/cloud-images" &&
-    cd "$CACHE_DIR/cloud-images" || die
+lk_elevate_if_error install -d -m 0777 \
+    "$LK_BASE/var/cache"{,/cloud-images,/NoCloud} 2>/dev/null &&
+    cd "$LK_BASE/var/cache/cloud-images" || exit
 
 FILENAME="${IMAGE_URL##*/}"
 IMG_NAME="${FILENAME%.*}"
@@ -368,29 +397,29 @@ if [ ! -f "$FILENAME" ] || lk_is_true "$REFRESH_CLOUDIMG"; then
 
     wget --timestamping "$IMAGE_URL" || {
         rm -f "$FILENAME"
-        die "error downloading $IMAGE_URL"
+        lk_die "error downloading $IMAGE_URL"
     }
 
     if [ "${#SHA_URLS[@]}" -eq "1" ]; then
-        SHA_SUMS="$(curl "${SHA_URLS[0]}" | gpg --no-default-keyring --keyring "$SHA_KEYRING" --decrypt)" || die "error verifying ${SHA_URLS[0]}"
+        SHA_SUMS="$(curl "${SHA_URLS[0]}" | gpg ${SHA_KEYRING:+--no-default-keyring --keyring "$SHA_KEYRING"} --decrypt)" || lk_die "error verifying ${SHA_URLS[0]}"
     else
         SHA_SUMS="$(curl "${SHA_URLS[1]}")" &&
-            gpg --no-default-keyring --keyring "$SHA_KEYRING" --verify <(curl "${SHA_URLS[0]}") <(echo "$SHA_SUMS") || die "error verifying ${SHA_URLS[0]}"
+            gpg ${SHA_KEYRING:+--no-default-keyring --keyring "$SHA_KEYRING"} --verify <(curl "${SHA_URLS[0]}") <(echo "$SHA_SUMS") || lk_die "error verifying ${SHA_URLS[0]}"
     fi
-    echo "$SHA_SUMS" >"SHASUMS-$IMAGE_NAME" || die "error writing to SHASUMS-$IMAGE_NAME"
+    echo "$SHA_SUMS" >"SHASUMS-$IMAGE_NAME" || lk_die "error writing to SHASUMS-$IMAGE_NAME"
 
 fi
 
 TIMESTAMP="$(gnu_stat --printf '%Y' "$FILENAME")"
-CLOUDIMG_PATH="$CLOUDIMG_POOL_ROOT/cloud-images/$IMG_NAME-$TIMESTAMP.qcow2"
+CLOUDIMG_PATH="$CLOUDIMG_ROOT/cloud-images/$IMG_NAME-$TIMESTAMP.qcow2"
 if sudo test -f "$CLOUDIMG_PATH"; then
     lk_console_message "$FILENAME is already available at $CLOUDIMG_PATH"
 else
     grep -E "$(lk_escape_ere "$FILENAME")\$" "SHASUMS-$IMAGE_NAME" | shasum -a "${SHA_ALGORITHM:-256}" -c &&
-        lk_console_item "Verified" "$FILENAME" "$BOLD$GREEN" ||
-        die "$PWD$FILENAME: verification failed"
-    sudo chmod -c 755 "$CLOUDIMG_POOL_ROOT" # some distros (e.g. Ubuntu) make this root-only by default
-    sudo mkdir -p "$CLOUDIMG_POOL_ROOT/cloud-images"
+        lk_console_item "Verified" "$FILENAME" "$LK_BOLD$LK_GREEN" ||
+        lk_die "$PWD$FILENAME: verification failed"
+    sudo chmod -c 755 "$CLOUDIMG_ROOT" # some distros (e.g. Ubuntu) make this root-only by default
+    sudo mkdir -p "$CLOUDIMG_ROOT/cloud-images"
     CLOUDIMG_FORMAT="$(qemu-img info --output=json "$FILENAME" | jq -r .format)"
     if [ "$CLOUDIMG_FORMAT" != "qcow2" ]; then
         lk_console_message "Converting $FILENAME (format: $CLOUDIMG_FORMAT) to $CLOUDIMG_PATH"
@@ -454,11 +483,11 @@ MOUNT_DIRS=()
         FILESYSTEM_DIRS=($FILESYSTEM)
         unset IFS
 
-        [ "${#FILESYSTEM_DIRS[@]}" -ge "2" ] || die "invalid filesystem map: $FILESYSTEM"
+        [ "${#FILESYSTEM_DIRS[@]}" -ge "2" ] || lk_die "invalid filesystem map: $FILESYSTEM"
         SOURCE_DIR="${FILESYSTEM_DIRS[0]}"
         MOUNT_DIR="${FILESYSTEM_DIRS[1]}"
         MOUNT_NAME="qemufs${#MOUNT_DIRS[@]}"
-        [ -d "$SOURCE_DIR" ] || die "$SOURCE_DIR: directory does not exist"
+        [ -d "$SOURCE_DIR" ] || lk_die "$SOURCE_DIR: directory does not exist"
 
         FILESYSTEM_DIRS[1]="$MOUNT_NAME"
         IFS=","
@@ -471,12 +500,12 @@ MOUNT_DIRS=()
     done
 }
 
-[ -f "$HOME/.ssh/authorized_keys" ] || die "$HOME/.ssh/authorized_keys: file not found"
+[ -f "$HOME/.ssh/authorized_keys" ] || lk_die "$HOME/.ssh/authorized_keys: file not found"
 IFS=$'\n'
 # shellcheck disable=SC2207
 SSH_AUTHORIZED_KEYS=($(grep -Ev '^(#|\s*$)' "$HOME/.ssh/authorized_keys"))
 unset IFS
-[ "${#SSH_AUTHORIZED_KEYS[@]}" -gt "0" ] || die "$HOME/.ssh/authorized_keys: no keys"
+[ "${#SSH_AUTHORIZED_KEYS[@]}" -gt "0" ] || lk_die "$HOME/.ssh/authorized_keys: no keys"
 
 PACKAGES=()
 [ "$IMAGE_NAME" = "ubuntu-12.04" ] || PACKAGES+=("qemu-guest-agent")
@@ -611,14 +640,14 @@ network-interfaces: |
   dns-nameservers ${SUBNET}1"
 )"
 
-NOCLOUD_META_DIR="$TEMP_DIR/NoCloud/$(lk_hostname)-$VM_HOSTNAME-$(lk_date_ymdhms)"
+NOCLOUD_META_DIR="$LK_BASE/var/cache/NoCloud/$(lk_hostname)-$VM_HOSTNAME-$(lk_date_ymdhms)"
 mkdir -p "$NOCLOUD_META_DIR"
 
 echo "$NETWORK_CONFIG" >"$NOCLOUD_META_DIR/network-config.yml"
 echo "$USER_DATA" >"$NOCLOUD_META_DIR/user-data.yml"
 echo "$META_DATA" >"$NOCLOUD_META_DIR/meta-data.yml"
 
-if lk_is_false "$SKIP_PROMPTS" && lk_confirm "Customise cloud-init data source?" N -t 60; then
+if lk_confirm "Customise cloud-init data source?" N -t 60; then
     xdg-open "$NOCLOUD_META_DIR" || :
     lk_pause "Press any key to continue after making changes in $NOCLOUD_META_DIR . . . "
 fi
@@ -627,18 +656,18 @@ cloud-localds -N "$NOCLOUD_META_DIR/network-config.yml" \
     "$NOCLOUD_TEMP_PATH" \
     "$NOCLOUD_META_DIR/user-data.yml" \
     "$NOCLOUD_META_DIR/meta-data.yml" &&
-    maybe_sudo cp -fv "$NOCLOUD_TEMP_PATH" "$NOCLOUD_PATH" &&
-    rm -f "$NOCLOUD_TEMP_PATH" || die
+    lk_maybe_sudo cp -fv "$NOCLOUD_TEMP_PATH" "$NOCLOUD_PATH" &&
+    rm -f "$NOCLOUD_TEMP_PATH" || lk_die
 
-maybe_sudo qemu-img create \
+lk_maybe_sudo qemu-img create \
     -f "qcow2" \
     -b "$CLOUDIMG_PATH" \
     -F "qcow2" \
     "$DISK_PATH" &&
-    maybe_sudo qemu-img resize \
+    lk_maybe_sudo qemu-img resize \
         -f "qcow2" \
         "$DISK_PATH" \
-        "$VM_DISK_SIZE" || die
+        "$VM_DISK_SIZE" || lk_die
 
 VM_NETWORK_TYPE="${VM_NETWORK%%=*}"
 if [ "$VM_NETWORK_TYPE" = "$VM_NETWORK" ]; then
@@ -647,7 +676,7 @@ else
     VM_NETWORK="${VM_NETWORK#*=}"
 fi
 
-maybe_sudo virt-install \
+lk_maybe_sudo virt-install \
     --connect "$LIBVIRT_URI" \
     --name "$VM_HOSTNAME" \
     --memory "$VM_MEMORY" \

@@ -3,6 +3,7 @@
 
 include='' . lk-bash-load.sh || exit
 
+# shellcheck disable=SC2034
 LK_USAGE="\
 Usage: ${0##*/} <SOURCE_FILE>... [<TARGET_DIR>]
    or: ${0##*/} <SOURCE_DIR> [[<SOURCE_EXT>] <TARGET_DIR>]"
