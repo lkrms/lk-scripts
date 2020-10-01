@@ -187,7 +187,7 @@ VM_NETWORK=${VM_NETWORK:-$VM_NETWORK_DEFAULT}
 VM_HOSTNAME="${1:-}"
 [ -n "$VM_HOSTNAME" ] || lk_usage
 
-SHA_KEYRING=
+SHA_KEYRING=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg
 case "$IMAGE" in
 *20.04*minimal)
     IMAGE_NAME=ubuntu-20.04-minimal
@@ -340,7 +340,9 @@ if [ -n "$STACKSCRIPT" ]; then
                     "" ${INITIAL_VALUE:+-i "$INITIAL_VALUE"})
             fi
         done
-        [ "${VALUE:=}" != "${DEFAULT:-}" ] || VALUE=
+        [ "${VALUE:=}" != "${DEFAULT:-}" ] ||
+            lk_is_true "${LK_STACKSCRIPT_EXPORT_DEFAULT:-}" ||
+            VALUE=
         SS_FIELDS+=("$NAME=$VALUE")
     done
     STACKSCRIPT_ENV=
@@ -569,7 +571,7 @@ USER_DATA="$USER_DATA
 apt:
   primary:
     - arches: [default]
-      uri: ${UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}
+      uri: ${LK_UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}
 $(
     [ "${#PACKAGES[@]}" -eq "0" ] ||
         printf '%s\n' "packages:" "${PACKAGES[@]/#/  - }"
@@ -610,7 +612,7 @@ EOF
     # cloud-init on ubuntu-14.04 doesn't recognise the "apt" schema
     [[ ! "$IMAGE_NAME" =~ ^ubuntu-(14.04|12.04)$ ]] ||
         echo "\
-apt_mirror: ${UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}"
+apt_mirror: ${LK_UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}"
     [ "${#RUN_CMD[@]}" -eq "0" ] || {
         printf '%s\n' \
             "runcmd:" \
