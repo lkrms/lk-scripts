@@ -19,7 +19,7 @@ for FILE in "$@"; do
 done
 
 # keep the original PDF unless file size is reduced by at least:
-PERCENT_SAVED_THRESHOLD="${PERCENT_SAVED_THRESHOLD:-1}"
+PERCENT_SAVED_THRESHOLD="${PERCENT_SAVED_THRESHOLD:-2}"
 
 ERRORS=()
 

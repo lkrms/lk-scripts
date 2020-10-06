@@ -30,6 +30,9 @@ mac)
 
 esac
 
+UNISONLOCALHOSTNAME=${UNISONLOCALHOSTNAME:-$(lk_hostname)}
+export UNISONLOCALHOSTNAME
+
 UNISON_PROFILES=("$UNISON_ROOT/"*.prf)
 
 [ "${#UNISON_PROFILES[@]}" -gt "0" ] || die "No Unison profiles found"
