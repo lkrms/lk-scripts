@@ -323,12 +323,13 @@ if [ -n "$STACKSCRIPT" ]; then
             NO_ERROR_DISPLAYED=1
             IS_VALID=1
             [ -z "${VALIDATE_COMMAND+1}" ] ||
-                FIELD_ERROR=$("${VALIDATE_COMMAND[@]}") ||
+                FIELD_ERROR=$(LK_VALIDATE_FIELD_NAME="$NAME" \
+                    "${VALIDATE_COMMAND[@]}") ||
                 IS_VALID=0
             INITIAL_VALUE=${VALUE-${DEFAULT:-}}
             lk_is_true "$IS_VALID" ||
                 ! { lk_no_input || [ "$i" -gt 1 ]; } || {
-                lk_console_warning0 "${FIELD_ERROR/VALUE/$NAME}"
+                lk_console_warning0 "$FIELD_ERROR"
                 unset NO_ERROR_DISPLAYED
             }
             if lk_is_true "$IS_VALID" && { lk_no_input || [ "$i" -gt 1 ]; }; then
