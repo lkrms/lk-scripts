@@ -420,7 +420,7 @@ if sudo test -f "$CLOUDIMG_PATH"; then
 else
     grep -E "$(lk_escape_ere "$FILENAME")\$" "SHASUMS-$IMAGE_NAME" | shasum -a "${SHA_ALGORITHM:-256}" -c &&
         lk_console_item "Verified" "$FILENAME" "$LK_BOLD$LK_GREEN" ||
-        lk_die "$PWD$FILENAME: verification failed"
+        lk_die "$PWD/$FILENAME: verification failed"
     sudo chmod -c 755 "$CLOUDIMG_ROOT" # some distros (e.g. Ubuntu) make this root-only by default
     sudo mkdir -p "$CLOUDIMG_ROOT/cloud-images"
     CLOUDIMG_FORMAT="$(qemu-img info --output=json "$FILENAME" | jq -r .format)"
