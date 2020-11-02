@@ -84,7 +84,7 @@ done
 
 if [ "${#FAILOVER[@]}" -gt "0" ]; then
 
-    lk_echoc "Local $(lk_maybe_plural "${#FAILOVER[@]}" file files) with system failover $(lk_maybe_plural "${#FAILOVER[@]}" counterpart counterparts):" "$BOLD"
+    lk_echoc "Local $(lk_maybe_plural "${#FAILOVER[@]}" file files) with system failover $(lk_maybe_plural "${#FAILOVER[@]}" counterpart counterparts):" "$LK_BOLD"
 
     printf '%s\n' "${FAILOVER[@]}"
     echo
@@ -93,7 +93,7 @@ fi
 
 if [ "${#NO_SYSTEM[@]}" -gt "0" ]; then
 
-    lk_echoc "Local $(lk_maybe_plural "${#NO_SYSTEM[@]}" file files) with no system $(lk_maybe_plural "${#NO_SYSTEM[@]}" counterpart counterparts):" "$BOLD"
+    lk_echoc "Local $(lk_maybe_plural "${#NO_SYSTEM[@]}" file files) with no system $(lk_maybe_plural "${#NO_SYSTEM[@]}" counterpart counterparts):" "$LK_BOLD"
 
     printf '%s\n' "${NO_SYSTEM[@]}"
     echo

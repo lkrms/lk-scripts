@@ -1,11 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC1090
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-
-. "$SCRIPT_DIR/../../bash/common"
+include='' . lk-bash-load.sh || exit
 
 [ "$#" -gt "0" ] && lk_files_exist "$@" || lk_die "Usage: $(basename "$0") [--run] /path/to/file..."
 
@@ -30,7 +26,7 @@ function install_from_folder() {
 
             if [ "${#DEPLOY_FILES[@]}" -eq "1" ] && [ -f "${DEPLOY_FILES[0]}" ]; then
 
-                lk_console_item "Running Adobe installer:" "$2" "$BOLD$BLUE"
+                lk_console_item "Running Adobe installer:" "$2" "$LK_BOLD$LK_BLUE"
                 maybe_dryrun sudo "$ADOBE_INSTALLER" --mode=silent --deploymentFile="${DEPLOY_FILES[0]}" || EXIT_CODE="$?"
 
                 if [ "$EXIT_CODE" -eq "0" ]; then
@@ -40,7 +36,7 @@ function install_from_folder() {
 
                 else
 
-                    lk_console_item "Error installing (exit code ${BOLD}${EXIT_CODE}${RESET}):" "$2" "$LK_BOLD$LK_RED"
+                    lk_console_item "Error installing (exit code ${LK_BOLD}${EXIT_CODE}${LK_RESET}):" "$2" "$LK_BOLD$LK_RED"
                     lk_die
 
                 fi
@@ -65,7 +61,7 @@ function install_pkg() {
 
     PACKAGE_NAME="$(basename "$1")"
 
-    lk_console_item "Installing package:" "$PACKAGE_NAME" "$BOLD$BLUE"
+    lk_console_item "Installing package:" "$PACKAGE_NAME" "$LK_BOLD$LK_BLUE"
 
     maybe_dryrun sudo installer -allowUntrusted -package "$1" -target / || EXIT_CODE="$?"
 
@@ -75,7 +71,7 @@ function install_pkg() {
 
     else
 
-        lk_console_item "Error installing package (exit code ${BOLD}${EXIT_CODE}${RESET}):" "$PACKAGE_NAME" "$LK_BOLD$LK_RED"
+        lk_console_item "Error installing package (exit code ${LK_BOLD}${EXIT_CODE}${LK_RESET}):" "$PACKAGE_NAME" "$LK_BOLD$LK_RED"
         lk_die
 
     fi

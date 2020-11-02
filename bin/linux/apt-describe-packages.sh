@@ -8,4 +8,4 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../../bash/common"
 . "$SCRIPT_DIR/../../bash/common-apt"
 
-apt_describe_packages "$*" "$BOLD" "$CYAN"
+apt_describe_packages "$*" "$LK_BOLD" "$LK_CYAN"

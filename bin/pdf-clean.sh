@@ -51,7 +51,7 @@ for FILE in "$@"; do
     fi
 
     if [ "$PERCENT_SAVED" -lt "$PERCENT_SAVED_THRESHOLD" ]; then
-        lk_echoc "Cleaning was ineffective ($PERCENT_TEXT) so the original will be kept" "$RED"
+        lk_echoc "Cleaning was ineffective ($PERCENT_TEXT) so the original will be kept" "$LK_RED"
         mv -f "$BACKUP_PATH" "$PDF_PATH" || lk_die
         continue
     fi

@@ -93,7 +93,7 @@ function apt_list_manually_installed_packages() {
 
 function apt_describe_packages() {
 
-    local IFS PACKAGES COLOURS="$BOLD" RESET_COLOURS PATTERN RESULTS RESULT_NAMES NAME
+    local IFS PACKAGES COLOURS="$LK_BOLD" RESET_COLOURS PATTERN RESULTS RESULT_NAMES NAME
 
     PACKAGES=($1) || lk_die
     [ "${#PACKAGES[@]}" -gt "0" ] || lk_die "At least one package name is required"
@@ -121,7 +121,7 @@ function apt_describe_packages() {
     done
 
     COLOURS="$(lk_escape_ere_replace "$COLOURS")"
-    RESET_COLOURS="$(lk_escape_ere_replace "$RESET")"
+    RESET_COLOURS="$(lk_escape_ere_replace "$LK_RESET")"
 
     echo "$RESULTS" | sort | sed -Ee "s/^([^ ]+) - (.*)\$/${COLOURS}\1:${RESET_COLOURS} \2/" -e "s/^([^ ]+)\$/${COLOURS}\1${RESET_COLOURS}/"
 
@@ -173,7 +173,7 @@ function apt_pretty_packages() {
 
             # replace the trailing hyphen with a space to preserve formatting
             FIND="(\s|^)$(lk_escape_ere "$p")-(\s|\$)"
-            REPLACE="\1$(lk_escape_ere_replace "${BOLD}${RED}${p}${RESET} ")\2"
+            REPLACE="\1$(lk_escape_ere_replace "${LK_BOLD}${LK_RED}${p}${LK_RESET} ")\2"
 
             FORMATTED="$(sed -E "s/${FIND}/${REPLACE}/g" <<<"$FORMATTED")"
 
@@ -188,7 +188,7 @@ function apt_pretty_packages() {
 
         for p in ${REMOVE_PACKAGES[@]+"${REMOVE_PACKAGES[@]}"}; do
 
-            REFLOWED+=("${BOLD}${RED}${p}${RESET}")
+            REFLOWED+=("${LK_BOLD}${LK_RED}${p}${LK_RESET}")
 
         done
 
@@ -515,12 +515,12 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            lk_console_message "Missing $1 $(lk_maybe_plural ${#INSTALL[@]} package packages):" "$BOLD$MAGENTA"
+            lk_console_message "Missing $1 $(lk_maybe_plural ${#INSTALL[@]} package packages):" "$LK_BOLD$LK_MAGENTA"
 
-            apt_describe_packages "${INSTALL[*]}" "$BOLD$MAGENTA"
+            apt_describe_packages "${INSTALL[*]}" "$LK_BOLD$LK_MAGENTA"
 
             [ "${#QUEUE[@]}" -gt "0" ] && {
-                lk_echo_array "${QUEUE[@]}" | lk_console_list "These packages depend on ${#QUEUE[@]} missing $(lk_maybe_plural ${#QUEUE[@]} repository repositories)" "$BOLD$MAGENTA"
+                lk_echo_array "${QUEUE[@]}" | lk_console_list "These packages depend on ${#QUEUE[@]} missing $(lk_maybe_plural ${#QUEUE[@]} repository repositories)" "$LK_BOLD$LK_MAGENTA"
                 PROMPT_EXTRA=" and $(lk_maybe_plural ${#QUEUE[@]} repository repositories)"
             }
 
@@ -882,7 +882,7 @@ function apt_check_sources() {
             fi
         fi
         [ "$PROXY_GOOD" -eq "1" ] || {
-            lk_console_item "APT proxy disabled (unreachable):" "$APT_PROXY" "$BOLD$YELLOW"
+            lk_console_item "APT proxy disabled (unreachable):" "$APT_PROXY" "$LK_BOLD$LK_YELLOW"
             echo 'Acquire::http::Proxy "";' | sudo tee "/etc/apt/apt.conf.d/99noproxy" >/dev/null
             APT_PROXY=
         }

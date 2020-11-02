@@ -28,7 +28,7 @@ function maybe_dryrun() {
 
     if is_dryrun; then
 
-        lk_console_item "Command skipped (dry run):" "$*" "$YELLOW" >&2
+        lk_console_item "Command skipped (dry run):" "$*" "$LK_YELLOW" >&2
 
     else
 
@@ -43,7 +43,7 @@ function install_or_queue() {
 
     local REQUESTED=($2) UI="$3" SINGLE="$4" PLURAL="$5" ITEMS_INSTALLED ITEMS_AVAILABLE INSTALL_TARGET="$8" ALREADY_INSTALLED_TARGET="${9:-}"
 
-    lk_console_message "Checking ${BOLD}${1}${RESET} $PLURAL"
+    lk_console_message "Checking ${LK_BOLD}${1}${LK_RESET} $PLURAL"
 
     local i=6 j k
     for j in ITEMS_INSTALLED ITEMS_AVAILABLE; do
@@ -102,7 +102,7 @@ function install_or_queue() {
 
         if [ "$UI" = "Y" ]; then
 
-            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Missing ${#IOQ_INSTALL[@]} $1 $(lk_maybe_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$BOLD$MAGENTA"
+            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Missing ${#IOQ_INSTALL[@]} $1 $(lk_maybe_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$LK_BOLD$LK_MAGENTA"
 
             lk_confirm "Add the $1 $(lk_maybe_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL") listed above?" Y || return 0
 

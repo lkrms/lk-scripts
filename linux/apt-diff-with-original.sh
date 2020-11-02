@@ -43,7 +43,7 @@ for p in "${PACKAGES[@]}"; do
         rm -Rf "$EXTRACT_PATH"
 
         cd "$APT_DEB_PATH" || lk_die
-        lk_console_item "Downloading package archive:" "${WRAP_OFF}${URL}${WRAP}"
+        lk_console_item "Downloading package archive:" "${LK_WRAP_OFF}${URL}${LK_WRAP}"
         DEB_PATH="$(lk_download "$URL")" || lk_die
 
         lk_console_message "Extracting package archive to temporary folder"
@@ -60,7 +60,7 @@ for p in "${PACKAGES[@]}"; do
 
     if [ -e "${EXTRACT_PATH}${FILE_PATH}" ]; then
 
-        lk_console_item "Comparing with original version:" "$FILE_PATH" "$BOLD$MAGENTA"
+        lk_console_item "Comparing with original version:" "$FILE_PATH" "$LK_BOLD$LK_MAGENTA"
 
         if diff "$@" "${EXTRACT_PATH}${FILE_PATH}" "$FILE_PATH"; then
 
@@ -68,7 +68,7 @@ for p in "${PACKAGES[@]}"; do
 
         else
 
-            lk_console_item "Original version is available at:" "${EXTRACT_PATH}${FILE_PATH}" "$BOLD"
+            lk_console_item "Original version is available at:" "${EXTRACT_PATH}${FILE_PATH}" "$LK_BOLD"
 
         fi
 

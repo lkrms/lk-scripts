@@ -25,7 +25,7 @@ for COMMON in "$LK_ROOT/bash/common-"*; do
 
     esac
 
-    lk_console_item "Sourcing:" "$COMMON" "$CYAN" >&2
+    lk_console_item "Sourcing:" "$COMMON" "$LK_CYAN" >&2
     . "$COMMON"
 
 done

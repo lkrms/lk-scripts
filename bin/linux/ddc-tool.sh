@@ -1,11 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC2034,SC1090
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-
-. "$SCRIPT_DIR/../../bash/common"
+include='' . lk-bash-load.sh || exit
 
 DISPLAY_NAMES=(
     "LG 27\" 4K"
@@ -89,19 +85,19 @@ for i in "${DISPLAYS[@]}"; do
     case "$COMMAND" in
 
     reset | factory-reset)
-        lk_console_message "Resetting $DISPLAY_NAME to factory defaults" "$BOLD$CYAN"
+        lk_console_message "Resetting $DISPLAY_NAME to factory defaults"
         sudo ddcutil --edid "$DISPLAY_EDID" setvcp 0x04 1 || EXIT_CODE="$?"
         ;;
 
     set-brightness)
         [ "${#ARGS[@]}" -eq "1" ] || lk_die "$USAGE"
-        lk_console_message "Setting brightness on $DISPLAY_NAME to ${ARGS[0]}" "$BOLD$CYAN"
+        lk_console_message "Setting brightness on $DISPLAY_NAME to ${ARGS[0]}"
         sudo ddcutil --edid "$DISPLAY_EDID" setvcp 0x10 "${ARGS[0]}" || EXIT_CODE="$?"
         echo "To make ${ARGS[0]} the default, use: setvcp 0x10 ${ARGS[0]}"
         ;;
 
     test-brightness)
-        lk_console_message "Running brightness test on $DISPLAY_NAME" "$BOLD$CYAN"
+        lk_console_message "Running brightness test on $DISPLAY_NAME"
         if ! RESULT=($(sudo ddcutil --edid "$DISPLAY_EDID" getvcp 0x10 | grep -Eo '\b[0-9]+\b' || exit "${PIPESTATUS[0]}")); then
             EXIT_CODE="$?"
         else
@@ -136,7 +132,7 @@ for i in "${DISPLAYS[@]}"; do
     test-range)
         SEQ=($(seq "${ARGS[1]}" "${ARGS[2]}" "${ARGS[3]}" 2>/dev/null)) && [ "${#SEQ[@]}" -gt "0" ] || lk_die "$USAGE"
         TEST_SLEEP="${ARGS[4]:-$DEFAULT_TEST_SLEEP}"
-        lk_echo_array "${SEQ[@]}" | lk_console_list "Applying range of values to feature ${ARGS[0]} on $DISPLAY_NAME at ${TEST_SLEEP}s intervals" "$BOLD$CYAN"
+        lk_echo_array "${SEQ[@]}" | lk_console_list "Applying range of values to feature ${ARGS[0]} on $DISPLAY_NAME at ${TEST_SLEEP}s intervals"
         for v in "${SEQ[@]}"; do
             echo "Setting feature ${ARGS[0]} value to $v"
             sudo ddcutil --edid "$DISPLAY_EDID" setvcp "${ARGS[0]}" "$v" || {
@@ -149,12 +145,12 @@ for i in "${DISPLAYS[@]}"; do
 
     *)
         ARGS=("$COMMAND" "${ARGS[@]}")
-        lk_console_message "Running ddcutil command \"${ARGS[*]}\" on $DISPLAY_NAME" "$BOLD$CYAN"
+        lk_console_message "Running ddcutil command \"${ARGS[*]}\" on $DISPLAY_NAME"
         sudo ddcutil --edid "$DISPLAY_EDID" "${ARGS[@]}" || EXIT_CODE="$?"
         ;;
 
     esac
 
-    [ "$EXIT_CODE" -eq "0" ] || lk_echoc "ddcutil exit code: $EXIT_CODE" "$BOLD" "$RED"
+    [ "$EXIT_CODE" -eq "0" ] || lk_echoc "ddcutil exit code: $EXIT_CODE" "$LK_BOLD" "$LK_RED"
 
 done

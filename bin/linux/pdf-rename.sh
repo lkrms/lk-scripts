@@ -1,11 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2015
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-
-. "$SCRIPT_DIR/../../bash/common"
+include='' . lk-bash-load.sh || exit
 
 lk_assert_command_exists qpdfview
 
@@ -61,7 +57,7 @@ for FILE_PATH in "$@"; do
 
     else
 
-        lk_console_item "$(basename "$NEW_PATH_CLEAN") already exists, renamed to" "$(basename "$NEW_PATH")" "$BOLD$YELLOW"
+        lk_console_item "$(basename "$NEW_PATH_CLEAN") already exists, renamed to" "$(basename "$NEW_PATH")" "$LK_BOLD$LK_YELLOW"
 
     fi
 

@@ -100,11 +100,11 @@ function git_format_remotes() {
 
         REMOTE_URL="$(git remote get-url "$REMOTE")"
         [ -z "$REMOTE_URL" ] || REMOTE_URL="($REMOTE_URL)"
-        REMOTES+=("${BOLD}${REMOTE}${RESET}${REMOTE_URL}")
+        REMOTES+=("${LK_BOLD}${REMOTE}${LK_RESET}${REMOTE_URL}")
 
     done
 
-    echo "${WRAP_OFF}${REMOTES[*]}${WRAP}"
+    echo "${LK_WRAP_OFF}${REMOTES[*]}${LK_WRAP}"
 
 }
 
@@ -113,7 +113,7 @@ function git_format_branch() {
 
     local BRANCH BRANCH_EXTRA=()
 
-    BRANCH="${BOLD}${1}${RESET}"
+    BRANCH="${LK_BOLD}${1}${LK_RESET}"
 
     [ "${2:-0}" -eq "0" ] || BRANCH_EXTRA+=("behind $2")
     [ "${3:-0}" -eq "0" ] || BRANCH_EXTRA+=("ahead $3")

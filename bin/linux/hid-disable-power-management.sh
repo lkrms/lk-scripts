@@ -1,11 +1,7 @@
 #!/bin/bash
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-
-. "$SCRIPT_DIR/../../bash/common"
+include='' . lk-bash-load.sh || exit
 
 shopt -s nullglob
 
@@ -48,7 +44,7 @@ for DEVICE in "${DEVICES[@]}"; do
     PRODUCT_NAME=()
     [ ! -f "$DEVICE/manufacturer" ] || grep -Fq "$KERNEL_MANUFACTURER" "$DEVICE/manufacturer" || PRODUCT_NAME+=("$(<"$DEVICE/manufacturer")")
     [ ! -f "$DEVICE/product" ] || PRODUCT_NAME+=("$(<"$DEVICE/product")")
-    [ "${#PRODUCT_NAME[@]}" -eq "0" ] && PRODUCT="${CYAN}${PRODUCT}${RESET}" || PRODUCT="${BOLD}${CYAN}${PRODUCT_NAME[*]}${RESET}${GREY} (${PRODUCT})${RESET}"
+    [ "${#PRODUCT_NAME[@]}" -eq "0" ] && PRODUCT="${LK_CYAN}${PRODUCT}${LK_RESET}" || PRODUCT="${LK_BOLD}${LK_CYAN}${PRODUCT_NAME[*]}${LK_RESET}${LK_GREY} (${PRODUCT})${LK_RESET}"
 
     case "$(basename "$0")" in
 
@@ -57,14 +53,14 @@ for DEVICE in "${DEVICES[@]}"; do
         [ "$CURRENT_STATUS" = "on" ] &&
             {
                 PM_STATUS="disabled"
-                PM_COLOUR="$RED"
+                PM_COLOUR="$LK_RED"
             } ||
             {
                 PM_STATUS="enabled"
                 PM_COLOUR="$LK_GREEN"
             }
 
-        printf "Power management for %s is currently ${BOLD}${PM_COLOUR}%s${RESET}\n" "$PRODUCT" "$PM_STATUS"
+        printf "Power management for %s is currently ${LK_BOLD}${PM_COLOUR}%s${LK_RESET}\n" "$PRODUCT" "$PM_STATUS"
         ;;
 
     *disable*)

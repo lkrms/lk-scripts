@@ -74,10 +74,10 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
 
             REPO_NAME="${REPO_ROOT#$CODE_ROOT}"
             REPO_NAME="${REPO_NAME#/}"
-            REPO_LONG_NAME="${CODE_ROOT}/${BOLD}${REPO_NAME}${RESET}"
+            REPO_LONG_NAME="${CODE_ROOT}/${LK_BOLD}${REPO_NAME}${LK_RESET}"
             [ -n "$REPO_NAME" ] || {
                 REPO_NAME="$REPO_ROOT"
-                REPO_LONG_NAME="${BOLD}${REPO_NAME}${RESET}"
+                REPO_LONG_NAME="${LK_BOLD}${REPO_NAME}${LK_RESET}"
             }
             REPO_NAMES+=("$REPO_NAME")
             REPO_LONG_NAMES+=("$REPO_LONG_NAME")
@@ -98,7 +98,7 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
 
     if [ "$DO_FETCH" -eq "1" ]; then
 
-        lk_console_message "Fetching from all remotes in ${REPO_COUNT} $(lk_maybe_plural "$REPO_COUNT" repository repositories)" "$BOLD$MAGENTA"
+        lk_console_message "Fetching from all remotes in ${REPO_COUNT} $(lk_maybe_plural "$REPO_COUNT" repository repositories)" "$LK_BOLD$LK_MAGENTA"
 
         for i in "${!REPO_ROOTS[@]}"; do
 
@@ -125,7 +125,7 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
 
                     for REMOTE in "${REPO_REMOTES[@]}"; do
 
-                        git fetch --prune --quiet "$REMOTE" || echo "Can't fetch from remote ${BOLD}${REMOTE}${RESET}" >>"$WARNINGS_FILE"
+                        git fetch --prune --quiet "$REMOTE" || echo "Can't fetch from remote ${LK_BOLD}${REMOTE}${LK_RESET}" >>"$WARNINGS_FILE"
 
                     done
 
@@ -150,7 +150,7 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
 
         pushd "$REPO_ROOT" >/dev/null || lk_die
 
-        lk_console_item "$MAIN_VERB repository:" "${REPO_LONG_NAME}" "$CYAN"
+        lk_console_item "$MAIN_VERB repository:" "${REPO_LONG_NAME}" "$LK_CYAN"
 
         git update-index --refresh -q >/dev/null || true
 
@@ -231,9 +231,9 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
                         else
 
                             echo
-                            lk_console_message "${BOLD}${AHEAD_PUSH} $(lk_maybe_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(lk_maybe_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${RESET}" "$BOLD$YELLOW"
+                            lk_console_message "${LK_BOLD}${AHEAD_PUSH} $(lk_maybe_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(lk_maybe_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${LK_RESET}" "$LK_BOLD$LK_YELLOW"
                             echo
-                            echo "${WRAP_OFF}$(git log "-$GIT_LOG_LIMIT" --oneline --decorate --color=always "${PUSH_COMMIT}..${LOCAL_COMMIT}")${WRAP}"
+                            echo "${LK_WRAP_OFF}$(git log "-$GIT_LOG_LIMIT" --oneline --decorate --color=always "${PUSH_COMMIT}..${LOCAL_COMMIT}")${LK_WRAP}"
 
                             if [ "$AHEAD_PUSH" -gt "$GIT_LOG_LIMIT" ]; then
 
@@ -321,32 +321,32 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
         if lk_is_wsl; then
 
-            [ "$GIT_FILEMODE" = "false" ] || { git config --bool core.fileMode "false" && lk_echoc "Git option disabled: core.fileMode" "$BOLD" "$YELLOW"; } || lk_die
+            [ "$GIT_FILEMODE" = "false" ] || { git config --bool core.fileMode "false" && lk_echoc "Git option disabled: core.fileMode" "$LK_BOLD" "$LK_YELLOW"; } || lk_die
 
         else
 
-            [ -z "$GIT_FILEMODE" ] || [ "$GIT_FILEMODE" = "true" ] || { git config --bool core.fileMode "true" && lk_echoc "Git option enabled: core.fileMode" "$BOLD" "$YELLOW"; } || lk_die
+            [ -z "$GIT_FILEMODE" ] || [ "$GIT_FILEMODE" = "true" ] || { git config --bool core.fileMode "true" && lk_echoc "Git option enabled: core.fileMode" "$LK_BOLD" "$LK_YELLOW"; } || lk_die
 
         fi
 
         # TODO: check filesystem case-sensitivity rather than assuming macOS and Windows are case-insensitive
         if lk_is_linux; then
 
-            [ -z "$GIT_IGNORECASE" ] || [ "$GIT_IGNORECASE" = "false" ] || { git config --bool core.ignoreCase "false" && lk_echoc "Git option disabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || lk_die
+            [ -z "$GIT_IGNORECASE" ] || [ "$GIT_IGNORECASE" = "false" ] || { git config --bool core.ignoreCase "false" && lk_echoc "Git option disabled: core.ignoreCase" "$LK_BOLD" "$LK_YELLOW"; } || lk_die
 
         else
 
-            [ "$GIT_IGNORECASE" = "true" ] || { git config --bool core.ignoreCase "true" && lk_echoc "Git option enabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || lk_die
+            [ "$GIT_IGNORECASE" = "true" ] || { git config --bool core.ignoreCase "true" && lk_echoc "Git option enabled: core.ignoreCase" "$LK_BOLD" "$LK_YELLOW"; } || lk_die
 
         fi
 
         if lk_is_macos; then
 
-            [ "$GIT_PRECOMPOSEUNICODE" = "true" ] || { git config --bool core.precomposeUnicode "true" && lk_echoc "Git option enabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || lk_die
+            [ "$GIT_PRECOMPOSEUNICODE" = "true" ] || { git config --bool core.precomposeUnicode "true" && lk_echoc "Git option enabled: core.precomposeUnicode" "$LK_BOLD" "$LK_YELLOW"; } || lk_die
 
         else
 
-            [ -z "$GIT_PRECOMPOSEUNICODE" ] || [ "$GIT_PRECOMPOSEUNICODE" = "false" ] || { git config --bool core.precomposeUnicode "false" && lk_echoc "Git option disabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || lk_die
+            [ -z "$GIT_PRECOMPOSEUNICODE" ] || [ "$GIT_PRECOMPOSEUNICODE" = "false" ] || { git config --bool core.precomposeUnicode "false" && lk_echoc "Git option disabled: core.precomposeUnicode" "$LK_BOLD" "$LK_YELLOW"; } || lk_die
 
         fi
 
@@ -356,19 +356,19 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
     done
 
-    lk_echoc "All done. ${REPO_COUNT} $(lk_maybe_plural "$REPO_COUNT" repository repositories) ${COMPLETION_VERB}." "$BOLD"
+    lk_echoc "All done. ${REPO_COUNT} $(lk_maybe_plural "$REPO_COUNT" repository repositories) ${COMPLETION_VERB}." "$LK_BOLD"
     echo
 
     if [ "${#UPDATED_REPOS[@]}" -gt "0" ]; then
 
-        lk_echoc "${#UPDATED_REPOS[@]} $(lk_maybe_plural "${#UPDATED_REPOS[@]}" repository repositories) fast-forwarded from upstream:" "$BOLD" "$LK_GREEN"
+        lk_echoc "${#UPDATED_REPOS[@]} $(lk_maybe_plural "${#UPDATED_REPOS[@]}" repository repositories) fast-forwarded from upstream:" "$LK_BOLD" "$LK_GREEN"
         printf '%s\n' "${UPDATED_REPOS[@]}" ""
 
     fi
 
     if [ "${#PUSHED_REPOS[@]}" -gt "0" ]; then
 
-        lk_echoc "${#PUSHED_REPOS[@]} $(lk_maybe_plural "${#PUSHED_REPOS[@]}" repository repositories) pushed upstream:" "$BOLD" "$LK_GREEN"
+        lk_echoc "${#PUSHED_REPOS[@]} $(lk_maybe_plural "${#PUSHED_REPOS[@]}" repository repositories) pushed upstream:" "$LK_BOLD" "$LK_GREEN"
         printf '%s\n' "${PUSHED_REPOS[@]}" ""
 
     fi
@@ -381,7 +381,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
         if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-            lk_console_item "${BOLD}${RED}${#FILE_TO_ARRAY[@]} $(lk_maybe_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention in:${RESET}" "${REPO_LONG_NAMES[$i]}" "$RED"
+            lk_console_item "${LK_BOLD}${LK_RED}${#FILE_TO_ARRAY[@]} $(lk_maybe_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention in:${LK_RESET}" "${REPO_LONG_NAMES[$i]}" "$LK_RED"
             printf -- '- [ ] %s\n' "${FILE_TO_ARRAY[@]}"
             echo
 

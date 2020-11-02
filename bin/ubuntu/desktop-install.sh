@@ -59,12 +59,12 @@ EOF
 
         [ "$MEMORY_SIZE_MB" -ge "8192" ] || {
             LOW_RAM=1
-            lk_console_message "Because this system has less than 8GB of RAM, some packages will not be offered" "$RED"
+            lk_console_message "Because this system has less than 8GB of RAM, some packages will not be offered" "$LK_RED"
         }
 
     else
 
-        lk_console_message "Because this is a virtual machine, some packages will not be offered" "$RED"
+        lk_console_message "Because this is a virtual machine, some packages will not be offered" "$LK_RED"
 
     fi
 
@@ -454,7 +454,7 @@ EOF
 
         done
 
-        lk_echo_array "${DEB_URLS[@]}" | lk_console_list "Packages queued to download and install" "$BOLD$YELLOW"
+        lk_echo_array "${DEB_URLS[@]}" | lk_console_list "Packages queued to download and install" "$LK_BOLD$LK_YELLOW"
 
     fi
 
@@ -518,7 +518,7 @@ EOF
         sudo pdbedit -L | grep "^$USER:" >/dev/null || {
 
             sudo smbpasswd -san "$USER" &&
-                lk_echoc "${BOLD}WARNING: Samba user $USER has been added with no password${RESET} (use smbpasswd to create one)" "$RED"
+                lk_echoc "${LK_BOLD}WARNING: Samba user $USER has been added with no password${LK_RESET} (use smbpasswd to create one)" "$LK_RED"
 
         }
 
@@ -702,13 +702,13 @@ EOF
     apt_purge
 
     # ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | grep -Eo '[^/]+$' | sort | uniq))
-    # lk_console_message "${#ALL_PACKAGES[@]} installed $(lk_maybe_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "$BLUE"
+    # lk_console_message "${#ALL_PACKAGES[@]} installed $(lk_maybe_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "$LK_BLUE"
     # COLUMNS="$(tput cols)" && apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")" || apt_pretty_packages "${ALL_PACKAGES[*]}" Y
 
     if apt_package_available "linux-generic-hwe-$DISTRIB_RELEASE" && apt_package_available "xserver-xorg-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "xserver-xorg-hwe-$DISTRIB_RELEASE"; then
 
         echo
-        lk_console_item "To use the Ubuntu LTS enablement stack, but only for X server, run:" "sudo apt-get install linux-generic-hwe-${DISTRIB_RELEASE}- xserver-xorg-hwe-$DISTRIB_RELEASE" "$BOLD$CYAN"
+        lk_console_item "To use the Ubuntu LTS enablement stack, but only for X server, run:" "sudo apt-get install linux-generic-hwe-${DISTRIB_RELEASE}- xserver-xorg-hwe-$DISTRIB_RELEASE"
 
     fi
 

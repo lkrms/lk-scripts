@@ -13,7 +13,7 @@ lk_assert_not_root
 
 apt_mark_cache_clean
 
-if apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE" && lk_confirm "Ubuntu LTS enablement package ${BOLD}linux-generic-hwe-${DISTRIB_RELEASE}${RESET} is currently installed. Remove it and any related kernel packages?" N; then
+if apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE" && lk_confirm "Ubuntu LTS enablement package ${LK_BOLD}linux-generic-hwe-${DISTRIB_RELEASE}${LK_RESET} is currently installed. Remove it and any related kernel packages?" N; then
 
     apt_remove_packages "linux-generic-hwe-$DISTRIB_RELEASE" "linux-image-generic-hwe-$DISTRIB_RELEASE" "linux-headers-generic-hwe-$DISTRIB_RELEASE"
 
@@ -49,9 +49,9 @@ if [ "${#CURRENT_KERNEL[@]}" -eq "1" ] && apt_package_installed "${CURRENT_KERNE
 
     if [ "${#OTHER_KERNEL_PACKAGES[@]}" -gt "0" ]; then
 
-        lk_console_item "Most recent kernel provided by the ${BOLD}linux-generic${RESET} package:" "$CURRENT_KERNEL_VERSION"
+        lk_console_item "Most recent kernel provided by the ${LK_BOLD}linux-generic${LK_RESET} package:" "$CURRENT_KERNEL_VERSION"
 
-        lk_echo_array "${OTHER_KERNEL_PACKAGES[@]}" | lk_console_list "${#OTHER_KERNEL_PACKAGES[@]} kernel $(lk_maybe_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) to delete:" "$BOLD$YELLOW"
+        lk_echo_array "${OTHER_KERNEL_PACKAGES[@]}" | lk_console_list "${#OTHER_KERNEL_PACKAGES[@]} kernel $(lk_maybe_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) to delete:" "$LK_BOLD$LK_YELLOW"
 
         if lk_confirm "Delete the kernel $(lk_maybe_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) listed above?" N; then
 
@@ -67,7 +67,7 @@ EOF
 
 else
 
-    lk_console_message "Unable to identify most recent kernel provided by the ${BOLD}linux-generic${RESET} package" "$LK_BOLD$LK_RED"
+    lk_console_message "Unable to identify most recent kernel provided by the ${LK_BOLD}linux-generic${LK_RESET} package" "$LK_BOLD$LK_RED"
 
 fi
 
