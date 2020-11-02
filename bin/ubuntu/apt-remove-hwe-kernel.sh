@@ -8,12 +8,12 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../bash/common"
 . "$SCRIPT_DIR/../bash/common-apt"
 
-assert_is_ubuntu
-assert_not_root
+lk_assert_is_ubuntu
+lk_assert_not_root
 
 apt_mark_cache_clean
 
-if apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE" && get_confirmation "Ubuntu LTS enablement package ${BOLD}linux-generic-hwe-${DISTRIB_RELEASE}${RESET} is currently installed. Remove it and any related kernel packages?" N Y; then
+if apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE" && lk_confirm "Ubuntu LTS enablement package ${BOLD}linux-generic-hwe-${DISTRIB_RELEASE}${RESET} is currently installed. Remove it and any related kernel packages?" N; then
 
     apt_remove_packages "linux-generic-hwe-$DISTRIB_RELEASE" "linux-image-generic-hwe-$DISTRIB_RELEASE" "linux-headers-generic-hwe-$DISTRIB_RELEASE"
 
@@ -51,9 +51,9 @@ if [ "${#CURRENT_KERNEL[@]}" -eq "1" ] && apt_package_installed "${CURRENT_KERNE
 
         lk_console_item "Most recent kernel provided by the ${BOLD}linux-generic${RESET} package:" "$CURRENT_KERNEL_VERSION"
 
-        lk_echo_array "${OTHER_KERNEL_PACKAGES[@]}" | lk_console_list "${#OTHER_KERNEL_PACKAGES[@]} kernel $(single_or_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) to delete:" "$BOLD$YELLOW"
+        lk_echo_array "${OTHER_KERNEL_PACKAGES[@]}" | lk_console_list "${#OTHER_KERNEL_PACKAGES[@]} kernel $(lk_maybe_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) to delete:" "$BOLD$YELLOW"
 
-        if get_confirmation "Delete the kernel $(single_or_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) listed above?" N Y; then
+        if lk_confirm "Delete the kernel $(lk_maybe_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) listed above?" N; then
 
             sudo debconf-set-selections <<EOF
 linux-base linux-base/removing-running-kernel boolean false
@@ -67,7 +67,7 @@ EOF
 
 else
 
-    lk_console_message "Unable to identify most recent kernel provided by the ${BOLD}linux-generic${RESET} package" "$BOLD$RED"
+    lk_console_message "Unable to identify most recent kernel provided by the ${BOLD}linux-generic${RESET} package" "$LK_BOLD$LK_RED"
 
 fi
 

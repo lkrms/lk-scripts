@@ -3,355 +3,6 @@
 
 set -euo pipefail
 
-function is_virtual() {
-    lk_is_virtual
-}
-
-function is_qemu() {
-    lk_is_qemu
-}
-
-function is_desktop() {
-    ! lk_is_portable
-}
-
-function is_lid_closed() {
-    lk_is_lid_closed
-}
-
-function assert_is_macos() {
-    lk_is_macos || lk_die "macOS required"
-}
-
-function is_macos() {
-    lk_is_macos
-}
-
-function assert_is_windows() {
-    lk_is_wsl || lk_die "Windows required"
-}
-
-function is_windows() {
-    lk_is_wsl
-}
-
-function assert_is_linux() {
-    lk_is_linux || lk_die "Linux required"
-}
-
-function is_linux() {
-    lk_is_linux
-}
-
-function assert_is_ubuntu() {
-    lk_is_ubuntu || lk_die "Ubuntu required"
-}
-
-function is_ubuntu() {
-    lk_is_ubuntu
-}
-
-function assert_is_desktop() {
-    lk_is_macos || lk_command_exists X || lk_die "desktop required"
-}
-
-function assert_is_server() {
-    ! { lk_is_macos || lk_command_exists X; } || lk_die "server required"
-}
-
-function assert_is_ubuntu_lts() {
-    lk_is_ubuntu_lts || lk_die "Ubuntu LTS required"
-}
-
-function is_ubuntu_lts() {
-    lk_is_ubuntu_lts
-}
-
-function assert_root() {
-    lk_is_root || lk_die "not running as superuser"
-}
-
-function assert_not_root() {
-    ! lk_is_root || lk_die "running as superuser"
-}
-
-function assert_command_exists() {
-    lk_command_exists "$@" || lk_die "$*: $(lk_maybe_plural "$#" "command" "one or more commands") not found"
-}
-
-function assert_variable_exists() {
-    variable_exists "$1" || lk_die "$1: variable not defined"
-}
-
-function is_root() {
-    lk_is_root
-}
-
-function filename_add_suffix() {
-    lk_add_file_suffix "$@"
-}
-
-function filename_get_next_backup() {
-    lk_next_backup_file "$@"
-}
-
-function is_pdf() {
-    lk_is_pdf "$@"
-}
-
-function are_directories() {
-    lk_dirs_exist "$@"
-}
-
-function are_files() {
-    lk_files_exist "$@"
-}
-
-function command_exists() {
-    lk_command_exists "$@"
-}
-
-function variable_exists() {
-    lk_is_identifier "$1" && lk_is_declared "$1"
-}
-
-function user_exists() {
-    lk_users_exist "$1"
-}
-
-function echoc() {
-    lk_echoc "$@"
-}
-
-function die() {
-    lk_die "$@"
-}
-
-function die_happy() {
-    LK_DIE_HAPPY=1 lk_die "$@"
-}
-
-function version_at_least() {
-    lk_version_at_least "$@"
-}
-
-function pause() {
-    lk_pause "$@"
-}
-
-function get_value() {
-    lk_console_read "$@"
-}
-
-function get_confirmation() {
-    lk_confirm "$@"
-}
-
-# file_to_array file_path [filter_pattern...]
-function file_to_array() {
-    local FILENAME="$1" EXCLUDE=()
-    [ -e "$FILENAME" ] ||
-        FILENAME="$FILENAME-default"
-    [ -e "$FILENAME" ] || lk_warn "file not found: $1" || return
-    shift
-    [ "$#" -eq "0" ] &&
-        EXCLUDE=('^\s*$' '^[#;]') || {
-        [ -z "$1" ] ||
-            EXCLUDE=("$@")
-    }
-    FILE_TO_ARRAY_FILENAME="$FILENAME"
-    lk_mapfile "$FILENAME" "FILE_TO_ARRAY" ${EXCLUDE[@]+"($(lk_implode ")|(" "${EXCLUDE[@]}"))"}
-}
-
-function single_or_plural() {
-    lk_maybe_plural "$@"
-}
-
-function upper_first() {
-    lk_upper_first "$@"
-}
-
-function lower() {
-    lk_lower "$@"
-}
-
-function upper() {
-    lk_upper "$@"
-}
-
-function array_search() {
-    lk_array_search "$@"
-}
-
-function in_array() {
-    lk_in_array "$@"
-}
-
-function array_join_by() {
-    lk_implode "$@"
-}
-
-function has_arg() {
-    lk_in_array "$1" LK_ARGV
-}
-
-function is_autostart() {
-    has_arg "--autostart"
-}
-
-function offer_sudo_password_bypass() {
-    local CHECK_FILENAME FILENAME
-    lk_user_in_group "$USER" admin sudo wheel || return
-    CHECK_FILENAME="$CACHE_DIR/.nopasswd-$USER"
-    FILENAME="/etc/sudoers.d/nopasswd-$USER"
-    [ ! -e "$CHECK_FILENAME" ] || ! sudo -n test -e "$FILENAME" 2>/dev/null || return 0
-    sudo -n true 2>/dev/null || lk_console_message "Please enter your computer password if requested"
-    sudo true || return
-    sudo test -e "$FILENAME" ||
-        ! lk_confirm "Allow user $USER to skip future password prompts from sudo?" Y || {
-        sudo tee "$FILENAME" >/dev/null <<<"$USER ALL=(ALL) NOPASSWD:ALL" &&
-            sudo chmod 440 "$FILENAME" &&
-            lk_console_message "Password bypass enabled for $USER"
-    } || return
-    touch "$CHECK_FILENAME" 2>/dev/null || sudo touch "$CHECK_FILENAME" 2>/dev/null || true
-}
-
-function sed_escape_search() {
-    lk_escape_ere "$1"
-}
-
-function sed_escape_replace() {
-    lk_escape_ere_replace "$1"
-}
-
-function search_replace() {
-    lk_replace "$@"
-}
-
-function date_get_log() {
-    lk_date_log
-}
-
-function date_get_log_nano() {
-    lk_date_log_nano
-}
-
-function date_get_ymdhms() {
-    lk_date_ymdhms
-}
-
-function date_get_timestamp() {
-    lk_timestamp
-}
-
-function url_decode() {
-    lk_decode_uri "$@"
-}
-
-function get_urls_from_url() {
-    local URLS
-    if [ -z "${2:-}" ]; then
-        lk_wget_uris "$1"
-    else
-        URLS="$(lk_wget_uris "$1")" || return
-        grep -E "$2" <<<"$URLS" || true
-    fi
-}
-
-# files are downloaded to the current directory, and local filenames are output
-function download_urls() {
-    lk_download "$@"
-}
-
-# get_log_file [suffix]
-#   Outputs the path to a writable log file based on the name of the
-#   running script and the current user's effective ID.
-#
-function get_log_file() {
-
-    local LOG_ROOTS LOG_ROOT LOG_BASENAME LOG_PATH
-
-    LOG_ROOTS=(
-        "$LOG_DIR"
-        ~/.local/var/log
-        ~
-        /tmp
-    )
-
-    LOG_BASENAME="$(basename "$0")${1:-}.$EUID.log"
-
-    for LOG_ROOT in "${LOG_ROOTS[@]}"; do
-
-        [ -d "$LOG_ROOT" ] ||
-            { [ ! -e "$LOG_ROOT" ] && mkdir -p "$LOG_ROOT" 2>/dev/null; } ||
-            continue
-
-        [ -w "$LOG_ROOT" ] || continue
-
-        LOG_PATH="$LOG_ROOT/$LOG_BASENAME"
-
-        [ -f "$LOG_PATH" ] || [ ! -e "$LOG_PATH" ] || continue
-
-        touch "$LOG_PATH" 2>/dev/null || continue
-
-        echo "$LOG_PATH"
-        return
-
-    done
-
-    die "No writable log file location"
-
-}
-
-function time_command() {
-
-    local EXIT_CODE=0
-
-    exec 8>&1 9>&2 || die
-    COMMAND_TIME="$(
-        TIMEFORMAT="${TIMEFORMAT:-%3lR}"
-        { time "$@" 1>&8 2>&9; } 2>&1
-    )" || EXIT_CODE="$?"
-    exec 8>&- 9>&-
-
-    return "$EXIT_CODE"
-
-}
-
-function maybe_sudo() {
-    lk_maybe_sudo "$@"
-}
-
-function safe_symlink() {
-    lk_safe_symlink "$@"
-}
-
-# Usage: safe_sed /path/to/file sed_command1 [sed_command2...]
-function safe_sed() {
-
-    local FILENAME COMMAND COMMANDS=() CHANGED
-
-    FILENAME="$1" || die
-    shift
-
-    [ -f "$FILENAME" ] || die "File doesn't exist: $FILENAME"
-
-    for COMMAND in "$@"; do
-
-        COMMANDS+=(-e "$COMMAND")
-
-    done
-
-    CHANGED="$(gnu_sed -E "${COMMANDS[@]}" "$FILENAME")" || die
-
-    if ! diff -q ".git/config" <(printf '%s' "$CHANGED") >/dev/null; then
-
-        printf '%s' "$CHANGED" >"$FILENAME" || die
-
-    fi
-
-}
-
 function is_dryrun() {
 
     [ "$ORIGINAL_DRYRUN_ARGUMENT" = "--dryrun" ] || { [ "${DRYRUN_BY_DEFAULT:-N}" != "N" ] && [ "$ORIGINAL_DRYRUN_ARGUMENT" != "--run" ]; }
@@ -366,7 +17,7 @@ function dryrun_message() {
 
         [ "${DRYRUN_BY_DEFAULT:-N}" = "N" ] || EXTRA=" (use \"--run\" as the first argument to override)"
 
-        lk_console_message "$(basename "$0") is in dry run mode${EXTRA}" "$BOLD$RED" >&2
+        lk_console_message "$(basename "$0") is in dry run mode${EXTRA}" "$LK_BOLD$LK_RED" >&2
 
     fi
 
@@ -387,77 +38,6 @@ function maybe_dryrun() {
 
 }
 
-function create_temp_file() {
-    lk_mktemp_file
-}
-
-function create_temp_dir() {
-    lk_mktemp_dir
-}
-
-function create_temp_fifo() {
-    lk_mktemp_fifo
-}
-
-function flush_fifo() {
-
-    dd if="$1" iflag=nonblock of=/dev/null
-
-}
-
-function get_x_displays() {
-
-    assert_is_desktop
-
-    local X
-
-    if [ -d /tmp/.X11-unix ]; then
-
-        for X in /tmp/.X11-unix/X*; do
-
-            echo ":${X##*X}"
-
-        done
-
-    fi
-
-}
-
-function dir_make_and_own() {
-
-    assert_not_root
-
-    [ -d "$1" ] || sudo mkdir -p "$1" || die
-
-    [ -w "$1" ] || sudo chown "$(id -un):$(id -gn)" "$1" || die
-
-}
-
-function windows_running_as_administrator() {
-
-    assert_command_exists whoami.exe
-
-    whoami.exe /groups | grep '\bS-1-5-32-544\b.*\bEnabled group\b' >/dev/null
-
-}
-
-# because Bash 3.2 exits when eval exits non-zero, regardless of context or errexit status
-function eval_test() {
-
-    local EXIT_CODE
-
-    EXIT_CODE="$(eval 'if' "$@" '; then echo "0"; else echo "1"; fi')"
-
-    return "$EXIT_CODE"
-
-}
-
-function array_filter_platform() {
-
-    printf '%s\n' "$@" | gnu_grep -Po "^[^:]+(?=(:([^:|]+\|)*$PLATFORM(\|[^:|]+)*)?\$)" || true
-
-}
-
 # Usage: install_or_queue "Description of this group" "item1 item2 ..." <allow user override? (y/n)> <singular noun> <plural noun> <name of "installed items" array> <name of "available items" array> <name of "to install" array to fill> [name of "already installed" array to fill]
 function install_or_queue() {
 
@@ -475,7 +55,7 @@ function install_or_queue() {
 
             eval "$j"'=()'
 
-        elif variable_exists "$k"; then
+        elif lk_is_declared "$k"; then
 
             # ITEMS_INSTALLED=($(printf '%s\n' "${NAME_OF_ARRAY[@]}" | sort | uniq))
             eval "$j"'=($(printf '"'"'%s\n'"'"' "${'"$k"'[@]}" | sort | uniq))'
@@ -510,7 +90,7 @@ function install_or_queue() {
 
             if [ "${#IOQ_UNAVAILABLE[@]}" -gt "0" ]; then
 
-                lk_echo_array "${IOQ_UNAVAILABLE[@]}" | lk_console_list "${#IOQ_UNAVAILABLE[@]} $(single_or_plural "${#IOQ_UNAVAILABLE[@]}" "$SINGLE" "$PLURAL") unavailable for installation:" "$BOLD$RED"
+                lk_echo_array "${IOQ_UNAVAILABLE[@]}" | lk_console_list "${#IOQ_UNAVAILABLE[@]} $(lk_maybe_plural "${#IOQ_UNAVAILABLE[@]}" "$SINGLE" "$PLURAL") unavailable for installation:" "$LK_BOLD$LK_RED"
 
                 IOQ_INSTALL=($(comm -12 <(printf '%s\n' "${IOQ_INSTALL[@]}" | sort | uniq) <(printf '%s\n' "${ITEMS_AVAILABLE[@]}")))
 
@@ -522,17 +102,17 @@ function install_or_queue() {
 
         if [ "$UI" = "Y" ]; then
 
-            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Missing ${#IOQ_INSTALL[@]} $1 $(single_or_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$BOLD$MAGENTA"
+            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Missing ${#IOQ_INSTALL[@]} $1 $(lk_maybe_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$BOLD$MAGENTA"
 
-            get_confirmation "Add the $1 $(single_or_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL") listed above?" Y Y || return 0
+            lk_confirm "Add the $1 $(lk_maybe_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL") listed above?" Y || return 0
 
         else
 
-            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Adding ${#IOQ_INSTALL[@]} $1 $(single_or_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$GREEN"
+            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Adding ${#IOQ_INSTALL[@]} $1 $(lk_maybe_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$LK_GREEN"
 
         fi
 
-        if variable_exists "$INSTALL_TARGET"; then
+        if lk_is_declared "$INSTALL_TARGET"; then
 
             eval "$INSTALL_TARGET"'+=("${IOQ_INSTALL[@]}")'
 
@@ -560,20 +140,20 @@ function get_memory_size() {
 
     local MEMSIZE
 
-    if is_linux; then
+    if lk_is_linux; then
 
-        assert_command_exists dmidecode
+        lk_assert_command_exists dmidecode
 
-        sudo dmidecode -t memory | sed -E 's/^\s+(.*)$/\1/' | gnu_grep -Po '(?<=^Size: )[0-9]+(?= MB$)' | awk '{ram+=$1} END {print ram}' || die
+        sudo dmidecode -t memory | sed -E 's/^\s+(.*)$/\1/' | gnu_grep -Po '(?<=^Size: )[0-9]+(?= MB$)' | awk '{ram+=$1} END {print ram}' || lk_die
 
-    elif is_macos; then
+    elif lk_is_macos; then
 
-        MEMSIZE="$(sysctl -n hw.memsize)" || die
+        MEMSIZE="$(sysctl -n hw.memsize)" || lk_die
         echo "$((MEMSIZE / 1024 ** 2))"
 
     else
 
-        die "Unable to determine memory size on this platform"
+        lk_die "Unable to determine memory size on this platform"
 
     fi
 }
@@ -598,9 +178,6 @@ LOG_DIR="$LK_ROOT/var/log"
 TEMP_DIR="$LK_ROOT/tmp"
 
 FONTPATH=
-
-shopt -s expand_aliases
-alias pop_return1='{ popd >/dev/null; return 1; }'
 
 ORIGINAL_DRYRUN_ARGUMENT=
 
@@ -632,7 +209,7 @@ elif lk_is_linux; then
     [ -f /etc/lsb-release ] && . /etc/lsb-release
     . "$LK_ROOT/bash/common-linux"
 else
-    die "unknown platform"
+    lk_die "unknown platform"
 fi
 
 [ ! -e "$CONFIG_DIR/settings" ] || . "$CONFIG_DIR/settings"

@@ -1,16 +1,27 @@
 #!/bin/bash
-# shellcheck disable=SC1090
+# shellcheck disable=SC1091,SC2015
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+include='' . lk-bash-load.sh || exit
 
-. "$SCRIPT_DIR/../bash/common"
+lk_assert_not_root
 
-assert_not_root
+[ $# -ge 1 ] &&
+    [[ $1 =~ ^https?:\/\/([^/]+)(\/.*)?$ ]] || lk_usage "\
+Usage: ${0##*/} URL [CHROME_ARG...]"
 
-[ "$#" -ge "1" ] || die "Usage: $(basename "$0") url [chrome_arg...]"
+INSTANCE_NAME=${BASH_REMATCH[1]}_${BASH_REMATCH[2]}
+INSTANCE_NAME=${INSTANCE_NAME//\//_}
+[[ ! $INSTANCE_NAME =~ ((.*)([^_]|^))_+$ ]] ||
+    INSTANCE_NAME=${BASH_REMATCH[1]}
 
-[ -d "${HOME:-}" ] || die "HOME not set"
+COMMAND=$(lk_command_first_existing \
+    chromium \
+    google-chrome-stable \
+    google-chrome chrome) || lk_die "Chrome not found"
 
-lk_open_chrome_ssb "$@"
+"$COMMAND" \
+    --user-data-dir="$HOME/.config/$INSTANCE_NAME" \
+    --no-first-run \
+    --enable-features=OverlayScrollbar \
+    --app="$1" \
+    "${@:2}"

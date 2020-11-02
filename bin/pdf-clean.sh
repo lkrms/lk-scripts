@@ -1,20 +1,16 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2034,SC2015
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+include='' . lk-bash-load.sh || exit
 
-. "$SCRIPT_DIR/../bash/common"
+lk_assert_command_exists mutool
+lk_assert_command_exists realpath
 
-assert_command_exists mutool
-assert_command_exists realpath
-
-[ "$#" -gt "0" ] && are_files "$@" || die "Usage: $(basename "$0") file ..."
+[ "$#" -gt "0" ] && lk_files_exist "$@" || lk_die "Usage: $(basename "$0") file ..."
 
 for FILE in "$@"; do
 
-    is_pdf "$FILE" || die "$FILE doesn't seem to be a PDF"
+    lk_is_pdf "$FILE" || lk_die "$FILE doesn't seem to be a PDF"
 
 done
 
@@ -28,15 +24,15 @@ for FILE in "$@"; do
     RFILE="$(realpath "$FILE")"
     cd "$(dirname "$RFILE")"
     PDF_PATH="$(basename "$RFILE")"
-    BACKUP_PATH="$(filename_get_next_backup "$PDF_PATH" "mutool")"
+    BACKUP_PATH="$(lk_next_backup_file "$PDF_PATH")"
 
     mv "$PDF_PATH" "$BACKUP_PATH"
 
     lk_console_item "Cleaning" "$FILE"
 
-    time_command mutool clean -gggg -zfi "$BACKUP_PATH" "$PDF_PATH" &&
+    mutool clean -gggg -zfi "$BACKUP_PATH" "$PDF_PATH" &&
         touch -r "$BACKUP_PATH" "$PDF_PATH" || {
-        mv -f "$BACKUP_PATH" "$PDF_PATH" || die
+        mv -f "$BACKUP_PATH" "$PDF_PATH" || lk_die
         ERRORS+=("$FILE")
         continue
     }
@@ -55,19 +51,19 @@ for FILE in "$@"; do
     fi
 
     if [ "$PERCENT_SAVED" -lt "$PERCENT_SAVED_THRESHOLD" ]; then
-        echoc "[ $COMMAND_TIME ] Cleaning was ineffective ($PERCENT_TEXT) so the original will be kept" "$RED"
-        mv -f "$BACKUP_PATH" "$PDF_PATH" || die
+        lk_echoc "Cleaning was ineffective ($PERCENT_TEXT) so the original will be kept" "$RED"
+        mv -f "$BACKUP_PATH" "$PDF_PATH" || lk_die
         continue
     fi
 
-    echoc "[ $COMMAND_TIME ] Cleaned successfully ($PERCENT_TEXT)" "$GREEN"
+    lk_echoc "Cleaned successfully ($PERCENT_TEXT)" "$LK_GREEN"
 
 done
 
 [ "${#ERRORS[@]}" -eq "0" ] || {
 
-    lk_console_error "Unable to process ${#ERRORS[@]} PDF $(single_or_plural ${#ERRORS[@]} file files)"
+    lk_console_error "Unable to process ${#ERRORS[@]} PDF $(lk_maybe_plural ${#ERRORS[@]} file files)"
     printf '%s\n' "${ERRORS[@]}" >&2
-    die
+    lk_die
 
 }

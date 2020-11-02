@@ -7,7 +7,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../../bash/common"
 
-assert_command_exists xinput
+lk_assert_command_exists xinput
 
 function xinput_is_touchpad() {
 
@@ -25,7 +25,7 @@ function xinput_set_prop() {
 
     if xinput_has_prop "$1" "$2"; then
 
-        xinput set-prop "$@" || die "Error: unable to set '$2' on device $1"
+        xinput set-prop "$@" || lk_die "Error: unable to set '$2' on device $1"
 
     else
 
@@ -51,7 +51,7 @@ function xinput_set_sign() {
 
         done
 
-        xinput set-prop "$1" "$2" "${SIGNED[@]}" || die "Error: unable to set '$2' on device $1"
+        xinput set-prop "$1" "$2" "${SIGNED[@]}" || lk_die "Error: unable to set '$2' on device $1"
 
     else
 
@@ -61,7 +61,7 @@ function xinput_set_sign() {
 
 }
 
-file_to_array "$CONFIG_DIR/natural-scroll-devices"
+lk_mapfile "$CONFIG_DIR/natural-scroll-devices" FILE_TO_ARRAY "^([[:blank:]]*\$|[#;])"
 
 if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
@@ -96,7 +96,7 @@ if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
 fi
 
-file_to_array "$CONFIG_DIR/xinput-settings"
+lk_mapfile "$CONFIG_DIR/xinput-settings" FILE_TO_ARRAY "^([[:blank:]]*\$|[#;])"
 
 if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
@@ -131,7 +131,7 @@ if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
 fi
 
-if [ "${XINPUT_DISABLE_TOUCHPAD_DURATION:-0.5}" != "0" ] && command_exists syndaemon; then
+if [ "${XINPUT_DISABLE_TOUCHPAD_DURATION:-0.5}" != "0" ] && lk_command_exists syndaemon; then
 
     DEVICE_IDS=($(xinput list | grep -E '\bslave\s+pointer\b' | sort | uniq | gnu_grep -Po '(?<=\bid=)[0-9]+\b'))
     HAVE_TOUCHPAD=0

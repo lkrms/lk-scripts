@@ -34,14 +34,14 @@ DISPLAY_1_SETTINGS=(
     "0x12 50"
 )
 
-[ "${#DISPLAY_EDIDS[@]}" -gt "0" ] || die "No DISPLAY_EDIDS"
+[ "${#DISPLAY_EDIDS[@]}" -gt "0" ] || lk_die "No DISPLAY_EDIDS"
 
 DISPLAY_KEYS=("${!DISPLAY_EDIDS[@]}")
 DISPLAYS=()
 
 while [[ "${1:-}" =~ ^[0-9]+$ ]]; do
 
-    in_array "$1" DISPLAY_KEYS || die "Nothing at DISPLAY_EDIDS[$1]"
+    lk_in_array "$1" DISPLAY_KEYS || lk_die "Nothing at DISPLAY_EDIDS[$1]"
     DISPLAYS+=("$1")
     shift
 
@@ -70,7 +70,7 @@ USAGE="Usage: $(basename "$0") [displaynumber ...] <command> [arg ...]
                 test-range 0x10 <max-brightness> -10 0
 "
 
-[ "$#" -ge "1" ] || die "$USAGE"
+[ "$#" -ge "1" ] || lk_die "$USAGE"
 COMMAND="$1"
 shift
 
@@ -94,7 +94,7 @@ for i in "${DISPLAYS[@]}"; do
         ;;
 
     set-brightness)
-        [ "${#ARGS[@]}" -eq "1" ] || die "$USAGE"
+        [ "${#ARGS[@]}" -eq "1" ] || lk_die "$USAGE"
         lk_console_message "Setting brightness on $DISPLAY_NAME to ${ARGS[0]}" "$BOLD$CYAN"
         sudo ddcutil --edid "$DISPLAY_EDID" setvcp 0x10 "${ARGS[0]}" || EXIT_CODE="$?"
         echo "To make ${ARGS[0]} the default, use: setvcp 0x10 ${ARGS[0]}"
@@ -105,7 +105,7 @@ for i in "${DISPLAYS[@]}"; do
         if ! RESULT=($(sudo ddcutil --edid "$DISPLAY_EDID" getvcp 0x10 | grep -Eo '\b[0-9]+\b' || exit "${PIPESTATUS[0]}")); then
             EXIT_CODE="$?"
         else
-            [ "${#RESULT[@]}" -eq "2" ] || die "Unable to retrieve current and maximum brightness"
+            [ "${#RESULT[@]}" -eq "2" ] || lk_die "Unable to retrieve current and maximum brightness"
             CURRENT="${RESULT[0]}"
             MAX="${RESULT[1]}"
             echo "Current brightness $CURRENT (maximum $MAX)"
@@ -134,7 +134,7 @@ for i in "${DISPLAYS[@]}"; do
         ;;&
 
     test-range)
-        SEQ=($(seq "${ARGS[1]}" "${ARGS[2]}" "${ARGS[3]}" 2>/dev/null)) && [ "${#SEQ[@]}" -gt "0" ] || die "$USAGE"
+        SEQ=($(seq "${ARGS[1]}" "${ARGS[2]}" "${ARGS[3]}" 2>/dev/null)) && [ "${#SEQ[@]}" -gt "0" ] || lk_die "$USAGE"
         TEST_SLEEP="${ARGS[4]:-$DEFAULT_TEST_SLEEP}"
         lk_echo_array "${SEQ[@]}" | lk_console_list "Applying range of values to feature ${ARGS[0]} on $DISPLAY_NAME at ${TEST_SLEEP}s intervals" "$BOLD$CYAN"
         for v in "${SEQ[@]}"; do
@@ -155,6 +155,6 @@ for i in "${DISPLAYS[@]}"; do
 
     esac
 
-    [ "$EXIT_CODE" -eq "0" ] || echoc "ddcutil exit code: $EXIT_CODE" "$BOLD" "$RED"
+    [ "$EXIT_CODE" -eq "0" ] || lk_echoc "ddcutil exit code: $EXIT_CODE" "$BOLD" "$RED"
 
 done

@@ -1,11 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC1090,SC2034
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-
-. "$SCRIPT_DIR/../bash/common"
+include='' . lk-bash-load.sh || exit
 
 DRYRUN_BY_DEFAULT=Y
 dryrun_message
@@ -41,7 +37,7 @@ while read -rd $'\0' FILE_PATH; do
 
         fi
 
-        [ -n "$SERIES_NAME" ] || die "Unable to determine series name for $FILE_PATH"
+        [ -n "$SERIES_NAME" ] || lk_die "Unable to determine series name for $FILE_PATH"
 
         LAST_DIRNAME="$DIRNAME"
 
@@ -52,7 +48,7 @@ while read -rd $'\0' FILE_PATH; do
     [ "$FILE_EXT" != "mp4" ] || FILE_EXT="m4v"
 
     ! [[ "${FILE_NAME#${SERIES_NAME}${SEASON_NAME}_E}" =~ ^[0-9]{2}\."$FILE_EXT"$ ]] || {
-        lk_console_item "Skipping (already renamed)" "$FILE_PATH" "$BOLD$RED"
+        lk_console_item "Skipping (already renamed)" "$FILE_PATH" "$LK_BOLD$LK_RED"
         continue
     }
 
@@ -68,8 +64,8 @@ while read -rd $'\0' FILE_PATH; do
 
     done
 
-    [[ "$FILE_NAME" =~ [^0-9]"$COUNT"[^0-9] ]] || lk_console_item "WARNING: this doesn't look like an episode $COUNT:" "$FILE_PATH" "$BOLD$RED"
+    [[ "$FILE_NAME" =~ [^0-9]"$COUNT"[^0-9] ]] || lk_console_item "WARNING: this doesn't look like an episode $COUNT:" "$FILE_PATH" "$LK_BOLD$LK_RED"
 
-    maybe_dryrun mv -vn "$FILE_PATH" "$NEW_PATH" || die
+    maybe_dryrun mv -vn "$FILE_PATH" "$NEW_PATH" || lk_die
 
 done < <(find "$RENAME_ROOT" -type f \( -name '*.m4v' -o -name '*.mkv' -o -name '*.mp4' \) ! -name '.*' -print0 | sort -zV)

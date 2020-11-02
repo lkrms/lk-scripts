@@ -1,11 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC1090
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-
-. "$SCRIPT_DIR/../bash/common"
+include='' . lk-bash-load.sh || exit
 
 shopt -s nullglob dotglob
 
@@ -24,7 +20,7 @@ cd "$FONT_CACHE_PATH"
 
 UNPACK_ROOT="$(lk_mktemp_dir)"
 
-lk_console_message "Downloading ${#FONT_URLS[@]} $(single_or_plural "${#FONT_URLS[@]}" font fonts)"
+lk_console_message "Downloading ${#FONT_URLS[@]} $(lk_maybe_plural "${#FONT_URLS[@]}" font fonts)"
 FONT_PATHS="$(lk_download "${FONT_URLS[@]}")"
 while IFS= read -r FONT_PATH; do
     lk_console_item "Extracting" "$(basename "$FONT_PATH")"
@@ -40,7 +36,7 @@ while IFS= read -r FONT_PATH; do
         tar -C "$EXTRACT_PATH" -xf "$FONT_PATH"
         ;;
     *)
-        die "$FONT_PATH: unknown archive type"
+        lk_die "$FONT_PATH: unknown archive type"
         ;;
     esac
     CHILDREN=("$EXTRACT_PATH"/*)
@@ -66,7 +62,7 @@ case "$PLATFORM" in
 
 linux)
     TARGET_DIR="/usr/local/share/fonts"
-    dir_make_and_own "$TARGET_DIR"
+    lk_maybe_install -d -o "$(id -un)" -g "$(id -gn)" "$TARGET_DIR"
     do_fonts_install "*.ttf" "lk-truetype"
     do_fonts_install "*.otf" "lk-opentype"
     do_fonts_install "*.pcf*" "lk-pcf"
@@ -74,7 +70,7 @@ linux)
     ;;
 
 *)
-    die "$(basename "$0") is not supported on this platform"
+    lk_die "$(basename "$0") is not supported on this platform"
     ;;
 
 esac

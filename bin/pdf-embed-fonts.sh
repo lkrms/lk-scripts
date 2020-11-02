@@ -1,22 +1,18 @@
 #!/bin/bash
 # shellcheck disable=SC1090
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+include='' . lk-bash-load.sh || exit
 
-. "$SCRIPT_DIR/../bash/common"
+lk_assert_command_exists gs
 
-assert_command_exists gs
+[ "$#" -eq "1" ] || lk_die "Usage: $(basename "$0") </path/to/file.pdf>"
 
-[ "$#" -eq "1" ] || die "Usage: $(basename "$0") </path/to/file.pdf>"
-
-is_pdf "$1" || die "$1 doesn't seem to be a PDF"
+lk_is_pdf "$1" || lk_die "$1 doesn't seem to be a PDF"
 
 PDF_PATH="$1"
-command_exists realpath && PDF_PATH="$(realpath "$PDF_PATH")" || true
+lk_command_exists realpath && PDF_PATH="$(realpath "$PDF_PATH")" || true
 
-BACKUP_PATH="$(filename_add_suffix "$PDF_PATH" "_backup")"
+BACKUP_PATH="$(lk_add_file_suffix "$PDF_PATH" "_backup")"
 
 mv -f "$PDF_PATH" "$BACKUP_PATH"
 
@@ -33,6 +29,6 @@ gs -sDEVICE=pdfwrite \
     -o "$PDF_PATH" "$BACKUP_PATH" || {
 
     mv -f "$BACKUP_PATH" "$PDF_PATH" || true
-    die "Unable to embed fonts in $PDF_PATH"
+    lk_die "Unable to embed fonts in $PDF_PATH"
 
 }

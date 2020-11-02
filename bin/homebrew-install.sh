@@ -8,6 +8,6 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../bash/common"
 . "$SCRIPT_DIR/../bash/common-homebrew"
 
-assert_not_root
+lk_assert_not_root
 
 brew_check

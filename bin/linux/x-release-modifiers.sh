@@ -7,11 +7,11 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../../bash/common"
 
-assert_command_exists xmodmap
-assert_command_exists xdotool
+lk_assert_command_exists xmodmap
+lk_assert_command_exists xdotool
 
 # give it a second for keys to be (physically) released
-has_arg "--no-sleep" || sleep 1
+lk_has_arg "--no-sleep" || sleep 1
 
 for KEYCODE in $(xmodmap -pm | grep -Pio '(?<=\b0x)[0-9a-f]+\b'); do
 

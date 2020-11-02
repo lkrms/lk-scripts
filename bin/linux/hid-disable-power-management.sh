@@ -29,7 +29,7 @@ for d in "${DIRS[@]}"; do
 
 done
 
-[ "${#DEVICES[@]}" -gt "0" ] || die "$USAGE"
+[ "${#DEVICES[@]}" -gt "0" ] || lk_die "$USAGE"
 
 IFS=$'\n'
 DEVICES=($(printf "%s\n" "${DEVICES[@]}" | sort | uniq))
@@ -61,7 +61,7 @@ for DEVICE in "${DEVICES[@]}"; do
             } ||
             {
                 PM_STATUS="enabled"
-                PM_COLOUR="$GREEN"
+                PM_COLOUR="$LK_GREEN"
             }
 
         printf "Power management for %s is currently ${BOLD}${PM_COLOUR}%s${RESET}\n" "$PRODUCT" "$PM_STATUS"

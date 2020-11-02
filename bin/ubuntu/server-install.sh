@@ -8,12 +8,12 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../../bash/common"
 . "$SCRIPT_DIR/../../bash/common-apt"
 
-assert_is_ubuntu
-assert_is_server
-assert_not_root
+lk_assert_is_ubuntu
+lk_assert_is_server
+lk_assert_not_root
 
 {
-    offer_sudo_password_bypass
+    lk_sudo_offer_nopasswd
 
     disable_update_motd
 
@@ -62,7 +62,7 @@ deb [arch=all] http://software.virtualmin.com/vm/6/gpl/apt virtualmin-universal 
 
     apt_check_essentials
 
-    is_virtual || apt_install_packages "QEMU/KVM" "libvirt-bin libvirt-doc qemu-kvm virtinst"
+    lk_is_virtual || apt_install_packages "QEMU/KVM" "libvirt-bin libvirt-doc qemu-kvm virtinst"
 
     apt_install_packages "Webmin" "webmin"
     apt_install_packages "Samba server" "samba"

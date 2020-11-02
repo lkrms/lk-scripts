@@ -8,9 +8,9 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../bash/common"
 . "$SCRIPT_DIR/../bash/common-apt"
 
-assert_not_root
+lk_assert_not_root
 
-[ "$#" -ge "1" ] && [ -f "$1" ] || die "Usage: $(basename "$0") </path/to/file> [diff option...]"
+[ "$#" -ge "1" ] && [ -f "$1" ] || lk_die "Usage: $(basename "$0") </path/to/file> [diff option...]"
 
 FILE_PATH="$(realpath "$1")"
 
@@ -18,7 +18,7 @@ shift
 
 PACKAGES=($(
     dpkg-query -S "$FILE_PATH" 2>/dev/null | sed 's/:.*$//' | sort | uniq
-)) && [ "${#PACKAGES[@]}" -gt "0" ] || die "Error: $FILE_PATH doesn't belong to a package"
+)) && [ "${#PACKAGES[@]}" -gt "0" ] || lk_die "Error: $FILE_PATH doesn't belong to a package"
 
 apt_mark_cache_clean
 
@@ -27,7 +27,7 @@ for p in "${PACKAGES[@]}"; do
     apt_package_installed "$p" || continue
 
     DOWNLOAD_INFO=($(apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} download --print-uris "$p" 2>/dev/null)) && [ "${#DOWNLOAD_INFO[@]}" -ge "2" ] || {
-        lk_console_item "Unable to get archive URI for package:" "$p" "$BOLD$RED"
+        lk_console_item "Unable to get archive URI for package:" "$p" "$LK_BOLD$LK_RED"
         continue
     }
 
@@ -42,14 +42,14 @@ for p in "${PACKAGES[@]}"; do
         mkdir -p "$APT_DEB_PATH" "$(dirname "$EXTRACT_PATH")"
         rm -Rf "$EXTRACT_PATH"
 
-        cd "$APT_DEB_PATH" || die
+        cd "$APT_DEB_PATH" || lk_die
         lk_console_item "Downloading package archive:" "${WRAP_OFF}${URL}${WRAP}"
-        DEB_PATH="$(download_urls "$URL")" || die
+        DEB_PATH="$(lk_download "$URL")" || lk_die
 
         lk_console_message "Extracting package archive to temporary folder"
         dpkg-deb -x "$DEB_PATH" "$EXTRACT_PATH" || {
             rm -Rf "$EXTRACT_PATH"
-            die
+            lk_die
         }
 
     else
@@ -64,7 +64,7 @@ for p in "${PACKAGES[@]}"; do
 
         if diff "$@" "${EXTRACT_PATH}${FILE_PATH}" "$FILE_PATH"; then
 
-            lk_console_message "No differences found" "$BOLD$GREEN"
+            lk_console_message "No differences found" "$LK_BOLD$LK_GREEN"
 
         else
 
@@ -76,10 +76,10 @@ for p in "${PACKAGES[@]}"; do
 
     else
 
-        lk_console_item "Original version of file not found in package:" "$p" "$BOLD$RED"
+        lk_console_item "Original version of file not found in package:" "$p" "$LK_BOLD$LK_RED"
 
     fi
 
 done
 
-lk_echo_array "${PACKAGES[@]}" | lk_console_list "Unable to find original version of file. ${#PACKAGES[@]} $(single_or_plural "${#PACKAGES[@]}" package packages) checked:"
+lk_echo_array "${PACKAGES[@]}" | lk_console_list "Unable to find original version of file. ${#PACKAGES[@]} $(lk_maybe_plural "${#PACKAGES[@]}" package packages) checked:"

@@ -1,11 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC1090
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-
-. "$SCRIPT_DIR/../bash/common"
+include='' . lk-bash-load.sh || exit
 
 LOCAL_PATHS=(
     "$HOME/.config/autostart"
@@ -88,7 +84,7 @@ done
 
 if [ "${#FAILOVER[@]}" -gt "0" ]; then
 
-    echoc "Local $(single_or_plural "${#FAILOVER[@]}" file files) with system failover $(single_or_plural "${#FAILOVER[@]}" counterpart counterparts):" "$BOLD"
+    lk_echoc "Local $(lk_maybe_plural "${#FAILOVER[@]}" file files) with system failover $(lk_maybe_plural "${#FAILOVER[@]}" counterpart counterparts):" "$BOLD"
 
     printf '%s\n' "${FAILOVER[@]}"
     echo
@@ -97,7 +93,7 @@ fi
 
 if [ "${#NO_SYSTEM[@]}" -gt "0" ]; then
 
-    echoc "Local $(single_or_plural "${#NO_SYSTEM[@]}" file files) with no system $(single_or_plural "${#NO_SYSTEM[@]}" counterpart counterparts):" "$BOLD"
+    lk_echoc "Local $(lk_maybe_plural "${#NO_SYSTEM[@]}" file files) with no system $(lk_maybe_plural "${#NO_SYSTEM[@]}" counterpart counterparts):" "$BOLD"
 
     printf '%s\n' "${NO_SYSTEM[@]}"
     echo

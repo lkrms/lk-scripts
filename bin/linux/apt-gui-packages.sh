@@ -13,7 +13,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../../bash/common"
 . "$SCRIPT_DIR/../../bash/common-apt"
 
-APT_GUI_PACKAGES="$(apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances libwayland-client0 libwayland-server0 libx11-6 x11-common | grep -v " " | sort | uniq)" || die
+APT_GUI_PACKAGES="$(apt-cache rdepends --recurse --no-recommends --no-suggests --no-conflicts --no-breaks --no-replaces --no-enhances libwayland-client0 libwayland-server0 libx11-6 x11-common | grep -v " " | sort | uniq)" || lk_die
 
 if [ "$#" -gt "0" ]; then
 
@@ -30,19 +30,19 @@ UNKNOWN_PACKAGES=($(comm -13 <(apt_list_available_packages) <(echo "$PACKAGES"))
 
 if [ "${#GUI_PACKAGES[@]}" -gt "0" ]; then
 
-    lk_console_message "${#GUI_PACKAGES[@]} $(single_or_plural "${#GUI_PACKAGES[@]}" package packages) likely to have a GUI:" "$BOLD$GREEN"
+    lk_console_message "${#GUI_PACKAGES[@]} $(lk_maybe_plural "${#GUI_PACKAGES[@]}" package packages) likely to have a GUI:" "$LK_BOLD$LK_GREEN"
     printf '%s\n' "${GUI_PACKAGES[@]}" | column
 
 else
 
     PACKAGE_COUNT="$(echo "$PACKAGES" | wc -w)"
-    lk_console_message "No packages likely to have a GUI ($PACKAGE_COUNT considered)" "$BOLD$GREEN"
+    lk_console_message "No packages likely to have a GUI ($PACKAGE_COUNT considered)" "$LK_BOLD$LK_GREEN"
 
 fi
 
 if [ "${#UNKNOWN_PACKAGES[@]}" -gt "0" ]; then
 
-    lk_console_message "${#UNKNOWN_PACKAGES[@]} unknown $(single_or_plural "${#UNKNOWN_PACKAGES[@]}" package packages):" "$BOLD$RED"
+    lk_console_message "${#UNKNOWN_PACKAGES[@]} unknown $(lk_maybe_plural "${#UNKNOWN_PACKAGES[@]}" package packages):" "$LK_BOLD$LK_RED"
     printf '%s\n' "${UNKNOWN_PACKAGES[@]}" | column
 
 fi

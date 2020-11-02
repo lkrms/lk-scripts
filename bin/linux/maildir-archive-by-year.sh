@@ -7,14 +7,14 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../../bash/common"
 
-assert_root
+lk_assert_is_root
 
 DRYRUN_BY_DEFAULT=Y
 dryrun_message
 
-variable_exists "MAILDIRS" || MAILDIRS=(/home/*/Maildir)
+lk_is_declared "MAILDIRS" || MAILDIRS=(/home/*/Maildir)
 
-[ "${#MAILDIRS[@]}" -gt "0" ] && are_directories "${MAILDIRS[@]}" || die "No Maildirs found"
+[ "${#MAILDIRS[@]}" -gt "0" ] && lk_dirs_exist "${MAILDIRS[@]}" || lk_die "No Maildirs found"
 
 FOLDER_PREFIX="INBOX"
 
@@ -41,13 +41,13 @@ for MAILDIR in "${MAILDIRS[@]}"; do
 
             maybe_dryrun sudo -u "$OWNER" maildirmake -f "$FOLDER" "$MAILDIR" && {
                 is_dryrun || [ -d "$TARGET_DIR" ]
-            } || die "Unable to create folder $FOLDER in Maildir $MAILDIR"
+            } || lk_die "Unable to create folder $FOLDER in Maildir $MAILDIR"
 
             if [ -f "$SUBSCRIBED" ] && ! grep -Fxq "${FOLDER_PREFIX}.${FOLDER}" "$SUBSCRIBED"; then
 
                 if ! is_dryrun; then
 
-                    echo "${FOLDER_PREFIX}.${FOLDER}" >>"$SUBSCRIBED" || die "Unable to subscribe $OWNER to newly created folder $FOLDER in Maildir $MAILDIR"
+                    echo "${FOLDER_PREFIX}.${FOLDER}" >>"$SUBSCRIBED" || lk_die "Unable to subscribe $OWNER to newly created folder $FOLDER in Maildir $MAILDIR"
 
                 else
 

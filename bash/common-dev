@@ -3,6 +3,12 @@
 
 . "$LK_ROOT/bash/common-git"
 
+function array_filter_platform() {
+
+    printf '%s\n' "$@" | gnu_grep -Po "^[^:]+(?=(:([^:|]+\|)*$PLATFORM(\|[^:|]+)*)?\$)" || true
+
+}
+
 # Usage: dev_install_packages [queue only? (y/N)] [name of 'already installed' array]
 function dev_install_packages() {
 
@@ -11,19 +17,19 @@ function dev_install_packages() {
 
     [ "$QUEUE_ONLY" = "N" ] && UPDATE="${3:-N}" || {
         ALREADY_INSTALLED_NAME="${2:-}"
-        variable_exists PIP_INSTALL_QUEUE || PIP_INSTALL_QUEUE=()
-        variable_exists PIP3_INSTALL_QUEUE || PIP3_INSTALL_QUEUE=()
-        variable_exists NPM_INSTALL_QUEUE || NPM_INSTALL_QUEUE=()
+        lk_is_declared PIP_INSTALL_QUEUE || PIP_INSTALL_QUEUE=()
+        lk_is_declared PIP3_INSTALL_QUEUE || PIP3_INSTALL_QUEUE=()
+        lk_is_declared NPM_INSTALL_QUEUE || NPM_INSTALL_QUEUE=()
     }
 
-    dir_make_and_own "/usr/local/bin"
+    lk_maybe_install -d -o "$(id -un)" -g "$(id -gn)" "/usr/local/bin"
 
     # on macOS, global pip and npm management doesn't require sudo (courtesy of Homebrew)
-    is_macos || SUDO_OR_NOT="Y"
+    lk_is_macos || SUDO_OR_NOT="Y"
 
-    if command_exists pip; then
+    if lk_command_exists pip; then
 
-        file_to_array "$CONFIG_DIR/pip-packages"
+        lk_mapfile "$CONFIG_DIR/pip-packages" FILE_TO_ARRAY "^([[:blank:]]*\$|[#;])"
         PIP_REQUIRED+=(${FILE_TO_ARRAY[@]+"${FILE_TO_ARRAY[@]}"})
         PIP_REQUIRED=($(array_filter_platform ${PIP_REQUIRED[@]+"${PIP_REQUIRED[@]}"} | sort | uniq))
 
@@ -31,14 +37,14 @@ function dev_install_packages() {
 
             if [ "$UPDATE" = "N" ]; then
 
-                INSTALL_COMMAND="maybe_sudo pip install"
+                INSTALL_COMMAND="lk_maybe_sudo pip install"
                 [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="PIP_INSTALL_QUEUE"
 
-                install_or_queue "pip" "${PIP_REQUIRED[*]}" Y package packages "maybe_sudo pip list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+                install_or_queue "pip" "${PIP_REQUIRED[*]}" Y package packages "lk_maybe_sudo pip list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
 
             else
 
-                eval "maybe_sudo pip install --upgrade --upgrade-strategy eager" "${PIP_REQUIRED[@]}"
+                eval "lk_maybe_sudo pip install --upgrade --upgrade-strategy eager" "${PIP_REQUIRED[@]}"
 
             fi
 
@@ -46,9 +52,9 @@ function dev_install_packages() {
 
     fi
 
-    if command_exists pip3; then
+    if lk_command_exists pip3; then
 
-        file_to_array "$CONFIG_DIR/pip3-packages"
+        lk_mapfile "$CONFIG_DIR/pip3-packages" FILE_TO_ARRAY "^([[:blank:]]*\$|[#;])"
         PIP3_REQUIRED+=(${FILE_TO_ARRAY[@]+"${FILE_TO_ARRAY[@]}"})
         PIP3_REQUIRED=($(array_filter_platform ${PIP3_REQUIRED[@]+"${PIP3_REQUIRED[@]}"} | sort | uniq))
 
@@ -56,14 +62,14 @@ function dev_install_packages() {
 
             if [ "$UPDATE" = "N" ]; then
 
-                INSTALL_COMMAND="maybe_sudo pip3 install"
+                INSTALL_COMMAND="lk_maybe_sudo pip3 install"
                 [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="PIP3_INSTALL_QUEUE"
 
-                install_or_queue "pip3" "${PIP3_REQUIRED[*]}" Y package packages "maybe_sudo pip3 list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+                install_or_queue "pip3" "${PIP3_REQUIRED[*]}" Y package packages "lk_maybe_sudo pip3 list --format freeze 2>/dev/null | gnu_grep -Po '^[a-zA-Z0-9-]+'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
 
             else
 
-                eval "maybe_sudo pip3 install --upgrade --upgrade-strategy eager" "${PIP3_REQUIRED[@]}"
+                eval "lk_maybe_sudo pip3 install --upgrade --upgrade-strategy eager" "${PIP3_REQUIRED[@]}"
 
             fi
 
@@ -71,9 +77,9 @@ function dev_install_packages() {
 
     fi
 
-    if command_exists npm; then
+    if lk_command_exists npm; then
 
-        file_to_array "$CONFIG_DIR/npm-packages"
+        lk_mapfile "$CONFIG_DIR/npm-packages" FILE_TO_ARRAY "^([[:blank:]]*\$|[#;])"
         NPM_REQUIRED+=(${FILE_TO_ARRAY[@]+"${FILE_TO_ARRAY[@]}"})
         NPM_REQUIRED=($(array_filter_platform ${NPM_REQUIRED[@]+"${NPM_REQUIRED[@]}"} | sort | uniq))
 
@@ -83,11 +89,11 @@ function dev_install_packages() {
 
                 local PACKAGE
 
-                [ ! -e "/usr/bin/python" ] || maybe_sudo npm config -g set python /usr/bin/python
+                [ ! -e "/usr/bin/python" ] || lk_maybe_sudo npm config -g set python /usr/bin/python
 
                 for PACKAGE in "$@"; do
 
-                    maybe_sudo npm "${NPM_COMMAND:-install}" -g "$PACKAGE" || true
+                    lk_maybe_sudo npm "${NPM_COMMAND:-install}" -g "$PACKAGE" || true
 
                 done
 
@@ -98,7 +104,7 @@ function dev_install_packages() {
                 INSTALL_COMMAND="npm_install"
                 [ "$QUEUE_ONLY" = "N" ] || INSTALL_COMMAND="NPM_INSTALL_QUEUE"
 
-                install_or_queue "npm" "${NPM_REQUIRED[*]}" Y package packages "maybe_sudo npm list -g --depth=0 --parseable | tail -n +2 | gnu_grep -Po '(?<=/)[^/]*$'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
+                install_or_queue "npm" "${NPM_REQUIRED[*]}" Y package packages "lk_maybe_sudo npm list -g --depth=0 --parseable | tail -n +2 | gnu_grep -Po '(?<=/)[^/]*$'" "" "$INSTALL_COMMAND" "$ALREADY_INSTALLED_NAME"
 
             else
 
@@ -110,7 +116,7 @@ function dev_install_packages() {
 
     fi
 
-    if command_exists php; then
+    if lk_command_exists php; then
 
         if [ "$UPDATE" = "N" ]; then
 
@@ -122,11 +128,11 @@ function dev_install_packages() {
 
             [ -e "/usr/local/bin/composer" ] || {
 
-                pushd "$TEMP_DIR" >/dev/null || die
+                pushd "$TEMP_DIR" >/dev/null || lk_die
 
                 "$LK_ROOT/bin/composer-install.sh" --quiet &&
                     mv "composer.phar" "/usr/local/bin/composer" ||
-                    die
+                    lk_die
 
                 popd >/dev/null
 
@@ -134,7 +140,7 @@ function dev_install_packages() {
 
         elif [ -e "/usr/local/bin/composer" ]; then
 
-            /usr/local/bin/composer self-update || die
+            /usr/local/bin/composer self-update || lk_die
 
         fi
 
@@ -150,9 +156,9 @@ function dev_update_packages() {
 
 function dev_apply_system_config() {
 
-    if command_exists git; then
+    if lk_command_exists git; then
 
-        file_to_array "$CONFIG_DIR/gitignore"
+        lk_mapfile "$CONFIG_DIR/gitignore" FILE_TO_ARRAY "^([[:blank:]]*\$|[#;])"
 
         if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
@@ -166,7 +172,7 @@ function dev_apply_system_config() {
 
         local MERGETOOL=
 
-        command_exists meld && MERGETOOL=meld || true
+        lk_command_exists meld && MERGETOOL=meld || true
 
         if [ -n "$MERGETOOL" ]; then
 
@@ -178,41 +184,41 @@ function dev_apply_system_config() {
 
     fi
 
-    if is_linux; then
+    if lk_is_linux; then
 
-        safe_symlink "$LK_ROOT/bin/md-open-today-note.sh" "$HOME/.local/bin/md-open-today-note.sh"
-        safe_symlink "$LK_ROOT/bin/pdf-combine.sh" "$HOME/.local/bin/pdf-combine.sh"
+        lk_safe_symlink "$LK_ROOT/bin/md-open-today-note.sh" "$HOME/.local/bin/md-open-today-note.sh"
+        lk_safe_symlink "$LK_ROOT/bin/pdf-combine.sh" "$HOME/.local/bin/pdf-combine.sh"
 
-        if command_exists xrandr; then
+        if lk_command_exists xrandr; then
 
-            safe_symlink "$LK_ROOT/bin/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh" &&
-                safe_symlink "$LK_ROOT/bin/linux/applications/xrandr-auto.sh.desktop" "$HOME/.config/autostart/xrandr-auto.sh.desktop" || true
-
-        fi
-
-        command_exists xkbcomp && safe_symlink "$LK_ROOT/bin/linux/xkb-load.sh" "$HOME/.local/bin/xkb-load.sh" || true
-
-        if command_exists google-chrome && safe_symlink "$LK_ROOT/bin/chrome-app.sh" "$HOME/.local/bin/chrome-app.sh"; then
-
-            safe_symlink "$LK_ROOT/bin/linux/applications/harvest.desktop" "$HOME/.config/autostart/harvest.desktop" &&
-                safe_symlink "$LK_ROOT/bin/linux/applications/harvest.desktop" "$HOME/.local/share/applications/harvest.desktop" || true
+            lk_safe_symlink "$LK_ROOT/bin/linux/xrandr-auto.sh" "$HOME/.local/bin/xrandr-auto.sh" &&
+                lk_safe_symlink "$LK_ROOT/bin/linux/applications/xrandr-auto.sh.desktop" "$HOME/.config/autostart/xrandr-auto.sh.desktop" || true
 
         fi
 
-        ! command_exists update-notifier || freedesktop_disable_autostart update-notifier
+        lk_command_exists xkbcomp && lk_safe_symlink "$LK_ROOT/bin/linux/xkb-load.sh" "$HOME/.local/bin/xkb-load.sh" || true
 
-        safe_symlink "/usr/share/applications/guake.desktop" "$HOME/.config/autostart/guake.desktop" || true
+        if lk_command_exists google-chrome && lk_safe_symlink "$LK_ROOT/bin/chrome-app.sh" "$HOME/.local/bin/chrome-app.sh"; then
 
-        command_exists espanso && safe_symlink "$LK_ROOT/bin/linux/applications/espanso.desktop" "$HOME/.config/autostart/espanso.desktop" &&
-            safe_symlink "$LK_ROOT/bin/linux/applications/espanso.desktop" "$HOME/.local/share/applications/espanso.desktop" &&
+            lk_safe_symlink "$LK_ROOT/bin/linux/applications/harvest.desktop" "$HOME/.config/autostart/harvest.desktop" &&
+                lk_safe_symlink "$LK_ROOT/bin/linux/applications/harvest.desktop" "$HOME/.local/share/applications/harvest.desktop" || true
+
+        fi
+
+        ! lk_command_exists update-notifier || freedesktop_disable_autostart update-notifier
+
+        lk_safe_symlink "/usr/share/applications/guake.desktop" "$HOME/.config/autostart/guake.desktop" || true
+
+        lk_command_exists espanso && lk_safe_symlink "$LK_ROOT/bin/linux/applications/espanso.desktop" "$HOME/.config/autostart/espanso.desktop" &&
+            lk_safe_symlink "$LK_ROOT/bin/linux/applications/espanso.desktop" "$HOME/.local/share/applications/espanso.desktop" &&
             espanso unregister 2>/dev/null || true
-        command_exists rescuetime && safe_symlink "$LK_ROOT/bin/linux/applications/rescuetime.desktop" "$HOME/.config/autostart/rescuetime.desktop" || true
+        lk_command_exists rescuetime && lk_safe_symlink "$LK_ROOT/bin/linux/applications/rescuetime.desktop" "$HOME/.config/autostart/rescuetime.desktop" || true
 
-        if command_exists sxhkd; then
+        if lk_command_exists sxhkd; then
 
-            safe_symlink "$LK_ROOT/linux/sxhkd/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc" N Y &&
-                safe_symlink "$LK_ROOT/linux/sxhkd/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py" &&
-                safe_symlink "$LK_ROOT/bin/linux/applications/sxhkd.desktop" "$HOME/.config/autostart/sxhkd.desktop" || true
+            lk_safe_symlink "$LK_ROOT/linux/sxhkd/sxhkdrc" "$HOME/.config/sxhkd/sxhkdrc" N Y &&
+                lk_safe_symlink "$LK_ROOT/linux/sxhkd/sxhkd-do-map.py" "$HOME/.local/bin/sxhkd-do-map.py" &&
+                lk_safe_symlink "$LK_ROOT/bin/linux/applications/sxhkd.desktop" "$HOME/.config/autostart/sxhkd.desktop" || true
 
         fi
 
@@ -225,17 +231,17 @@ function dev_process_queue() {
 
     local NPM_PACKAGE
 
-    assert_variable_exists PIP_INSTALL_QUEUE
-    assert_variable_exists PIP3_INSTALL_QUEUE
-    assert_variable_exists NPM_INSTALL_QUEUE
+    lk_assert_is_declared PIP_INSTALL_QUEUE
+    lk_assert_is_declared PIP3_INSTALL_QUEUE
+    lk_assert_is_declared NPM_INSTALL_QUEUE
 
     local JUST_INSTALLED="${1:-}" SUDO_OR_NOT="N"
 
-    is_macos || SUDO_OR_NOT="Y"
+    lk_is_macos || SUDO_OR_NOT="Y"
 
     if [ "${#PIP_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
-        eval "maybe_sudo pip install" "${PIP_INSTALL_QUEUE[@]}" || die
+        eval "lk_maybe_sudo pip install" "${PIP_INSTALL_QUEUE[@]}" || lk_die
 
         [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED"'+=("${PIP_INSTALL_QUEUE[@]}")'
         PIP_INSTALL_QUEUE=()
@@ -244,7 +250,7 @@ function dev_process_queue() {
 
     if [ "${#PIP3_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
-        eval "maybe_sudo pip3 install" "${PIP3_INSTALL_QUEUE[@]}" || die
+        eval "lk_maybe_sudo pip3 install" "${PIP3_INSTALL_QUEUE[@]}" || lk_die
 
         [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED"'+=("${PIP3_INSTALL_QUEUE[@]}")'
         PIP3_INSTALL_QUEUE=()
@@ -253,11 +259,11 @@ function dev_process_queue() {
 
     if [ "${#NPM_INSTALL_QUEUE[@]}" -gt "0" ]; then
 
-        [ ! -e "/usr/bin/python" ] || maybe_sudo npm config -g set python /usr/bin/python
+        [ ! -e "/usr/bin/python" ] || lk_maybe_sudo npm config -g set python /usr/bin/python
 
         for NPM_PACKAGE in "${NPM_REQUIRED[@]}"; do
 
-            maybe_sudo npm install -g "$NPM_PACKAGE" &&
+            lk_maybe_sudo npm install -g "$NPM_PACKAGE" &&
                 { [ -z "$JUST_INSTALLED" ] || eval "$JUST_INSTALLED+=(\"\$NPM_PACKAGE\")"; } ||
                 true
 
@@ -282,24 +288,24 @@ function php_do_apply_setting() {
 
     set +u
 
-    [ -f "${INI_FILE}.original" ] || "${PREFIX[@]}" cp -p "$INI_FILE" "${INI_FILE}.original" || die
+    [ -f "${INI_FILE}.original" ] || "${PREFIX[@]}" cp -p "$INI_FILE" "${INI_FILE}.original" || lk_die
 
-    SEARCH="$(sed_escape_search "$SETTINGNAME")"
-    REPLACE="$(sed_escape_replace "$SETTINGNAME = $SETTINGVALUE")"
+    SEARCH="$(lk_escape_ere "$SETTINGNAME")"
+    REPLACE="$(lk_escape_ere_replace "$SETTINGNAME = $SETTINGVALUE")"
 
     if grep -Eq '^\s*'"${SEARCH}"'\s*=' "$INI_FILE"; then
 
         # we have a defined setting to replace
-        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE" || die
+        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE" || lk_die
 
     elif grep -Eq '^\s*;\s*'"${SEARCH}"'\s*=' "$INI_FILE"; then
 
         # we have a commented-out setting to replace
-        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*;\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE" || die
+        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*;\s*'"${SEARCH}"'\s*=.*$/'"${REPLACE}"'/' "$INI_FILE" || lk_die
 
     else
 
-        echo -e "\n$SETTINGNAME = $SETTINGVALUE" | "${PREFIX[@]}" tee -a "$INI_FILE" >/dev/null || die
+        echo -e "\n$SETTINGNAME = $SETTINGVALUE" | "${PREFIX[@]}" tee -a "$INI_FILE" >/dev/null || lk_die
 
     fi
 
@@ -320,26 +326,26 @@ function php_do_enable_extension() {
 
     set +u
 
-    [ -f "${INI_FILE}.original" ] || "${PREFIX[@]}" cp -p "$INI_FILE" "${INI_FILE}.original" || die
+    [ -f "${INI_FILE}.original" ] || "${PREFIX[@]}" cp -p "$INI_FILE" "${INI_FILE}.original" || lk_die
 
-    SEARCHNAME="$(sed_escape_search "$SETTINGNAME")"
-    SEARCHVALUE="$(sed_escape_search "$SETTINGVALUE")"
-    REPLACE="$(sed_escape_replace "$SETTINGNAME = $SETTINGVALUE")"
+    SEARCHNAME="$(lk_escape_ere "$SETTINGNAME")"
+    SEARCHVALUE="$(lk_escape_ere "$SETTINGVALUE")"
+    REPLACE="$(lk_escape_ere_replace "$SETTINGNAME = $SETTINGVALUE")"
 
     # similar to php_do_apply_setting, but match on value too
     if grep -Eq '^\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$' "$INI_FILE"; then
 
         # we have a defined setting to replace
-        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE" || die
+        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE" || lk_die
 
     elif grep -Eq '^\s*;\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$' "$INI_FILE"; then
 
         # we have a commented-out setting to replace
-        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*;\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE" || die
+        "${PREFIX[@]}" gnu_sed -Ei 's/^\s*;\s*'"${SEARCHNAME}"'\s*=\s*'"${SEARCHVALUE}"'\s*$/'"${REPLACE}"'/' "$INI_FILE" || lk_die
 
     else
 
-        echo -e "\n$SETTINGNAME = $SETTINGVALUE" | "${PREFIX[@]}" tee -a "$INI_FILE" >/dev/null || die
+        echo -e "\n$SETTINGNAME = $SETTINGVALUE" | "${PREFIX[@]}" tee -a "$INI_FILE" >/dev/null || lk_die
 
     fi
 
@@ -354,7 +360,7 @@ function php_apply_setting() {
 
     INI_ROOT="$1"
 
-    [ -d "$INI_ROOT" ] || die "Error: $INI_ROOT doesn't exist or isn't a directory"
+    [ -d "$INI_ROOT" ] || lk_die "Error: $INI_ROOT doesn't exist or isn't a directory"
 
     shift
 
@@ -373,7 +379,7 @@ function php_enable_extension() {
 
     INI_ROOT="$1"
 
-    [ -d "$INI_ROOT" ] || die "Error: $INI_ROOT doesn't exist or isn't a directory"
+    [ -d "$INI_ROOT" ] || lk_die "Error: $INI_ROOT doesn't exist or isn't a directory"
 
     shift
 
@@ -401,7 +407,7 @@ function php_apply_developer_settings() {
     php_apply_setting "$1" xdebug.remote_enable 1
     php_apply_setting "$1" xdebug.remote_autostart 1
 
-    if is_macos; then
+    if lk_is_macos; then
 
         # support MariaDB via Homebrew
         php_apply_setting "$1" pdo_mysql.default_socket /tmp/mysql.sock

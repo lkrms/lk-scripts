@@ -2,27 +2,27 @@
 
 function assert_git_version_at_least() {
 
-    git_version_at_least "$1" || die "$(basename "$0") requires Git version $1 or higher"
+    git_version_at_least "$1" || lk_die "$(basename "$0") requires Git version $1 or higher"
 
 }
 
 function assert_git_dir_is_working_repo() {
 
-    git_is_dir_working_repo "${1:-$PWD}" || die "${1:-$PWD} isn't part of a repository's working directory"
+    git_is_dir_working_repo "${1:-$PWD}" || lk_die "${1:-$PWD} isn't part of a repository's working directory"
 
 }
 
 function assert_git_dir_is_working_root() {
 
-    git_is_dir_working_root "${1:-$PWD}" || die "${1:-$PWD} isn't the root of a repository's working directory"
+    git_is_dir_working_root "${1:-$PWD}" || lk_die "${1:-$PWD} isn't the root of a repository's working directory"
 
 }
 
 function git_version_at_least() {
 
-    [ -n "${GIT_VERSION:-}" ] || GIT_VERSION="$(git --version | gnu_grep -Pom 1 '(?<=\s|^)[0-9.]+(?=\s|$)')" || die "Unable to parse output from \"git --version\""
+    [ -n "${GIT_VERSION:-}" ] || GIT_VERSION="$(git --version | gnu_grep -Pom 1 '(?<=\s|^)[0-9.]+(?=\s|$)')" || lk_die "Unable to parse output from \"git --version\""
 
-    version_at_least "$GIT_VERSION" "$1"
+    lk_version_at_least "$GIT_VERSION" "$1"
 
 }
 
@@ -48,9 +48,9 @@ function git_is_dir_working_repo() {
 
     local DIR_PATH="${1:-$PWD}" IN_WORK_TREE
 
-    [ -d "$DIR_PATH" ] || die "$DIR_PATH is not a directory"
+    [ -d "$DIR_PATH" ] || lk_die "$DIR_PATH is not a directory"
 
-    [ "$DIR_PATH" = "$PWD" ] || pushd "$DIR_PATH" >/dev/null || die
+    [ "$DIR_PATH" = "$PWD" ] || pushd "$DIR_PATH" >/dev/null || lk_die
 
     # exits non-zero with error output if outside of a repo
     IN_WORK_TREE="$(git rev-parse --is-inside-work-tree 2>/dev/null || echo "false")"
@@ -63,7 +63,7 @@ function git_is_dir_working_repo() {
 
 function git_is_dir_working_root() {
 
-    assert_command_exists realpath
+    lk_assert_command_exists realpath
 
     local ROOT_PATH="${1:-$PWD}" SUPERPROJECT TOPLEVEL
 
@@ -71,17 +71,20 @@ function git_is_dir_working_root() {
 
     ROOT_PATH="$(realpath "$ROOT_PATH")"
 
-    pushd "$ROOT_PATH" >/dev/null || die
+    pushd "$ROOT_PATH" >/dev/null || lk_die
 
     # if possible, check this repo isn't a submodule
     if git_version_at_least 2.13; then
 
-        SUPERPROJECT="$(git rev-parse --show-superproject-working-tree)" || die
-        [ -z "$SUPERPROJECT" ] || pop_return1
+        SUPERPROJECT="$(git rev-parse --show-superproject-working-tree)" || lk_die
+        [ -z "$SUPERPROJECT" ] || {
+            popd >/dev/null || lk_die
+            return 1
+        }
 
     fi
 
-    TOPLEVEL="$(git rev-parse --show-toplevel)" || die
+    TOPLEVEL="$(git rev-parse --show-toplevel)" || lk_die
 
     popd >/dev/null
 
@@ -114,7 +117,7 @@ function git_format_branch() {
 
     [ "${2:-0}" -eq "0" ] || BRANCH_EXTRA+=("behind $2")
     [ "${3:-0}" -eq "0" ] || BRANCH_EXTRA+=("ahead $3")
-    [ "${#BRANCH_EXTRA[@]}" -eq "0" ] || BRANCH="${BRANCH}[$(array_join_by "," "${BRANCH_EXTRA[@]}")]"
+    [ "${#BRANCH_EXTRA[@]}" -eq "0" ] || BRANCH="${BRANCH}[$(lk_implode "," "${BRANCH_EXTRA[@]}")]"
 
     echo "$BRANCH"
 
@@ -124,16 +127,16 @@ function git_add_global_ignore() {
 
     local i IGNORE_FILE
 
-    IGNORE_FILE="$(git config --global core.excludesFile)" || die "Error: Git global option core.excludesFile not defined"
+    IGNORE_FILE="$(git config --global core.excludesFile)" || lk_die "Error: Git global option core.excludesFile not defined"
     IGNORE_FILE="${IGNORE_FILE/#\~/$HOME}"
 
-    [ -e "$IGNORE_FILE" ] || touch "$IGNORE_FILE" || die
+    [ -e "$IGNORE_FILE" ] || touch "$IGNORE_FILE" || lk_die
 
-    [ -f "$IGNORE_FILE" ] || die "Error: unable to create file $IGNORE_FILE"
+    [ -f "$IGNORE_FILE" ] || lk_die "Error: unable to create file $IGNORE_FILE"
 
     for i in "$@"; do
 
-        if ! grep -Eq '^'"$(sed_escape_search "$i")"'$' "$IGNORE_FILE"; then
+        if ! grep -Eq '^'"$(lk_escape_ere "$i")"'$' "$IGNORE_FILE"; then
 
             echo "$i" >>"$IGNORE_FILE"
 

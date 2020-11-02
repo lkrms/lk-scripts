@@ -10,22 +10,22 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../../bash/common-dev"
 . "$SCRIPT_DIR/../../bash/common-homebrew"
 
-assert_is_ubuntu
-assert_is_desktop
-assert_not_root
+lk_assert_is_ubuntu
+lk_assert_is_desktop
+lk_assert_not_root
 
 # allow this script to be changed while it's running
 {
-    offer_sudo_password_bypass
+    lk_sudo_offer_nopasswd
 
     disable_update_motd
 
     # apply all available preferences in $CONFIG_DIR/apt/preferences.d
     apt_apply_preferences suppress-bsd-mailx suppress-deepin-notifications suppress-libapache2-mod-php suppress-youtube-dl withhold-proposed-packages
 
-    safe_symlink "$CONFIG_DIR/apt.conf" "/etc/apt/apt.conf.d/90-linacreative" Y Y
+    lk_safe_symlink "$CONFIG_DIR/apt.conf" "/etc/apt/apt.conf.d/90-linacreative" Y Y
 
-    safe_symlink "$CONFIG_DIR/sysctl.d/90-inotify-maximum-watches.conf" "/etc/sysctl.d/90-inotify-maximum-watches.conf" Y
+    lk_safe_symlink "$CONFIG_DIR/sysctl.d/90-inotify-maximum-watches.conf" "/etc/sysctl.d/90-inotify-maximum-watches.conf" Y
 
     # get underway without an immediate index update
     apt_mark_cache_clean
@@ -53,7 +53,7 @@ EOF
     MEMORY_SIZE_MB=-1
     LOW_RAM=0
 
-    if ! is_virtual; then
+    if ! lk_is_virtual; then
 
         MEMORY_SIZE_MB="$(get_memory_size)"
 
@@ -107,7 +107,7 @@ EOF
         python3-pip
     )
 
-    ! command_exists check-language-support || APT_ESSENTIALS+=($(check-language-support --show-installed))
+    ! lk_command_exists check-language-support || APT_ESSENTIALS+=($(check-language-support --show-installed))
 
     apt_check_essentials
 
@@ -251,7 +251,7 @@ EOF
 
     )
 
-    is_virtual || DESKTOP_ESSENTIALS+=(
+    lk_is_virtual || DESKTOP_ESSENTIALS+=(
         blueman
         btscanner
         clinfo
@@ -375,8 +375,8 @@ EOF
 
     fi
 
-    [ "$LOW_RAM" -eq "1" ] || is_virtual || apt_install_packages "QEMU/KVM" "libvirt-bin libvirt-doc qemu-kvm virt-manager virtinst"
-    [ "$LOW_RAM" -eq "1" ] || is_virtual || apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
+    [ "$LOW_RAM" -eq "1" ] || lk_is_virtual || apt_install_packages "QEMU/KVM" "libvirt-bin libvirt-doc qemu-kvm virt-manager virtinst"
+    [ "$LOW_RAM" -eq "1" ] || lk_is_virtual || apt_install_packages "Docker CE" "docker-ce docker-ce-cli containerd.io"
 
     case "${XDG_CURRENT_DESKTOP:-}" in
 
@@ -407,7 +407,7 @@ EOF
 
     esac
 
-    if ! has_arg "--skip-debs"; then
+    if ! lk_has_arg "--skip-debs"; then
 
         DEB_URLS=(
             "https://www.rescuetime.com/installers/rescuetime_current_amd64.deb"
@@ -419,14 +419,14 @@ EOF
 
         lk_console_message "Looking up deb package URLs"
 
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/AppImage/appimaged/releases/tags/continuous" '_amd64\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/sindresorhus/caprine/releases/latest" '_amd64\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/careteditor/releases-beta/releases/latest" '\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://code-industry.net/free-pdf-editor/" '.*-qt5\.amd64\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/Motion-Project/motion/releases" '.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://slack.com/intl/en-au/downloads/instructions/ubuntu" '.*\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/hovancik/stretchly/releases/latest" '_amd64\.deb$' | head -n1)")
-        DEB_URLS+=("$(get_urls_from_url "https://api.github.com/repos/KryDos/todoist-linux/releases/latest" '_amd64\.deb$' | head -n1)")
+        DEB_URLS+=("$(lk_wget_uris "https://api.github.com/repos/AppImage/appimaged/releases/tags/continuous" | sed -E '/_amd64\.deb$/!d' | head -n1)")
+        DEB_URLS+=("$(lk_wget_uris "https://api.github.com/repos/sindresorhus/caprine/releases/latest" | sed -E '/_amd64\.deb$/!d' | head -n1)")
+        DEB_URLS+=("$(lk_wget_uris "https://api.github.com/repos/careteditor/releases-beta/releases/latest" | sed -E '/\.deb$/!d' | head -n1)")
+        DEB_URLS+=("$(lk_wget_uris "https://code-industry.net/free-pdf-editor/" | sed -E '/.*-qt5\.amd64\.deb$/!d' | head -n1)")
+        DEB_URLS+=("$(lk_wget_uris "https://api.github.com/repos/Motion-Project/motion/releases" | sed -E '/.*'"$DISTRIB_CODENAME"'.*_amd64\.deb$/!d' | head -n1)")
+        DEB_URLS+=("$(lk_wget_uris "https://slack.com/intl/en-au/downloads/instructions/ubuntu" | sed -E '/.*\.deb$/!d' | head -n1)")
+        DEB_URLS+=("$(lk_wget_uris "https://api.github.com/repos/hovancik/stretchly/releases/latest" | sed -E '/_amd64\.deb$/!d' | head -n1)")
+        DEB_URLS+=("$(lk_wget_uris "https://api.github.com/repos/KryDos/todoist-linux/releases/latest" | sed -E '/_amd64\.deb$/!d' | head -n1)")
 
         if [ "${XDG_CURRENT_DESKTOP:-}" = "XFCE" ]; then
 
@@ -461,7 +461,7 @@ EOF
     dev_install_packages Y APT_INSTALLED
 
     # we're about to install ntp
-    if command_exists timedatectl; then
+    if lk_command_exists timedatectl; then
 
         sudo timedatectl set-ntp no || true
 
@@ -518,7 +518,7 @@ EOF
         sudo pdbedit -L | grep "^$USER:" >/dev/null || {
 
             sudo smbpasswd -san "$USER" &&
-                echoc "${BOLD}WARNING: Samba user $USER has been added with no password${RESET} (use smbpasswd to create one)" "$RED"
+                lk_echoc "${BOLD}WARNING: Samba user $USER has been added with no password${RESET} (use smbpasswd to create one)" "$RED"
 
         }
 
@@ -528,7 +528,7 @@ EOF
 
         lk_console_message "Configuring NTP..."
 
-        safe_symlink "$CONFIG_DIR/ntp.conf" "/etc/ntp.conf" Y Y
+        lk_safe_symlink "$CONFIG_DIR/ntp.conf" "/etc/ntp.conf" Y Y
 
         if [ -f "/etc/apparmor.d/usr.sbin.ntpd" ] && ! [ -e "/etc/apparmor.d/disable/usr.sbin.ntpd" ]; then
 
@@ -546,18 +546,18 @@ EOF
 
         lk_console_message "Configuring Apache..."
 
-        dir_make_and_own /var/www/virtual
+        lk_maybe_install -d -o "$(id -un)" -g "$(id -gn)" /var/www/virtual
 
         mkdir -p "/var/www/virtual/127.0.0.1"
-        safe_symlink "/var/www/virtual/127.0.0.1" "/var/www/virtual/localhost"
+        lk_safe_symlink "/var/www/virtual/127.0.0.1" "/var/www/virtual/localhost"
 
-        safe_symlink "$CONFIG_DIR/www" "/var/www/virtual/127.0.0.1/html" N Y
+        lk_safe_symlink "$CONFIG_DIR/www" "/var/www/virtual/127.0.0.1/html" N Y
 
         # TODO: abstract this to a function like is_user_in_group
         groups | grep -Eq '(\s|^)(www-data)(\s|$)' || sudo adduser "$(id -un)" "www-data"
         groups "www-data" | grep -Eo '[^:]+$' | grep -Eq '(\s|^)'"$(id -gn)"'(\s|$)' || sudo adduser "www-data" "$(id -gn)"
 
-        safe_symlink "$CONFIG_DIR/apache2-virtual.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf" Y Y
+        lk_safe_symlink "$CONFIG_DIR/apache2-virtual.conf" "/etc/apache2/sites-available/000-virtual-linacreative.conf" Y Y
 
         sudo rm -f /etc/apache2/sites-enabled/*.conf
         sudo ln -sv ../sites-available/000-virtual-linacreative.conf /etc/apache2/sites-enabled/000-virtual-linacreative.conf
@@ -576,7 +576,7 @@ EOF
 
         lk_console_message "Configuring MariaDB..."
 
-        safe_symlink "$CONFIG_DIR/mariadb.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf" Y Y
+        lk_safe_symlink "$CONFIG_DIR/mariadb.cnf" "/etc/mysql/mariadb.conf.d/60-linacreative.cnf" Y Y
 
         # reload isn't enough
         sudo service mysql restart
@@ -591,7 +591,7 @@ EOF
 
     fi
 
-    ! apt_package_installed "tidy" || safe_symlink "$CONFIG_DIR/tidy.conf" "/etc/tidy.conf" Y Y
+    ! apt_package_installed "tidy" || lk_safe_symlink "$CONFIG_DIR/tidy.conf" "/etc/tidy.conf" Y Y
 
     # non-apt installations
 
@@ -614,7 +614,7 @@ EOF
     rm -f "$ESPANSO_TEMP"
 
     lk_console_message "Downloading latest espanso binary"
-    curl -sSL "https://github.com/federico-terzi/espanso/releases/latest/download/espanso-linux.tar.gz" | tar -xz --overwrite -C "$TEMP_DIR" && [ -x "$ESPANSO_TEMP" ] || die "Error downloading espanso"
+    curl -sSL "https://github.com/federico-terzi/espanso/releases/latest/download/espanso-linux.tar.gz" | tar -xz --overwrite -C "$TEMP_DIR" && [ -x "$ESPANSO_TEMP" ] || lk_die "Error downloading espanso"
 
     if ! cmp -s "$ESPANSO_PATH" "$ESPANSO_TEMP"; then
 
@@ -674,7 +674,7 @@ EOF
     if apt_package_installed "cups-browsed"; then
 
         # prevent AirPrint printers being added automatically
-        sudo systemctl disable --now cups-browsed >/dev/null 2>&1 || die "Error disabling cups-browsed service"
+        sudo systemctl disable --now cups-browsed >/dev/null 2>&1 || lk_die "Error disabling cups-browsed service"
 
     fi
 
@@ -685,7 +685,7 @@ EOF
         groups | grep -Eq '(\s|^)(vboxusers)(\s|$)' || sudo adduser "$(id -un)" "vboxusers"
 
         sudo systemctl disable --now vboxautostart-service >/dev/null 2>&1 ||
-            die "Error disabling vboxautostart-service service"
+            lk_die "Error disabling vboxautostart-service service"
 
         VBoxManage setproperty loghistorycount 20
 
@@ -693,7 +693,7 @@ EOF
 
     if apt_package_installed "docker-ce"; then
 
-        sudo groupadd -f docker >/dev/null 2>&1 && sudo adduser "$USER" docker >/dev/null 2>&1 || die "Error adding $USER to docker group"
+        sudo groupadd -f docker >/dev/null 2>&1 && sudo adduser "$USER" docker >/dev/null 2>&1 || lk_die "Error adding $USER to docker group"
 
     fi
 
@@ -702,7 +702,7 @@ EOF
     apt_purge
 
     # ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | grep -Eo '[^/]+$' | sort | uniq))
-    # lk_console_message "${#ALL_PACKAGES[@]} installed $(single_or_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "$BLUE"
+    # lk_console_message "${#ALL_PACKAGES[@]} installed $(lk_maybe_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "$BLUE"
     # COLUMNS="$(tput cols)" && apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")" || apt_pretty_packages "${ALL_PACKAGES[*]}" Y
 
     if apt_package_available "linux-generic-hwe-$DISTRIB_RELEASE" && apt_package_available "xserver-xorg-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "xserver-xorg-hwe-$DISTRIB_RELEASE"; then

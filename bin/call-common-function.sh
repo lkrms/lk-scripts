@@ -1,13 +1,9 @@
 #!/bin/bash
 # shellcheck disable=SC1090
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+include='' . lk-bash-load.sh || exit
 
-. "$SCRIPT_DIR/../bash/common"
-
-[ "$#" -gt "0" ] || die "Usage: $(basename "$0") function_name [argument1...]"
+[ "$#" -gt "0" ] || lk_die "Usage: $(basename "$0") function_name [argument1...]"
 
 for COMMON in "$LK_ROOT/bash/common-"*; do
 
@@ -24,7 +20,7 @@ for COMMON in "$LK_ROOT/bash/common-"*; do
         ;;
 
     *-apt)
-        command_exists apt-get || continue
+        lk_command_exists apt-get || continue
         ;;
 
     esac
@@ -34,6 +30,6 @@ for COMMON in "$LK_ROOT/bash/common-"*; do
 
 done
 
-declare -F "$1" >/dev/null 2>&1 || die "Function not defined: $1"
+declare -F "$1" >/dev/null 2>&1 || lk_die "Function not defined: $1"
 
 eval "$@"

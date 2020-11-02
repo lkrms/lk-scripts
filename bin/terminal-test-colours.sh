@@ -1,11 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC1090
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-
-. "$SCRIPT_DIR/../bash/common"
+include='' . lk-bash-load.sh || exit
 
 for j in $(seq -1 8); do
 
@@ -44,11 +40,11 @@ for j in $(seq -1 8); do
 
         lk_safe_tput dim
 
-        printf '%s with dim. ' "$(upper_first "$FG_COLOUR")"
+        printf '%s with dim. ' "$(lk_upper_first "$FG_COLOUR")"
 
         lk_safe_tput bold
 
-        printf '%s with bold. ' "$(upper_first "$FG_COLOUR")"
+        printf '%s with bold. ' "$(lk_upper_first "$FG_COLOUR")"
 
         lk_safe_tput sgr0
         [ "$i" -eq "-1" ] || lk_safe_tput setaf "$i"
@@ -56,11 +52,11 @@ for j in $(seq -1 8); do
 
         lk_safe_tput smso
 
-        printf '%s with standout. ' "$(upper_first "$FG_COLOUR")"
+        printf '%s with standout. ' "$(lk_upper_first "$FG_COLOUR")"
 
         lk_safe_tput bold
 
-        printf '%s with standout and bold.' "$(upper_first "$FG_COLOUR")"
+        printf '%s with standout and bold.' "$(lk_upper_first "$FG_COLOUR")"
 
         lk_safe_tput sgr0
 

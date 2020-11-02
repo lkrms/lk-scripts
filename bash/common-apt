@@ -1,7 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC1091,SC2015,SC2034,SC2206,SC2207,SC2046,SC2086
 
-assert_command_exists apt-get
+lk_assert_command_exists apt-get
 
 function apt_apply_preferences() {
 
@@ -19,7 +19,7 @@ function apt_apply_preferences() {
 
         [ -e "$PREF" ] || PREF="$CONFIG_DIR/apt/preferences.d/$PREF"
 
-        safe_symlink "$PREF" "/etc/apt/preferences.d/linac-$(basename "$PREF")" Y
+        lk_safe_symlink "$PREF" "/etc/apt/preferences.d/linac-$(basename "$PREF")" Y
 
     done
 
@@ -37,7 +37,7 @@ function apt_check_essentials() {
 
     local i
 
-    ! command_exists dpkg || ! dpkg -s "linux-generic-hwe-${DISTRIB_RELEASE}" >/dev/null 2>&1 || APT_ESSENTIALS+=("linux-tools-generic-hwe-${DISTRIB_RELEASE}?")
+    ! lk_command_exists dpkg || ! dpkg -s "linux-generic-hwe-${DISTRIB_RELEASE}" >/dev/null 2>&1 || APT_ESSENTIALS+=("linux-tools-generic-hwe-${DISTRIB_RELEASE}?")
 
     [ "${#APT_ESSENTIALS[@]}" -gt "0" ] || return 0
 
@@ -78,7 +78,7 @@ function apt_list_available_packages() {
 
 function apt_list_installed_packages() {
 
-    dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po "^.*?(?=(:($(array_join_by "|" $(
+    dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W | gnu_grep -Po "^.*?(?=(:($(lk_implode "|" $(
         dpkg --print-architecture
         dpkg --print-foreign-architectures
     ))))?\tinstalled\$)" | sort | uniq
@@ -95,8 +95,8 @@ function apt_describe_packages() {
 
     local IFS PACKAGES COLOURS="$BOLD" RESET_COLOURS PATTERN RESULTS RESULT_NAMES NAME
 
-    PACKAGES=($1) || die
-    [ "${#PACKAGES[@]}" -gt "0" ] || die "At least one package name is required"
+    PACKAGES=($1) || lk_die
+    [ "${#PACKAGES[@]}" -gt "0" ] || lk_die "At least one package name is required"
     shift
 
     [ "$#" -eq "0" ] || {
@@ -120,8 +120,8 @@ function apt_describe_packages() {
 
     done
 
-    COLOURS="$(sed_escape_replace "$COLOURS")"
-    RESET_COLOURS="$(sed_escape_replace "$RESET")"
+    COLOURS="$(lk_escape_ere_replace "$COLOURS")"
+    RESET_COLOURS="$(lk_escape_ere_replace "$RESET")"
 
     echo "$RESULTS" | sort | sed -Ee "s/^([^ ]+) - (.*)\$/${COLOURS}\1:${RESET_COLOURS} \2/" -e "s/^([^ ]+)\$/${COLOURS}\1${RESET_COLOURS}/"
 
@@ -172,8 +172,8 @@ function apt_pretty_packages() {
         for p in ${REMOVE_PACKAGES[@]+"${REMOVE_PACKAGES[@]}"}; do
 
             # replace the trailing hyphen with a space to preserve formatting
-            FIND="(\s|^)$(sed_escape_search "$p")-(\s|\$)"
-            REPLACE="\1$(sed_escape_replace "${BOLD}${RED}${p}${RESET} ")\2"
+            FIND="(\s|^)$(lk_escape_ere "$p")-(\s|\$)"
+            REPLACE="\1$(lk_escape_ere_replace "${BOLD}${RED}${p}${RESET} ")\2"
 
             FORMATTED="$(sed -E "s/${FIND}/${REPLACE}/g" <<<"$FORMATTED")"
 
@@ -212,8 +212,8 @@ function apt_ubuntu_archive_url() {
 function do_apt_enable_ubuntu_repository() {
 
     gnu_grep -Pq "^deb\s+https?://(\w+\.)?archive\.ubuntu\.com/ubuntu/?\s+$1\s+.*(?<=\s)$2(\s|\$)" /etc/apt/sources.list || {
-        assert_command_exists add-apt-repository
-        sudo add-apt-repository "$ADD_APT_REPOSITORY_EXTRA" "deb $(apt_ubuntu_archive_url) $1 $2" || die
+        lk_assert_command_exists add-apt-repository
+        sudo add-apt-repository "$ADD_APT_REPOSITORY_EXTRA" "deb $(apt_ubuntu_archive_url) $1 $2" || lk_die
         APT_CACHE_DIRTY=1
     }
 
@@ -240,7 +240,7 @@ function apt_enable_ubuntu_repository() {
 function apt_cat_sources() {
 
     shopt -s nullglob
-    cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list || die
+    cat /etc/apt/sources.list /etc/apt/sources.list.d/*.list || lk_die
     shopt -u nullglob
 
 }
@@ -277,7 +277,7 @@ Pin-Priority: 500
 
     elif [ -n "$PREFERENCES" ]; then
 
-        echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/ppa-${1//[\/.]/-}.pref" >/dev/null || die
+        echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/ppa-${1//[\/.]/-}.pref" >/dev/null || lk_die
 
     fi
 
@@ -286,7 +286,7 @@ Pin-Priority: 500
 # Usage: apt_register_repository my-repo-identifier "https://gpg.key.url" "content for my-repo-identifier.list" "value for Pin field in apt preferences" "package1 package2 ..." [add immediately? (y/N)] [allow only named packages? (Y/n)]
 function apt_register_repository() {
 
-    assert_command_exists wget
+    lk_assert_command_exists wget
 
     local p PREFERENCES=
 
@@ -332,7 +332,7 @@ EOF
 
         if [ -n "$PREFERENCES" ]; then
 
-            echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/$1.pref" >/dev/null || die
+            echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/$1.pref" >/dev/null || lk_die
 
         fi
 
@@ -352,7 +352,7 @@ function apt_make_cache_clean() {
     [ "$APT_CACHE_DIRTY" -eq "0" ] || {
         apt_check_sources
         lk_console_message "Updating apt package indexes"
-        sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} -qq update && APT_CACHE_DIRTY=0 || die
+        sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} -qq update && APT_CACHE_DIRTY=0 || lk_die
     }
 
 }
@@ -411,8 +411,8 @@ function apt_get_package_list() {
     done
 
     [ "${#BAD_LIST[@]}" -eq "0" ] || {
-        lk_echo_array "${BAD_LIST[@]}" | lk_console_list "$(single_or_plural "${#BAD_LIST[@]}" Package Packages) unavailable for installation" "$BOLD$RED" >&2
-        die
+        lk_echo_array "${BAD_LIST[@]}" | lk_console_list "$(lk_maybe_plural "${#BAD_LIST[@]}" Package Packages) unavailable for installation" "$LK_BOLD$LK_RED" >&2
+        lk_die
     }
 
     for q in ${REMOVE[@]+"${REMOVE[@]}"}; do
@@ -473,8 +473,8 @@ function apt_install_packages() {
         [ "$IGNORE" -eq "1" ] && IGNORED+=("$p") || true
         [ "$SILENCE" -eq "1" ] && SILENCED+=("$p") || true
 
-        PPA_INDEX=$(array_search "$p" APT_PPA_PACKAGES) || true
-        REPO_INDEX=$(array_search "$p" APT_REPO_PACKAGES) || true
+        PPA_INDEX=$(lk_array_search "$p" APT_PPA_PACKAGES) || true
+        REPO_INDEX=$(lk_array_search "$p" APT_REPO_PACKAGES) || true
 
         if [ -n "$PPA_INDEX" ]; then
 
@@ -515,22 +515,22 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            lk_console_message "Missing $1 $(single_or_plural ${#INSTALL[@]} package packages):" "$BOLD$MAGENTA"
+            lk_console_message "Missing $1 $(lk_maybe_plural ${#INSTALL[@]} package packages):" "$BOLD$MAGENTA"
 
             apt_describe_packages "${INSTALL[*]}" "$BOLD$MAGENTA"
 
             [ "${#QUEUE[@]}" -gt "0" ] && {
-                lk_echo_array "${QUEUE[@]}" | lk_console_list "These packages depend on ${#QUEUE[@]} missing $(single_or_plural ${#QUEUE[@]} repository repositories)" "$BOLD$MAGENTA"
-                PROMPT_EXTRA=" and $(single_or_plural ${#QUEUE[@]} repository repositories)"
+                lk_echo_array "${QUEUE[@]}" | lk_console_list "These packages depend on ${#QUEUE[@]} missing $(lk_maybe_plural ${#QUEUE[@]} repository repositories)" "$BOLD$MAGENTA"
+                PROMPT_EXTRA=" and $(lk_maybe_plural ${#QUEUE[@]} repository repositories)"
             }
 
-            get_confirmation "Add the $1 $(single_or_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" Y Y || return 0
+            lk_confirm "Add the $1 $(lk_maybe_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" Y || return 0
 
         fi
 
         if [ "$QUEUE_ONLY" = "N" ]; then
 
-            [ "${#QUEUE[@]}" -gt "0" ] && lk_echo_array "${QUEUE[@]}" | lk_console_list "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories)" "$GREEN"
+            [ "${#QUEUE[@]}" -gt "0" ] && lk_echo_array "${QUEUE[@]}" | lk_console_list "Adding ${#QUEUE[@]} $(lk_maybe_plural ${#QUEUE[@]} repository repositories)" "$LK_GREEN"
 
             for q in PPA REPO; do
 
@@ -538,7 +538,7 @@ function apt_install_packages() {
 
                 [ "${#QUEUE[@]}" -gt "0" ] && {
                     QUEUE=($(printf '%s\n' "${QUEUE[@]}" | sort | uniq))
-                    eval "apt_add_$(lower $q)" "${QUEUE[@]}" || die
+                    eval "apt_add_$(lk_lower $q)" "${QUEUE[@]}" || lk_die
                 }
 
             done
@@ -548,7 +548,7 @@ function apt_install_packages() {
             SILENT_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]+${IGNORED[*]}}" "${SUPPRESSED[*]+${SUPPRESSED[*]}}" "" "${SILENCED[*]+${SILENCED[*]}}" Y))
             PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]+${INSTALL_QUEUE[*]}} ${SILENT_QUEUE[*]+${SILENT_QUEUE[*]}}"))
 
-            lk_console_item "Installing ${#PRETTY_QUEUE[@]} $(single_or_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]+${PRETTY_QUEUE[*]}}" Y)" "$GREEN"
+            lk_console_item "Installing ${#PRETTY_QUEUE[@]} $(lk_maybe_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]+${PRETTY_QUEUE[*]}}" Y)" "$LK_GREEN"
 
             for q in INSTALL SILENT; do
 
@@ -559,7 +559,7 @@ function apt_install_packages() {
                     sudo ${SUDO_EXTRA[@]+"${SUDO_EXTRA[@]}"} apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} install "${QUEUE[@]}" && {
                         APT_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
                         APT_JUST_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
-                    } || die
+                    } || lk_die
 
                 fi
 
@@ -590,17 +590,17 @@ function apt_add_ppa() {
 
         [ -z "$ppa" ] && continue || true
 
-        i=$(array_search "$ppa" APT_PPA_REGISTRY) || die "Error: unable to find metadata for PPA '$ppa'"
+        i=$(lk_array_search "$ppa" APT_PPA_REGISTRY) || lk_die "Error: unable to find metadata for PPA '$ppa'"
 
-        assert_command_exists add-apt-repository
+        lk_assert_command_exists add-apt-repository
 
-        sudo add-apt-repository "$ADD_APT_REPOSITORY_EXTRA" "ppa:$ppa" || die
+        sudo add-apt-repository "$ADD_APT_REPOSITORY_EXTRA" "ppa:$ppa" || lk_die
 
         PREFERENCES="${APT_PPA_PREFERENCES[$i]}"
 
         if [ -n "$PREFERENCES" ]; then
 
-            echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/ppa-${ppa//[\/.]/-}.pref" >/dev/null || die
+            echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/ppa-${ppa//[\/.]/-}.pref" >/dev/null || lk_die
 
         fi
 
@@ -640,23 +640,23 @@ function apt_add_repo() {
 
         [ -z "$repo" ] && continue || true
 
-        i=$(array_search "$repo" APT_REPO_REGISTRY) || die "Error: unable to find metadata for repository '$repo'"
+        i=$(lk_array_search "$repo" APT_REPO_REGISTRY) || lk_die "Error: unable to find metadata for repository '$repo'"
 
         KEY_URL="${APT_REPO_KEY_URLS[$i]}"
         ENTRY="${APT_REPO_ENTRIES[$i]}"
         PREFERENCES="${APT_REPO_PREFERENCES[$i]}"
 
-        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || die
+        echo "$ENTRY" | sudo tee "/etc/apt/sources.list.d/$repo.list" >/dev/null || lk_die
 
         if lk_is_uri "$KEY_URL"; then
 
-            wget -qO - "$KEY_URL" | sudo apt-key add - >/dev/null 2>&1 || die "Error: unable to add GPG key from $KEY_URL"
+            wget -qO - "$KEY_URL" | sudo apt-key add - >/dev/null 2>&1 || lk_die "Error: unable to add GPG key from $KEY_URL"
 
         else
 
             for KEY_ID in $KEY_URL; do
 
-                sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$KEY_ID" >/dev/null 2>&1 || die "Error: unable to add GPG key $KEY_ID from Ubuntu keyserver"
+                sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$KEY_ID" >/dev/null 2>&1 || lk_die "Error: unable to add GPG key $KEY_ID from Ubuntu keyserver"
 
             done
 
@@ -664,7 +664,7 @@ function apt_add_repo() {
 
         if [ -n "$PREFERENCES" ]; then
 
-            echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/$repo.pref" >/dev/null || die
+            echo "$PREFERENCES" | sudo tee "/etc/apt/preferences.d/$repo.pref" >/dev/null || lk_die
 
         fi
 
@@ -701,7 +701,7 @@ function apt_add_repo() {
 # Usage: apt_install_deb "http://url.to/package.deb" [queue only? (Y/n)]
 function apt_install_deb() {
 
-    assert_command_exists wget
+    lk_assert_command_exists wget
 
     # queue by default
     if [ "${2:-Y}" = "Y" ]; then
@@ -720,17 +720,17 @@ function do_apt_install_deb() {
 
     local PATHS DEB_PATHS=() SKIPPED=() NOT_SKIPPED=() DEB_PACKAGE DEB_VERSION INSTALLED_VERSION path
 
-    mkdir -p "$APT_DEB_PATH" && pushd "$APT_DEB_PATH" >/dev/null || die "Error: unable to access $APT_DEB_PATH"
+    mkdir -p "$APT_DEB_PATH" && pushd "$APT_DEB_PATH" >/dev/null || lk_die "Error: unable to access $APT_DEB_PATH"
 
-    lk_console_message "Downloading $# deb $(single_or_plural "$#" package packages)"
+    lk_console_message "Downloading $# deb $(lk_maybe_plural "$#" package packages)"
 
     # allow "429 Too Many Requests"
     # shellcheck disable=SC2034
     DOWNLOAD_URLS_SKIP_REGEX='^\s*HTTP/[0-9.]+\s+429\b'
 
     PATHS="$(
-        download_urls "$@"
-    )" || die
+        lk_download "$@"
+    )" || lk_die
 
     while IFS= read -r path; do
 
@@ -772,7 +772,7 @@ function do_apt_install_deb() {
 
     done
 
-    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && lk_console_item "Installing deb $(single_or_plural "${#NOT_SKIPPED[@]}" package packages):" "${NOT_SKIPPED[*]}" "$GREEN"
+    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && lk_console_item "Installing deb $(lk_maybe_plural "${#NOT_SKIPPED[@]}" package packages):" "${NOT_SKIPPED[*]}" "$LK_GREEN"
 
     if [ "${#DEB_PATHS[@]}" -gt "0" ]; then
 
@@ -784,7 +784,7 @@ function do_apt_install_deb() {
 
         else
 
-            die
+            lk_die
 
         fi
 
@@ -800,7 +800,7 @@ function apt_remove_packages() {
     # shellcheck disable=SC2048
     for p in $*; do
 
-        if apt_package_installed "$p" && ! in_array "$p" APT_REMOVE_QUEUE; then
+        if apt_package_installed "$p" && ! lk_in_array "$p" APT_REMOVE_QUEUE; then
 
             APT_REMOVE_QUEUE+=("$p")
 
@@ -818,7 +818,7 @@ function apt_process_queue() {
 
         QUEUE=($(printf '%s\n' ${APT_PPA_QUEUE[@]+"${APT_PPA_QUEUE[@]}"} ${APT_REPO_QUEUE[@]+"${APT_REPO_QUEUE[@]}"} | sort | uniq))
 
-        [ "${#QUEUE[@]}" -gt "0" ] && lk_console_item "Adding ${#QUEUE[@]} $(single_or_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$GREEN"
+        [ "${#QUEUE[@]}" -gt "0" ] && lk_console_item "Adding ${#QUEUE[@]} $(lk_maybe_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$LK_GREEN"
 
         for q in PPA REPO; do
 
@@ -826,7 +826,7 @@ function apt_process_queue() {
 
             [ "${#QUEUE[@]}" -gt "0" ] && {
                 QUEUE=($(printf '%s\n' "${QUEUE[@]}" | sort | uniq))
-                eval "apt_add_$(lower $q)" "${QUEUE[@]}" || die
+                eval "apt_add_$(lk_lower $q)" "${QUEUE[@]}" || lk_die
             }
 
         done
@@ -835,7 +835,7 @@ function apt_process_queue() {
         INSTALL_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]+${APT_IGNORED[*]}}" "${APT_SUPPRESSED[*]+${APT_SUPPRESSED[*]}}" "${APT_REMOVE_QUEUE[*]+${APT_REMOVE_QUEUE[*]}}" "${APT_SILENCED[*]+${APT_SILENCED[*]}}" N))
         SILENT_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]+${APT_IGNORED[*]}}" "${APT_SUPPRESSED[*]+${APT_SUPPRESSED[*]}}" "" "${APT_SILENCED[*]+${APT_SILENCED[*]}}" Y))
         PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]+${INSTALL_QUEUE[*]}} ${SILENT_QUEUE[*]+${SILENT_QUEUE[*]}}"))
-        lk_console_item "Applying ${#PRETTY_QUEUE[@]} package $(single_or_plural ${#PRETTY_QUEUE[@]} change changes):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y)" "$GREEN"
+        lk_console_item "Applying ${#PRETTY_QUEUE[@]} package $(lk_maybe_plural ${#PRETTY_QUEUE[@]} change changes):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y)" "$LK_GREEN"
 
         for q in INSTALL SILENT; do
 
@@ -846,7 +846,7 @@ function apt_process_queue() {
                 sudo ${SUDO_EXTRA[@]+"${SUDO_EXTRA[@]}"} apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} install "${QUEUE[@]}" && {
                     APT_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
                     APT_JUST_INSTALLED+=($(apt_filter_packages "${QUEUE[*]}" N))
-                } || die
+                } || lk_die
 
             fi
 
@@ -900,9 +900,9 @@ function apt_upgrade_all() {
 
     apt_make_cache_clean
 
-    lk_console_message "Installing all available apt package updates" "$GREEN"
+    lk_console_message "Installing all available apt package updates" "$LK_GREEN"
 
-    sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} --fix-missing dist-upgrade || die
+    sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} --fix-missing dist-upgrade || lk_die
 
 }
 
@@ -910,35 +910,35 @@ function apt_purge() {
 
     local PURGE_PACKAGES IFS
 
-    sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} "$@" autoremove || die
+    sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} "$@" autoremove || lk_die
 
     IFS=$'\n'
-    PURGE_PACKAGES=($(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W)) || die
+    PURGE_PACKAGES=($(dpkg-query -f '${binary:Package}\t${db:Status-Status}\n' -W)) || lk_die
     unset IFS
 
     PURGE_PACKAGES=($(printf '%s\n' ${PURGE_PACKAGES[@]+"${PURGE_PACKAGES[@]}"} | gnu_grep -Po '^.*(?=\tconfig-files$)')) || true
 
-    [ "${#PURGE_PACKAGES[@]}" -eq "0" ] || sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} "$@" purge "${PURGE_PACKAGES[@]}" || die
+    [ "${#PURGE_PACKAGES[@]}" -eq "0" ] || sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} "$@" purge "${PURGE_PACKAGES[@]}" || lk_die
 
 }
 
 # returns all changed configuration files (note: deleted files aren't detected)
 function apt_get_changed_configuration_files() {
 
-    assert_command_exists debsums
+    lk_assert_command_exists debsums
 
-    sudo debsums -ce 2>/dev/null || die
+    sudo debsums -ce 2>/dev/null || lk_die
 
 }
 
 # returns all new files under /etc
 function apt_get_new_configuration_files() {
 
-    assert_command_exists debsums
+    lk_assert_command_exists debsums
 
     sudo find /etc -type f | grep -vFf <(
-        sudo debsums -e 2>/dev/null | sed -E 's/\s*[A-Z]+$//' || die
-    ) || die
+        sudo debsums -e 2>/dev/null | sed -E 's/\s*[A-Z]+$//' || lk_die
+    ) || lk_die
 
 }
 
@@ -966,7 +966,7 @@ APT_DEB_QUEUE=()
 APT_SKIPPED=()
 
 ADD_APT_REPOSITORY_EXTRA="-yn"
-version_at_least "$DISTRIB_RELEASE" "18.04" || ADD_APT_REPOSITORY_EXTRA="-y"
+lk_version_at_least "$DISTRIB_RELEASE" "18.04" || ADD_APT_REPOSITORY_EXTRA="-y"
 
 APT_PREREQ=(
     apt-listchanges
@@ -1044,7 +1044,7 @@ APT_ESSENTIALS=(
     $(! lk_is_ubuntu_lts || { lk_ubuntu_at_least 18.04 && printf '%s\n' "xxd" "radvdump" || printf '%s\n' "radvd"; })
 )
 
-is_virtual || APT_ESSENTIALS+=(
+lk_is_virtual || APT_ESSENTIALS+=(
     dkms
     hddtemp
     lm-sensors

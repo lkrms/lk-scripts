@@ -9,13 +9,13 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../bash/common-dev"
 . "$SCRIPT_DIR/../bash/common-homebrew"
 
-assert_is_macos
-assert_not_root
+lk_assert_is_macos
+lk_assert_not_root
 
 # allow this script to be changed while it's running
 {
 
-    offer_sudo_password_bypass
+    lk_sudo_offer_nopasswd
 
     # install Homebrew if needed
     brew_check
@@ -208,8 +208,8 @@ gcc@7 \
     fi
 
     # TODO (and same on system update):
-    # sudo tlmgr update --self && sudo tlmgr install collection-fontsrecommended || die
-    # luaotfload-tool --update || die
+    # sudo tlmgr update --self && sudo tlmgr install collection-fontsrecommended || lk_die
+    # luaotfload-tool --update || lk_die
 
     dev_apply_system_config
 

@@ -1,11 +1,7 @@
 #!/bin/bash
 # shellcheck disable=SC1090
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
-
-. "$SCRIPT_DIR/../bash/common"
+include='' . lk-bash-load.sh || exit
 
 RESOLVED=0
 
@@ -37,7 +33,7 @@ while IFS= read -rd $'\0' FILE; do
 
     fi
 
-    if command_exists trash-put; then
+    if lk_command_exists trash-put; then
 
         trash-put "$TRASH"
 
@@ -55,4 +51,4 @@ while IFS= read -rd $'\0' FILE; do
 
 done < <(find . -iname '*conflicted copy*' -print0 | sort -z)
 
-echo "$RESOLVED conflicted $(single_or_plural "$RESOLVED" copy copies) resolved"
+echo "$RESOLVED conflicted $(lk_maybe_plural "$RESOLVED" copy copies) resolved"

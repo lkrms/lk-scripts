@@ -8,7 +8,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../../bash/common"
 . "$SCRIPT_DIR/../../bash/common-apt"
 
-assert_not_root
+lk_assert_not_root
 
 case "$(basename "$0")" in
 

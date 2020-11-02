@@ -4,11 +4,11 @@ function check_developer_tools() {
 
     local ATTEMPTS=0
 
-    assert_command_exists xcode-select
+    lk_assert_command_exists xcode-select
 
     while ! xcode-select -p >/dev/null; do
 
-        [ "$ATTEMPTS" -eq "0" ] || lk_console_message "Command line developer tools aren't installed ($ATTEMPTS $(single_or_plural "$ATTEMPTS" attempt attempts) so far)" "$BOLD$RED"
+        [ "$ATTEMPTS" -eq "0" ] || lk_console_message "Command line developer tools aren't installed ($ATTEMPTS $(lk_maybe_plural "$ATTEMPTS" attempt attempts) so far)" "$LK_BOLD$LK_RED"
 
         lk_console_message "Requesting installation of the command line developer tools"
         sudo xcode-select --install
@@ -22,7 +22,7 @@ function check_developer_tools() {
     # opendiff doesn't work if Xcode isn't active
     if [ -d "/Applications/Xcode.app" ]; then
 
-        sudo xcode-select -switch "/Applications/Xcode.app" || die
+        sudo xcode-select -switch "/Applications/Xcode.app" || lk_die
 
     fi
 

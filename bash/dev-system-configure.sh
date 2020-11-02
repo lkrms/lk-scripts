@@ -8,7 +8,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/common"
 . "$SCRIPT_DIR/common-dev"
 
-assert_not_root
+lk_assert_not_root
 
 dev_install_packages
 

@@ -3,30 +3,30 @@
 
 function brew_check() {
 
-    if is_macos; then
+    if lk_is_macos; then
 
         check_developer_tools
 
     fi
 
-    if ! command_exists brew; then
+    if ! lk_command_exists brew; then
 
-        if is_macos; then
+        if lk_is_macos; then
 
-            ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || die
+            ruby -e "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/master/install)" || lk_die
 
-        elif is_linux; then
+        elif lk_is_linux; then
 
             load_linuxbrew || true
 
-            command_exists brew || {
-                sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)" || die
-                load_linuxbrew || die "Unable to bootstrap Homebrew"
+            lk_command_exists brew || {
+                sh -c "$(curl -fsSL https://raw.githubusercontent.com/Linuxbrew/install/master/install.sh)" || lk_die
+                load_linuxbrew || lk_die "Unable to bootstrap Homebrew"
             }
 
         else
 
-            die "Homebrew isn't supported on this platform"
+            lk_die "Homebrew isn't supported on this platform"
 
         fi
 
@@ -44,11 +44,11 @@ function brew_check_taps() {
 
     if [ "${#MISSING_TAPS[@]}" -gt "0" ]; then
 
-        lk_echo_array "${MISSING_TAPS[@]}" | lk_console_list "Adding ${#MISSING_TAPS[@]} Homebrew $(single_or_plural "${#MISSING_TAPS[@]}" tap taps):" "$GREEN"
+        lk_echo_array "${MISSING_TAPS[@]}" | lk_console_list "Adding ${#MISSING_TAPS[@]} Homebrew $(lk_maybe_plural "${#MISSING_TAPS[@]}" tap taps):" "$LK_GREEN"
 
         for TAP in "${MISSING_TAPS[@]}"; do
 
-            brew tap "$TAP" || die
+            brew tap "$TAP" || lk_die
 
         done
 
@@ -60,15 +60,15 @@ function brew_check_taps() {
 
 function brew_refresh() {
 
-    BREW_INSTALLED_FORMULAE="$(brew list --full-name | sort | uniq)" || die
-    BREW_AVAILABLE_FORMULAE="$(brew search | sort | uniq)" || die
+    BREW_INSTALLED_FORMULAE="$(brew list --full-name | sort | uniq)" || lk_die
+    BREW_AVAILABLE_FORMULAE="$(brew search | sort | uniq)" || lk_die
     BREW_INSTALLED_CASKS=""
     BREW_AVAILABLE_CASKS=""
 
-    if is_macos; then
+    if lk_is_macos; then
 
-        BREW_INSTALLED_CASKS="$(brew cask list | sort | uniq)" || die
-        BREW_AVAILABLE_CASKS="$(brew search --casks | sort | uniq)" || die
+        BREW_INSTALLED_CASKS="$(brew cask list | sort | uniq)" || lk_die
+        BREW_AVAILABLE_CASKS="$(brew search --casks | sort | uniq)" || lk_die
 
     fi
 
@@ -143,7 +143,7 @@ function brew_make_cache_clean() {
 
         lk_console_message "Updating Homebrew formula and cask lists..."
 
-        brew update && brew_refresh && BREW_CACHE_DIRTY=0 || die
+        brew update && brew_refresh && BREW_CACHE_DIRTY=0 || lk_die
 
     fi
 
@@ -161,7 +161,7 @@ function brew_queue_formulae() {
 # Usage: brew_queue_casks "Description of this group of casks" "cask1 cask2 ..." [allow user override? (Y/n)]
 function brew_queue_casks() {
 
-    is_macos || return
+    lk_is_macos || return
 
     brew_make_cache_clean
 
@@ -177,7 +177,7 @@ function brew_remove_formulae() {
     # shellcheck disable=SC2048
     for p in $*; do
 
-        if brew_formula_installed "$p" && ! in_array "$p" BREW_FORMULA_REMOVE_QUEUE; then
+        if brew_formula_installed "$p" && ! lk_in_array "$p" BREW_FORMULA_REMOVE_QUEUE; then
 
             BREW_FORMULA_REMOVE_QUEUE+=("$p")
 
@@ -195,7 +195,7 @@ function brew_remove_casks() {
     # shellcheck disable=SC2048
     for p in $*; do
 
-        if brew_cask_installed "$p" && ! in_array "$p" BREW_CASK_REMOVE_QUEUE; then
+        if brew_cask_installed "$p" && ! lk_in_array "$p" BREW_CASK_REMOVE_QUEUE; then
 
             BREW_CASK_REMOVE_QUEUE+=("$p")
 
@@ -209,45 +209,45 @@ function brew_process_queue() {
 
     if [ "${#BREW_FORMULA_REMOVE_QUEUE[@]}" -gt "0" ]; then
 
-        lk_echo_array "${BREW_FORMULA_REMOVE_QUEUE[@]}" | lk_console_list "Removing ${#BREW_FORMULA_REMOVE_QUEUE[@]} $(single_or_plural "${#BREW_FORMULA_REMOVE_QUEUE[@]}" formula formulae):" "$BOLD$RED"
+        lk_echo_array "${BREW_FORMULA_REMOVE_QUEUE[@]}" | lk_console_list "Removing ${#BREW_FORMULA_REMOVE_QUEUE[@]} $(lk_maybe_plural "${#BREW_FORMULA_REMOVE_QUEUE[@]}" formula formulae):" "$LK_BOLD$LK_RED"
 
         brew uninstall "${BREW_FORMULA_REMOVE_QUEUE[@]}" &&
             BREW_FORMULA_REMOVE_QUEUE=() ||
-            die
+            lk_die
 
     fi
 
     if [ "${#BREW_CASK_REMOVE_QUEUE[@]}" -gt "0" ]; then
 
-        lk_echo_array "${BREW_CASK_REMOVE_QUEUE[@]}" | lk_console_list "Uninstalling ${#BREW_CASK_REMOVE_QUEUE[@]} $(single_or_plural "${#BREW_CASK_REMOVE_QUEUE[@]}" cask casks):" "$BOLD$RED"
+        lk_echo_array "${BREW_CASK_REMOVE_QUEUE[@]}" | lk_console_list "Uninstalling ${#BREW_CASK_REMOVE_QUEUE[@]} $(lk_maybe_plural "${#BREW_CASK_REMOVE_QUEUE[@]}" cask casks):" "$LK_BOLD$LK_RED"
 
         brew cask uninstall "${BREW_CASK_REMOVE_QUEUE[@]}" &&
             BREW_CASK_REMOVE_QUEUE=() ||
-            die
+            lk_die
 
     fi
 
     if [ "${#BREW_FORMULA_QUEUE[@]}" -gt "0" ]; then
 
-        lk_echo_array "${BREW_FORMULA_QUEUE[@]}" | lk_console_list "Installing ${#BREW_FORMULA_QUEUE[@]} $(single_or_plural "${#BREW_FORMULA_QUEUE[@]}" formula formulae):" "$GREEN"
+        lk_echo_array "${BREW_FORMULA_QUEUE[@]}" | lk_console_list "Installing ${#BREW_FORMULA_QUEUE[@]} $(lk_maybe_plural "${#BREW_FORMULA_QUEUE[@]}" formula formulae):" "$LK_GREEN"
 
         brew install "${BREW_FORMULA_QUEUE[@]}" && {
             BREW_INSTALLED+=("${BREW_FORMULA_QUEUE[@]}")
             BREW_JUST_INSTALLED+=("${BREW_FORMULA_QUEUE[@]}")
-        } || die
+        } || lk_die
 
     fi
 
     if [ "${#BREW_CASK_QUEUE[@]}" -gt "0" ]; then
 
-        is_macos || return
+        lk_is_macos || return
 
-        lk_echo_array "${BREW_CASK_QUEUE[@]}" | lk_console_list "Installing ${#BREW_CASK_QUEUE[@]} $(single_or_plural "${#BREW_CASK_QUEUE[@]}" cask casks):" "$GREEN"
+        lk_echo_array "${BREW_CASK_QUEUE[@]}" | lk_console_list "Installing ${#BREW_CASK_QUEUE[@]} $(lk_maybe_plural "${#BREW_CASK_QUEUE[@]}" cask casks):" "$LK_GREEN"
 
         brew cask install --no-quarantine --force "${BREW_CASK_QUEUE[@]}" && {
             BREW_INSTALLED+=("${BREW_CASK_QUEUE[@]}")
             BREW_JUST_INSTALLED+=("${BREW_CASK_QUEUE[@]}")
-        } || die
+        } || lk_die
 
     fi
 
@@ -261,15 +261,15 @@ function brew_upgrade_all() {
 
     brew_make_cache_clean
 
-    lk_console_message "Installing all available formula updates..." "$GREEN"
+    lk_console_message "Installing all available formula updates..." "$LK_GREEN"
 
-    brew upgrade || die "\"brew upgrade\" failed"
+    brew upgrade || lk_die "\"brew upgrade\" failed"
 
-    if is_macos; then
+    if lk_is_macos; then
 
-        lk_console_message "Installing all available cask updates..." "$GREEN"
+        lk_console_message "Installing all available cask updates..." "$LK_GREEN"
 
-        brew cask upgrade --no-quarantine || die "\"brew cask upgrade\" failed"
+        brew cask upgrade --no-quarantine || lk_die "\"brew cask upgrade\" failed"
 
         # see https://github.com/Homebrew/brew/issues/6112
         rm -fv "$HOME/Library/Caches/Homebrew/Cask/adoptopenjdk8"* \
@@ -277,13 +277,13 @@ function brew_upgrade_all() {
 
     fi
 
-    brew cleanup || die "\"brew cleanup\" failed"
+    brew cleanup || lk_die "\"brew cleanup\" failed"
 
 }
 
 BREW_TAPS=()
 
-if is_macos; then
+if lk_is_macos; then
 
     BREW_TAPS+=(
         homebrew/cask-drivers

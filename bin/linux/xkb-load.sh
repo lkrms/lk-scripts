@@ -11,7 +11,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../../bash/common"
 
-assert_command_exists xkbcomp
+lk_assert_command_exists xkbcomp
 
 while [[ "${1:-}" =~ ^-- ]]; do
 
@@ -22,7 +22,7 @@ done
 [ ! -f "$CONFIG_DIR/${1:-xkbcomp}" ] || [ -z "$DISPLAY" ] || {
 
     # give it a second for keys to be (physically) released
-    has_arg "--no-sleep" || sleep 1
+    lk_has_arg "--no-sleep" || sleep 1
 
     xkbcomp -I"$SCRIPT_DIR/xkb" "$CONFIG_DIR/${1:-xkbcomp}" "$DISPLAY"
 

@@ -1,14 +1,10 @@
 #!/bin/bash
 # shellcheck disable=SC1090
 
-set -euo pipefail
-SCRIPT_PATH="$(realpath "${BASH_SOURCE[0]}" 2>/dev/null)" || SCRIPT_PATH="$(python -c 'import os,sys;print os.path.realpath(sys.argv[1])' "${BASH_SOURCE[0]}")"
-SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
+include='' . lk-bash-load.sh || exit
 
-. "$SCRIPT_DIR/../bash/common"
-
-assert_is_linux
-assert_command_exists testparm
+lk_assert_is_linux
+lk_assert_command_exists testparm
 
 SAMBA_DEFAULT_CONF_PATH="${SAMBA_DEFAULT_CONF_PATH:-/usr/share/samba/smb.conf}"
 
@@ -43,9 +39,9 @@ SETTINGS+=(
 
 TESTPARM_EXTRA=()
 
-if has_arg --reset; then
+if lk_has_arg --reset; then
 
-    [ -e "$SAMBA_DEFAULT_CONF_PATH" ] || die "Unable to reset Samba settings without defaults file ($SAMBA_DEFAULT_CONF_PATH)"
+    [ -e "$SAMBA_DEFAULT_CONF_PATH" ] || lk_die "Unable to reset Samba settings without defaults file ($SAMBA_DEFAULT_CONF_PATH)"
     TESTPARM_EXTRA+=("$SAMBA_DEFAULT_CONF_PATH")
     APPEND_AFTER=$'
 
@@ -58,18 +54,18 @@ if has_arg --reset; then
 
 else
 
-    CURRENT_GLOBAL="$(testparm --suppress-prompt --section-name global 2>/dev/null)" || die "Unable to load current Samba settings (consider \"$(basename "$0") --reset\")"
+    CURRENT_GLOBAL="$(testparm --suppress-prompt --section-name global 2>/dev/null)" || lk_die "Unable to load current Samba settings (consider \"$(basename "$0") --reset\")"
     CURRENT_ALL_SECTIONS="$(testparm --suppress-prompt 2>/dev/null)"
     APPEND_AFTER="$(comm --nocheck-order -13 <(echo "$CURRENT_GLOBAL") <(echo "$CURRENT_ALL_SECTIONS"))"
 
 fi
 
-TEMP_CONF="$(create_temp_file)"
+TEMP_CONF="$(lk_mktemp_file)"
 lk_delete_on_exit "$TEMP_CONF"
 
 # create a new configuration file, based on the current (or default) configuration
 # 1. [global]
-testparm --suppress-prompt --section-name global "${TESTPARM_EXTRA[@]}" >"$TEMP_CONF" 2>/dev/null || die "Unable to load default Samba settings"
+testparm --suppress-prompt --section-name global "${TESTPARM_EXTRA[@]}" >"$TEMP_CONF" 2>/dev/null || lk_die "Unable to load default Samba settings"
 
 # 2. add [global] settings (later settings override earlier ones)
 printf '\t%s\n' "${SETTINGS[@]}" >>"$TEMP_CONF"
@@ -86,6 +82,6 @@ if CONF="$(testparm --suppress-prompt "$TEMP_CONF" 2>/dev/null)"; then
 
 else
 
-    die "Error: unable to apply Samba configuration"
+    lk_die "Error: unable to apply Samba configuration"
 
 fi

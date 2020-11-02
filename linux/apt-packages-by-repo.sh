@@ -8,9 +8,9 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../bash/common"
 . "$SCRIPT_DIR/../bash/common-apt"
 
-assert_not_root
+lk_assert_not_root
 
-assert_command_exists aptitude
+lk_assert_command_exists aptitude
 
 # https://www.debian.org/doc/manuals/aptitude/ch02s05s01.en.html#secDisplayFormat
 FORMAT="%?p|%?v|%?O"
@@ -27,7 +27,7 @@ available)
     ;;
 
 *)
-    die "Usage: $(basename "$0") <installed|available>"
+    lk_die "Usage: $(basename "$0") <installed|available>"
     ;;
 
 esac

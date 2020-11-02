@@ -8,10 +8,10 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/../bash/common"
 . "$SCRIPT_DIR/../bash/common-git"
 
-variable_exists "GIT_URL_REPLACEMENTS" || GIT_URL_REPLACEMENTS=()
+lk_is_declared "GIT_URL_REPLACEMENTS" || GIT_URL_REPLACEMENTS=()
 GIT_LOG_LIMIT="${GIT_LOG_LIMIT:-14}"
 
-assert_command_exists git
+lk_assert_command_exists git
 
 # don't support anything before Debian "jessie"
 assert_git_version_at_least 2.1.4
@@ -19,7 +19,7 @@ assert_git_version_at_least 2.1.4
 lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
 
 # shellcheck disable=SC2153
-[ "${#CODE_ROOTS[@]}" -gt "0" ] || die "Usage: $(basename "$0") [/code/root...]"
+[ "${#CODE_ROOTS[@]}" -gt "0" ] || lk_die "Usage: $(basename "$0") [/code/root...]"
 
 # allow this script to be changed while it's running
 {
@@ -82,7 +82,7 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
             REPO_NAMES+=("$REPO_NAME")
             REPO_LONG_NAMES+=("$REPO_LONG_NAME")
 
-            WARNINGS_FILE="$(create_temp_file)"
+            WARNINGS_FILE="$(lk_mktemp_file)"
             lk_delete_on_exit "$WARNINGS_FILE"
             WARNINGS_FILES+=("$WARNINGS_FILE")
 
@@ -94,11 +94,11 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
 
     done
 
-    [ "${#REPO_ROOTS[@]}" -gt "0" ] || die "No repositories found"
+    [ "${#REPO_ROOTS[@]}" -gt "0" ] || lk_die "No repositories found"
 
     if [ "$DO_FETCH" -eq "1" ]; then
 
-        lk_console_message "Fetching from all remotes in ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories)" "$BOLD$MAGENTA"
+        lk_console_message "Fetching from all remotes in ${REPO_COUNT} $(lk_maybe_plural "$REPO_COUNT" repository repositories)" "$BOLD$MAGENTA"
 
         for i in "${!REPO_ROOTS[@]}"; do
 
@@ -107,7 +107,7 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
 
             (
 
-                pushd "$REPO_ROOT" >/dev/null || die
+                pushd "$REPO_ROOT" >/dev/null || lk_die
 
                 IFS=$'\n' read -d '' -ra REPO_REMOTES < <(git remote) || true
 
@@ -115,7 +115,11 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
 
                     if [ "${#GIT_URL_REPLACEMENTS[@]}" -gt "0" ] && [ -f ".git/config" ]; then
 
-                        safe_sed ".git/config" "${GIT_URL_REPLACEMENTS[@]}"
+                        SED_ARGS=()
+                        for REGEX in "${GIT_URL_REPLACEMENTS[@]}"; do
+                            SED_ARGS+=(-e "$REGEX")
+                        done
+                        lk_maybe_sed "${SED_ARGS[@]}" ".git/config"
 
                     fi
 
@@ -144,7 +148,7 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
         REPO_LONG_NAME="${REPO_LONG_NAMES[$i]}"
         WARNINGS_FILE="${WARNINGS_FILES[$i]}"
 
-        pushd "$REPO_ROOT" >/dev/null || die
+        pushd "$REPO_ROOT" >/dev/null || lk_die
 
         lk_console_item "$MAIN_VERB repository:" "${REPO_LONG_NAME}" "$CYAN"
 
@@ -184,19 +188,19 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
 
                             if [ "$IS_CURRENT_BRANCH" = '*' ]; then
 
-                                lk_console_item "Attempting to merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) (fast-forward only):" "$PRETTY_BRANCH" "$GREEN"
-                                git merge --ff-only "$UPSTREAM" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                                lk_console_item "Attempting to merge upstream $(lk_maybe_plural "$BEHIND_UPSTREAM" commit commits) (fast-forward only):" "$PRETTY_BRANCH" "$LK_GREEN"
+                                git merge --ff-only "$UPSTREAM" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(lk_maybe_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             else
 
-                                lk_console_item "Attempting to fast-forward branch from upstream:" "$PRETTY_BRANCH" "$GREEN"
-                                git fetch . "$UPSTREAM":"$BRANCH" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                                lk_console_item "Attempting to fast-forward branch from upstream:" "$PRETTY_BRANCH" "$LK_GREEN"
+                                git fetch . "$UPSTREAM":"$BRANCH" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(lk_maybe_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             fi
 
                         else
 
-                            echo "Upstream $(single_or_plural "$BEHIND_UPSTREAM" commit commits) to merge into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                            echo "Upstream $(lk_maybe_plural "$BEHIND_UPSTREAM" commit commits) to merge into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                         fi
 
@@ -222,12 +226,12 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
 
                         if [ "$BEHIND_PUSH" -gt "0" ]; then
 
-                            echo "Can't push $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH until upstream $(single_or_plural "$BEHIND_PUSH" "commit is" "commits are") resolved" >>"$WARNINGS_FILE"
+                            echo "Can't push $(lk_maybe_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH until upstream $(lk_maybe_plural "$BEHIND_PUSH" "commit is" "commits are") resolved" >>"$WARNINGS_FILE"
 
                         else
 
                             echo
-                            lk_console_message "${BOLD}${AHEAD_PUSH} $(single_or_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(single_or_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${RESET}" "$BOLD$YELLOW"
+                            lk_console_message "${BOLD}${AHEAD_PUSH} $(lk_maybe_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(lk_maybe_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${RESET}" "$BOLD$YELLOW"
                             echo
                             echo "${WRAP_OFF}$(git log "-$GIT_LOG_LIMIT" --oneline --decorate --color=always "${PUSH_COMMIT}..${LOCAL_COMMIT}")${WRAP}"
 
@@ -236,17 +240,17 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
                                 ((NOT_SHOWN = AHEAD_PUSH - GIT_LOG_LIMIT))
 
                                 echo
-                                echo "($NOT_SHOWN $(single_or_plural "$NOT_SHOWN" commit commits) not shown)"
+                                echo "($NOT_SHOWN $(lk_maybe_plural "$NOT_SHOWN" commit commits) not shown)"
 
                             fi
 
-                            if [ "$DO_PUSH" -eq "1" ] && echo && get_confirmation "Attempt to push branch \"$BRANCH\" to remote \"$PUSH_REMOTE\"?" Y; then
+                            if [ "$DO_PUSH" -eq "1" ] && echo && lk_confirm "Attempt to push branch \"$BRANCH\" to remote \"$PUSH_REMOTE\"?" Y; then
 
-                                git push --tags "$PUSH_REMOTE" "$BRANCH:$BRANCH" && PUSHED_BRANCHES+=("$PRETTY_BRANCH") && AHEAD_PUSH=0 || echo "Can't push $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                                git push --tags "$PUSH_REMOTE" "$BRANCH:$BRANCH" && PUSHED_BRANCHES+=("$PRETTY_BRANCH") && AHEAD_PUSH=0 || echo "Can't push $(lk_maybe_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             else
 
-                                echo "Unpushed $(single_or_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                                echo "Unpushed $(lk_maybe_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             fi
 
@@ -272,13 +276,13 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
             if [ "${#UPDATED_BRANCHES[@]}" -gt "0" ]; then
 
-                UPDATED_REPOS+=("${REPO_LONG_NAME}($(array_join_by ', ' "${UPDATED_BRANCHES[@]}"))")
+                UPDATED_REPOS+=("${REPO_LONG_NAME}($(lk_implode ', ' "${UPDATED_BRANCHES[@]}"))")
 
             fi
 
             if [ "${#PUSHED_BRANCHES[@]}" -gt "0" ]; then
 
-                PUSHED_REPOS+=("${REPO_LONG_NAME}($(array_join_by ', ' "${PUSHED_BRANCHES[@]}"))")
+                PUSHED_REPOS+=("${REPO_LONG_NAME}($(lk_implode ', ' "${PUSHED_BRANCHES[@]}"))")
 
             fi
 
@@ -290,7 +294,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
         CHANGES=()
 
-        UNTRACKED="$(git ls-files --other --exclude-standard)" || die
+        UNTRACKED="$(git ls-files --other --exclude-standard)" || lk_die
         [ -z "$UNTRACKED" ] || CHANGES+=("untracked")
 
         git diff-files --quiet || CHANGES+=("unstaged")
@@ -299,7 +303,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
         if [ "${#CHANGES[@]}" -gt "0" ]; then
 
-            echo "$(upper_first "$(lk_implode "/" "${CHANGES[@]}")") changes" >>"$WARNINGS_FILE"
+            echo "$(lk_upper_first "$(lk_implode "/" "${CHANGES[@]}")") changes" >>"$WARNINGS_FILE"
 
         fi
 
@@ -307,7 +311,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
             STASH_COUNT="$(git rev-list --walk-reflogs --count refs/stash)"
 
-            echo "$STASH_COUNT $(single_or_plural "$STASH_COUNT" stash stashes)" >>"$WARNINGS_FILE"
+            echo "$STASH_COUNT $(lk_maybe_plural "$STASH_COUNT" stash stashes)" >>"$WARNINGS_FILE"
 
         fi
 
@@ -315,34 +319,34 @@ IS_CURRENT_BRANCH="%(HEAD)"
         GIT_IGNORECASE="$(git config core.ignoreCase 2>/dev/null)" || true
         GIT_PRECOMPOSEUNICODE="$(git config core.precomposeUnicode 2>/dev/null)" || true
 
-        if is_windows; then
+        if lk_is_wsl; then
 
-            [ "$GIT_FILEMODE" = "false" ] || { git config --bool core.fileMode "false" && echoc "Git option disabled: core.fileMode" "$BOLD" "$YELLOW"; } || die
+            [ "$GIT_FILEMODE" = "false" ] || { git config --bool core.fileMode "false" && lk_echoc "Git option disabled: core.fileMode" "$BOLD" "$YELLOW"; } || lk_die
 
         else
 
-            [ -z "$GIT_FILEMODE" ] || [ "$GIT_FILEMODE" = "true" ] || { git config --bool core.fileMode "true" && echoc "Git option enabled: core.fileMode" "$BOLD" "$YELLOW"; } || die
+            [ -z "$GIT_FILEMODE" ] || [ "$GIT_FILEMODE" = "true" ] || { git config --bool core.fileMode "true" && lk_echoc "Git option enabled: core.fileMode" "$BOLD" "$YELLOW"; } || lk_die
 
         fi
 
         # TODO: check filesystem case-sensitivity rather than assuming macOS and Windows are case-insensitive
-        if is_linux; then
+        if lk_is_linux; then
 
-            [ -z "$GIT_IGNORECASE" ] || [ "$GIT_IGNORECASE" = "false" ] || { git config --bool core.ignoreCase "false" && echoc "Git option disabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || die
+            [ -z "$GIT_IGNORECASE" ] || [ "$GIT_IGNORECASE" = "false" ] || { git config --bool core.ignoreCase "false" && lk_echoc "Git option disabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || lk_die
 
         else
 
-            [ "$GIT_IGNORECASE" = "true" ] || { git config --bool core.ignoreCase "true" && echoc "Git option enabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || die
+            [ "$GIT_IGNORECASE" = "true" ] || { git config --bool core.ignoreCase "true" && lk_echoc "Git option enabled: core.ignoreCase" "$BOLD" "$YELLOW"; } || lk_die
 
         fi
 
-        if is_macos; then
+        if lk_is_macos; then
 
-            [ "$GIT_PRECOMPOSEUNICODE" = "true" ] || { git config --bool core.precomposeUnicode "true" && echoc "Git option enabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || die
+            [ "$GIT_PRECOMPOSEUNICODE" = "true" ] || { git config --bool core.precomposeUnicode "true" && lk_echoc "Git option enabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || lk_die
 
         else
 
-            [ -z "$GIT_PRECOMPOSEUNICODE" ] || [ "$GIT_PRECOMPOSEUNICODE" = "false" ] || { git config --bool core.precomposeUnicode "false" && echoc "Git option disabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || die
+            [ -z "$GIT_PRECOMPOSEUNICODE" ] || [ "$GIT_PRECOMPOSEUNICODE" = "false" ] || { git config --bool core.precomposeUnicode "false" && lk_echoc "Git option disabled: core.precomposeUnicode" "$BOLD" "$YELLOW"; } || lk_die
 
         fi
 
@@ -352,19 +356,19 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
     done
 
-    echoc "All done. ${REPO_COUNT} $(single_or_plural "$REPO_COUNT" repository repositories) ${COMPLETION_VERB}." "$BOLD"
+    lk_echoc "All done. ${REPO_COUNT} $(lk_maybe_plural "$REPO_COUNT" repository repositories) ${COMPLETION_VERB}." "$BOLD"
     echo
 
     if [ "${#UPDATED_REPOS[@]}" -gt "0" ]; then
 
-        echoc "${#UPDATED_REPOS[@]} $(single_or_plural "${#UPDATED_REPOS[@]}" repository repositories) fast-forwarded from upstream:" "$BOLD" "$GREEN"
+        lk_echoc "${#UPDATED_REPOS[@]} $(lk_maybe_plural "${#UPDATED_REPOS[@]}" repository repositories) fast-forwarded from upstream:" "$BOLD" "$LK_GREEN"
         printf '%s\n' "${UPDATED_REPOS[@]}" ""
 
     fi
 
     if [ "${#PUSHED_REPOS[@]}" -gt "0" ]; then
 
-        echoc "${#PUSHED_REPOS[@]} $(single_or_plural "${#PUSHED_REPOS[@]}" repository repositories) pushed upstream:" "$BOLD" "$GREEN"
+        lk_echoc "${#PUSHED_REPOS[@]} $(lk_maybe_plural "${#PUSHED_REPOS[@]}" repository repositories) pushed upstream:" "$BOLD" "$LK_GREEN"
         printf '%s\n' "${PUSHED_REPOS[@]}" ""
 
     fi
@@ -373,11 +377,11 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
     for i in "${!REPO_ROOTS[@]}"; do
 
-        file_to_array "${WARNINGS_FILES[$i]}" ""
+        lk_mapfile "${WARNINGS_FILES[$i]}" FILE_TO_ARRAY
 
         if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-            lk_console_item "${BOLD}${RED}${#FILE_TO_ARRAY[@]} $(single_or_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention in:${RESET}" "${REPO_LONG_NAMES[$i]}" "$RED"
+            lk_console_item "${BOLD}${RED}${#FILE_TO_ARRAY[@]} $(lk_maybe_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention in:${RESET}" "${REPO_LONG_NAMES[$i]}" "$RED"
             printf -- '- [ ] %s\n' "${FILE_TO_ARRAY[@]}"
             echo
 
@@ -388,7 +392,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
     done
 
     [ "$DIRTY_REPO_COUNT" -gt "0" ] || {
-        lk_console_message "No issues found" "$BOLD$RED"
+        lk_console_message "No issues found" "$LK_BOLD$LK_RED"
         echo
     }
 

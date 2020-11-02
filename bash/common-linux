@@ -8,12 +8,12 @@ function service_get_property() {
     PROPERTY_NAME="$2"
     shift 2
 
-    [ -n "$SERVICE_NAME" ] || die "No service name"
-    [ -n "$PROPERTY_NAME" ] || die "No property name"
+    [ -n "$SERVICE_NAME" ] || lk_die "No service name"
+    [ -n "$PROPERTY_NAME" ] || lk_die "No property name"
 
-    PROPS="$(systemctl "$@" show --property="$PROPERTY_NAME" "$SERVICE_NAME.service")" || die
+    PROPS="$(systemctl "$@" show --property="$PROPERTY_NAME" "$SERVICE_NAME.service")" || lk_die
     IFS="=" read -r PROP VAL <<<"$PROPS" || true
-    [ "$PROP" = "$PROPERTY_NAME" ] || die "Couldn't retrieve property $PROPERTY_NAME for service $SERVICE_NAME"
+    [ "$PROP" = "$PROPERTY_NAME" ] || lk_die "Couldn't retrieve property $PROPERTY_NAME for service $SERVICE_NAME"
 
     echo "$VAL"
 
@@ -28,7 +28,7 @@ function service_property_is() {
     EXPECTED_VALUE="$3"
     shift 3
 
-    VALUE="$(service_get_property "$SERVICE_NAME" "$PROPERTY_NAME" "$@")" || die
+    VALUE="$(service_get_property "$SERVICE_NAME" "$PROPERTY_NAME" "$@")" || lk_die
 
     [ "$VALUE" = "$EXPECTED_VALUE" ]
 
@@ -52,7 +52,7 @@ function service_running() {
     SERVICE_NAME="$1"
     shift
 
-    [ -n "$SERVICE_NAME" ] || die "No service name"
+    [ -n "$SERVICE_NAME" ] || lk_die "No service name"
 
     systemctl "$@" --quiet is-active "$SERVICE_NAME.service"
 
@@ -88,7 +88,7 @@ function freedesktop_disable_autostart() {
 
     if [ ! -e "$HOME/.config/autostart/$1.desktop" ]; then
 
-        mkdir -p "$HOME/.config/autostart" || die
+        mkdir -p "$HOME/.config/autostart" || lk_die
 
         cat <<EOF >"$HOME/.config/autostart/$1.desktop"
 [Desktop Entry]
@@ -122,7 +122,7 @@ function load_linuxbrew() {
 
     [ -x "/home/linuxbrew/.linuxbrew/bin/brew" ] || return
 
-    SHELLENV="$(/home/linuxbrew/.linuxbrew/bin/brew shellenv | grep -Ev '\b(PATH|MANPATH|INFOPATH)=' || exit "${PIPESTATUS[0]}")" || die
+    SHELLENV="$(/home/linuxbrew/.linuxbrew/bin/brew shellenv | grep -Ev '\b(PATH|MANPATH|INFOPATH)=' || exit "${PIPESTATUS[0]}")" || lk_die
 
     SHELLENV="$SHELLENV
 export PATH=\"\${PATH:+\$PATH:}/home/linuxbrew/.linuxbrew/bin:/home/linuxbrew/.linuxbrew/sbin\";

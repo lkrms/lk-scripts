@@ -1167,9 +1167,9 @@ function lk_load_env() {
             { [ -d "$SCREENSHOT_DIR" ] || mkdir -pv "$SCREENSHOT_DIR"; } &&
                 echo "export LK_SCREENSHOT_DIR=\"$SCREENSHOT_DIR\""
         }
-        [ -z "${NOTES_DIR:-}" ] || {
-            { [ -d "$NOTES_DIR" ] || mkdir -pv "$NOTES_DIR"; } &&
-                echo "export LK_NOTES_DIR=\"$NOTES_DIR\""
+        [ -z "${NOTE_DIR:-}" ] || {
+            { [ -d "$NOTE_DIR" ] || mkdir -pv "$NOTE_DIR"; } &&
+                echo "export LK_NOTE_DIR=\"$NOTE_DIR\""
         }
     }
 }

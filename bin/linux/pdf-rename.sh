@@ -7,11 +7,11 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../../bash/common"
 
-assert_command_exists qpdfview
+lk_assert_command_exists qpdfview
 
-[ "$#" -gt "0" ] && are_files "$@" || die "Usage: $(basename "$0") /path/to/file.pdf..."
+[ "$#" -gt "0" ] && lk_files_exist "$@" || lk_die "Usage: $(basename "$0") /path/to/file.pdf..."
 
-command_exists wmctrl && WINDOW_ID="$(xdotool getactivewindow 2>/dev/null)" || WINDOW_ID=
+lk_command_exists wmctrl && WINDOW_ID="$(xdotool getactivewindow 2>/dev/null)" || WINDOW_ID=
 
 FILE_NUMBER=0
 
@@ -32,13 +32,13 @@ for FILE_PATH in "$@"; do
 
     FILE_NAME="$(basename "$FILE_PATH")"
 
-    NEW_NAME="$(get_value "Rename to:")"
+    NEW_NAME="$(lk_console_read "Rename to:")"
 
     [ -n "$NEW_NAME" ] || continue
 
     NEW_NAME="$(lk_maybe_add_extension "$NEW_NAME" ".pdf")"
 
-    [ "$(lower "$FILE_NAME")" != "$(lower "$NEW_NAME")" ] || continue
+    [ "$(lk_lower "$FILE_NAME")" != "$(lk_lower "$NEW_NAME")" ] || continue
 
     NEW_PATH="$(dirname "$FILE_PATH")/$NEW_NAME"
     NEW_PATH="${NEW_PATH#./}"
@@ -49,15 +49,15 @@ for FILE_PATH in "$@"; do
     while [ -e "$NEW_PATH" ]; do
 
         ((++SEQ))
-        NEW_PATH="$(filename_add_suffix "$NEW_PATH_CLEAN" " ($SEQ)")"
+        NEW_PATH="$(lk_add_file_suffix "$NEW_PATH_CLEAN" " ($SEQ)")"
 
     done
 
-    mv "$FILE_PATH" "$NEW_PATH" || die
+    mv "$FILE_PATH" "$NEW_PATH" || lk_die
 
     if [ "$NEW_PATH" = "$NEW_PATH_CLEAN" ]; then
 
-        lk_console_item "Renamed to" "$(basename "$NEW_PATH")" "$BOLD$GREEN"
+        lk_console_item "Renamed to" "$(basename "$NEW_PATH")" "$LK_BOLD$LK_GREEN"
 
     else
 

@@ -8,9 +8,9 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 . "$SCRIPT_DIR/common"
 . "$SCRIPT_DIR/common-dev"
 
-assert_not_root
+lk_assert_not_root
 
-if command_exists apt-get; then
+if lk_command_exists apt-get; then
 
     . "$SCRIPT_DIR/common-apt"
 
@@ -18,19 +18,19 @@ if command_exists apt-get; then
 
 fi
 
-if command_exists brew; then
+if lk_command_exists brew; then
 
     . "$SCRIPT_DIR/common-homebrew"
 
     brew_upgrade_all
 
-    ! is_macos || brew_formula_installed node || ! brew_formula_installed node@8 || {
+    ! lk_is_macos || brew_formula_installed node || ! brew_formula_installed node@8 || {
         PATH="/usr/local/opt/node@8/bin:$PATH" /usr/local/opt/node@8/bin/npm update -g
     }
 
 fi
 
-if command_exists snap; then
+if lk_command_exists snap; then
 
     sudo snap refresh
 

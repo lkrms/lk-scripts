@@ -7,7 +7,7 @@ SCRIPT_DIR="$(dirname "$SCRIPT_PATH")"
 
 . "$SCRIPT_DIR/../../bash/common"
 
-[ "$#" -gt "0" ] && are_files "$@" || die "Usage: $(basename "$0") [--run] /path/to/file..."
+[ "$#" -gt "0" ] && lk_files_exist "$@" || lk_die "Usage: $(basename "$0") [--run] /path/to/file..."
 
 DRYRUN_BY_DEFAULT=Y
 dryrun_message
@@ -35,13 +35,13 @@ function install_from_folder() {
 
                 if [ "$EXIT_CODE" -eq "0" ]; then
 
-                    lk_console_item "Installed successfully:" "$2" "$BOLD$GREEN"
+                    lk_console_item "Installed successfully:" "$2" "$LK_BOLD$LK_GREEN"
                     return
 
                 else
 
-                    lk_console_item "Error installing (exit code ${BOLD}${EXIT_CODE}${RESET}):" "$2" "$BOLD$RED"
-                    die
+                    lk_console_item "Error installing (exit code ${BOLD}${EXIT_CODE}${RESET}):" "$2" "$LK_BOLD$LK_RED"
+                    lk_die
 
                 fi
 
@@ -71,12 +71,12 @@ function install_pkg() {
 
     if [ "$EXIT_CODE" -eq "0" ]; then
 
-        lk_console_item "Package installed successfully:" "$PACKAGE_NAME" "$BOLD$GREEN"
+        lk_console_item "Package installed successfully:" "$PACKAGE_NAME" "$LK_BOLD$LK_GREEN"
 
     else
 
-        lk_console_item "Error installing package (exit code ${BOLD}${EXIT_CODE}${RESET}):" "$PACKAGE_NAME" "$BOLD$RED"
-        die
+        lk_console_item "Error installing package (exit code ${BOLD}${EXIT_CODE}${RESET}):" "$PACKAGE_NAME" "$LK_BOLD$LK_RED"
+        lk_die
 
     fi
 
@@ -115,7 +115,7 @@ for FILE in "$@"; do
 
     *)
 
-        lk_console_item "File type not supported:" "$FILE" "$BOLD$RED"
+        lk_console_item "File type not supported:" "$FILE" "$LK_BOLD$LK_RED"
         ;;
 
     esac
