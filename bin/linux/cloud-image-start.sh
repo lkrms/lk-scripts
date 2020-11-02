@@ -343,7 +343,7 @@ if [ -n "$STACKSCRIPT" ]; then
         done
         [ "${VALUE:=}" != "${DEFAULT:-}" ] ||
             lk_is_true "${LK_STACKSCRIPT_EXPORT_DEFAULT:-}" ||
-            VALUE=
+            continue
         SS_FIELDS+=("$NAME=$VALUE")
     done
     STACKSCRIPT_ENV=
