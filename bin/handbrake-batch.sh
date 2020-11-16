@@ -35,7 +35,8 @@ else
     SOURCE_FILES=()
 fi
 
-lk_check_args
+lk_getopt
+eval "set -- $LK_GETOPT"
 [ "${#SOURCE_FILES[@]}" -gt "0" ] || lk_usage
 
 TARGET_ROOT="${TARGET_ROOT:-${HANDBRAKE_TARGET:-$PWD}}"

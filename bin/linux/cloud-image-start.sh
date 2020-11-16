@@ -66,17 +66,12 @@ StackScript notes:
   script is added to the runcmd module
 - The --packages option is ignored when booting with --stackscript"
 
-lk_check_args
-OPTS="$(getopt --options "i:rp:f:P:m:c:s:n:I:M:S:uyF" \
-    --longoptions "image:,refresh-image,packages:,fs-maps:,preset:,memory:,\
-cpus:,disk-size:,network:,ip-address:,mac:,stackscript:,session,yes,force" \
-    --name "${0##*/}" \
-    -- "$@")" || lk_usage
-
-eval "set -- $OPTS"
+lk_getopt "i:rp:f:P:m:c:s:n:I:M:S:uyF" \
+    "image:,refresh-image,packages:,fs-maps:,preset:,memory:,\
+cpus:,disk-size:,network:,ip-address:,mac:,stackscript:,session,force"
+eval "set -- $LK_GETOPT"
 
 UBUNTU_HOST=${LK_UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}
-S="[[:blank:]]"
 
 CLOUDIMG_ROOT=${LK_CLOUDIMG_ROOT:-/var/lib/libvirt/images}
 VM_POOL_ROOT=$CLOUDIMG_ROOT
