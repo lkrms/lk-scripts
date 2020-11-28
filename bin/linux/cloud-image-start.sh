@@ -262,13 +262,13 @@ esac
 if [ -n "$STACKSCRIPT" ]; then
     lk_console_log "Processing StackScript"
     SS_TAGS=()
-    lk_mapfile <(grep -Eo \
+    lk_mapfile SS_TAGS <(grep -Eo \
         "<(lk:)?[uU][dD][fF]($S+[a-zA-Z]+=\"[^\"]*\")*$S*/>" \
-        "$STACKSCRIPT") SS_TAGS
+        "$STACKSCRIPT")
     SS_FIELDS=()
     for SS_TAG in ${SS_TAGS[@]+"${SS_TAGS[@]}"}; do
         SS_ATTRIBS=()
-        lk_mapfile <(grep -Eo "[a-z]+=\"[^\"]*\"" <<<"$SS_TAG") SS_ATTRIBS
+        lk_mapfile SS_ATTRIBS <(grep -Eo "[a-z]+=\"[^\"]*\"" <<<"$SS_TAG")
         unset NAME LABEL DEFAULT SELECT_OPTIONS SELECT_TEXT VALIDATE_COMMAND
         LK_REQUIRED=1
         REQUIRED_TEXT=required
@@ -301,7 +301,7 @@ if [ -n "$STACKSCRIPT" ]; then
                 ;;
             esac
         done
-        ! lk_is_true "${LK_REQUIRED:-}" ||
+        ! lk_is_true LK_REQUIRED ||
             [ -n "${VALIDATE_COMMAND+1}" ] ||
             VALIDATE_COMMAND=(lk_validate_not_null VALUE)
         lk_console_item \
@@ -322,12 +322,12 @@ if [ -n "$STACKSCRIPT" ]; then
                     "${VALIDATE_COMMAND[@]}") ||
                 IS_VALID=0
             INITIAL_VALUE=${VALUE-${DEFAULT:-}}
-            lk_is_true "$IS_VALID" ||
+            lk_is_true IS_VALID ||
                 ! { lk_no_input || [ "$i" -gt 1 ]; } || {
                 lk_console_warning0 "$FIELD_ERROR"
                 unset NO_ERROR_DISPLAYED
             }
-            if lk_is_true "$IS_VALID" && { lk_no_input || [ "$i" -gt 1 ]; }; then
+            if lk_is_true IS_VALID && { lk_no_input || [ "$i" -gt 1 ]; }; then
                 lk_console_detail "Using value:" "$INITIAL_VALUE" "$LK_GREEN"
                 break
             else
@@ -337,7 +337,7 @@ if [ -n "$STACKSCRIPT" ]; then
             fi
         done
         [ "${VALUE:=}" != "${DEFAULT:-}" ] ||
-            lk_is_true "${LK_STACKSCRIPT_EXPORT_DEFAULT:-}" ||
+            lk_is_true LK_STACKSCRIPT_EXPORT_DEFAULT ||
             continue
         SS_FIELDS+=("$NAME=$VALUE")
     done
@@ -353,7 +353,7 @@ fi
 while VM_STATE="$(lk_maybe_sudo virsh domstate "$VM_HOSTNAME" 2>/dev/null)"; do
     [ "$VM_STATE" != "shut off" ] || unset VM_STATE
     lk_console_warning "Domain already exists: $VM_HOSTNAME"
-    lk_is_true "$FORCE_DELETE" ||
+    lk_is_true FORCE_DELETE ||
         LK_FORCE_INPUT=1 lk_confirm "\
 ${LK_RED}OK to ${VM_STATE+force off, }delete and permanently remove all \
 storage volumes for '$VM_HOSTNAME'?$LK_RESET" N || lk_die
@@ -389,7 +389,7 @@ lk_elevate_if_error install -d -m 0777 \
 FILENAME="${IMAGE_URL##*/}"
 IMG_NAME="${FILENAME%.*}"
 
-if [ ! -f "$FILENAME" ] || lk_is_true "$REFRESH_CLOUDIMG"; then
+if [ ! -f "$FILENAME" ] || lk_is_true REFRESH_CLOUDIMG; then
 
     lk_console_item "Downloading" "$FILENAME"
 
@@ -437,7 +437,7 @@ NOCLOUD_PATH="$VM_POOL_ROOT/$NOCLOUD_TEMP_PATH"
 
 if [ -e "$DISK_PATH" ]; then
     lk_console_item "Disk image already exists:" "$DISK_PATH"
-    lk_is_true "$FORCE_DELETE" || lk_confirm "Destroy the existing image and start over?" N || exit
+    lk_is_true FORCE_DELETE || lk_confirm "Destroy the existing image and start over?" N || exit
 fi
 
 NETWORK_CONFIG="\

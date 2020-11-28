@@ -16,7 +16,7 @@ lk_assert_command_exists git
 # don't support anything before Debian "jessie"
 assert_git_version_at_least 2.1.4
 
-lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
+lk_mapfile CODE_ROOTS <(git_get_code_roots "$@")
 
 # shellcheck disable=SC2153
 [ "${#CODE_ROOTS[@]}" -gt "0" ] || lk_die "Usage: $(basename "$0") [/code/root...]"
@@ -119,7 +119,7 @@ lk_mapfile <(git_get_code_roots "$@") CODE_ROOTS
                         for REGEX in "${GIT_URL_REPLACEMENTS[@]}"; do
                             SED_ARGS+=(-e "$REGEX")
                         done
-                        lk_maybe_sed "${SED_ARGS[@]}" ".git/config"
+                        lk_maybe_replace ".git/config" "$(sed -E "${SED_ARGS[@]}" ".git/config")"
 
                     fi
 
@@ -377,7 +377,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
     for i in "${!REPO_ROOTS[@]}"; do
 
-        lk_mapfile "${WARNINGS_FILES[$i]}" FILE_TO_ARRAY
+        lk_mapfile FILE_TO_ARRAY "${WARNINGS_FILES[$i]}"
 
         if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 

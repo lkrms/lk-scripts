@@ -1,5 +1,6 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2015
+
+# shellcheck disable=SC1091,SC2015
 
 include='' . lk-bash-load.sh || exit
 
@@ -20,7 +21,7 @@ NEWEST_PATH="$(lk_sort_paths_by_date "$@" | tail -n1)"
 PDF_PATH="$(lk_mktemp_file)"
 lk_delete_on_exit "$PDF_PATH"
 
-lk_echo_array "$@" | lk_console_list "Combining:" "PDF" "PDFs"
+lk_echo_args "$@" | lk_console_list "Combining:" "PDF" "PDFs"
 echo
 
 mutool merge -o "$PDF_PATH" "$@" &&
