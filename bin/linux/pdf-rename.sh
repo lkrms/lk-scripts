@@ -32,7 +32,7 @@ for FILE_PATH in "$@"; do
 
     [ -n "$NEW_NAME" ] || continue
 
-    NEW_NAME="$(lk_maybe_add_extension "$NEW_NAME" ".pdf")"
+    NEW_NAME="$(lk_file_maybe_add_extension "$NEW_NAME" ".pdf")"
 
     [ "$(lk_lower "$FILE_NAME")" != "$(lk_lower "$NEW_NAME")" ] || continue
 
@@ -45,7 +45,7 @@ for FILE_PATH in "$@"; do
     while [ -e "$NEW_PATH" ]; do
 
         ((++SEQ))
-        NEW_PATH="$(lk_add_file_suffix "$NEW_PATH_CLEAN" " ($SEQ)")"
+        NEW_PATH="$(lk_file_add_suffix "$NEW_PATH_CLEAN" " ($SEQ)")"
 
     done
 

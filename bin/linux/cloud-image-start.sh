@@ -324,7 +324,7 @@ if [ -n "$STACKSCRIPT" ]; then
             INITIAL_VALUE=${VALUE-${DEFAULT:-}}
             lk_is_true IS_VALID ||
                 ! { lk_no_input || [ "$i" -gt 1 ]; } || {
-                lk_console_warning0 "$FIELD_ERROR"
+                lk_console_warning "$FIELD_ERROR"
                 unset NO_ERROR_DISPLAYED
             }
             if lk_is_true IS_VALID && { lk_no_input || [ "$i" -gt 1 ]; }; then

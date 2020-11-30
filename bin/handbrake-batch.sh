@@ -71,7 +71,7 @@ done
     lk_die "nothing to encode"
 
 lk_echo_array ENCODE_LIST |
-    LK_CONSOLE_SECONDARY_COLOUR="$LK_CONSOLE_COLOUR" \
+    LK_TTY_COLOUR2="$LK_TTY_COLOUR" \
         lk_console_detail_list "Queued:" "encode" "encodes"
 lk_console_detail "HandBrake preset:" "$HANDBRAKE_PRESET"
 lk_confirm "Proceed?" Y || lk_die
