@@ -1,16 +1,13 @@
 #!/bin/bash
+
 # shellcheck disable=SC1091,SC2015,SC2034
 
 include='' . lk-bash-load.sh || exit
 
 lk_assert_command_exists gs
 
-[ $# -gt 0 ] && lk_files_exist "$@" || lk_usage "\
-Usage: ${0##*/} PDF_FILE..."
-
-for FILE in "$@"; do
-    lk_is_pdf "$FILE" || lk_die "not a PDF: $FILE"
-done
+lk_test_many lk_is_pdf "$@" || lk_usage "\
+Usage: ${0##*/} PDF..."
 
 # Adobe Distiller defaults (see:
 # https://www.adobe.com/content/dam/acom/en/devnet/acrobat/pdfs/distillerparameters.pdf)
@@ -70,7 +67,7 @@ DISTILLER_PARAMS=(
 
 GS_OPTIONS=(
     -dSAFER
-    "-sDEVICE=pdfwrite"
+    -sDEVICE=pdfwrite
     "-dPDFSETTINGS=${PDFSETTINGS:-/screen}"
     -c "3000000 setvmthreshold << ${DISTILLER_PARAMS[*]} >> setdistillerparams"
 )
@@ -79,41 +76,42 @@ ERRORS=()
 
 i=0
 for FILE in "$@"; do
-    lk_console_message "$FILE ($((++i)) of $#)"
-    PDF_PATH=$(lk_mktemp_file)
-    lk_delete_on_exit "$PDF_PATH"
-    gs -q -o "$PDF_PATH" "${GS_OPTIONS[@]}" -f "$FILE" &&
-        touch -r "$FILE" "$PDF_PATH" || {
+    lk_console_item "Processing $((++i)) of $#:" "$FILE"
+    TEMP=$(lk_file_prepare_temp -n "$FILE")
+    lk_delete_on_exit "$TEMP"
+    gs -q -o "$TEMP" "${GS_OPTIONS[@]}" -f "$FILE" &&
+        touch -r "$FILE" -- "$TEMP" || {
         ERRORS+=("$FILE")
         continue
     }
-    OLD_SIZE=$(gnu_stat -Lc %s "$FILE")
-    NEW_SIZE=$(gnu_stat -Lc %s "$PDF_PATH")
+    OLD_SIZE=$(gnu_stat -Lc %s -- "$FILE")
+    NEW_SIZE=$(gnu_stat -Lc %s -- "$TEMP")
     ((SAVED = OLD_SIZE - NEW_SIZE)) || true
     if [ "$SAVED" -ge 0 ]; then
         ((PERCENT_SAVED = (SAVED * 100 + (OLD_SIZE - 1)) / OLD_SIZE)) || true
         lk_console_detail "File size" \
-            "reduced by ${PERCENT_SAVED}% / $((SAVED)) bytes"
+            "reduced by $PERCENT_SAVED% ($SAVED bytes)" "$LK_GREEN"
     else
         ((PERCENT_SAVED = -((OLD_SIZE - 1) - SAVED * 100) / OLD_SIZE)) || true
         lk_console_detail "File size" \
-            "increased by $((-PERCENT_SAVED))% / $((-SAVED)) bytes"
+            "increased by $((-PERCENT_SAVED))% ($((-SAVED)) bytes)" "$LK_RED"
     fi
     if [ "$PERCENT_SAVED" -lt "$PERCENT_SAVED_THRESHOLD" ]; then
-        lk_console_detail "Keeping original:" "$FILE" "$LK_BOLD$LK_RED"
+        lk_console_detail "Keeping original:" "$FILE"
         continue
     fi
     if lk_command_exists trash-put; then
-        trash-put "$FILE"
+        trash-put -- "$FILE"
     else
-        BACKUP_FILE=$(lk_next_backup_file "$FILE")
-        mv -v "$FILE" "$BACKUP_FILE"
+        lk_file_backup -m "$FILE"
+        rm -- "$FILE"
     fi
-    mv "$PDF_PATH" "$FILE"
+    mv -- "$TEMP" "$FILE"
     lk_console_detail "Compressed successfully:" "$FILE"
 done
-[ "${#ERRORS[@]}" -eq 0 ] || {
-    lk_echo_array ERRORS |
-        lk_console_list "Unable to process:" file files "$LK_BOLD$LK_RED"
+
+[ ${#ERRORS[@]} -eq 0 ] ||
+    lk_console_error -r \
+        "Unable to process ${#ERRORS[@]} $(lk_maybe_plural \
+            ${#ERRORS[@]} file files):" $'\n'"$(lk_echo_array ERRORS)" ||
     lk_die ""
-}

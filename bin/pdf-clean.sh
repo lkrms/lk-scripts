@@ -1,69 +1,57 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2034,SC2015
+
+# shellcheck disable=SC1091,SC2015,SC2034
 
 include='' . lk-bash-load.sh || exit
 
 lk_assert_command_exists mutool
-lk_assert_command_exists realpath
 
-[ "$#" -gt "0" ] && lk_files_exist "$@" || lk_die "Usage: $(basename "$0") file ..."
+lk_test_many lk_is_pdf "$@" || lk_usage "\
+Usage: ${0##*/} PDF..."
 
-for FILE in "$@"; do
-
-    lk_is_pdf "$FILE" || lk_die "$FILE doesn't seem to be a PDF"
-
-done
-
-# keep the original PDF unless file size is reduced by at least:
-PERCENT_SAVED_THRESHOLD="${PERCENT_SAVED_THRESHOLD:-2}"
+# Keep the original PDF unless file size is reduced by at least this much
+PERCENT_SAVED_THRESHOLD=${PERCENT_SAVED_THRESHOLD:-2}
 
 ERRORS=()
 
+i=0
 for FILE in "$@"; do
-
-    RFILE="$(realpath "$FILE")"
-    cd "$(dirname "$RFILE")"
-    PDF_PATH="$(basename "$RFILE")"
-    BACKUP_PATH="$(lk_next_backup_file "$PDF_PATH")"
-
-    mv "$PDF_PATH" "$BACKUP_PATH"
-
-    lk_console_item "Cleaning" "$FILE"
-
-    mutool clean -gggg -zfi "$BACKUP_PATH" "$PDF_PATH" &&
-        touch -r "$BACKUP_PATH" "$PDF_PATH" || {
-        mv -f "$BACKUP_PATH" "$PDF_PATH" || lk_die
+    lk_console_item "Processing $((++i)) of $#:" "$FILE"
+    TEMP=$(lk_file_prepare_temp -n "$FILE")
+    lk_delete_on_exit "$TEMP"
+    mutool clean -gggg -zfi -- "$FILE" "$TEMP" &&
+        touch -r "$FILE" -- "$TEMP" || {
         ERRORS+=("$FILE")
         continue
     }
-
-    OLD_SIZE="$(gnu_stat -Lc %s "$BACKUP_PATH")"
-    NEW_SIZE="$(gnu_stat -Lc %s "$PDF_PATH")"
+    OLD_SIZE=$(gnu_stat -Lc %s -- "$FILE")
+    NEW_SIZE=$(gnu_stat -Lc %s -- "$TEMP")
     ((SAVED = OLD_SIZE - NEW_SIZE)) || true
-
-    if [ "$SAVED" -ge "0" ]; then
+    if [ "$SAVED" -ge 0 ]; then
         ((PERCENT_SAVED = (SAVED * 100 + (OLD_SIZE - 1)) / OLD_SIZE)) || true
-        PERCENT_TEXT="saved ${PERCENT_SAVED}% / $((SAVED)) bytes"
-        [ "$PERCENT_SAVED" -ge "$PERCENT_SAVED_THRESHOLD" ] || PERCENT_TEXT="only $PERCENT_TEXT"
+        lk_console_detail "File size" \
+            "reduced by $PERCENT_SAVED% ($SAVED bytes)" "$LK_GREEN"
     else
         ((PERCENT_SAVED = -((OLD_SIZE - 1) - SAVED * 100) / OLD_SIZE)) || true
-        PERCENT_TEXT="PDF grew $((-PERCENT_SAVED))% / $((-SAVED)) bytes"
+        lk_console_detail "File size" \
+            "increased by $((-PERCENT_SAVED))% ($((-SAVED)) bytes)" "$LK_RED"
     fi
-
     if [ "$PERCENT_SAVED" -lt "$PERCENT_SAVED_THRESHOLD" ]; then
-        lk_echoc "Cleaning was ineffective ($PERCENT_TEXT) so the original will be kept" "$LK_RED"
-        mv -f "$BACKUP_PATH" "$PDF_PATH" || lk_die
+        lk_console_detail "Keeping original:" "$FILE"
         continue
     fi
-
-    lk_echoc "Cleaned successfully ($PERCENT_TEXT)" "$LK_GREEN"
-
+    if lk_command_exists trash-put; then
+        trash-put -- "$FILE"
+    else
+        lk_file_backup -m "$FILE"
+        rm -- "$FILE"
+    fi
+    mv -- "$TEMP" "$FILE"
+    lk_console_detail "Cleaned successfully:" "$FILE"
 done
 
-[ "${#ERRORS[@]}" -eq "0" ] || {
-
-    lk_console_error "Unable to process ${#ERRORS[@]} PDF $(lk_maybe_plural ${#ERRORS[@]} file files)"
-    printf '%s\n' "${ERRORS[@]}" >&2
-    lk_die
-
-}
+[ ${#ERRORS[@]} -eq 0 ] ||
+    lk_console_error -r \
+        "Unable to process ${#ERRORS[@]} $(lk_maybe_plural \
+            ${#ERRORS[@]} file files):" $'\n'"$(lk_echo_array ERRORS)" ||
+    lk_die ""
