@@ -312,7 +312,7 @@ if [ -n "$STACKSCRIPT" ]; then
             lk_console_detail_list "$SELECT_TEXT:"
         [ -z "${DEFAULT:-}" ] ||
             lk_console_detail "Default value:" "$DEFAULT"
-        VALUE=$(lk_get_env "$NAME") || unset VALUE
+        SH=$(lk_get_env "$NAME") && eval "$SH" && VALUE=${!NAME} || unset VALUE
         i=0
         while ((++i)); do
             NO_ERROR_DISPLAYED=1
@@ -348,18 +348,23 @@ if [ -n "$STACKSCRIPT" ]; then
     }
 fi
 
-#####
-
-while VM_STATE="$(lk_maybe_sudo virsh domstate "$VM_HOSTNAME" 2>/dev/null)"; do
+while VM_STATE=$(lk_maybe_sudo virsh domstate "$VM_HOSTNAME" 2>/dev/null); do
     [ "$VM_STATE" != "shut off" ] || unset VM_STATE
-    lk_console_warning "Domain already exists: $VM_HOSTNAME"
+    lk_console_error "Domain already exists:" "$VM_HOSTNAME"
+    PROMPT=(
+        "OK to"
+        ${VM_STATE+"force off,"}
+        "delete and permanently remove all storage volumes?"
+    )
     lk_is_true FORCE_DELETE ||
-        LK_FORCE_INPUT=1 lk_confirm "\
-${LK_RED}OK to ${VM_STATE+force off, }delete and permanently remove all \
-storage volumes for '$VM_HOSTNAME'?$LK_RESET" N || lk_die
-    ${VM_STATE+lk_maybe_sudo virsh destroy "$VM_HOSTNAME"} || :
-    lk_maybe_sudo virsh undefine --remove-all-storage "$VM_HOSTNAME" || :
+        LK_FORCE_INPUT=1 lk_confirm "${PROMPT[*]}" N ||
+        lk_die ""
+    [ -z "${VM_STATE+1}" ] ||
+        lk_maybe_sudo virsh destroy "$VM_HOSTNAME" || true
+    lk_maybe_sudo virsh undefine --remove-all-storage "$VM_HOSTNAME" || true
 done
+
+#####
 
 lk_console_message "Ready to download and deploy"
 echo "\
@@ -436,8 +441,10 @@ NOCLOUD_TEMP_PATH="$VM_HOSTNAME-$IMG_NAME-$TIMESTAMP-cloud-init.img"
 NOCLOUD_PATH="$VM_POOL_ROOT/$NOCLOUD_TEMP_PATH"
 
 if [ -e "$DISK_PATH" ]; then
-    lk_console_item "Disk image already exists:" "$DISK_PATH"
-    lk_is_true FORCE_DELETE || lk_confirm "Destroy the existing image and start over?" N || exit
+    lk_console_error "Disk image already exists:" "$DISK_PATH"
+    lk_is_true FORCE_DELETE || LK_FORCE_INPUT=1 lk_confirm \
+        "Destroy the existing image and start over?" N ||
+        lk_die ""
 fi
 
 NETWORK_CONFIG="\
