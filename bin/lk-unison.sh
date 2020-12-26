@@ -1,7 +1,10 @@
 #!/bin/bash
+
 # shellcheck disable=SC1091,SC2015
 
 include='' . lk-bash-load.sh || exit
+
+shopt -s nullglob
 
 if lk_is_linux; then
     UNISON_ROOT=$HOME/.unison
@@ -12,7 +15,15 @@ else
     lk_die "${0##*/} not implemented on this platform"
 fi
 
-UNISON_PROFILES=("$UNISON_ROOT"/*.prf)
+UNISON_PROFILES=()
+while [ $# -gt 0 ] && [[ ! $1 =~ ^- ]]; do
+    FILE=$UNISON_ROOT/${1%.prf}.prf
+    [ -f "$FILE" ] || lk_die "file not found: $FILE"
+    UNISON_PROFILES+=("$FILE")
+    shift
+done
+
+[ ${#UNISON_PROFILES[@]} -gt 0 ] || UNISON_PROFILES=("$UNISON_ROOT"/*.prf)
 [ ${#UNISON_PROFILES[@]} -gt 0 ] || lk_die "no profiles found"
 
 UNISONLOCALHOSTNAME=${UNISONLOCALHOSTNAME:-$(lk_hostname)}
@@ -37,7 +48,7 @@ for FILE in "${UNISON_PROFILES[@]}"; do
         SKIPPED+=("$UNISON_PROFILE")
         continue
     }
-    ! ((i++)) || echo
+    ! ((i++)) || lk_console_blank
     lk_console_item "Syncing" "~${LOCAL_DIR#$HOME}"
     _FILE=${FILE%.prf}.$(lk_hostname)~
     lk_file_replace "$_FILE" "$(lk_expand_template -e "$FILE")"
@@ -53,24 +64,24 @@ for FILE in "${UNISON_PROFILES[@]}"; do
 done
 
 [ ${#SKIPPED[@]} -eq 0 ] || {
-    echo
+    ! ((i++)) || lk_console_blank
     lk_echo_array SKIPPED |
         lk_console_list "Skipped:" profile profiles
 }
 
 [ ${#PROCESSED[@]} -eq 0 ] || {
-    echo
+    ! ((i++)) || lk_console_blank
     lk_echo_array PROCESSED |
         lk_console_list "Synchronised:" profile profiles \
             "$LK_BOLD$LK_GREEN"
 }
 
 [ ${#FAILED[@]} -eq 0 ] || {
-    echo
+    ! ((i++)) || lk_console_blank
     lk_echo_array FAILED |
         lk_console_list "Failed:" profile profiles \
             "$LK_BOLD$LK_RED"
-    echo
+    lk_console_blank
     lk_pause
     lk_die ""
 }
