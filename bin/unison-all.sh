@@ -7,6 +7,7 @@ if lk_is_linux; then
     UNISON_ROOT=$HOME/.unison
 elif lk_is_macos; then
     UNISON_ROOT="$HOME/Library/Application Support/Unison"
+    lk_include macos
 else
     lk_die "${0##*/} not implemented on this platform"
 fi
@@ -21,8 +22,8 @@ PROCESSED=()
 FAILED=()
 SKIPPED=()
 i=0
-for UNISON_PROFILE in "${UNISON_PROFILES[@]}"; do
-    UNISON_PROFILE=${UNISON_PROFILE%.prf}
+for FILE in "${UNISON_PROFILES[@]}"; do
+    UNISON_PROFILE=${FILE%.prf}
     UNISON_PROFILE=${UNISON_PROFILE##*/}
     for p in "$(lk_upper_first "$UNISON_PROFILE")" \
         "$UNISON_PROFILE" \
@@ -38,7 +39,9 @@ for UNISON_PROFILE in "${UNISON_PROFILES[@]}"; do
     }
     ! ((i++)) || echo
     lk_console_item "Syncing" "~${LOCAL_DIR#$HOME}"
-    if unison "$UNISON_PROFILE" \
+    _FILE=${FILE%.prf}.$(lk_hostname)~
+    lk_file_replace "$_FILE" "$(lk_expand_template -e "$FILE")"
+    if unison -source "${_FILE##*/}" \
         -root "$LOCAL_DIR" \
         -auto \
         -logfile "$UNISON_ROOT/unison.$(lk_hostname).$(lk_date_ymd).log" \
