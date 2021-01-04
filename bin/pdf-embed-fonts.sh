@@ -1,34 +1,73 @@
 #!/bin/bash
-# shellcheck disable=SC1090
 
-include='' . lk-bash-load.sh || exit
+# shellcheck disable=SC1091,SC2015
+
+include=provision . lk-bash-load.sh || exit
 
 lk_assert_command_exists gs
 
-[ "$#" -eq "1" ] || lk_die "Usage: $(basename "$0") </path/to/file.pdf>"
+lk_test_many lk_is_pdf "$@" || lk_usage "\
+Usage: ${0##*/} PDF..."
 
-lk_is_pdf "$1" || lk_die "$1 doesn't seem to be a PDF"
+lk_log_output
 
-PDF_PATH="$1"
-lk_command_exists realpath && PDF_PATH="$(realpath "$PDF_PATH")" || true
+lk_console_message "Embedding fonts in $# $(lk_maybe_plural $# file files)"
 
-BACKUP_PATH="$(lk_add_file_suffix "$PDF_PATH" "_backup")"
+! lk_is_macos ||
+    export GS_FONTPATH=${GS_FONTPATH-~/Library/Fonts:/Library/Fonts:/System/Library/Fonts}
 
-mv -f "$PDF_PATH" "$BACKUP_PATH"
+DISTILLER_PARAMS=(
+    "/AutoFilterColorImages false"
+    "/AutoFilterGrayImages false"
+    "/ColorConversionStrategy /LeaveColorUnchanged"
+    "/ColorImageFilter /FlateEncode"
+    "/DownsampleColorImages false"
+    "/DownsampleGrayImages false"
+    "/DownsampleMonoImages false"
+    "/EmbedAllFonts true"
+    "/GrayImageFilter /FlateEncode"
+    "/NeverEmbed []"
+)
 
-gs -sDEVICE=pdfwrite \
-    -sFONTPATH="$FONTPATH" \
-    -dPDFSETTINGS=/prepress \
-    -dAutoFilterColorImages=false \
-    -dAutoFilterGrayImages=false \
-    -dColorImageFilter=/FlateEncode \
-    -dDownsampleColorImages=false \
-    -dDownsampleGrayImages=false \
-    -dDownsampleMonoImages=false \
-    -dGrayImageFilter=/FlateEncode \
-    -o "$PDF_PATH" "$BACKUP_PATH" || {
+NPROC=$(nproc 2>/dev/null) || NPROC=
+MEM=$(lk_system_memory_free 0) && [ "$MEM" -gt $((256 * 1024 ** 2)) ] || MEM=
+GS_OPTIONS=(
+    -dSAFER
+    -sDEVICE=pdfwrite
+    ${NPROC:+-dNumRenderingThreads="$NPROC"}
+    ${MEM:+-dBufferSpace="$(lk_echo_args \
+        $((MEM / 2)) \
+        $((2 * 1024 ** 3)) | sort -n | head -n1)"}
+    -c "33554432 setvmthreshold << ${DISTILLER_PARAMS[*]} >> setdistillerparams"
+)
 
-    mv -f "$BACKUP_PATH" "$PDF_PATH" || true
-    lk_die "Unable to embed fonts in $PDF_PATH"
+lk_console_detail "Command line:" "$(lk_quote_args_folded \
+    gs "${GS_OPTIONS[@]}")"
 
-}
+ERRORS=()
+
+i=0
+for FILE in "$@"; do
+    lk_console_item "Processing $((++i)) of $#:" "$FILE"
+    TEMP=$(lk_file_prepare_temp -n "$FILE")
+    lk_delete_on_exit "$TEMP"
+    gs -q -o "$TEMP" "${GS_OPTIONS[@]}" -f "$FILE" &&
+        touch -r "$FILE" -- "$TEMP" || {
+        ERRORS+=("$FILE")
+        continue
+    }
+    if lk_command_exists trash-put; then
+        trash-put -- "$FILE"
+    else
+        lk_file_backup -m "$FILE"
+        rm -- "$FILE"
+    fi
+    mv -- "$TEMP" "$FILE"
+    lk_console_detail "Fonts embedded successfully:" "$FILE"
+done
+
+[ ${#ERRORS[@]} -eq 0 ] ||
+    lk_console_error -r \
+        "Unable to process ${#ERRORS[@]} $(lk_maybe_plural \
+            ${#ERRORS[@]} file files):" $'\n'"$(lk_echo_array ERRORS)" ||
+    lk_die ""

@@ -9,6 +9,10 @@ lk_assert_command_exists gs
 lk_test_many lk_is_pdf "$@" || lk_usage "\
 Usage: ${0##*/} PDF..."
 
+lk_log_output
+
+lk_console_message "Compressing $# $(lk_maybe_plural $# file files)"
+
 # Adobe Distiller defaults (see:
 # https://www.adobe.com/content/dam/acom/en/devnet/acrobat/pdfs/distillerparameters.pdf)
 DISTILLER_MINIMUM_QUALITY="<< /HSamples [2 1 1 2] /VSamples [2 1 1 2] /QFactor 2.40 /Blend 1 >>"
@@ -65,12 +69,21 @@ DISTILLER_PARAMS=(
     "/PassThroughJPEGImages false"
 )
 
+NPROC=$(nproc 2>/dev/null) || NPROC=
+MEM=$(lk_system_memory_free 0) && [ "$MEM" -gt $((256 * 1024 ** 2)) ] || MEM=
 GS_OPTIONS=(
     -dSAFER
     -sDEVICE=pdfwrite
     "-dPDFSETTINGS=${PDFSETTINGS:-/screen}"
-    -c "3000000 setvmthreshold << ${DISTILLER_PARAMS[*]} >> setdistillerparams"
+    ${NPROC:+-dNumRenderingThreads="$NPROC"}
+    ${MEM:+-dBufferSpace="$(lk_echo_args \
+        $((MEM / 2)) \
+        $((2 * 1024 ** 3)) | sort -n | head -n1)"}
+    -c "33554432 setvmthreshold << ${DISTILLER_PARAMS[*]} >> setdistillerparams"
 )
+
+lk_console_detail "Command line:" "$(lk_quote_args_folded \
+    gs "${GS_OPTIONS[@]}")"
 
 ERRORS=()
 

@@ -9,6 +9,10 @@ lk_assert_command_exists mutool
 lk_test_many lk_is_pdf "$@" || lk_usage "\
 Usage: ${0##*/} PDF..."
 
+lk_log_output
+
+lk_console_message "Cleaning $# $(lk_maybe_plural $# file files)"
+
 # Keep the original PDF unless file size is reduced by at least this much
 PERCENT_SAVED_THRESHOLD=${PERCENT_SAVED_THRESHOLD:-2}
 
