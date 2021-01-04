@@ -186,7 +186,7 @@ function dev_apply_system_config() {
 
     if lk_is_linux; then
 
-        lk_safe_symlink "$LK_ROOT/bin/md-open-today-note.sh" "$HOME/.local/bin/md-open-today-note.sh"
+        lk_safe_symlink "$LK_ROOT/bin/lk-note-open.sh" "$HOME/.local/bin/lk-note-open.sh"
         lk_safe_symlink "$LK_ROOT/bin/pdf-combine.sh" "$HOME/.local/bin/pdf-combine.sh"
 
         if lk_command_exists xrandr; then
