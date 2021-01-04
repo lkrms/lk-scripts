@@ -342,7 +342,6 @@ EOF
 
 function apt_mark_cache_clean() {
     [ "$APT_CACHE_DIRTY" -eq "0" ] || {
-        apt_check_sources
         APT_CACHE_DIRTY=0
     }
 }
@@ -350,7 +349,6 @@ function apt_mark_cache_clean() {
 function apt_make_cache_clean() {
 
     [ "$APT_CACHE_DIRTY" -eq "0" ] || {
-        apt_check_sources
         lk_console_message "Updating apt package indexes"
         sudo apt-get ${APT_GET_OPTIONS[@]+"${APT_GET_OPTIONS[@]}"} -qq update && APT_CACHE_DIRTY=0 || lk_die
     }
@@ -867,33 +865,6 @@ function apt_process_queue() {
 
     fi
 
-}
-
-function apt_check_sources() {
-    local APT_PROXY='' PROXY_GOOD _HOST _PORT
-    sudo rm -f "/etc/apt/apt.conf.d/99noproxy"
-    . /dev/stdin <<<"$(apt-config shell APT_PROXY "Acquire::http::Proxy")"
-    if [ -n "$APT_PROXY" ]; then
-        PROXY_GOOD=0
-        eval "$(lk_uri_parts "$APT_PROXY" "_HOST" "_PORT")"
-        if [ -n "$_HOST" ] && [ -n "$_PORT" ]; then
-            if test_host_port "$_HOST" "$_PORT"; then
-                PROXY_GOOD=1
-            fi
-        fi
-        [ "$PROXY_GOOD" -eq "1" ] || {
-            lk_console_item "APT proxy disabled (unreachable):" "$APT_PROXY" "$LK_BOLD$LK_YELLOW"
-            echo 'Acquire::http::Proxy "";' | sudo tee "/etc/apt/apt.conf.d/99noproxy" >/dev/null
-            APT_PROXY=
-        }
-    fi
-    if [ "${APT_PROXY/:3142/}" != "$APT_PROXY" ]; then
-        # if we're using Apt-Cacher NG, replace every "https://" with "http://"
-        sudo find /etc/apt /etc/apt/sources.list.d -maxdepth 1 -type f -name '*.list' -exec grep -q '\bhttps://' '{}' \; -exec sed -i.https.orig 's/\bhttps:\/\//http:\/\//' '{}' \;
-    else
-        # otherwise, move any active https sources back
-        sudo find /etc/apt /etc/apt/sources.list.d -maxdepth 1 -type f -name '*.list.https.orig' -exec sh -c 'ORIG="${1%.https.orig}"; if [ -e "$ORIG" ]; then mv "$1" "$ORIG" || exit; fi' sh '{}' \;
-    fi
 }
 
 function apt_upgrade_all() {
