@@ -15,6 +15,7 @@ VM_MAC_ADDRESS=$(printf '52:54:00:%02x:%02x:%02x' \
 REFRESH_CLOUDIMG=
 FORWARD_XML=()
 ISOLATE=
+ISOLATE_ACTION_XML=
 ALLOW_HOST_XML=
 ALLOW_HOST_NET_XML=
 ALLOW_HOSTS_XML=()
@@ -61,6 +62,8 @@ Options:
                                 prompting (implies -y)
 
 If --isolate is set:
+      --no-log                  reject blocked traffic without logging it
+      --no-reject               log blocked traffic without rejecting it
   -g, --allow-gateway           allow traffic to host system
   -l, --allow-gateway-lan       allow traffic to host system's default LAN
   -h, --allow-host=HOST,...     allow traffic to each HOST (name, IP or CIDR)
@@ -117,7 +120,8 @@ StackScript notes:
 lk_getopt "i:rp:f:P:m:c:s:n:I:R:OM:S:x:uyFglh:U:" \
     "image:,refresh-image,packages:,fs-maps:,preset:,memory:,\
 cpus:,disk-size:,network:,ip-address:,forward:,isolate,mac:,stackscript:,\
-metadata:,session,force,allow-gateway,allow-gateway-lan,allow-host:,allow-url:"
+metadata:,session,force,allow-gateway,allow-gateway-lan,allow-host:,allow-url:,\
+no-log,no-reject"
 eval "set -- $LK_GETOPT"
 
 UBUNTU_HOST=${LK_UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}
@@ -297,6 +301,14 @@ while :; do
 </from-url>"
         done < <(IFS="|" && printf '%s\0' $1)
         ;;
+    --no-log)
+        ISOLATE_ACTION_XML="<no-log />"
+        continue
+        ;;
+    --no-reject)
+        ISOLATE_ACTION_XML="<no-reject />"
+        continue
+        ;;
     --)
         break
         ;;
@@ -315,6 +327,8 @@ XML=
     [ -z "${XML:+1}" ] || XML="<allow>
   ${XML//$'\n'/$'\n'  }
 </allow>"
+    XML=${ISOLATE_ACTION_XML:+$ISOLATE_ACTION_XML
+}$XML
     [ -z "${XML:+1}" ] &&
         XML="<isolate />" ||
         XML="<isolate>
