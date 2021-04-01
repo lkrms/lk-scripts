@@ -26,6 +26,7 @@ ALLOW_URL_XML=()
 STACKSCRIPT=
 METADATA=()
 METADATA_URLS=()
+POWEROFF=
 FORCE_DELETE=
 
 # shellcheck disable=SC2034
@@ -59,6 +60,7 @@ Options:
   -S, --stackscript=SCRIPT      use cloud-init to run SCRIPT in guest after
                                 booting (see below)
   -x, --metadata=URL,KEY,XML    add custom metadata XML
+  -H, --poweroff                shut down guest after cloud-init finishes
   -u, --session                 launch guest as user instead of system
   -y, --yes                     do not prompt for input
   -F, --force                   delete existing guest VM_NAME without
@@ -120,10 +122,10 @@ StackScript notes:
   script is added to the runcmd module
 - The --packages option is ignored"
 
-lk_getopt "i:rp:f:P:m:c:s:n:I:R:OM:S:x:uyFglh:U:" \
+lk_getopt "i:rp:f:P:m:c:s:n:I:R:OM:S:x:HuyFglh:U:" \
     "image:,refresh-image,packages:,fs-maps:,preset:,memory:,\
 cpus:,disk-size:,network:,ip-address:,forward:,isolate,mac:,stackscript:,\
-metadata:,session,force,allow-gateway,allow-gateway-lan,allow-host:,allow-url:,\
+metadata:,poweroff,session,force,allow-gateway,allow-gateway-lan,allow-host:,allow-url:,\
 no-log,no-reject"
 eval "set -- $LK_GETOPT"
 
@@ -281,6 +283,10 @@ while :; do
         done
         METADATA_URLS[${#METADATA_URLS[@]}]=$URL
         unset IFS
+        ;;
+    -H | --poweroff)
+        POWEROFF=1
+        continue
         ;;
     -u | --session)
         VM_POOL_ROOT=${LK_CLOUDIMG_SESSION_ROOT:-$HOME/.local/share/libvirt/images}
@@ -770,7 +776,7 @@ lk_confirm "OK to proceed?" Y || lk_die ""
             add_json USER_DATA --argjson keys "$SSH_AUTHORIZED_KEYS" '{
   "apt_upgrade": true,
   "ssh_authorized_keys": $keys
-}]'
+}'
     else
         add_json USER_DATA --argjson keys "$SSH_AUTHORIZED_KEYS" '{
   "ssh_pwauth": true,
@@ -852,6 +858,12 @@ EOF
     [ "$WRITE_FILES" = "[]" ] ||
         add_json USER_DATA --argjson writeFiles "$WRITE_FILES" '{
   "write_files": $writeFiles
+}'
+
+    ! lk_is_true POWEROFF || add_json USER_DATA '{
+  "power_state": {
+    "mode": "poweroff"
+  }
 }'
 
     add_json META_DATA \
