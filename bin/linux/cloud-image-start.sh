@@ -3,13 +3,16 @@
 
 include=linux,validate . lk-bash-load.sh || exit
 
+# `local -n` was added in Bash 4.3
+lk_bash_at_least 4 3 || lk_die "Bash 4.3 or higher required"
+
 IMAGE=ubuntu-18.04-minimal
 VM_PACKAGES=
 VM_FILESYSTEM_MAPS=
 VM_MEMORY=4096
 VM_CPUS=2
 VM_DISK_SIZE=80G
-VM_IPV4_ADDRESS=
+VM_IPV4_CIDR=
 VM_MAC_ADDRESS=$(printf '52:54:00:%02x:%02x:%02x' \
     $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256)))
 REFRESH_CLOUDIMG=
@@ -125,6 +128,7 @@ no-log,no-reject"
 eval "set -- $LK_GETOPT"
 
 UBUNTU_HOST=${LK_UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}
+UBUNTU_MIRROR=${LK_UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}
 
 CLOUDIMG_ROOT=${LK_CLOUDIMG_ROOT:-/var/lib/libvirt/images}
 VM_POOL_ROOT=$CLOUDIMG_ROOT
@@ -199,12 +203,33 @@ while :; do
         VM_NETWORK=$1
         ;;
     -I | --ip-address)
-        VM_IPV4_ADDRESS=$1
+        [[ $1 =~ ^([0-9]+(\.[0-9]+){3})/([0-9]+)$ ]] ||
+            lk_warn "invalid IPv4 CIDR: $1" || lk_usage
+        VM_IPV4_CIDR=$1
+        VM_IPV4_ADDRESS=${BASH_REMATCH[1]}
+        VM_IPV4_NETWORK=
+        VM_IPV4_MASK=
+        VM_IPV4_GATEWAY=
+        bits=${BASH_REMATCH[3]}
+        bytes=4
+        IFS=.
+        for byte in $VM_IPV4_ADDRESS; do
+            mask=0
+            for b in {1..8}; do
+                ((mask <<= 1, mask += (bits-- > 0 ? 1 : 0))) || true
+            done
+            ((byte &= mask, gw_quad = byte)) || true
+            ((--bytes)) && dot=. || { dot= && ((gw_quad |= 1)); }
+            VM_IPV4_NETWORK+=$byte$dot
+            VM_IPV4_MASK+=$mask$dot
+            VM_IPV4_GATEWAY+=$gw_quad$dot
+        done
+        unset IFS
         ;;
     -R | --forward)
         REGEX='(tcp|udp)(:[0-9]+){1,2}(,[0-9]+(:[0-9]+)?)*'
         [[ $1 =~ ^$REGEX(\|$REGEX)*$ ]] ||
-            lk_warn "invalid ports" || lk_usage
+            lk_warn "invalid ports: $1" || lk_usage
         IFS="|"
         PORTS=($1)
         unset IFS
@@ -244,7 +269,7 @@ while :; do
         VM_PACKAGES=
         ;;
     -x | --metadata)
-        IFS=, read -r -d '' URL KEY XML < <(printf '%s\0' "$1") &&
+        IFS="," read -r -d '' URL KEY XML < <(printf '%s\0' "$1") &&
             [ -n "${XML:+1}" ] ||
             lk_warn "invalid metadata: $1" || lk_usage
         [ "$URL" != "$XMLNS" ] ||
@@ -291,7 +316,7 @@ while :; do
         done
         ;;
     -U | --allow-url)
-        while IFS=, read -r -d '' URL FILTER; do
+        while IFS="," read -r -d '' URL FILTER; do
             [[ $URL =~ $URI_REGEX_REQ_SCHEME_HOST ]] ||
                 lk_warn "invalid URL: $URL" || lk_usage
             ALLOW_URL_XML[${#ALLOW_URL_XML[@]}]="\
@@ -524,6 +549,12 @@ if [ -n "$STACKSCRIPT" ]; then
     }
 fi
 
+KEYS_FILE=~/.ssh/authorized_keys
+[ -f "$KEYS_FILE" ] || lk_die "file not found: $KEYS_FILE"
+SSH_AUTHORIZED_KEYS=$(grep -Ev "^(#|$S*\$)" "$KEYS_FILE" |
+    jq -Rn '[ inputs | split("\n")[] ]') ||
+    lk_die "no keys in $KEYS_FILE"
+
 while VM_STATE=$(lk_maybe_sudo virsh domstate "$VM_HOSTNAME" 2>/dev/null); do
     [ "$VM_STATE" != "shut off" ] || unset VM_STATE
     lk_console_error "Domain already exists:" "$VM_HOSTNAME"
@@ -542,6 +573,7 @@ done
 
 lk_console_message "Provisioning:"
 _VM_PACKAGES=${VM_PACKAGES//,/, }
+_VM_IPV4_ADDRESS=${VM_IPV4_CIDR:+$VM_IPV4_CIDR (gateway: $VM_IPV4_GATEWAY)}
 printf '%s\t%s\n' \
     "Name" "$LK_BOLD$VM_HOSTNAME$LK_RESET" \
     "Image" "$IMAGE_NAME" \
@@ -552,7 +584,7 @@ printf '%s\t%s\n' \
     "CPUs" "$VM_CPUS" \
     "Disk size" "$VM_DISK_SIZE" \
     "Network" "$VM_NETWORK" \
-    "IPv4 address" "${VM_IPV4_ADDRESS:-<automatic>}" \
+    "IPv4 address" "${_VM_IPV4_ADDRESS:-<dhcp>}" \
     "MAC address" "$VM_MAC_ADDRESS" \
     "StackScript" "${STACKSCRIPT:-<none>}" \
     "Custom metadata" "${#METADATA_URLS[@]} namespace$(lk_maybe_plural \
@@ -560,7 +592,9 @@ printf '%s\t%s\n' \
     "Libvirt service" "$LIBVIRT_URI" \
     "Disk image path" "$VM_POOL_ROOT" | IFS=$'\t' lk_tty_detail_pairs
 [ -z "$STACKSCRIPT" ] ||
-    lk_console_detail "StackScript environment:" $'\n'"${STACKSCRIPT_ENV:-<empty>}"
+    lk_console_detail "StackScript environment:" \
+        $'\n'"$([ ${#SS_FIELDS[@]} -eq 0 ] && echo "<empty>" ||
+            lk_echo_array SS_FIELDS | sort)"
 lk_console_blank
 lk_confirm "OK to proceed?" Y || lk_die ""
 
@@ -628,212 +662,229 @@ lk_confirm "OK to proceed?" Y || lk_die ""
             lk_die ""
     fi
 
-    NETWORK_CONFIG="\
-version: 1
-config:
-  - type: physical
-    name: eth0
-    mac_address: $VM_MAC_ADDRESS
-    subnets:"
+    # add_json [-j JQ_OPERATOR] VAR [JQ_ARG...] JQ_OBJECT
+    function add_json() {
+        local JQ='.+='
+        [ "${1:-}" != -j ] || { JQ=$2 && shift 2; }
+        local -n JSON=$1
+        JSON=$(jq "${@:2:$#-2}" "$JQ${*: -1}" <<<"$JSON")
+    }
 
-    if [ -n "$VM_IPV4_ADDRESS" ]; then
-        SUBNET="${VM_IPV4_ADDRESS%%/*}"
-        SUBNET="${SUBNET%.*}."
-        NETWORK_CONFIG="\
-$NETWORK_CONFIG
-      - type: static
-        address: $VM_IPV4_ADDRESS
-        gateway: ${SUBNET}1
-        dns_nameservers:
-          - ${SUBNET}1"
+    function add_runcmd() {
+        RUNCMD=$(jq --arg sh "$1" '.+=[
+  ["bash", "-c", $sh]
+]' <<<"$RUNCMD")
+    }
 
-    else
-        NETWORK_CONFIG="\
-$NETWORK_CONFIG
-      - type: dhcp"
+    function add_write_files() {
+        WRITE_FILES=$(jq --arg path "$1" --arg content "$2" '.+=[{
+  "path": $path,
+  "content": $content
+}]' <<<"$WRITE_FILES")
+    }
 
+    NETWORK_CONFIG="{}"
+    USER_DATA="{}"
+    META_DATA="{}"
+    RUNCMD="[]"
+    WRITE_FILES="[]"
+    VIRT_OPTIONS=()
+
+    add_json NETWORK_CONFIG --arg mac "$VM_MAC_ADDRESS" '{
+  "version": 1,
+  "config": [{
+    "type": "physical",
+    "name": "eth0",
+    "mac_address": $mac,
+    "subnets": [{
+      "type": "dhcp"
+    }]
+  }]
+}'
+
+    if [ -n "$VM_IPV4_CIDR" ]; then
+        add_json -j '.config[].subnets=' NETWORK_CONFIG \
+            --arg cidr "$VM_IPV4_CIDR" \
+            --arg gw "$VM_IPV4_GATEWAY" '[{
+  "type": "static",
+  "address": $cidr,
+  "gateway": $gw,
+  "dns_nameservers": [
+    $gw
+  ]
+}]'
     fi
 
-    OPTIONS=()
     FSTAB=()
     MOUNT_DIRS=()
     [ -z "$VM_FILESYSTEM_MAPS" ] || {
         IFS="|"
-        # shellcheck disable=SC2206
         FILESYSTEMS=($VM_FILESYSTEM_MAPS)
-        unset IFS
-
         for FILESYSTEM in "${FILESYSTEMS[@]}"; do
             IFS=","
-            # shellcheck disable=SC2206
             FILESYSTEM_DIRS=($FILESYSTEM)
             unset IFS
-
-            [ "${#FILESYSTEM_DIRS[@]}" -ge "2" ] || lk_die "invalid filesystem map: $FILESYSTEM"
-            SOURCE_DIR="${FILESYSTEM_DIRS[0]}"
-            MOUNT_DIR="${FILESYSTEM_DIRS[1]}"
-            MOUNT_NAME="qemufs${#MOUNT_DIRS[@]}"
-            [ -d "$SOURCE_DIR" ] || lk_die "$SOURCE_DIR: directory does not exist"
-
-            FILESYSTEM_DIRS[1]="$MOUNT_NAME"
-            IFS=","
-            FILESYSTEM="${FILESYSTEM_DIRS[*]}"
-            unset IFS
-
-            OPTIONS+=(--filesystem "$FILESYSTEM")
+            [ ${#FILESYSTEM_DIRS[@]} -ge 2 ] ||
+                lk_die "invalid filesystem map: $FILESYSTEM"
+            [ -d "${FILESYSTEM_DIRS[0]}" ] ||
+                lk_die "directory not found: ${FILESYSTEM_DIRS[0]}"
+            SOURCE_DIR=${FILESYSTEM_DIRS[0]}
+            MOUNT_DIR=${FILESYSTEM_DIRS[1]}
+            MOUNT_NAME=qemufs${#MOUNT_DIRS[@]}
+            FILESYSTEM_DIRS[1]=$MOUNT_NAME
+            VIRT_OPTIONS+=(--filesystem "$(lk_implode "," FILESYSTEM_DIRS)")
             FSTAB+=("$MOUNT_NAME $MOUNT_DIR 9p defaults,nofail,trans=virtio,version=9p2000.L,posixacl,msize=262144,_netdev 0 0")
             MOUNT_DIRS+=("$MOUNT_DIR")
         done
+        add_runcmd "$(
+            function _run() {
+                install -d -m 00755 "$@" &&
+                    printf '%s\n' "${FSTAB[@]}" >>/etc/fstab &&
+                    mount "$@"
+            }
+            declare -f _run
+            declare -p FSTAB
+            lk_quote_args _run "${MOUNT_DIRS[@]}"
+        )"
     }
 
-    [ -f "$HOME/.ssh/authorized_keys" ] || lk_die "$HOME/.ssh/authorized_keys: file not found"
-    IFS=$'\n'
-    # shellcheck disable=SC2207
-    SSH_AUTHORIZED_KEYS=($(grep -Ev '^(#|\s*$)' "$HOME/.ssh/authorized_keys"))
-    unset IFS
-    [ "${#SSH_AUTHORIZED_KEYS[@]}" -gt "0" ] || lk_die "$HOME/.ssh/authorized_keys: no keys"
+    if [ -z "$STACKSCRIPT" ]; then
+        add_json USER_DATA \
+            --arg uid "$(id -u)" \
+            --arg name "$(id -un)" \
+            --arg gecos "$(lk_full_name)" \
+            --argjson keys "$SSH_AUTHORIZED_KEYS" '{
+  "ssh_pwauth": false,
+  "users": [{
+    "uid": $uid,
+    "name": $name,
+    "gecos": $gecos,
+    "shell": "/bin/bash",
+    "sudo": "ALL=(ALL) NOPASSWD:ALL",
+    "ssh_authorized_keys": $keys
+  }],
+  "package_upgrade": true,
+  "package_reboot_if_required": true
+}'
+        [ "$IMAGE_NAME" != ubuntu-12.04 ] ||
+            add_json USER_DATA --argjson keys "$SSH_AUTHORIZED_KEYS" '{
+  "apt_upgrade": true,
+  "ssh_authorized_keys": $keys
+}]'
+    else
+        add_json USER_DATA --argjson keys "$SSH_AUTHORIZED_KEYS" '{
+  "ssh_pwauth": true,
+  "disable_root": false,
+  "users": [],
+  "ssh_authorized_keys": $keys
+}'
+        _STACKSCRIPT=$(gzip <"$STACKSCRIPT" | lk_base64 | tr -d '\n')
+        add_runcmd "$(
+            function _run() {
+                install -m 00700 /dev/null /root/StackScript &&
+                    fold -w 64 <<<"$1" | lk_base64 -d |
+                    gunzip >/root/StackScript &&
+                    export "${@:2}"
+                /root/StackScript </dev/null
+            }
+            declare -f lk_command_exists lk_base64 _run
+            lk_quote_args _run "$_STACKSCRIPT" "${SS_FIELDS[@]}"
+        )"
+    fi
+
+    add_json USER_DATA --arg uri "$UBUNTU_MIRROR" '{
+  "apt": {
+    "primary": [{
+      "arches": [
+        "default"
+      ],
+      "uri": $uri
+    }]
+  }
+}'
 
     PACKAGES=()
-    [ "$IMAGE_NAME" = "ubuntu-12.04" ] || PACKAGES+=("qemu-guest-agent")
-    [ -z "$VM_PACKAGES" ] || [ -n "$STACKSCRIPT" ] || {
+    [ "$IMAGE_NAME" = ubuntu-12.04 ] || PACKAGES+=(qemu-guest-agent)
+    [ -z "$VM_PACKAGES" ] || {
         IFS=","
-        # shellcheck disable=SC2206
         PACKAGES+=($VM_PACKAGES)
         unset IFS
     }
+    [ ${#PACKAGES[@]} -eq 0 ] ||
+        add_json USER_DATA "$(lk_echo_array PACKAGES | sort -u | jq -Rn '{
+  "packages": [inputs]
+}')"
 
-    RUN_CMD=()
-    WRITE_FILES=()
-    if [ -z "$STACKSCRIPT" ]; then
-        USER_DATA="\
-#cloud-config
-ssh_pwauth: false
-users:
-  - uid: $UID
-    name: $USER
-    gecos: $(lk_full_name)
-    shell: /bin/bash
-    sudo: ALL=(ALL) NOPASSWD:ALL
-    ssh_authorized_keys:
-$(printf '      - %s\n' "${SSH_AUTHORIZED_KEYS[@]}")
-package_upgrade: true
-package_reboot_if_required: true
-$(
-            [ "$IMAGE_NAME" != "ubuntu-12.04" ] || printf '%s\n' \
-                "apt_upgrade: true" \
-                "ssh_authorized_keys:" "${SSH_AUTHORIZED_KEYS[@]/#/  - }"
-        )"
-    else
-        USER_DATA="\
-#cloud-config
-ssh_pwauth: true
-disable_root: false
-users: []
-ssh_authorized_keys:
-$(printf '  - %s\n' "${SSH_AUTHORIZED_KEYS[@]}")"
+    # ubuntu-16.04-minimal leaves /etc/resolv.conf unconfigured if a static IP
+    # is assigned (no resolvconf package?)
+    [ -z "$VM_IPV4_CIDR" ] ||
+        [ "$IMAGE_NAME" != ubuntu-16.04-minimal ] ||
+        add_write_files /etc/resolv.conf "nameserver $VM_IPV4_GATEWAY"
 
-        STACKSCRIPT_LINES="$(
-            if lk_command_exists shfmt; then
-                shfmt -mn "$STACKSCRIPT"
-            else
-                lk_warn "unable to minify $STACKSCRIPT (shfmt not installed)"
-                cat "$STACKSCRIPT"
-            fi | sed 's/^/      /'
-        )"
-        RUN_CMD+=(
-            "  - - env"
-            "    - ${STACKSCRIPT_ENV//$'\n'/$'\n'    - }"
-            "    - bash"
-            "    - -c"
-            "    - |"
-            "      exec </dev/null"
-            "$STACKSCRIPT_LINES"
-        )
-    fi
-
-    USER_DATA="$USER_DATA
-apt:
-  primary:
-    - arches: [default]
-      uri: ${LK_UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}
-$(
-        [ "${#PACKAGES[@]}" -eq "0" ] ||
-            printf '%s\n' "packages:" "${PACKAGES[@]/#/  - }"
-        [ "${#FSTAB[@]}" -eq "0" ] || {
-            FSTAB_CMD=("${FSTAB[@]/#/  - echo \"}")
-            FSTAB_CMD=("${FSTAB_CMD[@]/%/\" >>/etc/fstab}")
-            FSTAB_CMD+=("${MOUNT_DIRS[@]/#/  - mount }")
-            RUN_CMD=(
-                "  - mkdir -pv ${MOUNT_DIRS[*]}"
-                "${FSTAB_CMD[@]}"
-                ${RUN_CMD[@]+"${RUN_CMD[@]}"}
-            )
-        }
-        # ubuntu-16.04-minimal leaves /etc/resolv.conf unconfigured if a static IP
-        # is assigned (no resolvconf package?)
-        [ -z "$VM_IPV4_ADDRESS" ] || [ "$IMAGE_NAME" != "ubuntu-16.04-minimal" ] ||
-            WRITE_FILES+=(
-                "  - content: |"
-                "      nameserver ${SUBNET}1"
-                "    path: /etc/resolv.conf"
-            )
-        # ubuntu-12.04 doesn't start a serial getty (or implement write_files)
-        [ "$IMAGE_NAME" != "ubuntu-12.04" ] || {
-            GETTY_SH='cat <<EOF >"/etc/init/ttyS0.conf"
+    # ubuntu-12.04 doesn't start a serial getty (or implement write_files)
+    [ "$IMAGE_NAME" != ubuntu-12.04 ] ||
+        add_runcmd "$(
+            function _run() {
+                install -m 00644 /dev/null "/etc/init/$1.conf"
+                cat <<EOF >"/etc/init/$1.conf"
 start on stopped rc RUNLEVEL=[2345]
 stop on runlevel [!2345]
 respawn
-exec /sbin/getty --keep-baud 115200,38400,9600 ttyS0 vt220
+exec /sbin/getty --keep-baud 115200,38400,9600 $1 vt220
 EOF
-/sbin/initctl start ttyS0'
-            RUN_CMD+=(
-                "  - - bash"
-                "    - -c"
-                "    - |"
-                "      ${GETTY_SH//$'\n'/$'\n'      }"
-            )
-        }
-        # cloud-init on ubuntu-14.04 doesn't recognise the "apt" schema
-        [[ ! "$IMAGE_NAME" =~ ^ubuntu-(14.04|12.04)$ ]] ||
-            echo "\
-apt_mirror: ${LK_UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}"
-        [ "${#RUN_CMD[@]}" -eq "0" ] || {
-            printf '%s\n' \
-                "runcmd:" \
-                "${RUN_CMD[@]}"
-        }
-        [ "${#WRITE_FILES[@]}" -eq "0" ] || {
-            printf '%s\n' \
-                "write_files:" \
-                "${WRITE_FILES[@]}"
-        }
-    )"
+                /sbin/initctl start "$1"
+            }
+            declare -f _run
+            lk_quote_args _run ttyS0
+        )"
 
-    META_DATA="\
-dsmode: local
-instance-id: $(uuidgen)
-local-hostname: $VM_HOSTNAME
-$(
-        # cloud-init on ubuntu-14.04 ignores the network-config file
-        [ -z "$VM_IPV4_ADDRESS" ] ||
-            [[ ! "$IMAGE_NAME" =~ ^ubuntu-(14.04|12.04)$ ]] ||
-            echo "\
-network-interfaces: |
-  auto eth0
-  iface eth0 inet static
-  address $VM_IPV4_ADDRESS
-  gateway ${SUBNET}1
-  dns-nameservers ${SUBNET}1"
-    )"
+    # cloud-init on ubuntu-14.04 doesn't recognise the "apt" schema
+    [[ ! $IMAGE_NAME =~ ^ubuntu-(14.04|12.04)$ ]] ||
+        add_json USER_DATA --arg uri "$UBUNTU_MIRROR" '{
+  "apt_mirror": $uri
+}'
+
+    [ "$RUNCMD" = "[]" ] ||
+        add_json USER_DATA --argjson runcmd "$RUNCMD" '{
+  "runcmd": $runcmd
+}'
+
+    [ "$WRITE_FILES" = "[]" ] ||
+        add_json USER_DATA --argjson writeFiles "$WRITE_FILES" '{
+  "write_files": $writeFiles
+}'
+
+    add_json META_DATA \
+        --arg uuid "$(uuidgen)" \
+        --arg hostname "$VM_HOSTNAME" '{
+  "dsmode": "local",
+  "instance-id": $uuid,
+  "local-hostname": $hostname
+}'
+
+    # cloud-init on ubuntu-14.04 ignores the network-config file
+    [ -z "$VM_IPV4_CIDR" ] ||
+        [[ ! $IMAGE_NAME =~ ^ubuntu-(14.04|12.04)$ ]] ||
+        add_json META_DATA --arg interfaces "auto eth0
+iface eth0 inet static
+address $VM_IPV4_ADDRESS
+netmask $VM_IPV4_MASK
+gateway $VM_IPV4_GATEWAY
+dns-nameservers $VM_IPV4_GATEWAY" '{
+  "network-interfaces": $interfaces
+}'
 
     NOCLOUD_META_DIR="$LK_BASE/var/cache/NoCloud/$(lk_hostname)-$VM_HOSTNAME-$(lk_date_ymdhms)"
     install -d -m 00755 "$NOCLOUD_META_DIR"
 
-    echo "$NETWORK_CONFIG" >"$NOCLOUD_META_DIR/network-config.yml"
-    echo "$USER_DATA" >"$NOCLOUD_META_DIR/user-data.yml"
-    echo "$META_DATA" >"$NOCLOUD_META_DIR/meta-data.yml"
+    yq -y <<<"$NETWORK_CONFIG" \
+        >"$NOCLOUD_META_DIR/network-config.yml"
+    { echo "#cloud-config" && yq -y <<<"$USER_DATA"; } \
+        >"$NOCLOUD_META_DIR/user-data.yml"
+    yq -y <<<"$META_DATA" \
+        >"$NOCLOUD_META_DIR/meta-data.yml"
 
-    if lk_confirm "Customise cloud-init data source?" N -t 60; then
+    if lk_confirm "Customise cloud-init data source?" N -t 10; then
         xdg-open "$NOCLOUD_META_DIR" || :
         lk_pause "Press any key to continue after making changes in $NOCLOUD_META_DIR . . . "
     fi
@@ -877,7 +928,7 @@ network-interfaces: |
         --disk "$NOCLOUD_PATH",bus=virtio \
         --network "$VM_NETWORK_TYPE=$VM_NETWORK,mac=$VM_MAC_ADDRESS,model=virtio" \
         --graphics none \
-        ${OPTIONS[@]+"${OPTIONS[@]}"} \
+        ${VIRT_OPTIONS[@]+"${VIRT_OPTIONS[@]}"} \
         --virt-type kvm \
         --print-xml >"$FILE"
     lk_maybe_sudo virsh define "$FILE"
