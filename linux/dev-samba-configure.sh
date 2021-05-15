@@ -14,7 +14,7 @@ SETTINGS=(
     'map archive = No'
 )
 
-[ -z "${SAMBA_WORKGROUP:-}" ] || SETTINGS+=("workgroup = $SAMBA_WORKGROUP")
+[ -z "${SAMBA_WORKGROUP-}" ] || SETTINGS+=("workgroup = $SAMBA_WORKGROUP")
 
 # disable printing
 SETTINGS+=(

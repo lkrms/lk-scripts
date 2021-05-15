@@ -15,7 +15,7 @@ elif [ "$#" -gt "1" ] && lk_files_exist "${@:1:$#-1}" && [ -d "${*: -1}" ]; then
     # <SOURCE_FILE>... <TARGET_DIR>
     SOURCE_FILES=("${@:1:$#-1}")
     TARGET_ROOT="${*: -1}"
-elif [ "$#" -le "3" ] && [ -d "${1:-}" ] &&
+elif [ "$#" -le "3" ] && [ -d "${1-}" ] &&
     { [ "$#" -eq "1" ] || [ -d "${*: -1}" ]; }; then
     # <SOURCE_DIR>
     SOURCE_ROOT="$(realpath "$1")"
@@ -52,7 +52,7 @@ ENCODE_LIST=()
 lk_console_message "Preparing batch"
 for SOURCE_FILE in "${SOURCE_FILES[@]}"; do
     TARGET_SUBFOLDER=
-    if [ -n "${SOURCE_ROOT:-}" ]; then
+    if [ -n "${SOURCE_ROOT-}" ]; then
         TARGET_SUBFOLDER="${SOURCE_FILE%/*}"
         TARGET_SUBFOLDER="${TARGET_SUBFOLDER#$SOURCE_PREFIX}"
     fi
@@ -71,7 +71,7 @@ done
     lk_die "nothing to encode"
 
 lk_echo_array ENCODE_LIST |
-    LK_TTY_COLOUR2="$LK_TTY_COLOUR" \
+    _LK_TTY_COLOUR2="$_LK_TTY_COLOUR" \
         lk_console_detail_list "Queued:" "encode" "encodes"
 lk_console_detail "HandBrake preset:" "$HANDBRAKE_PRESET"
 lk_confirm "Proceed?" Y || lk_die

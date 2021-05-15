@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-PULL_FROM=${PWD%/.git}
+PULL_FROM=file://${PWD%/.git}
 cd "/opt/lk-scripts"
 unset GIT_DIR
 

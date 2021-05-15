@@ -1,12 +1,13 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # shellcheck disable=SC1091,SC2015,SC2016
 
-include=linux,validate . lk-bash-load.sh || exit
+. lk-bash-load.sh || exit
+lk_include linux validate
 
 # `local -n` was added in Bash 4.3
 lk_bash_at_least 4 3 || lk_die "Bash 4.3 or higher required"
 
-IMAGE=ubuntu-18.04-minimal
+IMAGE=ubuntu-20.04
 VM_PACKAGES=
 VM_FILESYSTEM_MAPS=
 VM_MEMORY=4096
@@ -67,7 +68,7 @@ Options:
                                 prompting (implies -y)
 
 If --isolate is set:
-      --no-log                  reject blocked traffic without logging it
+      --no-reject-log           reject blocked traffic without logging it
       --no-reject               log blocked traffic without rejecting it
   -g, --allow-gateway           allow traffic to host system
   -l, --allow-gateway-lan       allow traffic to host system's default LAN
@@ -125,15 +126,14 @@ StackScript notes:
 lk_getopt "i:rp:f:P:m:c:s:n:I:R:OM:S:x:HuyFglh:U:" \
     "image:,refresh-image,packages:,fs-maps:,preset:,memory:,\
 cpus:,disk-size:,network:,ip-address:,forward:,isolate,mac:,stackscript:,\
-metadata:,poweroff,session,force,allow-gateway,allow-gateway-lan,allow-host:,allow-url:,\
-no-log,no-reject"
+metadata:,poweroff,session,force,allow-gateway,allow-gateway-lan,allow-host:,\
+allow-url:,no-log,no-reject"
 eval "set -- $LK_GETOPT"
 
 UBUNTU_HOST=${LK_UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}
 UBUNTU_MIRROR=${LK_UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}
 
-CLOUDIMG_ROOT=${LK_CLOUDIMG_ROOT:-/var/lib/libvirt/images}
-VM_POOL_ROOT=$CLOUDIMG_ROOT
+VM_POOL_ROOT=/var/lib/libvirt/images
 VM_NETWORK_DEFAULT=default
 LIBVIRT_URI=qemu:///system
 LK_SUDO=1
@@ -285,7 +285,7 @@ while :; do
         unset IFS
         ;;
     -H | --poweroff)
-        POWEROFF=1
+        POWEROFF=yes
         continue
         ;;
     -u | --session)
@@ -332,7 +332,7 @@ while :; do
 </from-url>"
         done < <(IFS="|" && printf '%s\0' $1)
         ;;
-    --no-log)
+    --no-reject-log)
         ISOLATE_ACTION_XML="<no-log />"
         continue
         ;;
@@ -386,7 +386,7 @@ XML=$(
 
 VM_NETWORK=${VM_NETWORK:-$VM_NETWORK_DEFAULT}
 
-VM_HOSTNAME="${1:-}"
+VM_HOSTNAME="${1-}"
 [ -n "$VM_HOSTNAME" ] || lk_usage
 
 SHA_KEYRING=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg
@@ -514,10 +514,10 @@ if [ -n "$STACKSCRIPT" ]; then
         lk_console_item \
             "Checking field $((${#SS_FIELDS[@]} + 1)) of ${#SS_TAGS[@]}:" \
             "$NAME"
-        [ -z "${SELECT_TEXT:-}" ] ||
+        [ -z "${SELECT_TEXT-}" ] ||
             lk_echo_array SELECT_OPTIONS |
             lk_console_detail_list "$SELECT_TEXT:"
-        [ -z "${DEFAULT:-}" ] ||
+        [ -z "${DEFAULT-}" ] ||
             lk_console_detail "Default value:" "$DEFAULT"
         SH=$(lk_get_env "$NAME") && eval "$SH" && VALUE=${!NAME} || unset VALUE
         i=0
@@ -525,10 +525,10 @@ if [ -n "$STACKSCRIPT" ]; then
             NO_ERROR_DISPLAYED=1
             IS_VALID=1
             [ -z "${VALIDATE_COMMAND+1}" ] ||
-                FIELD_ERROR=$(LK_VALIDATE_FIELD_NAME="$NAME" \
+                FIELD_ERROR=$(_LK_VALIDATE_FIELD_NAME="$NAME" \
                     "${VALIDATE_COMMAND[@]}") ||
                 IS_VALID=0
-            INITIAL_VALUE=${VALUE-${DEFAULT:-}}
+            INITIAL_VALUE=${VALUE-${DEFAULT-}}
             lk_is_true IS_VALID ||
                 ! { lk_no_input || [ "$i" -gt 1 ]; } || {
                 lk_console_warning "$FIELD_ERROR"
@@ -543,7 +543,7 @@ if [ -n "$STACKSCRIPT" ]; then
                     "" ${INITIAL_VALUE:+-i "$INITIAL_VALUE"})
             fi
         done
-        [ "${VALUE:=}" != "${DEFAULT:-}" ] ||
+        [ "${VALUE:=}" != "${DEFAULT-}" ] ||
             lk_is_true LK_STACKSCRIPT_EXPORT_DEFAULT ||
             continue
         SS_FIELDS+=("$NAME=$VALUE")
@@ -595,6 +595,7 @@ printf '%s\t%s\n' \
     "StackScript" "${STACKSCRIPT:-<none>}" \
     "Custom metadata" "${#METADATA_URLS[@]} namespace$(lk_maybe_plural \
         ${#METADATA_URLS[@]} "" s)" \
+    "Shut down" "${POWEROFF:-no}" \
     "Libvirt service" "$LIBVIRT_URI" \
     "Disk image path" "$VM_POOL_ROOT" | IFS=$'\t' lk_tty_detail_pairs
 [ -z "$STACKSCRIPT" ] ||
@@ -634,32 +635,33 @@ lk_confirm "OK to proceed?" Y || lk_die ""
 
     fi
 
-    TIMESTAMP="$(gnu_stat --printf '%Y' "$FILENAME")"
-    CLOUDIMG_PATH="$CLOUDIMG_ROOT/cloud-images/$IMG_NAME-$TIMESTAMP.qcow2"
-    if sudo test -f "$CLOUDIMG_PATH"; then
+    CLOUDIMG_ROOT=$VM_POOL_ROOT/cloud-images
+    lk_install -d -m 00755 "$VM_POOL_ROOT" "$CLOUDIMG_ROOT"
+    TIMESTAMP=$(lk_file_modified "$FILENAME")
+    CLOUDIMG_PATH=$CLOUDIMG_ROOT/$IMG_NAME-$TIMESTAMP.qcow2
+    if lk_maybe_sudo test -f "$CLOUDIMG_PATH"; then
         lk_console_message "$FILENAME is already available at $CLOUDIMG_PATH"
     else
-        grep -E "$(lk_escape_ere "$FILENAME")\$" "SHASUMS-$IMAGE_NAME" | shasum -a "${SHA_ALGORITHM:-256}" -c &&
-            lk_console_item "Verified" "$FILENAME" "$LK_BOLD$LK_GREEN" ||
-            lk_die "$PWD/$FILENAME: verification failed"
-        sudo chmod -c 755 "$CLOUDIMG_ROOT" # some distros (e.g. Ubuntu) make this root-only by default
-        sudo mkdir -p "$CLOUDIMG_ROOT/cloud-images"
+        grep -E "$(lk_escape_ere "$FILENAME")\$" "SHASUMS-$IMAGE_NAME" |
+            shasum -a "${SHA_ALGORITHM:-256}" -c &&
+            lk_console_success "Verified" "$FILENAME" ||
+            lk_die "verification failed: $PWD/$FILENAME:"
         CLOUDIMG_FORMAT="$(qemu-img info --output=json "$FILENAME" | jq -r .format)"
         if [ "$CLOUDIMG_FORMAT" != "qcow2" ]; then
             lk_console_message "Converting $FILENAME (format: $CLOUDIMG_FORMAT) to $CLOUDIMG_PATH"
-            sudo qemu-img convert -pO qcow2 "$FILENAME" "$CLOUDIMG_PATH"
+            lk_maybe_sudo qemu-img convert -pO qcow2 "$FILENAME" "$CLOUDIMG_PATH"
         else
             lk_console_message "Copying $FILENAME (format: $CLOUDIMG_FORMAT) to $CLOUDIMG_PATH"
-            sudo cp -v "$FILENAME" "$CLOUDIMG_PATH"
+            lk_maybe_sudo cp -v "$FILENAME" "$CLOUDIMG_PATH"
         fi
-        sudo touch -r "$FILENAME" "$CLOUDIMG_PATH" &&
-            sudo chmod -v 444 "$CLOUDIMG_PATH" &&
+        lk_maybe_sudo touch -r "$FILENAME" "$CLOUDIMG_PATH" &&
+            lk_maybe_sudo chmod -v 444 "$CLOUDIMG_PATH" &&
             lk_console_message "$FILENAME is now available at $CLOUDIMG_PATH"
     fi
 
-    DISK_PATH="$VM_POOL_ROOT/$VM_HOSTNAME-$IMG_NAME-$TIMESTAMP.qcow2"
-    NOCLOUD_TEMP_PATH="$VM_HOSTNAME-$IMG_NAME-$TIMESTAMP-cloud-init.qcow2"
-    NOCLOUD_PATH="$VM_POOL_ROOT/$NOCLOUD_TEMP_PATH"
+    IMAGE_BASENAME=$VM_HOSTNAME-$IMG_NAME-$TIMESTAMP
+    DISK_PATH=$VM_POOL_ROOT/$IMAGE_BASENAME.qcow2
+    NOCLOUD_PATH=$VM_POOL_ROOT/$IMAGE_BASENAME-cloud-init.qcow2
 
     if [ -e "$DISK_PATH" ]; then
         lk_console_error "Disk image already exists:" "$DISK_PATH"
@@ -671,7 +673,7 @@ lk_confirm "OK to proceed?" Y || lk_die ""
     # add_json [-j JQ_OPERATOR] VAR [JQ_ARG...] JQ_OBJECT
     function add_json() {
         local JQ='.+='
-        [ "${1:-}" != -j ] || { JQ=$2 && shift 2; }
+        [ "${1-}" != -j ] || { JQ=$2 && shift 2; }
         local -n JSON=$1
         JSON=$(jq "${@:2:$#-2}" "$JQ${*: -1}" <<<"$JSON")
     }
@@ -890,25 +892,24 @@ dns-nameservers $VM_IPV4_GATEWAY" '{
     install -d -m 00755 "$NOCLOUD_META_DIR"
 
     yq -y <<<"$NETWORK_CONFIG" \
-        >"$NOCLOUD_META_DIR/network-config.yml"
+        >"$NOCLOUD_META_DIR/network-config"
     { echo "#cloud-config" && yq -y <<<"$USER_DATA"; } \
-        >"$NOCLOUD_META_DIR/user-data.yml"
+        >"$NOCLOUD_META_DIR/user-data"
     yq -y <<<"$META_DATA" \
-        >"$NOCLOUD_META_DIR/meta-data.yml"
+        >"$NOCLOUD_META_DIR/meta-data"
 
     if lk_confirm "Customise cloud-init data source?" N -t 10; then
         xdg-open "$NOCLOUD_META_DIR" || :
         lk_pause "Press any key to continue after making changes in $NOCLOUD_META_DIR . . . "
     fi
 
-    cloud-localds \
-        -N "$NOCLOUD_META_DIR/network-config.yml" \
-        -d qcow2 \
-        "$NOCLOUD_TEMP_PATH" \
-        "$NOCLOUD_META_DIR/user-data.yml" \
-        "$NOCLOUD_META_DIR/meta-data.yml" &&
-        lk_maybe_sudo cp -fv "$NOCLOUD_TEMP_PATH" "$NOCLOUD_PATH" &&
-        rm -f "$NOCLOUD_TEMP_PATH" || lk_die
+    FILE=$(lk_mktemp_file)
+    lk_delete_on_exit "$FILE"
+    mkisofs -output "$FILE" -volid cidata -joliet -rock \
+        "$NOCLOUD_META_DIR/network-config" \
+        "$NOCLOUD_META_DIR/user-data" \
+        "$NOCLOUD_META_DIR/meta-data"
+    lk_maybe_sudo install -m 00644 "$FILE" "$NOCLOUD_PATH"
 
     lk_maybe_sudo qemu-img create \
         -f "qcow2" \
@@ -943,12 +944,15 @@ dns-nameservers $VM_IPV4_GATEWAY" '{
         ${VIRT_OPTIONS[@]+"${VIRT_OPTIONS[@]}"} \
         --virt-type kvm \
         --print-xml >"$FILE"
-    lk_maybe_sudo virsh define "$FILE"
-    for i in $([ ${#METADATA[@]} -eq 0 ] || seq 0 3 $((${#METADATA[@]} - 1))); do
-        lk_maybe_sudo virsh metadata "$VM_HOSTNAME" \
+    lk_maybe_sudo virsh --connect "$LIBVIRT_URI" define "$FILE"
+    for i in $(
+        [ ${#METADATA[@]} -eq 0 ] ||
+            seq 0 3 $((${#METADATA[@]} - 1))
+    ); do
+        lk_maybe_sudo virsh --connect "$LIBVIRT_URI" metadata "$VM_HOSTNAME" \
             "${METADATA[@]:i:3}"
     done
-    lk_maybe_sudo virsh start "$VM_HOSTNAME" --console
+    lk_maybe_sudo virsh --connect "$LIBVIRT_URI" start "$VM_HOSTNAME" --console
 
     exit
 }

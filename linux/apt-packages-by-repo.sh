@@ -16,7 +16,7 @@ lk_assert_command_exists aptitude
 FORMAT="%?p|%?v|%?O"
 
 # https://www.debian.org/doc/manuals/aptitude/ch02s04s05.en.html
-case "${1:-}" in
+case "${1-}" in
 
 installed)
     aptitude search "?installed?not(?virtual)" -F "$FORMAT" | tee

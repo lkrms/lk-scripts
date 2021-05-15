@@ -15,7 +15,7 @@
 [ -n "$ID_VENDOR_ID" ] &&
     [ -n "$ID_MODEL_ID" ] &&
     [ -n "$ACTION" ] &&
-    [ -n "${1:-}" ] || exit
+    [ -n "${1-}" ] || exit
 
 export VIRSH_DOMAIN="$1"
 OUT_FILE="/tmp/$(basename "$0").out"

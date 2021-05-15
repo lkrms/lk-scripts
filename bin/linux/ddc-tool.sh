@@ -35,7 +35,7 @@ DISPLAY_1_SETTINGS=(
 DISPLAY_KEYS=("${!DISPLAY_EDIDS[@]}")
 DISPLAYS=()
 
-while [[ "${1:-}" =~ ^[0-9]+$ ]]; do
+while [[ "${1-}" =~ ^[0-9]+$ ]]; do
 
     lk_in_array "$1" DISPLAY_KEYS || lk_die "Nothing at DISPLAY_EDIDS[$1]"
     DISPLAYS+=("$1")
