@@ -1,1 +1,3 @@
-post-update
+#!/bin/bash
+
+. "$LK_BASE/lib/git/hooks/post-commit"
