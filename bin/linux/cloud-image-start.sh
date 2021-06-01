@@ -1,8 +1,7 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091,SC2015,SC2016
 
 . lk-bash-load.sh || exit
-lk_include linux validate
+lk_include validate
 
 # `local -n` was added in Bash 4.3
 lk_bash_at_least 4 3 || lk_die "Bash 4.3 or higher required"
@@ -30,69 +29,71 @@ METADATA_URLS=()
 POWEROFF=
 FORCE_DELETE=
 
-# shellcheck disable=SC2034
 LK_USAGE="\
-Usage: ${0##*/} [OPTIONS] VM_NAME
+${0##*/} [OPTIONS] VM_NAME
 
-Boot a new QEMU/KVM virtual machine from the current release of a cloud-init
-based image.
+Boot a new libvirt VM from the current release of a cloud-init image.
 
-Options:
-  -i, --image=IMAGE             boot from IMAGE (default: $IMAGE)
-  -r, --refresh-image           download latest IMAGE if cached version is
-                                out-of-date
-  -p, --packages=PACKAGE,...    install each PACKAGE in guest after booting
-  -f, --fs-maps=PATHS|...       export HOST_PATH to guest as GUEST_PATH for
-                                each HOST_PATH,GUEST_PATH in PATHS
-  -P, --preset=PRESET           use PRESET to configure -m, -c, -s
-  -m, --memory=SIZE             allocate SIZE memory in MiB (default: $VM_MEMORY)
-  -c, --cpus=COUNT              allocate COUNT virtual CPUs (default: $VM_CPUS)
-  -s, --disk-size=SIZE          resize IMAGE to SIZE in GiB (default: $VM_DISK_SIZE)
-  -n, --network=NETWORK         connect guest to libvirt network NETWORK, or
-                                IFNAME if bridge=IFNAME specified
-  -I, --ip-address=CIDR         use CIDR to configure static IP in guest
-  -R, --forward=PORTS|...       add custom metadata to forward each
-                                PROTO:<HOST-PORT[:GUEST-PORT],...> in PORTS to
-                                guest (--ip-address required)
-  -O, --isolate                 add custom metadata to block outgoing traffic
-                                from guest (--ip-address required)
-  -M, --mac=52:54:00:xx:xx:xx   set MAC address of guest network interface
-                                (default: <random>)
-  -S, --stackscript=SCRIPT      use cloud-init to run SCRIPT in guest after
-                                booting (see below)
-  -x, --metadata=URL,KEY,XML    add custom metadata XML
-  -H, --poweroff                shut down guest after cloud-init finishes
-  -u, --session                 launch guest as user instead of system
-  -y, --yes                     do not prompt for input
-  -F, --force                   delete existing guest VM_NAME without
-                                prompting (implies -y)
+OPTIONS
+
+    -i, --image=IMAGE               boot from IMAGE (default: $IMAGE)
+    -r, --refresh-image             download latest IMAGE if cached version
+                                    is out-of-date
+    -p, --packages=PACKAGE,...      install each PACKAGE in guest
+    -f, --fs-maps=PATHS|...         export HOST_PATH as GUEST_PATH for each
+                                    HOST_PATH,GUEST_PATH
+    -P, --preset=PRESET             use PRESET to configure -m, -c, -s
+    -m, --memory=SIZE               allocate memory (MiB, default: $VM_MEMORY)
+    -c, --cpus=COUNT                allocate virtual CPUs (default: $VM_CPUS)
+    -s, --disk-size=SIZE            resize disk image (GiB, default: ${VM_DISK_SIZE%G})
+    -n, --network=NETWORK           connect guest to libvirt network NETWORK
+                                    (or IFNAME if bridge=IFNAME specified)
+    -I, --ip-address=CIDR           use CIDR to configure static IP in guest
+    -R, --forward=PORTS|...         add custom metadata to forward each
+                                    PROTO:<HOST-PORT[:GUEST-PORT],...>
+    -O, --isolate                   add custom metadata to block outgoing
+                                    traffic from guest
+    -M, --mac=52:54:00:xx:xx:xx     set MAC address of guest network
+                                    interface (default: <random>)
+    -S, --stackscript=SCRIPT        use cloud-init to run SCRIPT in guest
+    -x, --metadata=URL,KEY,XML      add custom metadata XML
+    -H, --poweroff                  shut down guest after first boot
+    -u, --session                   launch guest as user instead of system
+    -y, --yes                       do not prompt for input
+    -F, --force                     delete existing guest VM_NAME without
+                                    prompting (implies -y)
 
 If --isolate is set:
-      --no-reject-log           reject blocked traffic without logging it
-      --no-reject               log blocked traffic without rejecting it
-  -g, --allow-gateway           allow traffic to host system
-  -l, --allow-gateway-lan       allow traffic to host system's default LAN
-  -h, --allow-host=HOST,...     allow traffic to each HOST (name, IP or CIDR)
-  -U, --allow-url=URL,FILTER    allow traffic to each host returned by
-                                passing JSON from URL through \`jq -r FILTER\`
+        --no-reject-log             don't log blocked traffic
+        --no-reject                 don't block anything, just log traffic
+                                    that would be blocked
+    -g, --allow-gateway             allow traffic to host system
+    -l, --allow-gateway-lan         allow traffic to host's default LAN
+    -h, --allow-host=HOST,...       allow traffic to each name, IP or CIDR
+    -U, --allow-url=URL,FILTER      allow traffic to each host returned by
+                                    passing JSON from URL to \`jq -r FILTER\`
 
-Supported images:
-  ubuntu-20.04      ubuntu-20.04-minimal
-  ubuntu-18.04      ubuntu-18.04-minimal
-  ubuntu-16.04      ubuntu-16.04-minimal
-  ubuntu-14.04
-  ubuntu-12.04
+SUPPORTED IMAGES
 
-Presets:
-  linode16gb    (6 CPUs, 16GiB memory, 320G storage)
-  linode8gb     (4 CPUs,  8GiB memory, 160G storage)
-  linode4gb     (2 CPUs,  4GiB memory,  80G storage)
-  linode2gb     (1 CPUs,  2GiB memory,  50G storage)
-  linode1gb     (1 CPUs,  1GiB memory,  25G storage)
+    ubuntu-20.04        ubuntu-20.04-minimal
+    ubuntu-18.04        ubuntu-18.04-minimal
+    ubuntu-16.04        ubuntu-16.04-minimal
+    ubuntu-14.04
+    ubuntu-12.04
+
+PRESETS
+
+    linode16gb      (6 CPUs, 16GiB memory, 320G storage)
+    linode8gb       (4 CPUs,  8GiB memory, 160G storage)
+    linode4gb       (2 CPUs,  4GiB memory,  80G storage)
+    linode2gb       (1 CPUs,  2GiB memory,  50G storage)
+    linode1gb       (1 CPUs,  1GiB memory,  25G storage)
+
+FILTERING
 
 If --forward or --isolate are set, custom metadata similar to the following
-is added to the domain XML. It only takes effect if a libvirt hook applies the
-relevant firewall changes.
+is added to the domain XML. It only takes effect if a libvirt hook applies
+the relevant firewall changes.
 
     <lk:lk xmlns:lk=\"http://linacreative.com/xmlns/libvirt/domain/1.0\">
       <lk:ip>
@@ -117,11 +118,16 @@ relevant firewall changes.
       </lk:ip>
     </lk:lk>
 
-StackScript notes:
-- The user is prompted for any UDF tags found in the script
-- cloud-init is configured to create a Linode-like environment, and the entire
-  script is added to the runcmd module
-- The --packages option is ignored"
+STACKSCRIPTS
+
+If --stackscript is set, the user is prompted for any UDF tags, cloud-init
+is configured to create a Linode-like environment, and the entire script is
+added to the runcmd module. The --packages option is ignored.
+
+EXAMPLE
+
+\\    ${0##*/} -y -i ubuntu-18.04-minimal -r -c 2 -m 2048 -s 10G \\
+        -n bridge=virbr0 -I 192.168.122.184/24 -Ogl --no-reject demo-server"
 
 lk_getopt "i:rp:f:P:m:c:s:n:I:R:OM:S:x:HuyFglh:U:" \
     "image:,refresh-image,packages:,fs-maps:,preset:,memory:,\
@@ -133,9 +139,15 @@ eval "set -- $LK_GETOPT"
 UBUNTU_HOST=${LK_UBUNTU_CLOUDIMG_HOST:-cloud-images.ubuntu.com}
 UBUNTU_MIRROR=${LK_UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}
 
+SYSTEM_SOCKET=
+SESSION_SOCKET=
+! lk_is_macos || {
+    SYSTEM_SOCKET=$HOMEBREW_PREFIX/var/run/libvirt/libvirt-sock
+    SESSION_SOCKET=${XDG_RUNTIME_DIR:-~/.cache}/libvirt/libvirt-sock
+}
 VM_POOL_ROOT=/var/lib/libvirt/images
 VM_NETWORK_DEFAULT=default
-LIBVIRT_URI=qemu:///system
+LIBVIRT_URI=qemu:///system${SYSTEM_SOCKET:+?socket=$SYSTEM_SOCKET}
 LK_SUDO=1
 XMLNS=http://linacreative.com/xmlns/libvirt/domain/1.0
 
@@ -193,13 +205,19 @@ while :; do
         esac
         ;;
     -m | --memory)
+        [[ $1 =~ ^[1-9][0-9]*$ ]] ||
+            lk_warn "invalid memory size: $1" || lk_usage
         VM_MEMORY=$1
         ;;
     -c | --cpus)
+        [[ $1 =~ ^[1-9][0-9]*$ ]] ||
+            lk_warn "invalid CPU count: $1" || lk_usage
         VM_CPUS=$1
         ;;
     -s | --disk-size)
-        VM_DISK_SIZE=$1
+        [[ $1 =~ ^([0-9]+)([bkKMGT]?)$ ]] ||
+            lk_warn "invalid disk size: $1" || lk_usage
+        VM_DISK_SIZE=${BASH_REMATCH[1]}${BASH_REMATCH[2]:-G}
         ;;
     -n | --network)
         VM_NETWORK=$1
@@ -291,7 +309,7 @@ while :; do
     -u | --session)
         VM_POOL_ROOT=${LK_CLOUDIMG_SESSION_ROOT:-$HOME/.local/share/libvirt/images}
         VM_NETWORK_DEFAULT=bridge=virbr0
-        LIBVIRT_URI=qemu:///session
+        LIBVIRT_URI=qemu:///session${SESSION_SOCKET:+?socket=$SESSION_SOCKET}
         unset LK_SUDO
         continue
         ;;
@@ -911,15 +929,16 @@ dns-nameservers $VM_IPV4_GATEWAY" '{
         "$NOCLOUD_META_DIR/meta-data"
     lk_maybe_sudo install -m 00644 "$FILE" "$NOCLOUD_PATH"
 
-    lk_maybe_sudo qemu-img create \
+    lk_console_message "Creating virtual machine"
+    lk_run_detail lk_maybe_sudo qemu-img create \
         -f "qcow2" \
         -b "$CLOUDIMG_PATH" \
         -F "qcow2" \
-        "$DISK_PATH" &&
-        lk_maybe_sudo qemu-img resize \
-            -f "qcow2" \
-            "$DISK_PATH" \
-            "$VM_DISK_SIZE" || lk_die
+        "$DISK_PATH"
+    lk_run_detail lk_maybe_sudo qemu-img resize \
+        -f "qcow2" \
+        "$DISK_PATH" \
+        "$VM_DISK_SIZE" || lk_die ""
 
     VM_NETWORK_TYPE="${VM_NETWORK%%=*}"
     if [ "$VM_NETWORK_TYPE" = "$VM_NETWORK" ]; then
@@ -930,7 +949,7 @@ dns-nameservers $VM_IPV4_GATEWAY" '{
 
     FILE=$(lk_mktemp_file)
     lk_delete_on_exit "$FILE"
-    lk_maybe_sudo virt-install \
+    lk_run_detail lk_maybe_sudo virt-install \
         --connect "$LIBVIRT_URI" \
         --name "$VM_HOSTNAME" \
         --memory "$VM_MEMORY" \
@@ -944,15 +963,17 @@ dns-nameservers $VM_IPV4_GATEWAY" '{
         ${VIRT_OPTIONS[@]+"${VIRT_OPTIONS[@]}"} \
         --virt-type kvm \
         --print-xml >"$FILE"
-    lk_maybe_sudo virsh --connect "$LIBVIRT_URI" define "$FILE"
+    lk_run_detail lk_maybe_sudo virsh --connect "$LIBVIRT_URI" \
+        define "$FILE"
     for i in $(
         [ ${#METADATA[@]} -eq 0 ] ||
             seq 0 3 $((${#METADATA[@]} - 1))
     ); do
-        lk_maybe_sudo virsh --connect "$LIBVIRT_URI" metadata "$VM_HOSTNAME" \
-            "${METADATA[@]:i:3}"
+        lk_run_detail lk_maybe_sudo virsh --connect "$LIBVIRT_URI" \
+            metadata "$VM_HOSTNAME" "${METADATA[@]:i:3}"
     done
-    lk_maybe_sudo virsh --connect "$LIBVIRT_URI" start "$VM_HOSTNAME" --console
+    lk_run_detail lk_maybe_sudo virsh --connect "$LIBVIRT_URI" \
+        start "$VM_HOSTNAME" --console
 
     exit
 }
