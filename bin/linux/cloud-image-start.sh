@@ -17,6 +17,7 @@ VM_MAC_ADDRESS=$(printf '52:54:00:%02x:%02x:%02x' \
     $((RANDOM % 256)) $((RANDOM % 256)) $((RANDOM % 256)))
 REFRESH_CLOUDIMG=
 FORWARD_XML=()
+HOSTFWD=()
 ISOLATE=
 ISOLATE_ACTION_XML=
 ALLOW_HOST_XML=
@@ -267,6 +268,8 @@ while :; do
                     _XML[${#_XML[@]}]="<port>$FROM_HOST</port>" ||
                     _XML+=("<from-host>$FROM_HOST</from-host>"
                         "<to-guest>$TO_GUEST</to-guest>")
+                HOSTFWD+=("${PROTOCOL:-$_PROTOCOL}::$FROM_HOST-:${TO_GUEST:-$FROM_HOST}")
+                _PROTOCOL=$PROTOCOL
             done
             XML=$(lk_echo_array _XML)
             XML="<forward>
@@ -289,7 +292,7 @@ while :; do
         VM_PACKAGES=
         ;;
     -x | --metadata)
-        IFS="," read -r -d '' URL KEY XML < <(printf '%s\0' "$1") &&
+        IFS=, read -r -d '' URL KEY XML < <(printf '%s\0' "$1") &&
             [ -n "${XML:+1}" ] ||
             lk_warn "invalid metadata: $1" || lk_usage
         [ "$URL" != "$XMLNS" ] ||
@@ -331,7 +334,7 @@ while :; do
         continue
         ;;
     -h | --allow-host)
-        IFS=","
+        IFS=,
         for HOST in $1; do
             unset IFS
             [[ $HOST =~ $HOST_OPT_PREFIX_REGEX ]] ||
@@ -340,7 +343,7 @@ while :; do
         done
         ;;
     -U | --allow-url)
-        while IFS="," read -r -d '' URL FILTER; do
+        while IFS=, read -r -d '' URL FILTER; do
             [[ $URL =~ $URI_REGEX_REQ_SCHEME_HOST ]] ||
                 lk_warn "invalid URL: $URL" || lk_usage
             ALLOW_URL_XML[${#ALLOW_URL_XML[@]}]="\
@@ -365,98 +368,104 @@ while :; do
     shift
 done
 
-XML=
-[ ${ISOLATE:-0} -eq 0 ] || {
-    XML=$(
-        [ -z "$ALLOW_HOST_XML" ] || echo "$ALLOW_HOST_XML"
-        [ -z "$ALLOW_HOST_NET_XML" ] || echo "$ALLOW_HOST_NET_XML"
-        lk_echo_array ALLOW_HOSTS_XML
-        lk_echo_array ALLOW_URL_XML
-    )
-    [ -z "${XML:+1}" ] || XML="<allow>
+VM_NETWORK=${VM_NETWORK:-$VM_NETWORK_DEFAULT}
+! lk_is_macos || VM_NETWORK=user=
+
+if [[ $VM_NETWORK == user=* ]]; then
+    [ -z "$VM_IPV4_CIDR$ISOLATE" ] || lk_warn \
+        "usermode networking cannot be used with --ip-address or --isolate" ||
+        lk_usage
+    [ -n "${HOSTFWD+1}" ] || lk_console_warning -r \
+        "Use '--forward PROTO:HOST_PORT:GUEST_PORT' to access usermode guest" ||
+        lk_confirm "Proceed without forwarding any ports?" Y || lk_die ""
+else
+    XML=
+    [ -z "$ISOLATE" ] || {
+        XML=$(
+            [ -z "$ALLOW_HOST_XML" ] || echo "$ALLOW_HOST_XML"
+            [ -z "$ALLOW_HOST_NET_XML" ] || echo "$ALLOW_HOST_NET_XML"
+            lk_echo_array ALLOW_HOSTS_XML
+            lk_echo_array ALLOW_URL_XML
+        )
+        [ -z "${XML:+1}" ] || XML="<allow>
   ${XML//$'\n'/$'\n'  }
 </allow>"
-    XML=${ISOLATE_ACTION_XML:+$ISOLATE_ACTION_XML
+        XML=${ISOLATE_ACTION_XML:+$ISOLATE_ACTION_XML
 }$XML
-    [ -z "${XML:+1}" ] &&
-        XML="<isolate />" ||
-        XML="<isolate>
+        [ -z "${XML:+1}" ] &&
+            XML="<isolate />" ||
+            XML="<isolate>
   ${XML//$'\n'/$'\n'  }
 </isolate>"
-}
-XML=$(
-    lk_echo_array FORWARD_XML
-    echo "$XML"
-)
-[ -z ${XML:+1} ] || {
-    [ -n "$VM_IPV4_ADDRESS" ] ||
-        lk_warn "--ip-address required with --forward and --isolate" ||
-        lk_usage
-    XML="<lk>
+    }
+    XML=$(
+        lk_echo_array FORWARD_XML
+        echo "$XML"
+    )
+    [ -z "${XML:+1}" ] || {
+        [ -n "$VM_IPV4_CIDR" ] ||
+            lk_warn "--ip-address required with --forward and --isolate" ||
+            lk_usage
+        XML="<lk>
   <ip>
     <address>$VM_IPV4_ADDRESS</address>
     ${XML//$'\n'/$'\n'    }
   </ip>
 </lk>"
-    METADATA+=("$XMLNS" lk "$XML")
-    METADATA_URLS[${#METADATA_URLS[@]}]=$XMLNS
-}
+        METADATA+=("$XMLNS" lk "$XML")
+        METADATA_URLS[${#METADATA_URLS[@]}]=$XMLNS
+    }
+fi
 
-VM_NETWORK=${VM_NETWORK:-$VM_NETWORK_DEFAULT}
-
-VM_HOSTNAME="${1-}"
+VM_HOSTNAME=${1-}
 [ -n "$VM_HOSTNAME" ] || lk_usage
 
 SHA_KEYRING=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg
+[ -r "$SHA_KEYRING" ] ||
+    SHA_KEYRING=$LK_BASE/share/keys/ubuntu-cloudimage-keyring.gpg
 case "$IMAGE" in
 *20.04*minimal)
     IMAGE_NAME=ubuntu-20.04-minimal
     IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/focal/release/ubuntu-20.04-minimal-cloudimg-amd64.img
-    SHA_URLS=(
-        "https://cloud-images.ubuntu.com/minimal/releases/focal/release/SHA256SUMS.gpg"
-    )
+    SHA_URLS=(https://cloud-images.ubuntu.com/minimal/releases/focal/release/SHA256SUMS.gpg)
     OS_VARIANT=ubuntu20.04
     ;;
 *20.04*)
     IMAGE_NAME=ubuntu-20.04
     IMAGE_URL=http://$UBUNTU_HOST/focal/current/focal-server-cloudimg-amd64-disk-kvm.img
     SHA_URLS=(
-        "https://cloud-images.ubuntu.com/focal/current/SHA256SUMS.gpg"
-        "https://cloud-images.ubuntu.com/focal/current/SHA256SUMS"
+        https://cloud-images.ubuntu.com/focal/current/SHA256SUMS.gpg
+        https://cloud-images.ubuntu.com/focal/current/SHA256SUMS
     )
     OS_VARIANT=ubuntu20.04
     ;;
 *18.04*minimal)
     IMAGE_NAME=ubuntu-18.04-minimal
     IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/bionic/release/ubuntu-18.04-minimal-cloudimg-amd64.img
-    SHA_URLS=(
-        "https://cloud-images.ubuntu.com/minimal/releases/bionic/release/SHA256SUMS.gpg"
-    )
+    SHA_URLS=(https://cloud-images.ubuntu.com/minimal/releases/bionic/release/SHA256SUMS.gpg)
     OS_VARIANT=ubuntu18.04
     ;;
 *18.04*)
     IMAGE_NAME=ubuntu-18.04
     IMAGE_URL=http://$UBUNTU_HOST/bionic/current/bionic-server-cloudimg-amd64.img
     SHA_URLS=(
-        "https://cloud-images.ubuntu.com/bionic/current/SHA256SUMS.gpg"
-        "https://cloud-images.ubuntu.com/bionic/current/SHA256SUMS"
+        https://cloud-images.ubuntu.com/bionic/current/SHA256SUMS.gpg
+        https://cloud-images.ubuntu.com/bionic/current/SHA256SUMS
     )
     OS_VARIANT=ubuntu18.04
     ;;
 *16.04*minimal)
     IMAGE_NAME=ubuntu-16.04-minimal
     IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/xenial/release/ubuntu-16.04-minimal-cloudimg-amd64-disk1.img
-    SHA_URLS=(
-        "https://cloud-images.ubuntu.com/minimal/releases/xenial/release/SHA256SUMS.gpg"
-    )
+    SHA_URLS=(https://cloud-images.ubuntu.com/minimal/releases/xenial/release/SHA256SUMS.gpg)
     OS_VARIANT=ubuntu16.04
     ;;
 *16.04*)
     IMAGE_NAME=ubuntu-16.04
     IMAGE_URL=http://$UBUNTU_HOST/xenial/current/xenial-server-cloudimg-amd64-disk1.img
     SHA_URLS=(
-        "https://cloud-images.ubuntu.com/xenial/current/SHA256SUMS.gpg"
-        "https://cloud-images.ubuntu.com/xenial/current/SHA256SUMS"
+        https://cloud-images.ubuntu.com/xenial/current/SHA256SUMS.gpg
+        https://cloud-images.ubuntu.com/xenial/current/SHA256SUMS
     )
     OS_VARIANT=ubuntu16.04
     ;;
@@ -464,8 +473,8 @@ case "$IMAGE" in
     IMAGE_NAME=ubuntu-14.04
     IMAGE_URL=http://$UBUNTU_HOST/trusty/current/trusty-server-cloudimg-amd64-disk1.img
     SHA_URLS=(
-        "https://cloud-images.ubuntu.com/trusty/current/SHA256SUMS.gpg"
-        "https://cloud-images.ubuntu.com/trusty/current/SHA256SUMS"
+        https://cloud-images.ubuntu.com/trusty/current/SHA256SUMS.gpg
+        https://cloud-images.ubuntu.com/trusty/current/SHA256SUMS
     )
     OS_VARIANT=ubuntu14.04
     ;;
@@ -473,8 +482,8 @@ case "$IMAGE" in
     IMAGE_NAME=ubuntu-12.04
     IMAGE_URL=http://$UBUNTU_HOST/precise/current/precise-server-cloudimg-amd64-disk1.img
     SHA_URLS=(
-        "https://cloud-images.ubuntu.com/precise/current/SHA256SUMS.gpg"
-        "https://cloud-images.ubuntu.com/precise/current/SHA256SUMS"
+        https://cloud-images.ubuntu.com/precise/current/SHA256SUMS.gpg
+        https://cloud-images.ubuntu.com/precise/current/SHA256SUMS
     )
     OS_VARIANT=ubuntu12.04
     ;;
@@ -537,13 +546,14 @@ if [ -n "$STACKSCRIPT" ]; then
             lk_console_detail_list "$SELECT_TEXT:"
         [ -z "${DEFAULT-}" ] ||
             lk_console_detail "Default value:" "$DEFAULT"
-        SH=$(lk_get_env "$NAME") && eval "$SH" && VALUE=${!NAME} || unset VALUE
+        VALUE=$(SH=$(_LK_STACK_DEPTH=1 lk_require_output lk_get_env "$NAME") &&
+            eval "$SH && echo \"\$$NAME\"") || unset VALUE
         i=0
         while ((++i)); do
             NO_ERROR_DISPLAYED=1
             IS_VALID=1
             [ -z "${VALIDATE_COMMAND+1}" ] ||
-                FIELD_ERROR=$(_LK_VALIDATE_FIELD_NAME="$NAME" \
+                FIELD_ERROR=$(_LK_VALIDATE_FIELD_NAME=$NAME \
                     "${VALIDATE_COMMAND[@]}") ||
                 IS_VALID=0
             INITIAL_VALUE=${VALUE-${DEFAULT-}}
@@ -598,6 +608,8 @@ done
 lk_console_message "Provisioning:"
 _VM_PACKAGES=${VM_PACKAGES//,/, }
 _VM_IPV4_ADDRESS=${VM_IPV4_CIDR:+$VM_IPV4_CIDR (gateway: $VM_IPV4_GATEWAY)}
+_VM_NETWORK=$VM_NETWORK
+[[ $VM_NETWORK != user=* ]] || _VM_NETWORK="<usermode networking>"
 printf '%s\t%s\n' \
     "Name" "$LK_BOLD$VM_HOSTNAME$LK_RESET" \
     "Image" "$IMAGE_NAME" \
@@ -607,7 +619,7 @@ printf '%s\t%s\n' \
     "Memory" "$VM_MEMORY" \
     "CPUs" "$VM_CPUS" \
     "Disk size" "$VM_DISK_SIZE" \
-    "Network" "$VM_NETWORK" \
+    "Network" "$_VM_NETWORK" \
     "IPv4 address" "${_VM_IPV4_ADDRESS:-<dhcp>}" \
     "MAC address" "$VM_MAC_ADDRESS" \
     "StackScript" "${STACKSCRIPT:-<none>}" \
@@ -631,8 +643,8 @@ lk_confirm "OK to proceed?" Y || lk_die ""
 
     #####
 
-    FILENAME="${IMAGE_URL##*/}"
-    IMG_NAME="${FILENAME%.*}"
+    FILENAME=${IMAGE_URL##*/}
+    IMG_NAME=${FILENAME%.*}
 
     if [ ! -f "$FILENAME" ] || lk_is_true REFRESH_CLOUDIMG; then
 
@@ -643,13 +655,16 @@ lk_confirm "OK to proceed?" Y || lk_die ""
             lk_die "error downloading $IMAGE_URL"
         }
 
-        if [ "${#SHA_URLS[@]}" -eq "1" ]; then
-            SHA_SUMS="$(curl "${SHA_URLS[0]}" | gpg ${SHA_KEYRING:+--no-default-keyring --keyring "$SHA_KEYRING"} --decrypt)" || lk_die "error verifying ${SHA_URLS[0]}"
+        if [ ${#SHA_URLS[@]} -eq 1 ]; then
+            SHA_SUMS=$(curl "${SHA_URLS[0]}" |
+                gpg --no-default-keyring --keyring "$SHA_KEYRING" --decrypt)
         else
-            SHA_SUMS="$(curl "${SHA_URLS[1]}")" &&
-                gpg ${SHA_KEYRING:+--no-default-keyring --keyring "$SHA_KEYRING"} --verify <(curl "${SHA_URLS[0]}") <(echo "$SHA_SUMS") || lk_die "error verifying ${SHA_URLS[0]}"
-        fi
-        echo "$SHA_SUMS" >"SHASUMS-$IMAGE_NAME" || lk_die "error writing to SHASUMS-$IMAGE_NAME"
+            SHA_SUMS=$(curl "${SHA_URLS[1]}") &&
+                gpg --no-default-keyring --keyring "$SHA_KEYRING" --verify \
+                    <(curl "${SHA_URLS[0]}") <(echo "$SHA_SUMS")
+        fi || lk_die "error verifying ${SHA_URLS[0]}"
+        echo "$SHA_SUMS" >"SHASUMS-$IMAGE_NAME" ||
+            lk_die "error writing to SHASUMS-$IMAGE_NAME"
 
     fi
 
@@ -664,7 +679,7 @@ lk_confirm "OK to proceed?" Y || lk_die ""
             shasum -a "${SHA_ALGORITHM:-256}" -c &&
             lk_console_success "Verified" "$FILENAME" ||
             lk_die "verification failed: $PWD/$FILENAME:"
-        CLOUDIMG_FORMAT="$(qemu-img info --output=json "$FILENAME" | jq -r .format)"
+        CLOUDIMG_FORMAT=$(qemu-img info --output=json "$FILENAME" | jq -r .format)
         if [ "$CLOUDIMG_FORMAT" != "qcow2" ]; then
             lk_console_message "Converting $FILENAME (format: $CLOUDIMG_FORMAT) to $CLOUDIMG_PATH"
             lk_maybe_sudo qemu-img convert -pO qcow2 "$FILENAME" "$CLOUDIMG_PATH"
@@ -715,6 +730,12 @@ lk_confirm "OK to proceed?" Y || lk_die ""
     RUNCMD="[]"
     WRITE_FILES="[]"
     VIRT_OPTIONS=()
+    QEMU_COMMANDLINE=()
+
+    ! lk_is_macos || {
+        VIRT_OPTIONS+=(--machine q35)
+        QEMU_COMMANDLINE+=(-machine q35,accel=hvf,usb=off,dump-guest-core=off)
+    }
 
     add_json NETWORK_CONFIG --arg mac "$VM_MAC_ADDRESS" '{
   "version": 1,
@@ -747,7 +768,7 @@ lk_confirm "OK to proceed?" Y || lk_die ""
         IFS="|"
         FILESYSTEMS=($VM_FILESYSTEM_MAPS)
         for FILESYSTEM in "${FILESYSTEMS[@]}"; do
-            IFS=","
+            IFS=,
             FILESYSTEM_DIRS=($FILESYSTEM)
             unset IFS
             [ ${#FILESYSTEM_DIRS[@]} -ge 2 ] ||
@@ -832,7 +853,7 @@ lk_confirm "OK to proceed?" Y || lk_die ""
     PACKAGES=()
     [ "$IMAGE_NAME" = ubuntu-12.04 ] || PACKAGES+=(qemu-guest-agent)
     [ -z "$VM_PACKAGES" ] || {
-        IFS=","
+        IFS=,
         PACKAGES+=($VM_PACKAGES)
         unset IFS
     }
@@ -906,7 +927,7 @@ dns-nameservers $VM_IPV4_GATEWAY" '{
   "network-interfaces": $interfaces
 }'
 
-    NOCLOUD_META_DIR="$LK_BASE/var/cache/NoCloud/$(lk_hostname)-$VM_HOSTNAME-$(lk_date_ymdhms)"
+    NOCLOUD_META_DIR=$LK_BASE/var/cache/NoCloud/$(lk_hostname)-$VM_HOSTNAME-$(lk_date_ymdhms)
     install -d -m 00755 "$NOCLOUD_META_DIR"
 
     yq -y <<<"$NETWORK_CONFIG" \
@@ -940,12 +961,42 @@ dns-nameservers $VM_IPV4_GATEWAY" '{
         "$DISK_PATH" \
         "$VM_DISK_SIZE" || lk_die ""
 
-    VM_NETWORK_TYPE="${VM_NETWORK%%=*}"
+    VM_NETWORK_TYPE=${VM_NETWORK%%=*}
     if [ "$VM_NETWORK_TYPE" = "$VM_NETWORK" ]; then
         VM_NETWORK_TYPE=network
     else
-        VM_NETWORK="${VM_NETWORK#*=}"
+        VM_NETWORK=${VM_NETWORK#*=}
     fi
+
+    case "$VM_NETWORK_TYPE" in
+    user)
+        VIRT_OPTIONS+=(--network none)
+        IFS=
+        QEMU_COMMANDLINE+=(
+            -netdev user,id=lknet0${HOSTFWD[*]+"${HOSTFWD[*]/#/,hostfwd=}"}
+            -device virtio-net-pci,netdev=lknet0,mac="$VM_MAC_ADDRESS"
+        )
+        unset IFS
+        ;;
+    *)
+        VIRT_OPTIONS+=(
+            --network
+            "$VM_NETWORK_TYPE=$VM_NETWORK,mac=$VM_MAC_ADDRESS,model=virtio"
+        )
+        ;;
+    esac
+
+    if [ ${#QEMU_COMMANDLINE[@]} -gt 0 ]; then
+        unset IFS
+        VIRT_OPTIONS+=(--qemu-commandline="${QEMU_COMMANDLINE[*]}")
+    fi
+
+    VIRT_TYPE=$(IFS= &&
+        lk_maybe_sudo virsh --connect "$LIBVIRT_URI" capabilities |
+        xq '.capabilities.guest[].arch|select(.["@name"] == "x86_64")' |
+            lk_jq -r '.domain|to_array[]["@type"]' |
+            grep -Fxv qemu ||
+        { [[ "${PIPESTATUS[*]}" =~ ^0+1$ ]] && echo qemu; })
 
     FILE=$(lk_mktemp_file)
     lk_delete_on_exit "$FILE"
@@ -958,10 +1009,9 @@ dns-nameservers $VM_IPV4_GATEWAY" '{
         --os-variant "$OS_VARIANT" \
         --disk "$DISK_PATH",bus=virtio \
         --disk "$NOCLOUD_PATH",bus=virtio \
-        --network "$VM_NETWORK_TYPE=$VM_NETWORK,mac=$VM_MAC_ADDRESS,model=virtio" \
         --graphics none \
         ${VIRT_OPTIONS[@]+"${VIRT_OPTIONS[@]}"} \
-        --virt-type kvm \
+        --virt-type "$VIRT_TYPE" \
         --print-xml >"$FILE"
     lk_run_detail lk_maybe_sudo virsh --connect "$LIBVIRT_URI" \
         define "$FILE"
