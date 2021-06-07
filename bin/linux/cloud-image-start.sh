@@ -65,6 +65,7 @@ OPTIONS
                                     prompting (implies -y)
 
 If --isolate is set:
+
         --no-reject-log             don't log blocked traffic
         --no-reject                 don't block anything, just log traffic
                                     that would be blocked
@@ -128,7 +129,7 @@ added to the runcmd module. The --packages option is ignored.
 EXAMPLE
 
 \\    ${0##*/} -y -i ubuntu-18.04-minimal -r -c 2 -m 2048 -s 10G \\
-        -n bridge=virbr0 -I 192.168.122.184/24 -Ogl --no-reject demo-server"
+      -n bridge=virbr0 -I 192.168.122.184/24 -Ogl --no-reject demo-server"
 
 lk_getopt "i:rp:f:P:m:c:s:n:I:R:OM:S:x:HuyFglh:U:" \
     "image:,refresh-image,packages:,fs-maps:,preset:,memory:,\
@@ -142,9 +143,20 @@ UBUNTU_MIRROR=${LK_UBUNTU_APT_MIRROR:-http://archive.ubuntu.com/ubuntu}
 
 SYSTEM_SOCKET=
 SESSION_SOCKET=
+IMAGE_ARCH=amd64
+QEMU_ARCH=x86_64
+QEMU_MACHINE=
 ! lk_is_macos || {
+    # Use explicit sockets to ensure x86_64 virt-install connects to native
+    # libvirtd on arm64
     SYSTEM_SOCKET=$HOMEBREW_PREFIX/var/run/libvirt/libvirt-sock
     SESSION_SOCKET=${XDG_RUNTIME_DIR:-~/.cache}/libvirt/libvirt-sock
+    QEMU_MACHINE=q35,accel=hvf
+    ! lk_is_apple_silicon || {
+        IMAGE_ARCH=arm64
+        QEMU_ARCH=aarch64
+        QEMU_MACHINE=virt,accel=hvf,highmem=off
+    }
 }
 VM_POOL_ROOT=/var/lib/libvirt/images
 VM_NETWORK_DEFAULT=default
@@ -375,9 +387,6 @@ if [[ $VM_NETWORK == user=* ]]; then
     [ -z "$VM_IPV4_CIDR$ISOLATE" ] || lk_warn \
         "usermode networking cannot be used with --ip-address or --isolate" ||
         lk_usage
-    [ -n "${HOSTFWD+1}" ] || lk_console_warning -r \
-        "Use '--forward PROTO:HOST_PORT:GUEST_PORT' to access usermode guest" ||
-        lk_confirm "Proceed without forwarding any ports?" Y || lk_die ""
 else
     XML=
     [ -z "$ISOLATE" ] || {
@@ -426,13 +435,13 @@ SHA_KEYRING=/usr/share/keyrings/ubuntu-cloudimage-keyring.gpg
 case "$IMAGE" in
 *20.04*minimal)
     IMAGE_NAME=ubuntu-20.04-minimal
-    IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/focal/release/ubuntu-20.04-minimal-cloudimg-amd64.img
+    IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/focal/release/ubuntu-20.04-minimal-cloudimg-$IMAGE_ARCH.img
     SHA_URLS=(https://cloud-images.ubuntu.com/minimal/releases/focal/release/SHA256SUMS.gpg)
     OS_VARIANT=ubuntu20.04
     ;;
 *20.04*)
     IMAGE_NAME=ubuntu-20.04
-    IMAGE_URL=http://$UBUNTU_HOST/focal/current/focal-server-cloudimg-amd64-disk-kvm.img
+    IMAGE_URL=http://$UBUNTU_HOST/focal/current/focal-server-cloudimg-$IMAGE_ARCH-disk-kvm.img
     SHA_URLS=(
         https://cloud-images.ubuntu.com/focal/current/SHA256SUMS.gpg
         https://cloud-images.ubuntu.com/focal/current/SHA256SUMS
@@ -441,13 +450,13 @@ case "$IMAGE" in
     ;;
 *18.04*minimal)
     IMAGE_NAME=ubuntu-18.04-minimal
-    IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/bionic/release/ubuntu-18.04-minimal-cloudimg-amd64.img
+    IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/bionic/release/ubuntu-18.04-minimal-cloudimg-$IMAGE_ARCH.img
     SHA_URLS=(https://cloud-images.ubuntu.com/minimal/releases/bionic/release/SHA256SUMS.gpg)
     OS_VARIANT=ubuntu18.04
     ;;
 *18.04*)
     IMAGE_NAME=ubuntu-18.04
-    IMAGE_URL=http://$UBUNTU_HOST/bionic/current/bionic-server-cloudimg-amd64.img
+    IMAGE_URL=http://$UBUNTU_HOST/bionic/current/bionic-server-cloudimg-$IMAGE_ARCH.img
     SHA_URLS=(
         https://cloud-images.ubuntu.com/bionic/current/SHA256SUMS.gpg
         https://cloud-images.ubuntu.com/bionic/current/SHA256SUMS
@@ -456,13 +465,13 @@ case "$IMAGE" in
     ;;
 *16.04*minimal)
     IMAGE_NAME=ubuntu-16.04-minimal
-    IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/xenial/release/ubuntu-16.04-minimal-cloudimg-amd64-disk1.img
+    IMAGE_URL=http://$UBUNTU_HOST/minimal/releases/xenial/release/ubuntu-16.04-minimal-cloudimg-$IMAGE_ARCH-disk1.img
     SHA_URLS=(https://cloud-images.ubuntu.com/minimal/releases/xenial/release/SHA256SUMS.gpg)
     OS_VARIANT=ubuntu16.04
     ;;
 *16.04*)
     IMAGE_NAME=ubuntu-16.04
-    IMAGE_URL=http://$UBUNTU_HOST/xenial/current/xenial-server-cloudimg-amd64-disk1.img
+    IMAGE_URL=http://$UBUNTU_HOST/xenial/current/xenial-server-cloudimg-$IMAGE_ARCH-disk1.img
     SHA_URLS=(
         https://cloud-images.ubuntu.com/xenial/current/SHA256SUMS.gpg
         https://cloud-images.ubuntu.com/xenial/current/SHA256SUMS
@@ -471,7 +480,7 @@ case "$IMAGE" in
     ;;
 *14.04*)
     IMAGE_NAME=ubuntu-14.04
-    IMAGE_URL=http://$UBUNTU_HOST/trusty/current/trusty-server-cloudimg-amd64-disk1.img
+    IMAGE_URL=http://$UBUNTU_HOST/trusty/current/trusty-server-cloudimg-$IMAGE_ARCH-disk1.img
     SHA_URLS=(
         https://cloud-images.ubuntu.com/trusty/current/SHA256SUMS.gpg
         https://cloud-images.ubuntu.com/trusty/current/SHA256SUMS
@@ -480,7 +489,7 @@ case "$IMAGE" in
     ;;
 *12.04*)
     IMAGE_NAME=ubuntu-12.04
-    IMAGE_URL=http://$UBUNTU_HOST/precise/current/precise-server-cloudimg-amd64-disk1.img
+    IMAGE_URL=http://$UBUNTU_HOST/precise/current/precise-server-cloudimg-$IMAGE_ARCH-disk1.img
     SHA_URLS=(
         https://cloud-images.ubuntu.com/precise/current/SHA256SUMS.gpg
         https://cloud-images.ubuntu.com/precise/current/SHA256SUMS
@@ -492,6 +501,11 @@ case "$IMAGE" in
     lk_usage
     ;;
 esac
+
+[[ $VM_NETWORK != user=* ]] || [ -n "${HOSTFWD+1}" ] ||
+    lk_console_warning -r \
+        "--forward is required for access to services on usermode guests" ||
+    lk_confirm "Proceed without forwarding any ports?" Y || lk_die ""
 
 if [ -n "$STACKSCRIPT" ]; then
     lk_console_log "Processing StackScript"
@@ -602,7 +616,8 @@ while VM_STATE=$(lk_maybe_sudo virsh domstate "$VM_HOSTNAME" 2>/dev/null); do
         lk_die ""
     [ -z "${VM_STATE+1}" ] ||
         lk_maybe_sudo virsh destroy "$VM_HOSTNAME" || true
-    lk_maybe_sudo virsh undefine --remove-all-storage "$VM_HOSTNAME" || true
+    lk_maybe_sudo virsh undefine --managed-save --nvram \
+        --remove-all-storage "$VM_HOSTNAME" || true
 done
 
 lk_console_message "Provisioning:"
@@ -641,20 +656,14 @@ lk_confirm "OK to proceed?" Y || lk_die ""
         cd "$LK_BASE/var/cache/cloud-images" ||
         lk_die "error creating cache directories"
 
-    #####
-
     FILENAME=${IMAGE_URL##*/}
     IMG_NAME=${FILENAME%.*}
-
     if [ ! -f "$FILENAME" ] || lk_is_true REFRESH_CLOUDIMG; then
-
         lk_console_item "Downloading" "$FILENAME"
-
         wget --timestamping "$IMAGE_URL" || {
             rm -f "$FILENAME"
             lk_die "error downloading $IMAGE_URL"
         }
-
         if [ ${#SHA_URLS[@]} -eq 1 ]; then
             SHA_SUMS=$(curl "${SHA_URLS[0]}" |
                 gpg --no-default-keyring --keyring "$SHA_KEYRING" --decrypt)
@@ -665,7 +674,6 @@ lk_confirm "OK to proceed?" Y || lk_die ""
         fi || lk_die "error verifying ${SHA_URLS[0]}"
         echo "$SHA_SUMS" >"SHASUMS-$IMAGE_NAME" ||
             lk_die "error writing to SHASUMS-$IMAGE_NAME"
-
     fi
 
     CLOUDIMG_ROOT=$VM_POOL_ROOT/cloud-images
@@ -673,29 +681,35 @@ lk_confirm "OK to proceed?" Y || lk_die ""
     TIMESTAMP=$(lk_file_modified "$FILENAME")
     CLOUDIMG_PATH=$CLOUDIMG_ROOT/$IMG_NAME-$TIMESTAMP.qcow2
     if lk_maybe_sudo test -f "$CLOUDIMG_PATH"; then
-        lk_console_message "$FILENAME is already available at $CLOUDIMG_PATH"
+        lk_console_item "Backing file already available:" "$CLOUDIMG_PATH"
     else
-        grep -E "$(lk_escape_ere "$FILENAME")\$" "SHASUMS-$IMAGE_NAME" |
+        awk -F '[*U^[:blank:]]+' -v "f=$FILENAME" \
+            '$2 == f { print }' "SHASUMS-$IMAGE_NAME" |
+            lk_require_output tail -n1 |
             shasum -a "${SHA_ALGORITHM:-256}" -c &&
             lk_console_success "Verified" "$FILENAME" ||
-            lk_die "verification failed: $PWD/$FILENAME:"
-        CLOUDIMG_FORMAT=$(qemu-img info --output=json "$FILENAME" | jq -r .format)
-        if [ "$CLOUDIMG_FORMAT" != "qcow2" ]; then
-            lk_console_message "Converting $FILENAME (format: $CLOUDIMG_FORMAT) to $CLOUDIMG_PATH"
-            lk_maybe_sudo qemu-img convert -pO qcow2 "$FILENAME" "$CLOUDIMG_PATH"
+            lk_die "verification failed: $PWD/$FILENAME"
+        CLOUDIMG_FORMAT=$(qemu-img info --output=json "$FILENAME" |
+            jq -r .format)
+        if [ "$CLOUDIMG_FORMAT" != qcow2 ]; then
+            lk_console_message \
+                "Converting $CLOUDIMG_FORMAT image to $CLOUDIMG_PATH"
+            lk_maybe_sudo \
+                qemu-img convert -pO qcow2 "$FILENAME" "$CLOUDIMG_PATH"
         else
-            lk_console_message "Copying $FILENAME (format: $CLOUDIMG_FORMAT) to $CLOUDIMG_PATH"
+            lk_console_message \
+                "Copying $CLOUDIMG_FORMAT image to $CLOUDIMG_PATH"
             lk_maybe_sudo cp -v "$FILENAME" "$CLOUDIMG_PATH"
         fi
         lk_maybe_sudo touch -r "$FILENAME" "$CLOUDIMG_PATH" &&
             lk_maybe_sudo chmod -v 444 "$CLOUDIMG_PATH" &&
-            lk_console_message "$FILENAME is now available at $CLOUDIMG_PATH"
+            lk_console_item "Backing file installed successfully:" \
+                "$CLOUDIMG_PATH"
     fi
 
     IMAGE_BASENAME=$VM_HOSTNAME-$IMG_NAME-$TIMESTAMP
     DISK_PATH=$VM_POOL_ROOT/$IMAGE_BASENAME.qcow2
     NOCLOUD_PATH=$VM_POOL_ROOT/$IMAGE_BASENAME-cloud-init.qcow2
-
     if [ -e "$DISK_PATH" ]; then
         lk_console_error "Disk image already exists:" "$DISK_PATH"
         lk_is_true FORCE_DELETE || LK_FORCE_INPUT=1 lk_confirm \
@@ -732,9 +746,9 @@ lk_confirm "OK to proceed?" Y || lk_die ""
     VIRT_OPTIONS=()
     QEMU_COMMANDLINE=()
 
-    ! lk_is_macos || {
-        VIRT_OPTIONS+=(--machine q35)
-        QEMU_COMMANDLINE+=(-machine q35,accel=hvf,usb=off,dump-guest-core=off)
+    [ -z "${QEMU_MACHINE:+1}" ] || {
+        VIRT_OPTIONS+=(--machine "${QEMU_MACHINE%%,*}")
+        QEMU_COMMANDLINE+=(-machine "$QEMU_MACHINE")
     }
 
     add_json NETWORK_CONFIG --arg mac "$VM_MAC_ADDRESS" '{
@@ -787,7 +801,7 @@ lk_confirm "OK to proceed?" Y || lk_die ""
             function _run() {
                 install -d -m 00755 "$@" &&
                     printf '%s\n' "${FSTAB[@]}" >>/etc/fstab &&
-                    mount "$@"
+                    printf '%s\n' "$@" | xargs -n1 mount
             }
             declare -f _run
             declare -p FSTAB
@@ -938,17 +952,27 @@ dns-nameservers $VM_IPV4_GATEWAY" '{
         >"$NOCLOUD_META_DIR/meta-data"
 
     if lk_confirm "Customise cloud-init data source?" N -t 10; then
-        xdg-open "$NOCLOUD_META_DIR" || :
-        lk_pause "Press any key to continue after making changes in $NOCLOUD_META_DIR . . . "
+        ! OPEN=$(lk_command_first_existing xdg-open open) ||
+            "$OPEN" "$NOCLOUD_META_DIR" || true
+        lk_pause "Press return to continue after making changes in $NOCLOUD_META_DIR . . . "
     fi
 
     FILE=$(lk_mktemp_file)
     lk_delete_on_exit "$FILE"
-    mkisofs -output "$FILE" -volid cidata -joliet -rock \
-        "$NOCLOUD_META_DIR/network-config" \
-        "$NOCLOUD_META_DIR/user-data" \
-        "$NOCLOUD_META_DIR/meta-data"
-    lk_maybe_sudo install -m 00644 "$FILE" "$NOCLOUD_PATH"
+    # If possible, create a vfat data source rather than a read-only ISO
+    # https://cloudinit.readthedocs.io/en/latest/topics/datasources/nocloud.html
+    if lk_command_exists mcopy; then
+        # 128 x 1024 = 128KiB
+        dd if=/dev/null of="$FILE" bs=1024 seek=128
+        mkfs.vfat -n cidata "$FILE"
+        mcopy -i "$FILE" \
+            "$NOCLOUD_META_DIR"/{network-config,user-data,meta-data} ::
+    else
+        mkisofs -output "$FILE" -volid cidata -joliet -rock \
+            "$NOCLOUD_META_DIR"/{network-config,user-data,meta-data}
+    fi
+    lk_maybe_sudo install -m 00644 /dev/null "$NOCLOUD_PATH"
+    lk_maybe_sudo qemu-img convert -O qcow2 "$FILE" "$NOCLOUD_PATH"
 
     lk_console_message "Creating virtual machine"
     lk_run_detail lk_maybe_sudo qemu-img create \
@@ -993,7 +1017,8 @@ dns-nameservers $VM_IPV4_GATEWAY" '{
 
     VIRT_TYPE=$(IFS= &&
         lk_maybe_sudo virsh --connect "$LIBVIRT_URI" capabilities |
-        xq '.capabilities.guest[].arch|select(.["@name"] == "x86_64")' |
+        xq --arg arch "$QEMU_ARCH" \
+            '.capabilities.guest[].arch|select(.["@name"] == $arch)' |
             lk_jq -r '.domain|to_array[]["@type"]' |
             grep -Fxv qemu ||
         { [[ "${PIPESTATUS[*]}" =~ ^0+1$ ]] && echo qemu; })
