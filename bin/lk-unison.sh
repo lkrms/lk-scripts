@@ -2,14 +2,14 @@
 
 # shellcheck disable=SC1091,SC2015
 
-include='' . lk-bash-load.sh || exit
+. lk-bash-load.sh || exit
 
 shopt -s nullglob
 
 if lk_is_linux; then
-    UNISON_ROOT=$HOME/.unison
+    UNISON_ROOT=~/.unison
 elif lk_is_macos; then
-    UNISON_ROOT="$HOME/Library/Application Support/Unison"
+    UNISON_ROOT=~/"Library/Application Support/Unison"
     lk_include macos
 else
     lk_die "${0##*/} not implemented on this platform"
@@ -17,13 +17,15 @@ fi
 
 UNISON_PROFILES=()
 while [ $# -gt 0 ] && [[ ! $1 =~ ^- ]]; do
-    FILE=$UNISON_ROOT/${1%.prf}.prf
-    [ -f "$FILE" ] || lk_die "file not found: $FILE"
+    FILE=$UNISON_ROOT/${1%.prf}
+    FILE=$(lk_first_existing "$FILE.prf.template" "$FILE.prf") ||
+        lk_die "profile not found: $1"
     UNISON_PROFILES+=("$FILE")
     shift
 done
 
-[ ${#UNISON_PROFILES[@]} -gt 0 ] || UNISON_PROFILES=("$UNISON_ROOT"/*.prf)
+[ ${#UNISON_PROFILES[@]} -gt 0 ] ||
+    UNISON_PROFILES=("$UNISON_ROOT"/*.prf{.template,})
 [ ${#UNISON_PROFILES[@]} -gt 0 ] || lk_die "no profiles found"
 
 UNISONLOCALHOSTNAME=${UNISONLOCALHOSTNAME:-$(lk_hostname)}
@@ -34,7 +36,8 @@ FAILED=()
 SKIPPED=()
 i=0
 for FILE in "${UNISON_PROFILES[@]}"; do
-    UNISON_PROFILE=${FILE%.prf}
+    UNISON_PROFILE=${FILE%.prf.template}
+    UNISON_PROFILE=${UNISON_PROFILE%.prf}
     UNISON_PROFILE=${UNISON_PROFILE##*/}
     for p in "$(lk_upper_first "$UNISON_PROFILE")" \
         "$UNISON_PROFILE" \
@@ -50,8 +53,12 @@ for FILE in "${UNISON_PROFILES[@]}"; do
     }
     ! ((i++)) || lk_console_blank
     lk_console_item "Syncing" "~${LOCAL_DIR#$HOME}"
-    _FILE=${FILE%.prf}.$(lk_hostname)~
-    lk_file_replace "$_FILE" "$(lk_expand_template -e "$FILE")"
+    if [[ $FILE == *.prf.template ]]; then
+        _FILE=${FILE%.prf.template}.$(lk_hostname)~
+        lk_file_replace "$_FILE" "$(lk_expand_template -e "$FILE")"
+    else
+        _FILE=$FILE
+    fi
     if unison -source "${_FILE##*/}" \
         -root "$LOCAL_DIR" \
         -auto \
