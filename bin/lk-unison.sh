@@ -1,7 +1,5 @@
 #!/bin/bash
 
-# shellcheck disable=SC1091,SC2015
-
 . lk-bash-load.sh || exit
 
 shopt -s nullglob
@@ -36,9 +34,10 @@ FAILED=()
 SKIPPED=()
 i=0
 for FILE in "${UNISON_PROFILES[@]}"; do
-    UNISON_PROFILE=${FILE%.prf.template}
+    UNISON_PROFILE=${FILE##*/}
+    [ "$UNISON_PROFILE" != default.prf ] || continue
+    UNISON_PROFILE=${UNISON_PROFILE%.template}
     UNISON_PROFILE=${UNISON_PROFILE%.prf}
-    UNISON_PROFILE=${UNISON_PROFILE##*/}
     for p in "$(lk_upper_first "$UNISON_PROFILE")" \
         "$UNISON_PROFILE" \
         ".$UNISON_PROFILE" \
