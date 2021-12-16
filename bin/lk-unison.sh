@@ -52,8 +52,8 @@ for FILE in "${UNISON_PROFILES[@]}"; do
         SKIPPED+=("$UNISON_PROFILE")
         continue
     }
-    ! ((i++)) || lk_console_blank
-    lk_console_item "Syncing" "~${LOCAL_DIR#$HOME}"
+    ! ((i++)) || lk_tty_print
+    lk_tty_print "Syncing" "~${LOCAL_DIR#$HOME}"
     if [[ $FILE == *.prf.template ]]; then
         _FILE=${FILE%.prf.template}.$(lk_hostname)~
         lk_file_replace "$_FILE" "$(lk_expand_template -e "$FILE")"
@@ -72,24 +72,21 @@ for FILE in "${UNISON_PROFILES[@]}"; do
 done
 
 [ ${#SKIPPED[@]} -eq 0 ] || {
-    ! ((i++)) || lk_console_blank
-    lk_echo_array SKIPPED |
-        lk_console_list "Skipped:" profile profiles
+    ! ((i++)) || lk_tty_print
+    lk_tty_list SKIPPED "Skipped:" profile profiles
 }
 
 [ ${#PROCESSED[@]} -eq 0 ] || {
-    ! ((i++)) || lk_console_blank
-    lk_echo_array PROCESSED |
-        lk_console_list "Synchronised:" profile profiles \
-            "$LK_BOLD$LK_GREEN"
+    ! ((i++)) || lk_tty_print
+    lk_tty_list PROCESSED "Synchronised:" profile profiles \
+        "$LK_BOLD$LK_GREEN"
 }
 
 [ ${#FAILED[@]} -eq 0 ] || {
-    ! ((i++)) || lk_console_blank
-    lk_echo_array FAILED |
-        lk_console_list "Failed:" profile profiles \
-            "$LK_BOLD$LK_RED"
-    lk_console_blank
-    lk_pause
+    ! ((i++)) || lk_tty_print
+    lk_tty_list FAILED "Failed:" profile profiles \
+        "$LK_BOLD$LK_RED"
+    lk_tty_print
+    lk_tty_pause
     lk_die ""
 }
