@@ -30,7 +30,7 @@ UNKNOWN_PACKAGES=($(comm -13 <(apt_list_available_packages) <(echo "$PACKAGES"))
 
 if [ "${#GUI_PACKAGES[@]}" -gt "0" ]; then
 
-    lk_console_message "${#GUI_PACKAGES[@]} $(lk_maybe_plural "${#GUI_PACKAGES[@]}" package packages) likely to have a GUI:" "$LK_BOLD$LK_GREEN"
+    lk_console_message "${#GUI_PACKAGES[@]} $(lk_plural "${#GUI_PACKAGES[@]}" package packages) likely to have a GUI:" "$LK_BOLD$LK_GREEN"
     printf '%s\n' "${GUI_PACKAGES[@]}" | column
 
 else
@@ -42,7 +42,7 @@ fi
 
 if [ "${#UNKNOWN_PACKAGES[@]}" -gt "0" ]; then
 
-    lk_console_message "${#UNKNOWN_PACKAGES[@]} unknown $(lk_maybe_plural "${#UNKNOWN_PACKAGES[@]}" package packages):" "$LK_BOLD$LK_RED"
+    lk_console_message "${#UNKNOWN_PACKAGES[@]} unknown $(lk_plural "${#UNKNOWN_PACKAGES[@]}" package packages):" "$LK_BOLD$LK_RED"
     printf '%s\n' "${UNKNOWN_PACKAGES[@]}" | column
 
 fi

@@ -51,9 +51,9 @@ if [ "${#CURRENT_KERNEL[@]}" -eq "1" ] && apt_package_installed "${CURRENT_KERNE
 
         lk_console_item "Most recent kernel provided by the ${LK_BOLD}linux-generic${LK_RESET} package:" "$CURRENT_KERNEL_VERSION"
 
-        lk_echo_array "${OTHER_KERNEL_PACKAGES[@]}" | lk_console_list "${#OTHER_KERNEL_PACKAGES[@]} kernel $(lk_maybe_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) to delete:" "$LK_BOLD$LK_YELLOW"
+        lk_echo_array "${OTHER_KERNEL_PACKAGES[@]}" | lk_console_list "${#OTHER_KERNEL_PACKAGES[@]} kernel $(lk_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) to delete:" "$LK_BOLD$LK_YELLOW"
 
-        if lk_confirm "Delete the kernel $(lk_maybe_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) listed above?" N; then
+        if lk_confirm "Delete the kernel $(lk_plural "${#OTHER_KERNEL_PACKAGES[@]}" package packages) listed above?" N; then
 
             sudo debconf-set-selections <<EOF
 linux-base linux-base/removing-running-kernel boolean false

@@ -44,7 +44,7 @@ function brew_check_taps() {
 
     if [ "${#MISSING_TAPS[@]}" -gt "0" ]; then
 
-        lk_echo_array "${MISSING_TAPS[@]}" | lk_console_list "Adding ${#MISSING_TAPS[@]} Homebrew $(lk_maybe_plural "${#MISSING_TAPS[@]}" tap taps):" "$LK_GREEN"
+        lk_echo_array "${MISSING_TAPS[@]}" | lk_console_list "Adding ${#MISSING_TAPS[@]} Homebrew $(lk_plural "${#MISSING_TAPS[@]}" tap taps):" "$LK_GREEN"
 
         for TAP in "${MISSING_TAPS[@]}"; do
 
@@ -209,7 +209,7 @@ function brew_process_queue() {
 
     if [ "${#BREW_FORMULA_REMOVE_QUEUE[@]}" -gt "0" ]; then
 
-        lk_echo_array "${BREW_FORMULA_REMOVE_QUEUE[@]}" | lk_console_list "Removing ${#BREW_FORMULA_REMOVE_QUEUE[@]} $(lk_maybe_plural "${#BREW_FORMULA_REMOVE_QUEUE[@]}" formula formulae):" "$LK_BOLD$LK_RED"
+        lk_echo_array "${BREW_FORMULA_REMOVE_QUEUE[@]}" | lk_console_list "Removing ${#BREW_FORMULA_REMOVE_QUEUE[@]} $(lk_plural "${#BREW_FORMULA_REMOVE_QUEUE[@]}" formula formulae):" "$LK_BOLD$LK_RED"
 
         brew uninstall "${BREW_FORMULA_REMOVE_QUEUE[@]}" &&
             BREW_FORMULA_REMOVE_QUEUE=() ||
@@ -219,7 +219,7 @@ function brew_process_queue() {
 
     if [ "${#BREW_CASK_REMOVE_QUEUE[@]}" -gt "0" ]; then
 
-        lk_echo_array "${BREW_CASK_REMOVE_QUEUE[@]}" | lk_console_list "Uninstalling ${#BREW_CASK_REMOVE_QUEUE[@]} $(lk_maybe_plural "${#BREW_CASK_REMOVE_QUEUE[@]}" cask casks):" "$LK_BOLD$LK_RED"
+        lk_echo_array "${BREW_CASK_REMOVE_QUEUE[@]}" | lk_console_list "Uninstalling ${#BREW_CASK_REMOVE_QUEUE[@]} $(lk_plural "${#BREW_CASK_REMOVE_QUEUE[@]}" cask casks):" "$LK_BOLD$LK_RED"
 
         brew cask uninstall "${BREW_CASK_REMOVE_QUEUE[@]}" &&
             BREW_CASK_REMOVE_QUEUE=() ||
@@ -229,7 +229,7 @@ function brew_process_queue() {
 
     if [ "${#BREW_FORMULA_QUEUE[@]}" -gt "0" ]; then
 
-        lk_echo_array "${BREW_FORMULA_QUEUE[@]}" | lk_console_list "Installing ${#BREW_FORMULA_QUEUE[@]} $(lk_maybe_plural "${#BREW_FORMULA_QUEUE[@]}" formula formulae):" "$LK_GREEN"
+        lk_echo_array "${BREW_FORMULA_QUEUE[@]}" | lk_console_list "Installing ${#BREW_FORMULA_QUEUE[@]} $(lk_plural "${#BREW_FORMULA_QUEUE[@]}" formula formulae):" "$LK_GREEN"
 
         brew install "${BREW_FORMULA_QUEUE[@]}" && {
             BREW_INSTALLED+=("${BREW_FORMULA_QUEUE[@]}")
@@ -242,7 +242,7 @@ function brew_process_queue() {
 
         lk_is_macos || return
 
-        lk_echo_array "${BREW_CASK_QUEUE[@]}" | lk_console_list "Installing ${#BREW_CASK_QUEUE[@]} $(lk_maybe_plural "${#BREW_CASK_QUEUE[@]}" cask casks):" "$LK_GREEN"
+        lk_echo_array "${BREW_CASK_QUEUE[@]}" | lk_console_list "Installing ${#BREW_CASK_QUEUE[@]} $(lk_plural "${#BREW_CASK_QUEUE[@]}" cask casks):" "$LK_GREEN"
 
         brew cask install --no-quarantine --force "${BREW_CASK_QUEUE[@]}" && {
             BREW_INSTALLED+=("${BREW_CASK_QUEUE[@]}")

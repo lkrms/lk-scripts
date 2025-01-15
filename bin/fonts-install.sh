@@ -20,7 +20,7 @@ cd "$FONT_CACHE_PATH"
 
 UNPACK_ROOT="$(lk_mktemp_dir)"
 
-lk_console_message "Downloading ${#FONT_URLS[@]} $(lk_maybe_plural "${#FONT_URLS[@]}" font fonts)"
+lk_console_message "Downloading ${#FONT_URLS[@]} $(lk_plural "${#FONT_URLS[@]}" font fonts)"
 FONT_PATHS="$(lk_download "${FONT_URLS[@]}")"
 while IFS= read -r FONT_PATH; do
     lk_console_item "Extracting" "$(basename "$FONT_PATH")"

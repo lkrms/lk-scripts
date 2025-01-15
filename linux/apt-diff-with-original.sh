@@ -82,4 +82,4 @@ for p in "${PACKAGES[@]}"; do
 
 done
 
-lk_echo_array "${PACKAGES[@]}" | lk_console_list "Unable to find original version of file. ${#PACKAGES[@]} $(lk_maybe_plural "${#PACKAGES[@]}" package packages) checked:"
+lk_echo_array "${PACKAGES[@]}" | lk_console_list "Unable to find original version of file. ${#PACKAGES[@]} $(lk_plural "${#PACKAGES[@]}" package packages) checked:"

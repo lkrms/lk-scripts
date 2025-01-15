@@ -90,7 +90,7 @@ function install_or_queue() {
 
             if [ "${#IOQ_UNAVAILABLE[@]}" -gt "0" ]; then
 
-                lk_echo_array "${IOQ_UNAVAILABLE[@]}" | lk_console_list "${#IOQ_UNAVAILABLE[@]} $(lk_maybe_plural "${#IOQ_UNAVAILABLE[@]}" "$SINGLE" "$PLURAL") unavailable for installation:" "$LK_BOLD$LK_RED"
+                lk_echo_array "${IOQ_UNAVAILABLE[@]}" | lk_console_list "${#IOQ_UNAVAILABLE[@]} $(lk_plural "${#IOQ_UNAVAILABLE[@]}" "$SINGLE" "$PLURAL") unavailable for installation:" "$LK_BOLD$LK_RED"
 
                 IOQ_INSTALL=($(comm -12 <(printf '%s\n' "${IOQ_INSTALL[@]}" | sort | uniq) <(printf '%s\n' "${ITEMS_AVAILABLE[@]}")))
 
@@ -102,13 +102,13 @@ function install_or_queue() {
 
         if [ "$UI" = "Y" ]; then
 
-            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Missing ${#IOQ_INSTALL[@]} $1 $(lk_maybe_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$LK_BOLD$LK_MAGENTA"
+            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Missing ${#IOQ_INSTALL[@]} $1 $(lk_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$LK_BOLD$LK_MAGENTA"
 
-            lk_confirm "Add the $1 $(lk_maybe_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL") listed above?" Y || return 0
+            lk_confirm "Add the $1 $(lk_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL") listed above?" Y || return 0
 
         else
 
-            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Adding ${#IOQ_INSTALL[@]} $1 $(lk_maybe_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$LK_GREEN"
+            lk_echo_array "${IOQ_INSTALL[@]}" | lk_console_list "Adding ${#IOQ_INSTALL[@]} $1 $(lk_plural "${#IOQ_INSTALL[@]}" "$SINGLE" "$PLURAL"):" "$LK_GREEN"
 
         fi
 

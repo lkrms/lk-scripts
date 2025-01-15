@@ -98,7 +98,7 @@ lk_mapfile CODE_ROOTS <(git_get_code_roots "$@")
 
     if [ "$DO_FETCH" -eq "1" ]; then
 
-        lk_console_message "Fetching from all remotes in ${REPO_COUNT} $(lk_maybe_plural "$REPO_COUNT" repository repositories)" "$LK_BOLD$LK_MAGENTA"
+        lk_console_message "Fetching from all remotes in ${REPO_COUNT} $(lk_plural "$REPO_COUNT" repository repositories)" "$LK_BOLD$LK_MAGENTA"
 
         for i in "${!REPO_ROOTS[@]}"; do
 
@@ -188,19 +188,19 @@ lk_mapfile CODE_ROOTS <(git_get_code_roots "$@")
 
                             if [ "$IS_CURRENT_BRANCH" = '*' ]; then
 
-                                lk_console_item "Attempting to merge upstream $(lk_maybe_plural "$BEHIND_UPSTREAM" commit commits) (fast-forward only):" "$PRETTY_BRANCH" "$LK_GREEN"
-                                git merge --ff-only "$UPSTREAM" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(lk_maybe_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                                lk_console_item "Attempting to merge upstream $(lk_plural "$BEHIND_UPSTREAM" commit commits) (fast-forward only):" "$PRETTY_BRANCH" "$LK_GREEN"
+                                git merge --ff-only "$UPSTREAM" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(lk_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             else
 
                                 lk_console_item "Attempting to fast-forward branch from upstream:" "$PRETTY_BRANCH" "$LK_GREEN"
-                                git fetch . "$UPSTREAM":"$BRANCH" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(lk_maybe_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                                git fetch . "$UPSTREAM":"$BRANCH" && UPDATED_BRANCHES+=("$PRETTY_BRANCH") && BEHIND_UPSTREAM=0 || echo "Can't merge upstream $(lk_plural "$BEHIND_UPSTREAM" commit commits) into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             fi
 
                         else
 
-                            echo "Upstream $(lk_maybe_plural "$BEHIND_UPSTREAM" commit commits) to merge into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                            echo "Upstream $(lk_plural "$BEHIND_UPSTREAM" commit commits) to merge into branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                         fi
 
@@ -226,12 +226,12 @@ lk_mapfile CODE_ROOTS <(git_get_code_roots "$@")
 
                         if [ "$BEHIND_PUSH" -gt "0" ]; then
 
-                            echo "Can't push $(lk_maybe_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH until upstream $(lk_maybe_plural "$BEHIND_PUSH" "commit is" "commits are") resolved" >>"$WARNINGS_FILE"
+                            echo "Can't push $(lk_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH until upstream $(lk_plural "$BEHIND_PUSH" "commit is" "commits are") resolved" >>"$WARNINGS_FILE"
 
                         else
 
                             echo
-                            lk_console_message "${LK_BOLD}${AHEAD_PUSH} $(lk_maybe_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(lk_maybe_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${LK_RESET}" "$LK_BOLD$LK_YELLOW"
+                            lk_console_message "${LK_BOLD}${AHEAD_PUSH} $(lk_plural "$AHEAD_PUSH" commit commits) to branch \"${BRANCH}\" in \"${REPO_NAME}\" $(lk_plural "$AHEAD_PUSH" "hasn't" "haven't") been pushed:${LK_RESET}" "$LK_BOLD$LK_YELLOW"
                             echo
                             echo "${LK_WRAP_OFF}$(git log "-$GIT_LOG_LIMIT" --oneline --decorate --color=always "${PUSH_COMMIT}..${LOCAL_COMMIT}")${LK_WRAP}"
 
@@ -240,17 +240,17 @@ lk_mapfile CODE_ROOTS <(git_get_code_roots "$@")
                                 ((NOT_SHOWN = AHEAD_PUSH - GIT_LOG_LIMIT))
 
                                 echo
-                                echo "($NOT_SHOWN $(lk_maybe_plural "$NOT_SHOWN" commit commits) not shown)"
+                                echo "($NOT_SHOWN $(lk_plural "$NOT_SHOWN" commit commits) not shown)"
 
                             fi
 
                             if [ "$DO_PUSH" -eq "1" ] && echo && lk_confirm "Attempt to push branch \"$BRANCH\" to remote \"$PUSH_REMOTE\"?" Y; then
 
-                                git push --tags "$PUSH_REMOTE" "$BRANCH:$BRANCH" && PUSHED_BRANCHES+=("$PRETTY_BRANCH") && AHEAD_PUSH=0 || echo "Can't push $(lk_maybe_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                                git push --tags "$PUSH_REMOTE" "$BRANCH:$BRANCH" && PUSHED_BRANCHES+=("$PRETTY_BRANCH") && AHEAD_PUSH=0 || echo "Can't push $(lk_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             else
 
-                                echo "Unpushed $(lk_maybe_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
+                                echo "Unpushed $(lk_plural "$AHEAD_PUSH" commit commits) to branch $PRETTY_BRANCH" >>"$WARNINGS_FILE"
 
                             fi
 
@@ -311,7 +311,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
             STASH_COUNT="$(git rev-list --walk-reflogs --count refs/stash)"
 
-            echo "$STASH_COUNT $(lk_maybe_plural "$STASH_COUNT" stash stashes)" >>"$WARNINGS_FILE"
+            echo "$STASH_COUNT $(lk_plural "$STASH_COUNT" stash stashes)" >>"$WARNINGS_FILE"
 
         fi
 
@@ -356,19 +356,19 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
     done
 
-    lk_echoc "All done. ${REPO_COUNT} $(lk_maybe_plural "$REPO_COUNT" repository repositories) ${COMPLETION_VERB}." "$LK_BOLD"
+    lk_echoc "All done. ${REPO_COUNT} $(lk_plural "$REPO_COUNT" repository repositories) ${COMPLETION_VERB}." "$LK_BOLD"
     echo
 
     if [ "${#UPDATED_REPOS[@]}" -gt "0" ]; then
 
-        lk_echoc "${#UPDATED_REPOS[@]} $(lk_maybe_plural "${#UPDATED_REPOS[@]}" repository repositories) fast-forwarded from upstream:" "$LK_BOLD" "$LK_GREEN"
+        lk_echoc "${#UPDATED_REPOS[@]} $(lk_plural "${#UPDATED_REPOS[@]}" repository repositories) fast-forwarded from upstream:" "$LK_BOLD" "$LK_GREEN"
         printf '%s\n' "${UPDATED_REPOS[@]}" ""
 
     fi
 
     if [ "${#PUSHED_REPOS[@]}" -gt "0" ]; then
 
-        lk_echoc "${#PUSHED_REPOS[@]} $(lk_maybe_plural "${#PUSHED_REPOS[@]}" repository repositories) pushed upstream:" "$LK_BOLD" "$LK_GREEN"
+        lk_echoc "${#PUSHED_REPOS[@]} $(lk_plural "${#PUSHED_REPOS[@]}" repository repositories) pushed upstream:" "$LK_BOLD" "$LK_GREEN"
         printf '%s\n' "${PUSHED_REPOS[@]}" ""
 
     fi
@@ -381,7 +381,7 @@ IS_CURRENT_BRANCH="%(HEAD)"
 
         if [ "${#FILE_TO_ARRAY[@]}" -gt "0" ]; then
 
-            lk_console_item "${LK_BOLD}${LK_RED}${#FILE_TO_ARRAY[@]} $(lk_maybe_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention in:${LK_RESET}" "${REPO_LONG_NAMES[$i]}" "$LK_RED"
+            lk_console_item "${LK_BOLD}${LK_RED}${#FILE_TO_ARRAY[@]} $(lk_plural "${#FILE_TO_ARRAY[@]}" "issue requires" "issues require") attention in:${LK_RESET}" "${REPO_LONG_NAMES[$i]}" "$LK_RED"
             printf -- '- [ ] %s\n' "${FILE_TO_ARRAY[@]}"
             echo
 

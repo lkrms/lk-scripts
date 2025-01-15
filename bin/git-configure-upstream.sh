@@ -61,15 +61,15 @@ MATCHING_BRANCHES=($(comm -12 <(printf '%s\n' "${LOCAL_BRANCHES[@]}") <(printf '
 
 if [ "${#MATCHING_BRANCHES[@]}" -gt "0" ]; then
 
-    lk_echo_array "${MATCHING_BRANCHES[@]}" | lk_console_list "${#MATCHING_BRANCHES[@]} local $(lk_maybe_plural "${#MATCHING_BRANCHES[@]}" "branch matches" "branches match") remote \"$UPSTREAM\":" "$LK_BOLD$LK_MAGENTA"
+    lk_echo_array "${MATCHING_BRANCHES[@]}" | lk_console_list "${#MATCHING_BRANCHES[@]} local $(lk_plural "${#MATCHING_BRANCHES[@]}" "branch matches" "branches match") remote \"$UPSTREAM\":" "$LK_BOLD$LK_MAGENTA"
 
-    if lk_confirm "Track \"$UPSTREAM\" and push to \"$ORIGIN\" for the $(lk_maybe_plural "${#MATCHING_BRANCHES[@]}" branch branches) listed above?" Y; then
+    if lk_confirm "Track \"$UPSTREAM\" and push to \"$ORIGIN\" for the $(lk_plural "${#MATCHING_BRANCHES[@]}" branch branches) listed above?" Y; then
 
         # unfetched remote branches can't be tracked
         lk_console_message "Fetching from remotes \"$ORIGIN\" and \"$UPSTREAM\"..."
         git fetch --multiple --quiet "$UPSTREAM" "$ORIGIN"
 
-        lk_console_message "Configuring ${#MATCHING_BRANCHES[@]} local $(lk_maybe_plural "${#MATCHING_BRANCHES[@]}" branch branches)..." "$LK_BOLD$LK_BLUE"
+        lk_console_message "Configuring ${#MATCHING_BRANCHES[@]} local $(lk_plural "${#MATCHING_BRANCHES[@]}" branch branches)..." "$LK_BOLD$LK_BLUE"
 
         for BRANCH in "${MATCHING_BRANCHES[@]}"; do
 
@@ -88,11 +88,11 @@ MATCHING_BRANCHES=($(comm -23 <(printf '%s\n' "${LOCAL_BRANCHES[@]}") <(printf '
 
 if [ "${#MATCHING_BRANCHES[@]}" -gt "0" ]; then
 
-    lk_echo_array "${MATCHING_BRANCHES[@]}" | lk_console_list "${#MATCHING_BRANCHES[@]} local $(lk_maybe_plural "${#MATCHING_BRANCHES[@]}" "branch doesn't" "branches don't") exist in remote \"$UPSTREAM\":" "$LK_BOLD$LK_MAGENTA"
+    lk_echo_array "${MATCHING_BRANCHES[@]}" | lk_console_list "${#MATCHING_BRANCHES[@]} local $(lk_plural "${#MATCHING_BRANCHES[@]}" "branch doesn't" "branches don't") exist in remote \"$UPSTREAM\":" "$LK_BOLD$LK_MAGENTA"
 
-    if lk_confirm "Track \"$ORIGIN\" for the $(lk_maybe_plural "${#MATCHING_BRANCHES[@]}" branch branches) listed above?" Y; then
+    if lk_confirm "Track \"$ORIGIN\" for the $(lk_plural "${#MATCHING_BRANCHES[@]}" branch branches) listed above?" Y; then
 
-        lk_console_message "Configuring ${#MATCHING_BRANCHES[@]} local $(lk_maybe_plural "${#MATCHING_BRANCHES[@]}" branch branches)..." "$LK_BOLD$LK_BLUE"
+        lk_console_message "Configuring ${#MATCHING_BRANCHES[@]} local $(lk_plural "${#MATCHING_BRANCHES[@]}" branch branches)..." "$LK_BOLD$LK_BLUE"
 
         for BRANCH in "${MATCHING_BRANCHES[@]}"; do
 

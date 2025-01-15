@@ -326,7 +326,7 @@ function lk_get_colours() {
     echo "${PREFIX}RESET=\"\$(lk_safe_tput sgr0)\""
 }
 
-function lk_maybe_plural() {
+function lk_plural() {
     [ "$1" -eq "1" ] && echo "$2" || echo "$3"
 }
 
@@ -489,7 +489,7 @@ function lk_console_list() {
     lk_console_message "$MESSAGE" "$COLOUR"
     LIST="$(lk_echo_array "${ITEMS[@]}" | COLUMNS="${COLUMNS+$((COLUMNS - 4))}" column -s $'\n' | expand)"
     lk_echoc "    ${LIST//$'\n'/$'\n'    }" "$COLOUR" >&2
-    [ -z "${SINGLE_NOUN:-}" ] || lk_console_detail "${#ITEMS[@]} $(lk_maybe_plural "${#ITEMS[@]}" "$SINGLE_NOUN" "$PLURAL_NOUN")"
+    [ -z "${SINGLE_NOUN:-}" ] || lk_console_detail "${#ITEMS[@]} $(lk_plural "${#ITEMS[@]}" "$SINGLE_NOUN" "$PLURAL_NOUN")"
 }
 
 # lk_console_read prompt [default [read_arg...]]

@@ -41,11 +41,11 @@ for PACK in "${PACKS[@]}"; do
 
 done
 
-lk_console_message "$PACK_COUNT $(lk_maybe_plural "$PACK_COUNT" pack packs) verified in $REPO_ROOT" "$LK_GREEN"
+lk_console_message "$PACK_COUNT $(lk_plural "$PACK_COUNT" pack packs) verified in $REPO_ROOT" "$LK_GREEN"
 
 PACK_ROOT="$(lk_mktemp_dir)"
 
-lk_console_message "Moving $PACK_COUNT $(lk_maybe_plural "$PACK_COUNT" pack packs)"
+lk_console_message "Moving $PACK_COUNT $(lk_plural "$PACK_COUNT" pack packs)"
 
 for PACK in "${PACKS[@]}"; do
 
@@ -53,7 +53,7 @@ for PACK in "${PACKS[@]}"; do
 
 done
 
-lk_console_message "Unpacking $PACK_COUNT $(lk_maybe_plural "$PACK_COUNT" pack packs) in $REPO_ROOT"
+lk_console_message "Unpacking $PACK_COUNT $(lk_plural "$PACK_COUNT" pack packs) in $REPO_ROOT"
 
 i=0
 

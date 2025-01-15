@@ -409,7 +409,7 @@ function apt_get_package_list() {
     done
 
     [ "${#BAD_LIST[@]}" -eq "0" ] || {
-        lk_echo_array "${BAD_LIST[@]}" | lk_console_list "$(lk_maybe_plural "${#BAD_LIST[@]}" Package Packages) unavailable for installation" "$LK_BOLD$LK_RED" >&2
+        lk_echo_array "${BAD_LIST[@]}" | lk_console_list "$(lk_plural "${#BAD_LIST[@]}" Package Packages) unavailable for installation" "$LK_BOLD$LK_RED" >&2
         lk_die
     }
 
@@ -513,22 +513,22 @@ function apt_install_packages() {
 
         if [ "$UI" = "Y" ]; then
 
-            lk_console_message "Missing $1 $(lk_maybe_plural ${#INSTALL[@]} package packages):" "$LK_BOLD$LK_MAGENTA"
+            lk_console_message "Missing $1 $(lk_plural ${#INSTALL[@]} package packages):" "$LK_BOLD$LK_MAGENTA"
 
             apt_describe_packages "${INSTALL[*]}" "$LK_BOLD$LK_MAGENTA"
 
             [ "${#QUEUE[@]}" -gt "0" ] && {
-                lk_echo_array "${QUEUE[@]}" | lk_console_list "These packages depend on ${#QUEUE[@]} missing $(lk_maybe_plural ${#QUEUE[@]} repository repositories)" "$LK_BOLD$LK_MAGENTA"
-                PROMPT_EXTRA=" and $(lk_maybe_plural ${#QUEUE[@]} repository repositories)"
+                lk_echo_array "${QUEUE[@]}" | lk_console_list "These packages depend on ${#QUEUE[@]} missing $(lk_plural ${#QUEUE[@]} repository repositories)" "$LK_BOLD$LK_MAGENTA"
+                PROMPT_EXTRA=" and $(lk_plural ${#QUEUE[@]} repository repositories)"
             }
 
-            lk_confirm "Add the $1 $(lk_maybe_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" Y || return 0
+            lk_confirm "Add the $1 $(lk_plural ${#INSTALL[@]} package packages)${PROMPT_EXTRA} listed above?" Y || return 0
 
         fi
 
         if [ "$QUEUE_ONLY" = "N" ]; then
 
-            [ "${#QUEUE[@]}" -gt "0" ] && lk_echo_array "${QUEUE[@]}" | lk_console_list "Adding ${#QUEUE[@]} $(lk_maybe_plural ${#QUEUE[@]} repository repositories)" "$LK_GREEN"
+            [ "${#QUEUE[@]}" -gt "0" ] && lk_echo_array "${QUEUE[@]}" | lk_console_list "Adding ${#QUEUE[@]} $(lk_plural ${#QUEUE[@]} repository repositories)" "$LK_GREEN"
 
             for q in PPA REPO; do
 
@@ -546,7 +546,7 @@ function apt_install_packages() {
             SILENT_QUEUE=($(apt_get_package_list "${INSTALL[*]}" "${IGNORED[*]+${IGNORED[*]}}" "${SUPPRESSED[*]+${SUPPRESSED[*]}}" "" "${SILENCED[*]+${SILENCED[*]}}" Y))
             PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]+${INSTALL_QUEUE[*]}} ${SILENT_QUEUE[*]+${SILENT_QUEUE[*]}}"))
 
-            lk_console_item "Installing ${#PRETTY_QUEUE[@]} $(lk_maybe_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]+${PRETTY_QUEUE[*]}}" Y)" "$LK_GREEN"
+            lk_console_item "Installing ${#PRETTY_QUEUE[@]} $(lk_plural ${#PRETTY_QUEUE[@]} package packages):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]+${PRETTY_QUEUE[*]}}" Y)" "$LK_GREEN"
 
             for q in INSTALL SILENT; do
 
@@ -720,7 +720,7 @@ function do_apt_install_deb() {
 
     mkdir -p "$APT_DEB_PATH" && pushd "$APT_DEB_PATH" >/dev/null || lk_die "Error: unable to access $APT_DEB_PATH"
 
-    lk_console_message "Downloading $# deb $(lk_maybe_plural "$#" package packages)"
+    lk_console_message "Downloading $# deb $(lk_plural "$#" package packages)"
 
     # allow "429 Too Many Requests"
     # shellcheck disable=SC2034
@@ -770,7 +770,7 @@ function do_apt_install_deb() {
 
     done
 
-    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && lk_console_item "Installing deb $(lk_maybe_plural "${#NOT_SKIPPED[@]}" package packages):" "${NOT_SKIPPED[*]}" "$LK_GREEN"
+    [ "${#NOT_SKIPPED[@]}" -gt "0" ] && lk_console_item "Installing deb $(lk_plural "${#NOT_SKIPPED[@]}" package packages):" "${NOT_SKIPPED[*]}" "$LK_GREEN"
 
     if [ "${#DEB_PATHS[@]}" -gt "0" ]; then
 
@@ -816,7 +816,7 @@ function apt_process_queue() {
 
         QUEUE=($(printf '%s\n' ${APT_PPA_QUEUE[@]+"${APT_PPA_QUEUE[@]}"} ${APT_REPO_QUEUE[@]+"${APT_REPO_QUEUE[@]}"} | sort | uniq))
 
-        [ "${#QUEUE[@]}" -gt "0" ] && lk_console_item "Adding ${#QUEUE[@]} $(lk_maybe_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$LK_GREEN"
+        [ "${#QUEUE[@]}" -gt "0" ] && lk_console_item "Adding ${#QUEUE[@]} $(lk_plural ${#QUEUE[@]} repository repositories):" "${QUEUE[*]}" "$LK_GREEN"
 
         for q in PPA REPO; do
 
@@ -833,7 +833,7 @@ function apt_process_queue() {
         INSTALL_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]+${APT_IGNORED[*]}}" "${APT_SUPPRESSED[*]+${APT_SUPPRESSED[*]}}" "${APT_REMOVE_QUEUE[*]+${APT_REMOVE_QUEUE[*]}}" "${APT_SILENCED[*]+${APT_SILENCED[*]}}" N))
         SILENT_QUEUE=($(apt_get_package_list "${APT_INSTALL_QUEUE[*]}" "${APT_IGNORED[*]+${APT_IGNORED[*]}}" "${APT_SUPPRESSED[*]+${APT_SUPPRESSED[*]}}" "" "${APT_SILENCED[*]+${APT_SILENCED[*]}}" Y))
         PRETTY_QUEUE=($(apt_filter_packages "${INSTALL_QUEUE[*]+${INSTALL_QUEUE[*]}} ${SILENT_QUEUE[*]+${SILENT_QUEUE[*]}}"))
-        lk_console_item "Applying ${#PRETTY_QUEUE[@]} package $(lk_maybe_plural ${#PRETTY_QUEUE[@]} change changes):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y)" "$LK_GREEN"
+        lk_console_item "Applying ${#PRETTY_QUEUE[@]} package $(lk_plural ${#PRETTY_QUEUE[@]} change changes):" "$(apt_pretty_packages "${PRETTY_QUEUE[*]}" Y)" "$LK_GREEN"
 
         for q in INSTALL SILENT; do
 

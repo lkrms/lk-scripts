@@ -51,4 +51,4 @@ while IFS= read -rd $'\0' FILE; do
 
 done < <(find . -iname '*conflicted copy*' -print0 | sort -z)
 
-echo "$RESOLVED conflicted $(lk_maybe_plural "$RESOLVED" copy copies) resolved"
+echo "$RESOLVED conflicted $(lk_plural "$RESOLVED" copy copies) resolved"

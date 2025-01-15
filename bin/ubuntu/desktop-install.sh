@@ -702,7 +702,7 @@ EOF
     apt_purge
 
     # ALL_PACKAGES=($(printf '%s\n' "${APT_INSTALLED[@]}" | grep -Eo '[^/]+$' | sort | uniq))
-    # lk_console_message "${#ALL_PACKAGES[@]} installed $(lk_maybe_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "$LK_BLUE"
+    # lk_console_message "${#ALL_PACKAGES[@]} installed $(lk_plural ${#ALL_PACKAGES[@]} "package is" "packages are") managed by $(basename "$0"):" "$LK_BLUE"
     # COLUMNS="$(tput cols)" && apt_pretty_packages "$(printf '%s\n' "${ALL_PACKAGES[@]}" | column -c "$COLUMNS")" || apt_pretty_packages "${ALL_PACKAGES[*]}" Y
 
     if apt_package_available "linux-generic-hwe-$DISTRIB_RELEASE" && apt_package_available "xserver-xorg-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "linux-generic-hwe-$DISTRIB_RELEASE" && ! apt_package_installed "xserver-xorg-hwe-$DISTRIB_RELEASE"; then

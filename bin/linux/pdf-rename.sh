@@ -1,7 +1,6 @@
 #!/bin/bash
-# shellcheck disable=SC1090,SC2015
 
-include='' . lk-bash-load.sh || exit
+. lk-bash-load.sh || exit
 
 lk_assert_command_exists qpdfview
 
@@ -17,18 +16,18 @@ for FILE_PATH in "$@"; do
 
     echo
 
-    lk_console_item "Opening file $FILE_NUMBER of $#" "$FILE_PATH"
+    lk_tty_print "Opening file $FILE_NUMBER of $#" "$FILE_PATH"
 
     nohup qpdfview --unique --instance pdf_rename "$FILE_PATH" >/dev/null 2>&1 &
     disown
 
-    sleep 1
+    sleep 0.5
 
-    [ -z "$WINDOW_ID" ] || wmctrl -ia "$WINDOW_ID"
+    [[ -z $WINDOW_ID ]] || wmctrl -ia "$WINDOW_ID"
 
-    FILE_NAME="$(basename "$FILE_PATH")"
+    FILE_NAME=${FILE_PATH##*/}
 
-    NEW_NAME="$(lk_console_read "Rename to:")"
+    NEW_NAME=$(lk_console_read "Rename to:")
 
     [ -n "$NEW_NAME" ] || continue
 
@@ -53,11 +52,11 @@ for FILE_PATH in "$@"; do
 
     if [ "$NEW_PATH" = "$NEW_PATH_CLEAN" ]; then
 
-        lk_console_item "Renamed to" "$(basename "$NEW_PATH")" "$LK_BOLD$LK_GREEN"
+        lk_tty_print "Renamed to" "$(basename "$NEW_PATH")" "$LK_BOLD$LK_GREEN"
 
     else
 
-        lk_console_item "$(basename "$NEW_PATH_CLEAN") already exists, renamed to" "$(basename "$NEW_PATH")" "$LK_BOLD$LK_YELLOW"
+        lk_tty_print "$(basename "$NEW_PATH_CLEAN") already exists, renamed to" "$(basename "$NEW_PATH")" "$LK_BOLD$LK_YELLOW"
 
     fi
 
